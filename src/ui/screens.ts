@@ -31,14 +31,36 @@ const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
 const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01' };
 
+/** words for the name of a player who did not pick one */
+export const FUN_NAMES = {
+  adjectives: ['Turbo', 'Pixel', 'Captain', 'Sir', 'Glitchy', 'Mega', 'Sneaky', 'Wobbly', 'Neon', 'Crispy', 'Funky', 'Sparkly', 'Hyper', 'Cosmic', 'Grumpy', 'Lucky'],
+  nouns: ['Toast', 'Panda', 'Noodle', 'Waffle', 'Cube', 'Pickle', 'Taco', 'Pretzel', 'Gecko', 'Muffin', 'Llama', 'Donut', 'Potato', 'Badger', 'Nugget', 'Penguin'],
+};
+
+/** fills in a fun name and a random suit colour where the player chose none (`rnd` is 0..1) */
+export function withDefaults<T extends { name: string; color: number | null }>(s: T, rnd: () => number = Math.random): T {
+  const pick = <V,>(list: V[]) => list[Math.floor(rnd() * list.length) % list.length];
+  return {
+    ...s,
+    name: s.name.trim() ? s.name : `${pick(FUN_NAMES.adjectives)} ${pick(FUN_NAMES.nouns)}`,
+    color: s.color ?? Math.floor(rnd() * 6) % 6,
+  };
+}
+
 export function loadSettings(): Settings {
+  let loaded: Settings = { ...DEFAULTS };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
   } catch {
     // storage unavailable: use defaults
   }
-  return { ...DEFAULTS };
+  // no name or colour yet: give the player a fun one and keep it
+  if (!loaded.name.trim() || loaded.color === null) {
+    loaded = withDefaults(loaded);
+    saveSettings(loaded);
+  }
+  return loaded;
 }
 
 export function saveSettings(s: Settings): void {
