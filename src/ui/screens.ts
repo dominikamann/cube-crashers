@@ -299,8 +299,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     show('title', s => {
       text(s, 'div', 'logo', t('title'));
       text(s, 'p', 'credits-by', t('credits.by'));
-      link(s, 'credits-site', t('credits.site'), 'https://www.amannlabs.eu');
       text(s, 'h2', '', t('credits.author'));
+      link(s, 'credits-site', t('credits.site'), 'https://www.amannlabs.eu');
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
