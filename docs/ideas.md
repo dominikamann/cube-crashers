@@ -31,3 +31,15 @@ Let the community add content without touching the core game:
 
 - "Cube Crashers" night mode / special levels in the A2 neon look.
 - "Coin-Op Chaos" as a possible mode name.
+
+## Lane mode
+
+The first prototype (Phase 1) was a single straight lane with waves, an arcade cabinet base and the
+Segment Worm boss. It was replaced by Tower Run because standing still was the best strategy. It is in the
+git history (tag the commit before `feat(sim): tile map floor with collision, replace lane mode`) and could
+come back as a separate "classic" mode.
+
+## Shaft ride between floors
+
+Between two floors the elevator becomes an open platform that rides up the shaft on its own for ~45 s while
+flying glitch swarms attack; the player aims and shoots freely. Planned for Stage 2.

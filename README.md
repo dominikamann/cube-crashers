@@ -1,27 +1,30 @@
 # Cube Crashers
 
-**A fast voxel lane shooter with tower defense elements.** Waves of retro arcade monsters roll down the
-lane toward your arcade cabinet. Grab wild auto-firing weapons, from a laser sword to a candy cannon
-to a hotdog slinger, build towers on glowing pads without ever pausing the action, and crash the
-bosses into a thousand glowing cubes.
+**A fast voxel action game: fight your way up a tower, floor by floor.** Every floor is a big voxel map with
+branching paths where hordes of retro arcade monsters roam and hunt you. The hordes come from glitch nests.
+Plant a charge on a nest and hold the zone while the horde storms in, build towers at the chokepoints, jump
+on monsters, dash through them, or grab a Crash Kart and plough through the pixels. Destroy every nest, then
+reach the elevator. You have three credits.
 
-> **Status: first playable version (Phase 1, single player).** Balancing and polish are ongoing.
-> See the [roadmap](#roadmap).
+> **Status: Tower Run, Stage 1 (one floor, single player).** Playable and balanced against a scripted bot;
+> play-testing is ongoing. See the [roadmap](#roadmap).
 
-| Day | Boss night |
+| Holding a nest | Overload at alarm 5 |
 |---|---|
-| ![Gameplay](docs/design/screenshots/gameplay.png) | ![Segment Worm at night](docs/design/screenshots/night-boss.png) |
+| ![Holding a nest](docs/design/screenshots/nest-day.png) | ![Overload](docs/design/screenshots/nest-overload.png) |
 
-Runs on **Windows and macOS**. Single player first; **LAN co-op for up to 6 players** comes next.
+Runs on **Windows and macOS**. Single player first; **LAN co-op for up to 6 players** comes later.
 
 ---
 
 ## Contents
 
-- [The game](#the-game)
-- [How to play](#how-to-play)
-- [Weapons, towers, enemies, bosses](#weapons-towers-enemies-bosses)
+- [How a run works](#how-a-run-works)
+- [Controls](#controls)
+- [Weapons, perks, towers, kart, power-ups](#weapons-perks-towers-kart-power-ups)
+- [Monsters](#monsters)
 - [Look and sound](#look-and-sound)
+- [Run logs](#run-logs)
 - [Getting started (development)](#getting-started-development)
 - [Project structure](#project-structure)
 - [Architecture](#architecture)
@@ -32,97 +35,122 @@ Runs on **Windows and macOS**. Single player first; **LAN co-op for up to 6 play
 
 ---
 
-## The game
+## How a run works
 
-The core idea: **beat up retro monsters with cool (and slightly ridiculous) tech.**
+- **Goal:** each floor has **4 glitch nests** (picked at random from 7 spots, so every run is different).
+  Destroy all of them and the **elevator** opens. Step in to clear the floor.
+- **Destroying a nest:** walk up to it and **hold E for one second** to plant a charge. Then **hold the zone**
+  (6 tiles around the nest) for 25 seconds:
+  - Rush hordes storm in from the approaches. That is where the build pads are, so put towers there.
+  - The nest fights back: a red ring marks where it will blast next, right under your feet. **Keep moving.**
+  - If you leave the zone, the counter slowly runs back down, but the charge stays planted.
+  - When it blows: a big explosion, a coin shower, a crate, and the alarm drops by one.
+- **Credits:** you have **3 credits** per run. Going down costs one; you get back up after 3 seconds at the last
+  safe point (the start, or the last nest you destroyed), lose 25 % of your coins and keep your weapons.
+  When the last credit is gone, the run is over.
+- **Alarm 0–5:** rises every 40 seconds. Every rise sends a horde hunting for you, and hordes get bigger and
+  faster. At **alarm 5 (overload)** the lights go out and hunting parties keep coming. Destroying a nest
+  lowers the alarm.
+- **Score:** every monster gives points times your **combo multiplier**. Kill and collect coins without a
+  3-second break to build up the combo (×2 every 10 kills, up to ×10). Clearing the floor adds a bonus per
+  credit left and for speed. The best 5 scores are kept.
+- **Coins** disappear after 8 seconds, so go and get them. You spend them on towers.
 
-- A horde comes down a lane from the top of the screen. You stand at the bottom, in front of your
-  **arcade cabinet**, which is your base.
-- Every monster that gets through damages the cabinet. If the cabinet's health drops to zero, the round is lost.
-- One round covers **10 waves** and takes about 10–15 minutes. A **mini-boss** shows up in wave 5 and
-  the **Segment Worm** in wave 10. Beat the worm and you win.
-- After a win you get **1–3 stars**, depending on how much health your cabinet has left.
+## Controls
 
-## How to play
-
-| Key | Action |
+| Input | Action |
 |---|---|
-| `W` `A` `S` `D` / arrow keys | Move |
-| `E` (hold, on a build pad) | Open the build menu |
-| `1` `2` `3` / mouse click | Pick a tower in the build menu |
+| Mouse | Aim (crosshair on the ground) |
+| Left mouse button (hold) | Fire the selected weapon |
+| `W` `A` `S` `D` / arrow keys | Move. On foot, `W` walks toward the crosshair (like a shooter); this can be switched off in Settings. In the kart the keys always steer by the screen. |
+| `1`–`6` / mouse wheel | Select a weapon |
+| `Space` | Jump; landing **stomps** everything around you |
+| `Shift` | **Dash**: short, invulnerable, damages what you pass |
+| `E` (tap) | Get in / out of a kart |
+| `E` (hold) | Plant a charge at a nest · open the build menu on a pad, then `1`–`3` for a tower |
 | `Esc` / `P` | Pause |
-| `F11` | Toggle fullscreen (desktop app) |
+| `F11` | Fullscreen (desktop app) |
 
-- **Your weapons fire on their own** at the nearest monster. You focus on moving, dodging, collecting
-  and building.
-- **Weapon crates** roll down the lane with the horde. Walk into one or shoot it open to get a new weapon.
-  New weapons are added to the ones you already carry, up to 6. If you find a weapon you already
-  have, it levels up (max level 5).
-- **Coins** drop from defeated monsters and fly to you when you get close. Coins are your budget for
-  towers. Picking up coins in quick succession raises the pitch of the coin sound.
-- **Build pads** are glowing platforms at fixed spots on the map. Stand on one, hold `E`, pick a tower.
-  The game keeps running while you build.
-- Coins that lie around for 4 seconds fly to you on their own.
-- If you go down, you get back up after 3 seconds at your start position. You lose 25 % of your coins
-  but keep all your weapons.
+Every weapon **reloads on its own, also when it is not selected**. The weapon bar shows each reload and
+glows when a weapon is ready, so you can switch through and fire whatever is loaded.
 
-## Weapons, towers, enemies, bosses
+## Weapons, perks, towers, kart, power-ups
 
-### Weapons
+### Weapons (up to 6, each up to level 5)
 
 | Weapon | What it does |
 |---|---|
-| **Pixel Blaster** | Starter weapon. Straight bolts; more bolts at higher levels. |
-| **Laser Sword** | 360° swing that hits everything around you; the reach grows with each level. |
-| **Candy Cannon** | Fires a spread of colourful candy; one more candy per level. |
-| **Hotdog Slinger** | Lobs a hotdog that leaves a damaging mustard puddle. |
-| **Joystick Boomerang** | Flies out and comes back, hitting everything on the way. |
-| **Disco Ball** | Orbits you and zaps the nearest monsters with light beams; one more beam per level. |
+| **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels. |
+| **Laser Sword** | Wide swing toward the crosshair. |
+| **Candy Cannon** | Spread of candy pellets. |
+| **Hotdog Slinger** | Lobs a hotdog to the crosshair; the mustard puddle keeps hurting. |
+| **Joystick Boomerang** | Flies out and back, hitting everything twice. |
+| **Disco Ball** | Zaps the nearest monsters around you. |
+| **Banana Mine** | Drops a mine that blows up when a monster steps on it (up to 5). |
+| **Party Bomb** | Lobs a big bomb to the crosshair. |
+
+Hits from up close (within 3 tiles) deal **50 % more damage**.
+
+### Crates and perks
+
+Crates lie around the floor and drop from nests and elite monsters. Walk into one and it opens into **three
+floating cards**: a new weapon, a weapon level-up or a perk. Walk into the card you want. The game does not
+pause. Perks: **Speed**, **Extra Dash**, **Magnet**, **Coin Bonus**, **Regeneration**, **Big Stomp**.
 
 ### Towers
 
 | Tower | Cost | What it does |
 |---|---|---|
-| **Laser Tower** | 15 | Fast single-target laser. |
-| **Popcorn Mortar** | 25 | Lobs popcorn shells that hit everything in an area. |
-| **Frost Machine** | 20 | Cold pulses that slow monsters to half speed. |
+| **Laser Tower** | 12 | Fast single-target laser. |
+| **Popcorn Mortar** | 20 | Lobs shells that hit everything in an area. |
+| **Frost Machine** | 15 | Slows monsters to half speed. |
 
-### Enemies
+### Crash Kart
 
-All monsters are original voxel creatures in the style of old arcade games.
+Two karts are parked on every floor. Tap `E` to get in. Twice as fast as walking, rams monsters out of the
+way (40 damage), keeps your weapons firing, and protects you: hits damage the kart instead of you. Boost pads
+speed you up, ramps launch you over low walls (the landing hurts everything around). It has 20 seconds of fuel
+and 100 durability; when either runs out it bursts into cubes and comes back 45 seconds later.
 
-| Enemy | Description |
-|---|---|
-| **Hop Blob** | The standard monster. Hops along in large numbers. |
-| **Dasher** | Fast and fragile. |
-| **Armor Block** | Slow, heavily armoured, hurts a lot. |
-| **Splitter** | Splits into two small splitlings when destroyed. |
+### Power-ups
 
-### Bosses
+Every 30 seconds one appears somewhere on the map (shown on the minimap) for 15 seconds: **Coin Magnet**,
+**Rapid Fire**, **Screen Bomb**, **Deep Freeze**, **Heart**.
 
-Every boss:
+## Monsters
 
-- has **three phases** (at 66 % and 33 % health) and calls reinforcements at each change;
-- uses **telegraphed attacks**: a red ring on the ground warns you before the impact, so you can dodge;
-- **attacks your towers** too;
-- switches the world to the **night look** when it arrives;
-- bursts into **hundreds of glowing cubes** and a shower of coins when it dies.
+All monsters are original voxel creatures in the style of old arcade games. Every dangerous attack is
+announced first.
 
-| Boss | Wave | Description |
+| Monster | Behaviour | Warning |
 |---|---|---|
-| **Mega Block** | 5 | A huge armoured mini-boss with ground slams. |
-| **Segment Worm** | 10 | A giant worm made of segments. Destroy a middle segment and it **splits in two**. Parts smaller than 3 segments no longer split, and at most 4 worms can exist at once. |
+| **Hop Blob** | The standard horde monster. | – |
+| **Hunter** | Fast, goes straight for you. | – |
+| **Armor Block** | Slow and very tough. | – |
+| **Splitter** | Splits into two small splitlings. | – |
+| **Shooter** | Keeps its distance and fires slow red bullets. Jump over them. | Aim line on the ground |
+| **Bomber** | Runs at you and blows up. Shooting it first makes it explode among its friends. | Blinking fuse, red ring |
+| **Rammer** | Charges in a straight line and gets stunned if it hits a wall. Step aside. | Red lane on the ground |
+| **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
+
+Hordes wander between waypoints until they see you, then the whole group hunts you down.
 
 ## Look and sound
 
-- **Day look (default):** a bright, colourful voxel diorama. Neon glow is reserved for the action:
-  bolts, eyes, tower lasers and the boss aura.
-- **Night look (bosses, special levels):** the same world at night, with glowing lane edges and glowing
-  monsters.
-- **Readability comes first.** Effects must never blur the gameplay.
-- **All sound is synthesized in code** using the Web Audio API: punchy chiptune effects for every weapon,
-  hit, coin, tower and boss, plus three music tracks (menu, battle, boss). There are no audio files,
-  so there are no licensing issues.
+- Bright voxel world by day; at **alarm 5** it switches to the night look with glowing monsters.
+- Readability comes first: effects must never blur the gameplay.
+- **All sound is synthesized in code** with the Web Audio API: an effect for every weapon, monster warning,
+  explosion, combo step, kart and pickup, plus menu, battle and overload music. No audio files, no licensing
+  issues.
+
+## Run logs
+
+After every run the game writes a small JSON log (result, score, time, kills by source, best combo, damage,
+how much of the time you stood still, and a sample every 10 seconds). It never leaves your machine:
+
+- Dev server: `logs/run-<time>.json` in the project folder (git-ignored).
+- Desktop app: the `runs/` folder in the app's user data folder.
+- Always: the last 20 runs in the browser's local storage.
 
 ## Getting started (development)
 
@@ -142,9 +170,10 @@ Dev shortcuts (append to the URL):
 
 | URL parameter | What it does |
 |---|---|
-| `?demo=day` | Start fully armed with three towers |
-| `?demo=night` | Start fully armed, straight into the Segment Worm |
-| `&warp=900` | Fast-forward the simulation by that many ticks (60 = 1 s) |
+| `?seed=7` | Fixed run layout |
+| `?demo=1` | Start with six weapons and 200 coins |
+| `?demo=nest&alarm=5` | Start next to a planted nest (optionally at a given alarm level) |
+| `&warp=600` | Fast-forward the simulation by that many ticks (60 = 1 s) |
 | `?sound=1` | Soundboard: play every sound effect and music track |
 
 ## Project structure
@@ -152,24 +181,27 @@ Dev shortcuts (append to the URL):
 ```
 cube-crashers/
   src/
-    sim/            pure game logic (no graphics, no DOM): state, systems, config tables
-      config/       data tables: enemies, weapons, towers, waves, maps
-      systems/      player, enemies, waves, weapons, combat, coins, crates, towers, bosses, outcome
-      sim.ts        createSim / stepSim: one fixed 60 Hz tick
-    render/         Three.js renderer: voxel world, day/night themes, instanced entities, effects
-    audio/          synthesized sound effects, chiptune music, mixer
-    input/          keyboard → commands
-    ui/             HUD, build menu, screens
-    i18n/           all player-visible text (English; German planned)
-    loop.ts         fixed-step game loop
-    main.ts         wires everything together
-  electron/         desktop app main process
-  scripts/          build helpers (app icon generator)
-  tests/            Vitest tests, mirroring src/
+    sim/              pure game logic (no graphics, no DOM): state, systems, config tables
+      map/            tile map, collision, line of sight, flow field
+      config/         data tables: floor01 map, enemies, weapons, towers, perks, balance values
+      systems/        player, enemies, hordes, nests, weapons, combat, coins, offers (crates/cards),
+                      towers, vehicles, power-ups, stats, outcome
+      sim.ts          createSim / stepSim: one fixed 60 Hz tick
+    render/           Three.js: tile world, day/night themes, instanced monsters, actors, pickups, effects
+    audio/            synthesized sound effects, chiptune music, mixer
+    input/            keyboard and mouse → commands
+    ui/               HUD, minimap, build menu, screens
+    i18n/             all player-visible text (English; German planned)
+    runlog.ts         run log building and saving
+    loop.ts           fixed-step game loop
+    main.ts           wires everything together
+  electron/           desktop app main process and preload
+  scripts/            build helpers (app icon generator)
+  tests/              Vitest tests (incl. a scripted bot that plays whole floors)
   docs/
-    superpowers/specs/   design document
-    superpowers/plans/   implementation plan
-    design/              visual style reference
+    superpowers/specs/   design documents
+    superpowers/plans/   implementation plans
+    design/              visual style reference and screenshots
     ideas.md             ideas for later
 ```
 
@@ -178,23 +210,22 @@ cube-crashers/
 The most important rule: **game logic and presentation are strictly separated.**
 
 ```
- keyboard ──► Command[] ──► stepSim(state, commands)  (60 Hz, deterministic, seeded RNG)
-                                  │
-                                  ├──► SimState  ──► renderer (reads only)
-                                  └──► SimEvent[] ──► renderer effects, sound, HUD
+ keyboard + mouse ──► Command[] ──► stepSim(state, commands)  (60 Hz, deterministic, seeded RNG)
+                                          │
+                                          ├──► SimState   ──► renderer (reads only)
+                                          └──► SimEvent[] ──► renderer effects, sound, HUD, run log
 ```
 
-- `src/sim/` never imports Three.js or the DOM, and never uses `Math.random` or `Date`.
-  A test enforces this.
-- The simulation runs at a fixed 60 ticks per second. The client feeds it commands
-  (`move`, `build`) and reacts to the events it emits (`enemyKilled`, `coinPicked`, `bossSpawn`, …).
-- **Why:** in the LAN version, the host runs the same simulation authoritatively and sends state to
-  the other players. No game logic needs to be rewritten for that.
-- Balancing lives in plain data tables in `src/sim/config/`.
+- `src/sim/` never imports Three.js or the DOM, and never uses `Math.random` or `Date`. A test enforces this.
+- The world is a tile grid parsed from a text map. Monsters find their way with a flow field toward the
+  players that is rebuilt four times a second.
+- **Why:** in the LAN version, the host runs the same simulation and sends the state to the other players,
+  without rewriting game logic.
+- Balancing lives in plain data tables in `src/sim/config/`. A scripted bot (`tests/sim/bot.ts`) plays whole
+  floors in the tests to check that a floor can be won, cannot be won by standing still, and keeps the
+  player moving.
 
 ## Building the desktop app
-
-The game is packaged with Electron:
 
 ```bash
 npm run app:dev    # run as a desktop app with hot reload
@@ -209,33 +240,28 @@ Builds are currently **unsigned**:
 - **macOS:** the first time, right-click the app → *Open* → *Open*.
 - **Windows:** click *More info* → *Run anyway* on the SmartScreen warning.
 
-Code signing can be added later.
-
 ## Roadmap
 
-- [x] Design and plan
-- [x] Game logic: movement, waves, weapons, coins, crates, towers, player damage, mini-boss,
-      Segment Worm, victory and stars (fully tested)
-- [x] Graphics: voxel world, day/night looks, effects
-- [x] Sound effects and music
-- [x] HUD, build menu, title, pause and result screens
-- [x] Desktop app for Windows and macOS (unsigned)
-- [ ] Balancing and polish from play-testing
-- [ ] Unlocks: earn stars to unlock weapons, towers and maps
-- [ ] **LAN co-op for up to 6 players.** A server is built into every install: one player clicks
-      *Host game*, everyone else picks the game from an automatically discovered list. No IP addresses
-      and no setup.
+- [x] Phase 1 prototype (lane defence) – replaced, see [docs/ideas.md](docs/ideas.md)
+- [x] **Tower Run Stage 1:** one big floor, nests with plant-and-hold, alarm, credits, roaming hordes,
+      shooter/bomber/rammer/elites, manual aiming with 8 weapons, jump/stomp, dash, combo, crates with
+      three-card choices and perks, towers, Crash Kart with boost pads and ramps, power-ups, minimap,
+      score and local best list, run logs
+- [ ] Play-testing and balancing
+- [ ] **Stage 2:** a run over 5 floors with different themes, a shaft ride between floors (shoot swarms from
+      the moving elevator), an elevator shop, boss floors (Mega Block, Segment Worm)
+- [ ] **Stage 3:** unlocks, more vehicles, endless mode
+- [ ] **LAN co-op for up to 6 players** (server built into every install, games found automatically)
 - [ ] German translation
-- [ ] Ideas for later ([docs/ideas.md](docs/ideas.md)): real-city maps from OpenStreetMap, and a plugin
-      system for maps, weapons, towers and game modes
+- [ ] Ideas for later ([docs/ideas.md](docs/ideas.md)): real-city maps from OpenStreetMap, plugins
 
 ## Contributing
 
-Contributions are welcome once the first playable version is out. Please keep in mind:
+Contributions are welcome. Please keep in mind:
 
-- **All assets must be original or freely licensed.** Sounds and music are synthesized in code, and
-  graphics are built from voxels in code.
-- **No protected characters or brands.** Monsters are original creatures *in the style of* old
+- **All assets must be original or freely licensed.** Sounds and music are synthesized in code; graphics are
+  built from voxels in code.
+- **No protected characters, names or brands.** Monsters are original creatures *in the style of* old
   arcade games.
 - Game logic belongs in `src/sim/` and must stay pure and deterministic.
 - Write tests first (`npm test`) for game logic changes.
