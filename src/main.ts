@@ -211,7 +211,14 @@ function startGame() {
       renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
-      renderer.setLookAhead(0, true);
+      renderer.setLookAhead(0, padActive);
+      // the mouse player's camera leans by where the pointer sits on screen (no feedback loop)
+      if (!padActive && mode === 'playing') {
+        const r = canvas.getBoundingClientRect();
+        const vw = r.width / (split ? 2 : 1);
+        const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+        renderer.setMouseLook(0, { x: clamp((mouse.x - r.left - vw / 2) / (vw / 2)), y: clamp((mouse.y - r.top - r.height / 2) / (r.height / 2)) });
+      } else renderer.setMouseLook(0, null);
       if (split) renderer.setLookAhead(1, true);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;

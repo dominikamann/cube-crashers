@@ -449,9 +449,21 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     };
     const side = [0.5, 0.05];
     for (const c of cells.filter(c => c.tile === Tile.Ramp)) {
+      // the slope rises toward the nearest barrier straight ahead (up to 4 tiles away; ramps stand back a little)
       let dir: [number, number] = [0, -1];
+      let best = Infinity;
       for (const [ox, oz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as [number, number][]) {
-        if (tileOf(c.tx + ox, c.tz + oz) === Tile.LowWall || tileOf(c.tx + 2 * ox, c.tz + 2 * oz) === Tile.LowWall) dir = [ox, oz];
+        for (let k = 1; k <= 4; k++) {
+          const t = tileOf(c.tx + k * ox, c.tz + k * oz);
+          if (t === Tile.Wall) break;
+          if (t === Tile.LowWall) {
+            if (k < best) {
+              best = k;
+              dir = [ox, oz];
+            }
+            break;
+          }
+        }
       }
       const H = 0.32;
       // corners in local space (along = toward the barrier), mapped to world

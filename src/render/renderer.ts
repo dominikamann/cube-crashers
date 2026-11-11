@@ -43,8 +43,13 @@ export interface GameRenderer {
   setViews(ids: number[]): void;
   /** zoomed out for a wider view (per view) */
   setZoomedOut(view: number, out: boolean): void;
-  /** the camera slides toward where the player aims */
+  /** the camera slides toward where the player aims (controllers: from the aim point in the world) */
   setLookAhead(view: number, on: boolean): void;
+  /**
+   * Mouse players: the camera leans by where the pointer is on screen (-1..1 from the centre of the view).
+   * Taken from the screen, not the world, so moving the camera never moves the point under the pointer.
+   */
+  setMouseLook(view: number, offset: { x: number; y: number } | null): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
@@ -135,6 +140,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     zoom: number;
     wantZoom: number;
     lookAhead: boolean;
+    mouseLook: { x: number; y: number } | null;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -146,6 +152,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     zoom: 1,
     wantZoom: 1,
     lookAhead: false,
+    mouseLook: null,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -303,6 +310,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           }
         }
         v.zoom += (v.wantZoom - v.zoom) * k;
+        if (v.mouseLook) {
+          ox += v.mouseLook.x * LOOK_AHEAD_MAX;
+          oz += v.mouseLook.y * LOOK_AHEAD_MAX;
+        }
         wantPos.set(p.x + ox, 15 * v.zoom, p.z + oz + 11 * v.zoom);
         wantLook.set(p.x + ox, 0, p.z + oz - 2);
         v.camPos.lerp(wantPos, k);
@@ -343,6 +354,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setLocalPlayer(id) {
       if (views.length === 1) views[0].id = id;
+    },
+    setMouseLook(view, offset) {
+      if (views[view]) views[view].mouseLook = offset;
     },
     setLookAhead(view, on) {
       if (views[view]) views[view].lookAhead = on;
