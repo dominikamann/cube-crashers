@@ -279,14 +279,32 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
+  /** A link that opens in the browser (the desktop app hands it to the system browser). */
+  function link(parent: HTMLElement, cls: string, label: string, url: string) {
+    const a = document.createElement('a');
+    a.className = cls;
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = label;
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      actions.click();
+      window.open(url, '_blank', 'noopener');
+    });
+    parent.append(a);
+  }
+
   function creditsScreen() {
     show('title', s => {
       text(s, 'div', 'logo', t('title'));
       text(s, 'p', 'credits-by', t('credits.by'));
+      link(s, 'credits-site', t('credits.site'), 'https://www.amannlabs.eu');
       text(s, 'h2', '', t('credits.author'));
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
+      link(s, 'sponsor-badge', t('credits.support'), 'https://github.com/sponsors/dominikamann');
       button(s, t('menu.back'), () => back(), true);
     });
   }

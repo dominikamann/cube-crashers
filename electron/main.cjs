@@ -1,7 +1,9 @@
 // Electron main process: the game window, run logs, and the built-in LAN server.
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+
+const EXTERNAL_LINKS = ['https://www.amannlabs.eu', 'https://github.com/sponsors/dominikamann'];
 const lan = require('./lan.cjs');
 const { startUpdater } = require('./updater.cjs');
 
@@ -34,9 +36,13 @@ function createWindow() {
       event.preventDefault();
     }
   });
-  // the window only ever shows the game: no navigation, no pop-ups (e.g. a file dropped on the window)
+  // the window only ever shows the game: no navigation, no pop-ups (e.g. a file dropped on the window);
+  // the two credits links open in the system browser
   win.webContents.on('will-navigate', e => e.preventDefault());
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (EXTERNAL_LINKS.includes(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) win.loadURL(devUrl);
