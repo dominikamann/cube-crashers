@@ -6,7 +6,7 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer' | 'megaBlock' | 'wormSegment';
+export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer' | 'megaBlock' | 'wormSegment' | 'ghost';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -18,7 +18,7 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
-export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
@@ -384,7 +384,7 @@ export interface RunState {
   /** map ids of the floors of this run, in order */
   floors: string[];
   floor: number;
-  stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane';
+  stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane' | 'maze';
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;
@@ -392,6 +392,22 @@ export interface RunState {
   race?: RaceState | null;
   /** Lane Defense, while it runs: the arcade cabinet's health and the waves sent so far */
   lane?: { coreHp: number; waves: number } | null;
+  /** Glitch Maze, while it runs */
+  maze?: MazeState | null;
+}
+
+export interface MazeState {
+  /** tile indices that still hold a pixel */
+  pixels: number[];
+  total: number;
+  /** pixels collected per player id */
+  collected: Record<number, number>;
+  /** power cubes still lying in the maze (indices into MAZE_CUBES) */
+  cubes: number[];
+  /** ghosts are crashable until this tick */
+  powerUntil: number;
+  /** ticks at which crashed ghosts come back */
+  respawns: number[];
 }
 
 export interface RaceState {
@@ -438,6 +454,10 @@ export type SimEvent =
   | { type: 'raceLap'; playerId: number; lap: number }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
+  | { type: 'mazePower'; playerId: number }
+  | { type: 'mazeGhost'; playerId: number; pos: Vec2 }
+  | { type: 'mazeCaught'; playerId: number }
+  | { type: 'mazeEnd'; cleared: boolean; collected: Record<number, number> }
   | { type: 'raceEnd'; laps: Record<number, number>; medal: 'gold' | 'silver' | 'bronze' | null; winners: number[] }
   | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }

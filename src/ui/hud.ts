@@ -1,6 +1,7 @@
 import { inZone } from '../sim/systems/nests';
 import { RACE } from '../sim/systems/race';
 import { LANE } from '../sim/systems/lane';
+import { MAZE } from '../sim/systems/maze';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t } from '../i18n';
@@ -80,6 +81,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const laneBar = el('div', 'bar', raceBox);
   const laneFill = el('i', '', laneBar);
   let wasLane = false;
+  let wasMaze = false;
   let lastLeakToast = -1e9;
   const holdBox = el('div', 'hold txt', layer);
   const holdText = el('div', '', holdBox);
@@ -320,6 +322,18 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'final');
             else toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
             break;
+          case 'mazePower':
+            toast(t('maze.power'), 'good');
+            break;
+          case 'mazeGhost':
+            if (e.playerId === p.id) toast(t('maze.ghost', { coins: MAZE.ghostCoins }), 'good');
+            break;
+          case 'mazeCaught':
+            if (e.playerId === p.id) toast(t('maze.caught'), 'warn');
+            break;
+          case 'mazeEnd':
+            toast(t(e.cleared ? 'maze.cleared' : 'maze.end'), 'final');
+            break;
           case 'laneLeak':
             if (time - lastLeakToast > 2) {
               lastLeakToast = time;
@@ -384,7 +398,15 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
       const race = s.run.stage === 'race' ? s.run.race : null;
       const lane = s.run.stage === 'lane' ? s.run.lane : null;
-      raceBox.style.display = race || lane ? '' : 'none';
+      const maze = s.run.stage === 'maze' ? s.run.maze : null;
+      raceBox.style.display = race || lane || maze ? '' : 'none';
+      if (maze && !wasMaze) toast(t('maze.start'), 'final');
+      wasMaze = !!maze;
+      if (maze) {
+        const left = Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE));
+        raceMain.textContent = t('maze.hud', { left: maze.pixels.length, time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` });
+        raceSub.textContent = t('maze.mine', { n: maze.collected[p.id] ?? 0 });
+      }
       laneBar.style.display = lane ? '' : 'none';
       if (lane && !wasLane) toast(t('lane.start'), 'final');
       wasLane = !!lane;

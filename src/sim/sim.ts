@@ -9,6 +9,7 @@ import { updateConveyors } from './systems/conveyors';
 import { updateShaft } from './systems/shaft';
 import { updateRace } from './systems/race';
 import { updateLane } from './systems/lane';
+import { updateMaze } from './systems/maze';
 import { moveBoss, updateBoss } from './systems/boss';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
@@ -233,6 +234,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
     updateShaft(s);
     updateRace(s);
     updateLane(s);
+    updateMaze(s);
   }
   updateBlasts(s);
   updateHordes(s);

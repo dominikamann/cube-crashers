@@ -132,6 +132,8 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
 }
 
 export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
+  // the Glitch Maze is played without weapons
+  if (s.run.stage === 'maze') return;
   for (const p of s.players) {
     const rate = s.tick < p.rapidUntil ? 2 : 1;
     for (const w of p.weapons) {

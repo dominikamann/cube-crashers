@@ -196,7 +196,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
 
     pushOutOfBosses(s, p);
 
-    if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying) {
+    if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying && s.run.stage !== 'maze') {
       p.air = JUMP_TICKS;
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {

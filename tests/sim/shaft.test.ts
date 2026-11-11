@@ -9,8 +9,8 @@ import { aimAt, fire, run } from './helpers';
 
 function toShaft(): SimState {
   const s = createSim(floor01, 5, { mode: 'run' });
-  // the shaft follows the third floor (Kart Rally after the first, Lane Defense after the second)
-  s.run.floor = 2;
+  // the shaft follows the fourth floor (after the first three come Kart Rally, Lane Defense, Glitch Maze)
+  s.run.floor = 3;
   for (const n of s.nests) n.state = 'destroyed';
   s.elevatorOpen = true;
   s.enemies = [];

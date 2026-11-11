@@ -164,6 +164,22 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         day: { ...THEMES.day, background: 0xffb48a, skyTop: 0x5a3a9a, roadA: 0x8f95a8, roadB: 0x858b9e, wallA: 0x4a5070, wallB: 0x424866, sunColor: 0xffc890, sunIntensity: 1.5 },
         night: THEMES.night,
       };
+    case 'maze': {
+      // a dark glitch grid: deep blue floor, glowing blue walls
+      const mazeLook: Theme = {
+        ...THEMES.night,
+        background: 0x05051a,
+        skyTop: 0x000008,
+        roadA: 0x141433,
+        roadB: 0x11112d,
+        wallA: 0x2a3cff,
+        wallB: 0x2433d8,
+        fillColor: 0x2bf0ff,
+        fillIntensity: 0.4,
+        glow: 2.4,
+      };
+      return { day: mazeLook, night: mazeLook };
+    }
     case 'lane': {
       // an arcade hall at night: dark carpet, purple walls, neon trim
       const laneLook: Theme = {

@@ -21,6 +21,8 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   rammer: { hp: 70, speed: 1.6, radius: 0.55, coins: 4, score: 50, contactDamage: 15 },
   // flies: ignores walls (shaft ride)
   swarmer: { hp: 6, speed: 4, radius: 0.3, coins: 1, score: 10, contactDamage: 8 },
+  // Glitch Maze: chases, cannot be hurt by weapons (there are none), only crashed while powered up
+  ghost: { hp: 9999, speed: 3.4, radius: 0.4, coins: 0, score: 50, contactDamage: 0 },
   megaBlock: { hp: 1800, speed: 1.3, radius: 1.6, coins: 0, score: 2000, contactDamage: 40 },
   // moved by the boss system
   wormSegment: { hp: 80, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },

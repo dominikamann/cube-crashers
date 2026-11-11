@@ -16,6 +16,7 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   megaBlock: { w: 3.2, h: 2.8, d: 3.2, day: 0x5b4a8a, night: 0x7b5fd1, eyeY: 2.0, eyeX: 0.7, eye: 0.5 },
   wormSegment: { w: 0.95, h: 0.85, d: 0.95, day: 0x7b4fd1, night: 0x8f63ff, eyeY: 0.6, eyeX: 0.22, eye: 0.16 },
   swarmer: { w: 0.6, h: 0.3, d: 0.45, day: 0xb15cff, night: 0xd08cff, eyeY: 0.2, eyeX: 0.1, eye: 0.09 },
+  ghost: { w: 0.8, h: 0.9, d: 0.8, day: 0xff4fd8, night: 0xff4fd8, eyeY: 0.6, eyeX: 0.18, eye: 0.16 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -201,7 +202,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
-        const tint = flashing ? FLASH : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) ? 0x9fe8ff : undefined;
+        // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
+        const maze = s.run.maze;
+        const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;
+        const blinkOut = scared && maze!.powerUntil - s.tick < 120 && Math.floor(time * 8) % 2 === 0;
+        const tint = flashing ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);

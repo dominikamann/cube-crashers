@@ -30,6 +30,7 @@ import { dropCoins, explode } from './combat';
 import { spawnBoss } from './boss';
 import { enterRace } from './race';
 import { enterLane } from './lane';
+import { enterMaze } from './maze';
 import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
@@ -89,6 +90,12 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   const def = floorDef(s.map.id);
+  if (def?.kind === 'maze') {
+    // the Glitch Maze played on its own
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    enterMaze(s);
+    return;
+  }
   if (def?.kind === 'lane') {
     // Lane Defense played on its own
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;

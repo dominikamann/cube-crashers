@@ -6,6 +6,7 @@ import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
+import { MAZE_CUBES } from '../sim/config/floor-maze';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -515,7 +516,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const leafA = lambert(0x4caf50), leafB = lambert(0x3e9d47), pot = lambert(0xb5653a), metal = lambert(0x5a6378), wood = lambert(0xb07a3e), cab = lambert(0x6b5bb8);
   const light = lambert(0xe6e8ef), dark = lambert(0x3a3f52);
   const lampGlow = glowMat(0xffe9a8, 1.6), screenGlow = glowMat(0x2bf0ff, 1.2);
-  for (const c of floorTiles) {
+  // the minigame maps stay clean: no clutter in the maze, on the track or in the lane
+  const decorate = !['maze', 'race', 'lane'].includes(map.id);
+  for (const c of decorate ? floorTiles : []) {
     let walls_ = 0;
     for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (isWall(c.tx + ox, c.tz + oz)) walls_++;
     if (walls_ < 1 || hash(c.tx * 13, c.tz * 5) > 0.07) continue;
@@ -535,7 +538,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     g.rotation.y = Math.floor(hash(c.tz, c.tx * 3) * 4) * (Math.PI / 2);
     props.add(g);
   }
-  for (const c of walls.list) {
+  for (const c of decorate ? walls.list : []) {
     if (c.tx <= 0 || c.tz <= 0 || c.tx >= map.w - 1 || c.tz >= map.h - 1) continue;
     let inner = true;
     for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!isWall(c.tx + ox, c.tz + oz)) inner = false;
@@ -607,6 +610,23 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     addToScene(cab);
   }
 
+  // Glitch Maze: a glowing pixel on every tile that still holds one, and the power cubes
+  let mazePixels: THREE.InstancedMesh | null = null;
+  let mazeCubes: THREE.Mesh[] = [];
+  let shownPixels = -1;
+  if (map.id === 'maze') {
+    const pixMat = glowMat(0xffcf3a, 1.4);
+    mazePixels = new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), pixMat, map.w * map.h);
+    mazePixels.count = 0;
+    addToScene(mazePixels);
+    const cubeMat = glowMat(0x2bf0ff, 2);
+    mazeCubes = MAZE_CUBES.map(c => {
+      const m = box(0.6, 0.6, 0.6, cubeMat, c.x, 0.7, c.z);
+      addToScene(m);
+      return m;
+    });
+  }
+
   const color = new THREE.Color();
   const white = new THREE.Color(0xffffff);
   let lastKey = '';
@@ -636,6 +656,29 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(theme.wallA).lerp(white, 0.6));
         trimMesh.instanceColor!.needsUpdate = true;
         outerMat.color.setHex(theme.hemiGround).multiplyScalar(0.75);
+      }
+      const maze = s.run.maze;
+      if (mazePixels) {
+        // only rewrite the instances when a pixel was taken
+        if (maze && maze.pixels.length !== shownPixels) {
+          shownPixels = maze.pixels.length;
+          maze.pixels.forEach((tile, k) => {
+            o.position.set((tile % map.w) + 0.5, 0.3, Math.floor(tile / map.w) + 0.5);
+            o.rotation.set(0, Math.PI / 4, 0);
+            o.scale.set(1, 1, 1);
+            o.updateMatrix();
+            mazePixels!.setMatrixAt(k, o.matrix);
+          });
+          o.rotation.set(0, 0, 0);
+          mazePixels.count = maze.pixels.length;
+          mazePixels.instanceMatrix.needsUpdate = true;
+        }
+        if (!maze) mazePixels.count = 0;
+        mazeCubes.forEach((m, k) => {
+          m.visible = !!maze && maze.cubes.includes(k);
+          m.rotation.set(time * 1.3, time * 2, 0);
+          m.position.y = 0.7 + Math.sin(time * 3 + k) * 0.12;
+        });
       }
       const glow = Math.min(theme.glow, 1.4);
       glitchMat.emissiveIntensity = (0.55 + 0.25 * Math.sin(time * 5)) * glow;
