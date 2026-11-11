@@ -1,3 +1,4 @@
+import { FLOORS } from '../sim/config/floors';
 import type { Coin, Enemy, EnemyKind, EnemyState, SimState } from '../sim/types';
 
 const KINDS: EnemyKind[] = ['blob', 'hunter', 'tank', 'splitter', 'splitling', 'shooter', 'bomber', 'rammer'];
@@ -9,7 +10,7 @@ type PackedEnemy = number[];
 type PackedCoin = [number, number, number, number, number];
 
 /** What a client needs to draw the game, play its sounds and show the HUD. */
-export type SnapState = Omit<SnapFields, 'enemies' | 'coins'> & { enemies: PackedEnemy[]; coins: PackedCoin[] };
+export type SnapState = Omit<SnapFields, 'enemies' | 'coins'> & { enemies: PackedEnemy[]; coins: PackedCoin[]; mapId: string };
 
 type SnapFields = Pick<
   SimState,
@@ -36,6 +37,8 @@ type SnapFields = Pick<
   | 'phase'
   | 'look'
   | 'stats'
+  | 'run'
+  | 'theme'
 >;
 
 function packEnemy(e: Enemy): PackedEnemy {
@@ -103,6 +106,9 @@ export function encodeSnapshot(s: SimState): SnapState {
     phase: s.phase,
     look: s.look,
     stats: { ...s.stats, samples: [] },
+    run: s.run,
+    theme: s.theme,
+    mapId: s.map.id,
   };
   return snap;
 }
@@ -115,6 +121,9 @@ export function serializeSnapshot(s: SimState, events: unknown[]): string {
 /** Puts a snapshot into the client's view of the game. Older snapshots than the one shown are ignored. */
 export function applySnapshot(view: SimState, snap: SnapState): boolean {
   if (snap.tick <= view.tick && view.tick > 0) return false;
-  Object.assign(view, snap, { enemies: snap.enemies.map(unpackEnemy), coins: snap.coins.map(unpackCoin) });
+  const { mapId, ...rest } = snap;
+  // a new floor: clients know every map by its id
+  if (mapId !== view.map.id && FLOORS[mapId]) view.map = FLOORS[mapId].map;
+  Object.assign(view, rest, { enemies: snap.enemies.map(unpackEnemy), coins: snap.coins.map(unpackCoin) });
   return true;
 }

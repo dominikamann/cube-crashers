@@ -2,7 +2,10 @@ import { PLAYER_HP } from './config/balance';
 import { DIFFICULTY } from './config/difficulty';
 import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './systems/coop';
 import type { FloorMap } from './map/tilemap';
+import { FLOORS, RUN_FLOORS } from './config/floors';
 import { Rng } from './rng';
+import { initRun, updateRunStage } from './systems/run';
+import { updateConveyors } from './systems/conveyors';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -17,7 +20,7 @@ import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
 import { tryBuild, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
-import type { Command, Difficulty, Intent, Player, SimState, Vec2 } from './types';
+import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2 } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % 6): Player {
   return {
@@ -68,18 +71,25 @@ registerPlayerFactory(createPlayer);
 export interface SimOptions {
   players?: number;
   difficulty?: Difficulty;
+  /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
+  mode?: RunMode;
   /** LAN: the player ids and lobby colours, in lobby order */
   ids?: number[];
   names?: string[];
   colors?: number[];
 }
 
-export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): SimState {
+export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
+  const mode = opts.mode ?? 'quick';
+  const floors = mode === 'run' ? RUN_FLOORS : [firstMap.id];
+  const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : firstMap;
   const s: SimState = {
     tick: 0,
     seed,
     difficulty,
+    run: { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null },
+    theme: 'plaza',
     rng: new Rng(seed),
     map,
     players: [],
@@ -120,6 +130,7 @@ export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): S
     events: [],
     flow: null,
   };
+  initRun(s, mode, floors);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
@@ -129,7 +140,7 @@ export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): S
 }
 
 function emptyIntent(): Intent {
-  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null };
+  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null, buy: [], ready: false };
 }
 
 export function stepSim(s: SimState, commands: Command[]): void {
@@ -167,10 +178,22 @@ export function stepSim(s: SimState, commands: Command[]): void {
       case 'select':
         it.select = c.slot;
         break;
+      case 'buy':
+        it.buy.push(c.offer);
+        break;
+      case 'ready':
+        it.ready = true;
+        break;
       case 'build':
         tryBuild(s, c.playerId, c.padId, c.tower);
         break;
     }
+  }
+  if (s.run.stage !== 'floor') {
+    // between floors only the shop runs
+    updateRunStage(s, intents);
+    s.tick++;
+    return;
   }
   updatePlayers(s, intents);
   updateRevives(s, intents);
@@ -180,6 +203,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateAlarm(s);
   updateHordes(s);
   updateEnemies(s);
+  updateConveyors(s);
   updateWeapons(s, intents);
   updateProjectiles(s);
   updateMines(s);

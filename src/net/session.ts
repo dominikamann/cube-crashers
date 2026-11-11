@@ -2,7 +2,7 @@ import { MAX_PLAYERS } from '../sim/config/balance';
 import { floor01 } from '../sim/config/floor01';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
-import type { Command, Difficulty, SimEvent, SimState } from '../sim/types';
+import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
 import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
@@ -12,7 +12,7 @@ const SILENT_INPUT_TICKS = 15;
 /** a client gives up on a host that sent nothing for this long while playing */
 export const HOST_TIMEOUT_MS = 5000;
 
-const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build']);
+const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'buy', 'ready']);
 const HELD = new Set(['hold', 'fire', 'fly']);
 
 /**
@@ -109,16 +109,17 @@ export class HostSession {
     }
   }
 
-  start(seed: number, difficulty: Difficulty = this.difficulty): void {
+  start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run'): void {
     this.difficulty = difficulty;
     this.sim = createSim(floor01, seed, {
+      mode,
       difficulty,
       players: this.lobby.length,
       ids: this.lobby.map(p => p.id),
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: this.lobby });
+    this.send('all', { type: 'start', seed, difficulty, players: this.lobby, mode });
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -218,6 +219,7 @@ export class ClientSession {
         this.difficulty = m.difficulty;
         this.lobby = m.players;
         this.view = createSim(floor01, m.seed, {
+          mode: m.mode === 'quick' ? 'quick' : 'run',
           difficulty: m.difficulty,
           players: m.players.length,
           ids: m.players.map(p => p.id),

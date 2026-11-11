@@ -39,3 +39,18 @@ describe('snapshots', () => {
     expect(bytes).toBeLessThan(60_000);
   });
 });
+
+describe('floor changes over the network', () => {
+  it('switch the client to the map of the new floor', async () => {
+    const { enterFloor } = await import('../../src/sim/systems/run');
+    const host = createSim(floor01, 3, { mode: 'run' });
+    const view = createSim(floor01, 3, { mode: 'run' });
+    stepSim(host, []);
+    enterFloor(host, 1);
+    stepSim(host, []);
+    applySnapshot(view, JSON.parse(serializeSnapshot(host, [])).state);
+    expect(view.map.id).toBe(host.map.id);
+    expect(view.theme).toBe(host.theme);
+    expect(view.run.floor).toBe(1);
+  });
+});

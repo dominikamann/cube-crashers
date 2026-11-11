@@ -52,6 +52,10 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   rareFired: { type: 'rareFired', kind: 'slushMachine', playerId: 0, pos: p },
   rareExpired: { type: 'rareExpired', playerId: 0 },
   bubblePop: { type: 'bubblePop', pos: p },
+  floorCleared: { type: 'floorCleared', floor: 0 },
+  floorStart: { type: 'floorStart', floor: 1, mapId: 'candy' },
+  bought: { type: 'bought', playerId: 0, offer: 0, kind: 'heal' },
+  buyDenied: { type: 'buyDenied', playerId: 0, offer: 0 },
   gameWon: { type: 'gameWon', score: 1000 },
   gameLost: { type: 'gameLost' },
 };

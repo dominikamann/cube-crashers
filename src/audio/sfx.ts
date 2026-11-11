@@ -50,6 +50,7 @@ export type SoundId =
   | `rare_${RareKind}`
   | 'rareExpired'
   | 'bubblePop'
+  | 'waveStart'
   | 'gameWon'
   | 'gameLost'
   | 'uiClick';
@@ -188,6 +189,7 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 700, freqEnd: 120, attack: 0.001, sustain: 0.03, decay: 0.12, volume: 0.3 },
     { wave: 'noise', freq: 900, attack: 0.001, sustain: 0.02, decay: 0.12, volume: 0.25, lowpass: 2000 },
   ],
+  waveStart: notes('square', [659, 784, 1047], 0.1, 0.1, 0.15, 0.05),
   gameWon: notes('square', [523, 659, 784, 1047, 784, 1047, 1319], 0.12, 0.11, 0.25, 0.06),
   gameLost: notes('sawtooth', [523, 466, 415, 392], 0.25, 0.1, 0.3, 0.12).map(n => ({ ...n, lowpass: 1800 })),
   uiClick: [{ wave: 'square', freq: 1200, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
@@ -307,6 +309,14 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('rareExpired');
     case 'bubblePop':
       return one('bubblePop');
+    case 'floorCleared':
+      return one('elevatorOpen');
+    case 'floorStart':
+      return one('waveStart');
+    case 'bought':
+      return one('crateCoins');
+    case 'buyDenied':
+      return one('buildDenied');
     case 'gameWon':
       return one('gameWon');
     case 'gameLost':

@@ -78,6 +78,7 @@ export interface RunSummary {
 
 export interface ScreenActions {
   play(): void;
+  quick(): void;
   host(): void;
   join(): void;
   resume(): void;
@@ -269,6 +270,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           diff.textContent = diffLabel(settings.difficulty);
           changed();
         });
+        button(s, t('menu.quick'), actions.quick);
         button(s, t('menu.host'), actions.host);
         button(s, t('menu.join'), actions.join);
         button(s, t('menu.settings'), settingsScreen);

@@ -120,3 +120,56 @@ export function blendTheme(a: Theme, b: Theme, t: number): Theme {
   }
   return out;
 }
+
+/** Day and night palettes of each floor theme. Arena, rooftop and shaft get theirs with the bosses. */
+export function themeFor(id: string): { day: Theme; night: Theme } {
+  switch (id) {
+    case 'candy':
+      return {
+        day: {
+          ...THEMES.day,
+          background: 0xffe3f1,
+          skyTop: 0xff9fcf,
+          roadA: 0xfbe2ee,
+          roadB: 0xf6d2e4,
+          wallA: 0x7fd8c0,
+          wallB: 0x6cc9b0,
+          hemiGround: 0xd9a6c4,
+          sunColor: 0xfff4e8,
+        },
+        night: THEMES.night,
+      };
+    case 'neon': {
+      const neonNight: Theme = {
+        ...THEMES.night,
+        background: 0x14102e,
+        skyTop: 0x05030f,
+        roadA: 0x2f2a5c,
+        roadB: 0x29244f,
+        wallA: 0x6a2fb8,
+        wallB: 0x5a26a0,
+        fillColor: 0xff3bd6,
+        fillIntensity: 0.6,
+        glow: 2.4,
+      };
+      return { day: neonNight, night: neonNight };
+    }
+    case 'arena':
+      return {
+        day: { ...THEMES.day, background: 0xf2d9b0, skyTop: 0xe08a4a, roadA: 0xd9c49c, roadB: 0xcfb88e, wallA: 0x9a7a5a, wallB: 0x8a6c4f, sunColor: 0xffe0b0 },
+        night: THEMES.night,
+      };
+    case 'rooftop':
+      return {
+        day: { ...THEMES.day, background: 0xffb48a, skyTop: 0x5a3a9a, roadA: 0x8f95a8, roadB: 0x858b9e, wallA: 0x4a5070, wallB: 0x424866, sunColor: 0xffc890, sunIntensity: 1.5 },
+        night: THEMES.night,
+      };
+    case 'shaft':
+      return {
+        day: { ...THEMES.night, background: 0x2a1f4a, skyTop: 0x0b0820, roadA: 0x6a7088, roadB: 0x626880, wallA: 0x3a3f5c, wallB: 0x333852 },
+        night: THEMES.night,
+      };
+    default:
+      return THEMES;
+  }
+}

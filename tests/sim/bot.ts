@@ -29,6 +29,12 @@ export function createBot(): (s: SimState) => Command[] {
 
   return s => {
     const p = s.players[0];
+    if (s.run.stage === 'shop') {
+      // buy whatever is affordable, then go
+      const offers = s.run.shop!.offers[p.id] ?? [];
+      const i = offers.findIndex(o => !o.sold && o.cost <= p.coins && o.kind !== 'credit');
+      return i >= 0 ? [{ type: 'buy', playerId: 0, offer: i }] : [{ type: 'ready', playerId: 0 }];
+    }
     if (p.downUntil !== null) return [];
     const cmds: Command[] = [];
     const enemies = s.enemies.filter(e => e.hp > 0);

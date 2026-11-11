@@ -22,6 +22,9 @@ export class Keyboard {
   private aim: Vec2 | null = null;
   private slot: number | null = null;
   private wheelSteps = 0;
+  private buys: number[] = [];
+  private readyPressed = false;
+  private shopKey: number | null = null;
 
   keyDown(code: string, now: number): void {
     if (code === 'KeyE' && !this.down.has('KeyE')) this.eSince = now;
@@ -34,7 +37,18 @@ export class Keyboard {
       const digit = /^(?:Digit|Numpad)([1-6])$/.exec(code);
       if (digit) this.slot = Number(digit[1]) - 1;
       if (code === 'KeyQ') this.slot = -1;
+      if (digit) this.shopKey = Number(digit[1]) - 1;
+      if (code === 'Enter' || code === 'KeyR') this.readyPressed = true;
     }
+  }
+
+  /** elevator shop: buy offer `i` (clicked) */
+  buy(i: number): void {
+    this.buys.push(i);
+  }
+
+  ready(): void {
+    this.readyPressed = true;
   }
 
   /** where the mouse points on the ground, or null when it is outside the game */
@@ -104,6 +118,22 @@ export class Keyboard {
       z /= len;
     }
     const p = s.players.find(pl => pl.id === playerId);
+    if (s.run.stage === 'shop') {
+      // in the shop the number keys buy and Enter/R says ready
+      const out: Command[] = [];
+      if (this.shopKey !== null) out.push({ type: 'buy', playerId, offer: this.shopKey });
+      for (const i of this.buys) out.push({ type: 'buy', playerId, offer: i });
+      if (this.readyPressed) out.push({ type: 'ready', playerId });
+      this.shopKey = null;
+      this.buys = [];
+      this.readyPressed = false;
+      this.slot = null;
+      this.jump = this.dash = this.use = false;
+      return out;
+    }
+    this.shopKey = null;
+    this.buys = [];
+    this.readyPressed = false;
     // on foot only: a kart is always steered with the keys alone, the mouse just aims
     if (this.steerWithMouse && p && p.vehicleId === null && this.aim) {
       const fx = this.aim.x - p.pos.x, fz = this.aim.z - p.pos.z;

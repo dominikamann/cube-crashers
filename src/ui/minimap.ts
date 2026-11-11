@@ -28,7 +28,12 @@ export function createMinimap(parent: HTMLElement): Minimap {
       [Tile.Floor]: '#cfc4a4',
       [Tile.Wall]: '#2b3f8f',
       [Tile.LowWall]: '#c9962e',
-      [Tile.Hazard]: '#c22aa8',
+      // glitch floor muted, so it is never mistaken for a nest
+      [Tile.Hazard]: '#5e3a6e',
+      [Tile.ConveyorN]: '#8a84a8',
+      [Tile.ConveyorE]: '#8a84a8',
+      [Tile.ConveyorS]: '#8a84a8',
+      [Tile.ConveyorW]: '#8a84a8',
       [Tile.Boost]: '#2aa8c2',
       [Tile.Ramp]: '#e0c040',
     };
@@ -43,7 +48,7 @@ export function createMinimap(parent: HTMLElement): Minimap {
 
   return {
     update(s, time, localId) {
-      if (time - last < 0.1 && baseMap === s.map.id) return;
+      if (time - last < 0.05 && baseMap === s.map.id) return;
       last = time;
       if (!base || baseMap !== s.map.id) {
         base = drawBase(s);
@@ -62,11 +67,14 @@ export function createMinimap(parent: HTMLElement): Minimap {
       for (const o of s.offers) dot(o.pos.x, o.pos.z, 6, '#b07cff');
       for (const v of s.vehicles) dot(v.pos.x, v.pos.z, 6, '#ffe14a');
       for (const pu of s.powerups) if (blink) dot(pu.pos.x, pu.pos.z, 6, '#ffffff');
+      // nests: big, white frame, pulsing; a planted one blinks
+      const pulse = 1 + 0.25 * Math.sin(time * 6);
       for (const n of s.nests) {
         if (n.state === 'destroyed') continue;
         if (n.state === 'planted' && !blink) continue;
-        dot(n.pos.x, n.pos.z, 9, '#1b1440');
-        dot(n.pos.x, n.pos.z, 6, '#ff2bd6');
+        dot(n.pos.x, n.pos.z, 13 * pulse, '#ffffff');
+        dot(n.pos.x, n.pos.z, 10 * pulse, '#1b1440');
+        dot(n.pos.x, n.pos.z, 7 * pulse, '#ff2bd6');
       }
       if (!s.elevatorOpen || blink) dot(s.map.elevator.x, s.map.elevator.z, 7, s.elevatorOpen ? '#2bf0ff' : '#5a7a88');
       for (const p of s.players) {

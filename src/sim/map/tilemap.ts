@@ -1,6 +1,22 @@
 import type { Vec2 } from '../types';
 
-export const Tile = { Floor: 0, Wall: 1, LowWall: 2, Hazard: 3, Boost: 4, Ramp: 5 } as const;
+export const Tile = { Floor: 0, Wall: 1, LowWall: 2, Hazard: 3, Boost: 4, Ramp: 5, ConveyorN: 6, ConveyorE: 7, ConveyorS: 8, ConveyorW: 9 } as const;
+
+/** push direction of a conveyor tile, or null */
+export function conveyorDir(t: Tile): { x: number; z: number } | null {
+  switch (t) {
+    case Tile.ConveyorN:
+      return { x: 0, z: -1 };
+    case Tile.ConveyorE:
+      return { x: 1, z: 0 };
+    case Tile.ConveyorS:
+      return { x: 0, z: 1 };
+    case Tile.ConveyorW:
+      return { x: -1, z: 0 };
+    default:
+      return null;
+  }
+}
 export type Tile = (typeof Tile)[keyof typeof Tile];
 
 export interface NestSpot {
@@ -33,6 +49,10 @@ const TILE_CHARS: Record<string, Tile> = {
   '~': Tile.Hazard,
   '>': Tile.Boost,
   '^': Tile.Ramp,
+  U: Tile.ConveyorN,
+  R: Tile.ConveyorE,
+  D: Tile.ConveyorS,
+  L: Tile.ConveyorW,
 };
 
 /** pads further than this from every nest spot belong to no nest */
@@ -40,6 +60,7 @@ const PAD_NEST_RANGE = 9;
 
 /**
  * Text legend: '#' wall, '.' floor, '=' low wall, '~' hazard, '>' boost, '^' ramp, 'S' spawn, 'E' elevator,
+ * 'U' 'R' 'D' 'L' conveyor belts (pushing north, east, south, west),
  * 'N' nest spot, 'r' rush entry, 'p' pad, 'V' vehicle, '*' power-up, 'c' crate, 'w' waypoint.
  * Markers sit on floor; positions are tile centres.
  */

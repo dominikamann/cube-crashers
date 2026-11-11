@@ -22,6 +22,7 @@ import {
   START_CLEAR_RADIUS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
+import { floorDef } from '../config/floors';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -30,6 +31,8 @@ import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
+
+const eliteBonus = (s: SimState) => floorDef(s.map.id)?.eliteBonus ?? 0;
 
 function alarmTicks(s: SimState): number {
   return Math.round(ALARM_TICKS / DIFFICULTY[s.difficulty].alarmSpeed);
@@ -89,7 +92,8 @@ export function setupFloor(s: SimState): void {
   }));
   for (const n of s.nests) spawnHorde(s, besideNest(s, n), roamingComp(s, GUARD_FACTOR));
   const far = shuffled(s, s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS + 3));
-  for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 });
+  for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 + eliteBonus(s) });
+  s.look = s.theme === 'neon' ? 'night' : 'day';
   placeStartCrates(s);
   placeStartKarts(s);
   placeStartJetpack(s);
@@ -146,7 +150,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       if (s.tick < n.nextSpawnAt) continue;
       n.nextSpawnAt = s.tick + Math.round(NEST_SPAWN_TICKS / (1 + 0.25 * s.alarm.level));
       const comp = roamingComp(s);
-      if (canSpawn(s, comp)) spawnHorde(s, besideNest(s, n), comp, { eliteChance: 0.15 + 0.05 * s.alarm.level });
+      if (canSpawn(s, comp)) spawnHorde(s, besideNest(s, n), comp, { eliteChance: 0.15 + 0.05 * s.alarm.level + eliteBonus(s) });
     } else if (n.state === 'planted') {
       if (!alive.some(p => dist(p.pos, n.pos) <= HOLD_RADIUS)) {
         n.progress = Math.max(0, n.progress - 0.5);
@@ -223,5 +227,5 @@ export function updateAlarm(s: SimState): void {
       }
     }
   }
-  s.look = s.alarm.level >= ALARM_MAX ? 'night' : 'day';
+  s.look = s.alarm.level >= ALARM_MAX || s.theme === 'neon' ? 'night' : 'day';
 }

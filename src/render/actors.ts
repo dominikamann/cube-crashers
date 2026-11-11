@@ -12,6 +12,8 @@ export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 
 export interface Actors {
   update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number, localId: number): void;
   playerPos(): THREE.Vector3;
+  /** a new floor: move the elevator */
+  setMap(map: FloorMap): void;
 }
 
 function makePlayer(color: number) {
@@ -333,5 +335,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       }
     },
     playerPos: () => focus,
+    setMap(m) {
+      elevator.position.set(m.elevator.x, 0, m.elevator.z);
+      // towers, karts and nests of the old floor go; the next update builds the new ones
+      sweep(towers, new Set());
+      sweep(karts, new Set());
+      sweep(nests, new Set());
+    },
   };
 }

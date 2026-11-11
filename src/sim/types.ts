@@ -18,6 +18,8 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft';
+export type RunMode = 'run' | 'quick' | 'endless';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -40,7 +42,10 @@ export type Command =
   /** the fire button is held this tick */
   | { type: 'fire'; playerId: number }
   /** slot 0–5 = normal weapons, -1 = the rare weapon (Q) */
-  | { type: 'select'; playerId: number; slot: number };
+  | { type: 'select'; playerId: number; slot: number }
+  /** elevator shop: buy offer number `offer` */
+  | { type: 'buy'; playerId: number; offer: number }
+  | { type: 'ready'; playerId: number };
 
 /** Everything one player asked for in one tick, collected from the commands. */
 export interface Intent {
@@ -53,6 +58,8 @@ export interface Intent {
   fire: boolean;
   aim: Vec2 | null;
   select: number | null;
+  buy: number[];
+  ready: boolean;
 }
 
 export interface HeldWeapon {
@@ -315,6 +322,32 @@ export interface Powerup {
   expiresAt: number;
 }
 
+export interface ShopOffer {
+  kind: 'weapon' | 'perk' | 'heal' | 'credit';
+  weapon?: WeaponKind;
+  perk?: PerkKind;
+  cost: number;
+  sold: boolean;
+}
+
+export interface ShopState {
+  /** offers per player id */
+  offers: Record<number, ShopOffer[]>;
+  ready: number[];
+  creditSold: boolean;
+}
+
+export interface RunState {
+  mode: RunMode;
+  /** map ids of the floors of this run, in order */
+  floors: string[];
+  floor: number;
+  stage: 'floor' | 'shaft' | 'shop';
+  /** tick at which the current shaft or shop stage ends on its own */
+  stageUntil: number;
+  shop: ShopState | null;
+}
+
 export interface RunSample {
   /** seconds since the run started */
   t: number;
@@ -380,6 +413,10 @@ export type SimEvent =
   | { type: 'rareFired'; kind: RareKind; playerId: number; pos: Vec2 }
   | { type: 'rareExpired'; playerId: number }
   | { type: 'bubblePop'; pos: Vec2 }
+  | { type: 'floorCleared'; floor: number }
+  | { type: 'floorStart'; floor: number; mapId: string }
+  | { type: 'bought'; playerId: number; offer: number; kind: ShopOffer['kind'] }
+  | { type: 'buyDenied'; playerId: number; offer: number }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
 
@@ -387,6 +424,8 @@ export interface SimState {
   tick: number;
   seed: number;
   difficulty: Difficulty;
+  run: RunState;
+  theme: ThemeId;
   rng: Rng;
   map: FloorMap;
   players: Player[];

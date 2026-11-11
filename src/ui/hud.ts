@@ -9,6 +9,7 @@ import { padAt } from '../sim/systems/towers';
 import { KART } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
+import { floorDef } from '../sim/config/floors';
 
 export interface Hud {
   update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number, localId: number): void;
@@ -25,7 +26,12 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, p
 
 const dist = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
 
-export function createHud(root: HTMLElement): Hud {
+export interface ShopActions {
+  buy(i: number): void;
+  ready(): void;
+}
+
+export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud', root);
   const top = el('div', 'hud-top', layer);
 
@@ -33,6 +39,7 @@ export function createHud(root: HTMLElement): Hud {
   const creditRow = el('div', 'credits', runBox);
   const creditEls = Array.from({ length: START_CREDITS }, () => el('i', 'credit', creditRow));
   const nestText = el('div', 'sub', runBox);
+  const floorText = el('div', 'sub floor', runBox);
 
   const alarmBox = el('div', 'hud-box hud-center txt', top);
   el('div', '', alarmBox, t('hud.alarm'));
@@ -55,6 +62,17 @@ export function createHud(root: HTMLElement): Hud {
   const holdFill = el('i', '', el('div', 'bar', holdBox));
 
   const toasts = el('div', 'toasts', layer);
+
+  const shopBox = el('div', 'shop txt', layer);
+  const shopTitle = el('h2', '', shopBox);
+  const shopTimer = el('div', 'sub', shopBox);
+  const shopList = el('div', 'shop-list', shopBox);
+  const shopReady = el('button', 'btn alt', shopBox, t('shop.ready'));
+  shopReady.addEventListener('mousedown', e => {
+    e.preventDefault();
+    onShop.ready();
+  });
+  let shopKey = '';
 
   const bottom = el('div', 'hud-bottom', layer);
   const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP');
@@ -118,6 +136,34 @@ export function createHud(root: HTMLElement): Hud {
       creditEls.forEach((c, i) => c.classList.toggle('on', i < s.credits));
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
       nestText.textContent = t('hud.nests', { n: s.nests.length - alive, total: s.nests.length });
+      const def = floorDef(s.map.id);
+      floorText.textContent = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length, name: def ? t(def.name as 'floor.plaza') : '' }) : '';
+
+      const shop = s.run.stage === 'shop' ? s.run.shop : null;
+      shopBox.style.display = shop ? '' : 'none';
+      if (shop) {
+        const offers = shop.offers[p.id] ?? [];
+        const ready = shop.ready.includes(p.id);
+        shopTimer.textContent = t('shop.timer', { s: Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE)), coins: p.coins, ready: shop.ready.length, total: s.players.length });
+        const key = JSON.stringify([offers, ready, p.coins, shop.creditSold]);
+        if (key !== shopKey) {
+          shopKey = key;
+          shopTitle.textContent = t('shop.title', { n: s.run.floor + 2 });
+          shopList.innerHTML = '';
+          offers.forEach((o, i) => {
+            const card = el('div', `card shop-card${o.sold ? ' sold' : ''}${p.coins < o.cost || (o.kind === 'credit' && shop.creditSold) ? ' poor' : ''}`, shopList);
+            el('div', 'key', card, String(i + 1));
+            const label = o.kind === 'weapon' ? t('shop.weapon', { name: t(`weapon.${o.weapon!}`) }) : o.kind === 'perk' ? t(`perk.${o.perk!}`) : t(o.kind === 'heal' ? 'shop.heal' : 'shop.credit');
+            el('div', 'name', card, label);
+            el('div', 'cost', card, o.sold ? t('shop.sold') : `● ${o.cost}`);
+            card.addEventListener('mousedown', e => {
+              e.preventDefault();
+              onShop.buy(i);
+            });
+          });
+          shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready');
+        }
+      }
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));
       alarmBox.classList.toggle('overload', s.alarm.level >= ALARM_MAX);
       scoreText.textContent = t('hud.score', { score: s.score });
@@ -214,6 +260,12 @@ export function createHud(root: HTMLElement): Hud {
             // only a rising alarm is a warning; a destroyed nest lowers it and gets its own message
             if (e.level > lastAlarm) toast(e.level >= ALARM_MAX ? t('toast.overload') : t('toast.alarm', { level: e.level }), 'warn');
             lastAlarm = e.level;
+            break;
+          case 'floorStart':
+            toast(t('toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
+            break;
+          case 'bought':
+            if (e.playerId === p.id) toast(t('toast.bought'), 'good');
             break;
           case 'towerDestroyed':
             toast(t('toast.towerDown'), 'warn');

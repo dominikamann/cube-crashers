@@ -1,4 +1,4 @@
-import type { Command, Difficulty, SimEvent } from '../sim/types';
+import type { Command, Difficulty, RunMode, SimEvent } from '../sim/types';
 import type { SnapState } from './snapshot';
 
 export const PROTOCOL_VERSION = 1;
@@ -25,7 +25,7 @@ export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[] }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -108,6 +108,12 @@ export function sanitizeCommands(cmds: unknown[], playerId: number): Command[] {
         if (Number.isInteger(c.padId) && (c.padId as number) >= 0 && typeof c.tower === 'string' && TOWER_KINDS.has(c.tower)) {
           out.push({ type: 'build', playerId, padId: c.padId as number, tower: c.tower as 'laser' });
         }
+        break;
+      case 'buy':
+        if (Number.isInteger(c.offer) && (c.offer as number) >= 0 && (c.offer as number) < 8) out.push({ type: 'buy', playerId, offer: c.offer as number });
+        break;
+      case 'ready':
+        out.push({ type: 'ready', playerId });
         break;
       case 'jump':
       case 'fly':

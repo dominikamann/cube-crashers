@@ -11,7 +11,7 @@ import { createActors } from './actors';
 import { createEntities } from './entities';
 import { createFx } from './fx';
 import { createPickups } from './pickups';
-import { blendTheme, THEMES } from './theme';
+import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
@@ -146,7 +146,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     resize();
   }
 
-  const world = createWorld(scene, map);
+  let world = createWorld(scene, map);
+  let mapId = map.id;
   const overlay = new THREE.Scene();
   const entities = createEntities(scene, overlay);
   const actors = createActors(scene, map);
@@ -184,7 +185,17 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       const wantNight = s.look === 'night' ? 1 : 0;
       const step = frameDt / LOOK_BLEND_SECONDS;
       night = wantNight > night ? Math.min(1, night + step) : Math.max(0, night - step);
-      const theme = blendTheme(THEMES.day, THEMES.night, night);
+      if (s.map.id !== mapId) {
+        // a new floor: rebuild the static world and jump the camera to the new spawn
+        world.dispose();
+        world = createWorld(scene, s.map);
+        actors.setMap(s.map);
+        mapId = s.map.id;
+        camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
+        camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
+      }
+      const palette = themeFor(s.theme);
+      const theme = blendTheme(palette.day, palette.night, night);
 
       sky.material.uniforms.top.value.setHex(theme.skyTop);
       sky.material.uniforms.horizon.value.setHex(theme.background);

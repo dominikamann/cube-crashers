@@ -84,6 +84,49 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.Hazard, hazardMat, () => 0.36, -0.4, false);
   const boostMat = glowMat(0x1fb8d8, 0.5);
   layer(t => t === Tile.Boost, boostMat, () => 0.42, -0.4, false);
+  // conveyor belts: dark rubber with bright chevrons that scroll in the push direction
+  const beltTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 32;
+    c.height = 32;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#3a3550';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#ffd34a';
+    for (let i = 0; i < 2; i++) {
+      const y = i * 16;
+      g.beginPath();
+      g.moveTo(6, y + 12);
+      g.lineTo(16, y + 4);
+      g.lineTo(26, y + 12);
+      g.lineTo(26, y + 15);
+      g.lineTo(16, y + 7);
+      g.lineTo(6, y + 15);
+      g.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = THREE.NearestFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const beltMat = new THREE.MeshLambertMaterial({ map: beltTex });
+  const beltGeo = new THREE.BoxGeometry(1, 1, 1);
+  const belts = cells.filter(c => c.tile >= Tile.ConveyorN && c.tile <= Tile.ConveyorW);
+  const beltMesh = new THREE.InstancedMesh(beltGeo, beltMat, Math.max(1, belts.length));
+  beltMesh.count = belts.length;
+  beltMesh.receiveShadow = true;
+  // the chevrons point toward -z of the texture; turn each tile to its push direction
+  const beltYaw: Record<number, number> = { [Tile.ConveyorN]: 0, [Tile.ConveyorE]: -Math.PI / 2, [Tile.ConveyorS]: Math.PI, [Tile.ConveyorW]: Math.PI / 2 };
+  belts.forEach((c, i) => {
+    o.position.set(c.tx + 0.5, -0.2, c.tz + 0.5);
+    o.rotation.set(0, beltYaw[c.tile], 0);
+    o.scale.set(1, 0.4, 1);
+    o.updateMatrix();
+    beltMesh.setMatrixAt(i, o.matrix);
+  });
+  o.rotation.set(0, 0, 0);
+  addToScene(beltMesh);
   const rampMat = glowMat(0xffe14a, 0.5);
   layer(t => t === Tile.Ramp, rampMat, () => 0.55, -0.4, false);
 
@@ -153,6 +196,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       hazardMat.emissiveIntensity = (0.5 + 0.25 * Math.sin(time * 5)) * Math.min(theme.glow, 1.4);
       boostMat.emissiveIntensity = (0.35 + 0.25 * Math.abs(Math.sin(time * 3))) * Math.min(theme.glow, 1.4);
       rampMat.emissiveIntensity = 0.5 * Math.min(theme.glow, 1.4);
+      // 2.5 tiles per second, like the sim
+      beltTex.offset.y = (time * 2.5) % 1;
       void lowWalls;
       lampGlow.emissiveIntensity = 1.6 * Math.min(theme.glow, 1.4);
       screenGlow.emissiveIntensity = (1 + 0.2 * Math.sin(time * 3)) * Math.min(theme.glow, 1.4);

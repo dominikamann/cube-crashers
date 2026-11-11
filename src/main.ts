@@ -99,12 +99,13 @@ function startGame() {
   };
 
   createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
-  const hud = createHud(app);
+  const hud = createHud(app, { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
   const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
   const screens = createScreens(
     app,
     {
-      play: newSoloGame,
+      play: () => newSoloGame('run'),
+      quick: () => newSoloGame('quick'),
       host: () => void hostGame(),
       join: () => void openJoinList(),
       resume,
@@ -151,7 +152,7 @@ function startGame() {
 
       const s = view();
       // the crosshair replaces the mouse pointer while playing
-      canvas.style.cursor = mode === 'playing' ? 'none' : '';
+      canvas.style.cursor = mode === 'playing' && view().run.stage === 'floor' ? 'none' : '';
       renderer.setLocalPlayer(localId());
       renderer.render(s, alpha, frameEvents, frameDt);
       hud.update(s, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000, localId());
@@ -216,11 +217,13 @@ function startGame() {
     ensureAudio().music.playTrack('battle');
   }
 
-  function newSoloGame() {
+  let lastSoloMode: 'run' | 'quick' = 'run';
+  function newSoloGame(mode: 'run' | 'quick' = lastSoloMode) {
+    lastSoloMode = mode;
     leaveLan(false);
     role = 'solo';
     const fixed = Number(params.get('seed'));
-    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
+    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }
@@ -416,7 +419,7 @@ function startGame() {
 
   hud.setVisible(false);
   screens.title();
-  if (params.has('demo')) newSoloGame();
+  if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
     let clock = 0;
@@ -443,6 +446,9 @@ function applyDemo(sim: SimState) {
     sim.players[0].rare = { kind: (params.get('kind') as RareKind) ?? 'slushMachine', until: sim.tick + 3600, cooldown: 0 };
     sim.players[0].rareSelected = true;
   }
+  const floorParam = Number(params.get('floor'));
+  if (floorParam > 0 && sim.run.mode === 'run') void import('./sim/systems/run').then(m => m.enterFloor(sim, Math.min(floorParam, sim.run.floors.length - 1)));
+  if (params.get('demo') === 'shop' && sim.run.mode === 'run') void import('./sim/systems/shop').then(m => m.openShop(sim));
   if (params.get('demo') === 'nest') {
     // straight into a hold: next to a planted nest, with a crate opened beside it
     const nest = sim.nests[0];
