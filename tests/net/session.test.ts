@@ -22,16 +22,16 @@ describe('LAN session', () => {
     expect(new Set(host.lobby.map(p => p.color)).size).toBe(3);
   });
 
-  it('turns away a client with another version and a seventh player', () => {
+  it('turns away a client with another version and a ninth player', () => {
     const hub = createMemoryHub();
     const host = new HostSession(hub.host(), { name: 'H' });
     const odd = new ClientSession(hub.client(), { name: 'Old', version: PROTOCOL_VERSION + 1 });
-    for (let i = 0; i < 5; i++) new ClientSession(hub.client(), { name: `P${i}` });
+    for (let i = 0; i < 7; i++) new ClientSession(hub.client(), { name: `P${i}` });
     const late = new ClientSession(hub.client(), { name: 'Late' });
     hub.flush();
     expect(odd.status).toBe('rejected');
     expect(late.status).toBe('rejected');
-    expect(host.lobby).toHaveLength(6);
+    expect(host.lobby).toHaveLength(8);
   });
 
   it('starts everyone on the same floor and moves each player by their own input', () => {

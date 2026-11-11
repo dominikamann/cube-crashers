@@ -10,7 +10,8 @@ const MAX_BYTES = 256 * 1024;
 /** clients only send inputs: small and at most a little over 60 per second */
 const MAX_CLIENT_BYTES = 16 * 1024;
 const MAX_MESSAGES_PER_SECOND = 120;
-const MAX_PEERS = 8;
+// 7 clients next to the host, plus room to tell an 8th that the game is full
+const MAX_PEERS = 10;
 const ADMIT_MS = 5000;
 const HEARTBEAT_MS = 2000;
 const MAX_GAMES = 20;

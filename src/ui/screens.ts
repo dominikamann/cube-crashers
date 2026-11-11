@@ -25,11 +25,16 @@ export interface Settings {
   localPlayers: 1 | 2;
   /** the map of a "Single floor" game (a floor id) */
   quickMap: string;
+  /** versus: free for all or teams, score race or last cube standing, the map and how many bots */
+  versusMode: 'ffa' | 'team';
+  versusRule: 'score' | 'rounds';
+  versusMap: string;
+  versusBots: number;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01' };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3 };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -43,7 +48,7 @@ export function withDefaults<T extends { name: string; color: number | null }>(s
   return {
     ...s,
     name: s.name.trim() ? s.name : `${pick(FUN_NAMES.adjectives)} ${pick(FUN_NAMES.nouns)}`,
-    color: s.color ?? Math.floor(rnd() * 6) % 6,
+    color: s.color ?? Math.floor(rnd() * 8) % 8,
   };
 }
 
@@ -111,6 +116,8 @@ export interface RunSummary {
   mode: string;
   /** floors cleared */
   floors: number;
+  /** versus: who won, shown as the headline */
+  headline?: string;
   /** one row per player, best first */
   ranking: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number; bestWeapon: string | null; coins: number; towers: number }[];
 }
@@ -119,6 +126,7 @@ export interface ScreenActions {
   play(): void;
   quick(): void;
   endless(): void;
+  versus(): void;
   host(): void;
   join(): void;
   resume(): void;
@@ -332,7 +340,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
-  let titleMode: 'run' | 'quick' | 'endless' = 'run';
+  let titleMode: 'run' | 'quick' | 'endless' | 'versus' = 'run';
+  /** arenas for versus: the floors with room to fight */
+  const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
   /** maps for "Single floor": the floors of the tower in their order */
   const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
@@ -354,13 +364,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const main = document.createElement('div');
         main.className = 'title-main';
         s.append(main);
-        const modes: { id: 'run' | 'quick' | 'endless'; label: string; hint: string; locked: boolean }[] = [
+        const modes: { id: 'run' | 'quick' | 'endless' | 'versus'; label: string; hint: string; locked: boolean }[] = [
           { id: 'run', label: t('mode.run'), hint: t('mode.runHint'), locked: false },
           { id: 'quick', label: t('mode.quick'), hint: t('mode.quickHint'), locked: false },
           { id: 'endless', label: t('mode.endless'), hint: t('mode.endlessHint'), locked: !profile.unlocked.includes('endless') },
+          { id: 'versus', label: t('mode.versus'), hint: t('mode.versusHint'), locked: false },
         ];
         if (modes.find(m => m.id === titleMode)?.locked) titleMode = 'run';
-        const play = button(main, t('menu.play'), () => (titleMode === 'quick' ? actions.quick : titleMode === 'endless' ? actions.endless : actions.play)(), true);
+        const play = button(main, t('menu.play'), () => (titleMode === 'quick' ? actions.quick : titleMode === 'endless' ? actions.endless : titleMode === 'versus' ? actions.versus : actions.play)(), true);
         play.classList.add('play');
         const chips = document.createElement('div');
         chips.className = 'chips';
@@ -382,6 +393,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             chips.append(c);
           }
           hint.textContent = modes.find(m => m.id === titleMode)!.hint;
+          drawVersus();
+          diffRow.style.display = titleMode === 'versus' ? 'none' : '';
           // "Single floor": pick any floor of the tower, bosses included
           maps.innerHTML = '';
           maps.style.display = titleMode === 'quick' ? '' : 'none';
@@ -403,9 +416,48 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const maps = document.createElement('div');
         maps.className = 'chips maps';
         main.insertBefore(maps, hint.nextSibling);
-        drawChips();
+        // Versus: mode, rule, map and bots
+        const vs = document.createElement('div');
+        vs.className = 'versus-opts';
+        main.insertBefore(vs, maps.nextSibling);
+        const chipRow = (items: { label: string; on: boolean; pick: () => void }[], small = false) => {
+          const row = document.createElement('div');
+          row.className = 'chips';
+          for (const it of items) {
+            const c = document.createElement('button');
+            c.className = `chip${small ? ' small' : ''}${it.on ? ' on' : ''}`;
+            c.textContent = it.label;
+            c.addEventListener('click', () => {
+              actions.click();
+              it.pick();
+              changed();
+              drawVersus();
+            });
+            row.append(c);
+          }
+          vs.append(row);
+        };
+        function drawVersus() {
+          vs.innerHTML = '';
+          vs.style.display = titleMode === 'versus' ? '' : 'none';
+          if (titleMode !== 'versus') return;
+          chipRow([
+            { label: t('versus.ffa'), on: settings.versusMode === 'ffa', pick: () => (settings.versusMode = 'ffa') },
+            { label: t('versus.team'), on: settings.versusMode === 'team', pick: () => (settings.versusMode = 'team') },
+          ]);
+          chipRow([
+            { label: t('versus.score'), on: settings.versusRule === 'score', pick: () => (settings.versusRule = 'score') },
+            { label: t('versus.rounds'), on: settings.versusRule === 'rounds', pick: () => (settings.versusRule = 'rounds') },
+          ]);
+          text(vs, 'p', 'mode-hint', t(settings.versusRule === 'score' ? 'versus.scoreHint' : 'versus.roundsHint'));
+          if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
+          chipRow(VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), on: settings.versusMap === id, pick: () => (settings.versusMap = id) })), true);
+          const humans = settings.localPlayers;
+          chipRow([0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: t('versus.bots', { n }), on: settings.versusBots === n, pick: () => (settings.versusBots = n) })), true);
+        }
         const diff = document.createElement('div');
         diff.className = 'stepper txt';
+        const diffRow = diff;
         const prev = document.createElement('button');
         prev.className = 'chip';
         prev.textContent = '\u25C0';
@@ -424,6 +476,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         label.textContent = diffLabel(settings.difficulty);
         diff.append(prev, label, next);
         main.append(diff);
+        drawChips();
         // one or two players on this computer (two = split screen, player 2 needs a controller)
         const who = document.createElement('div');
         who.className = 'chips players';
@@ -469,12 +522,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     result(won, r, again) {
       show('result', s => {
         // a won Tower Run gets its own headline: the whole tower is done
-        const title = won && r.mode === 'run' ? t('won.run') : t(won ? 'won.title' : 'lost.title');
+        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : t(won ? 'won.title' : 'lost.title'));
         text(s, 'h2', '', title);
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
-        text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors })}` : ''}`);
-        text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
+        const versus = r.mode === 'versus';
+        if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors })}` : ''}`);
+        if (versus) text(s, 'p', '', t('result.time', { time: `${m}:${sec}` }));
+        else text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
         if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
         for (const u of r.unlocked) text(s, 'p', 'newbest', t('result.unlocked', { name: t(`unlock.${u}` as 'unlock.endless') }));
         if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
@@ -495,8 +550,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           table.append(tr);
         });
         s.append(table);
-        text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
-        text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
+        if (!versus) {
+          text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
+          text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
+        }
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);

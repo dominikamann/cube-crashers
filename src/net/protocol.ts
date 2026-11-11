@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from '../sim/config/balance';
 import type { Command, Difficulty, RunMode, SimEvent } from '../sim/types';
 import type { SnapState } from './snapshot';
 
@@ -55,7 +56,7 @@ export function parseMessage(raw: string): Message | null {
         type: 'hello',
         v: m.v,
         name: m.name.slice(0, MAX_NAME),
-        color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < 6 ? (m.color as number) : undefined,
+        color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < MAX_PLAYERS ? (m.color as number) : undefined,
         unlocked: Array.isArray(m.unlocked) ? m.unlocked.filter((x): x is string => typeof x === 'string' && x.length < 24).slice(0, 16) : [],
       };
     case 'input':

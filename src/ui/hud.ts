@@ -303,7 +303,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
       if (p.downUntil !== null && s.phase === 'playing') {
         down.style.display = '';
-        down.textContent = t('hud.down', { s: Math.max(0, Math.ceil((p.downUntil - s.tick) / TICK_RATE)) });
+        // last cube standing: out for the rest of the round
+        down.textContent = s.versus?.rule === 'rounds' ? t('versus.out') : t('hud.down', { s: Math.max(0, Math.ceil((p.downUntil - s.tick) / TICK_RATE)) });
       } else {
         down.style.display = 'none';
       }
@@ -343,6 +344,23 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'laneEnd':
             toast(e.coreLeft > 0 ? t('lane.end', { pct: Math.round(e.coreLeft * 100), coins: e.coins }) : t('lane.lost'), e.coreLeft > 0 ? 'final' : 'warn');
             break;
+          case 'pvpKill': {
+            const name = (id: number | null) => s.players.find(x => x.id === id)?.name ?? '';
+            const mine = e.killerId === p.id || e.victimId === p.id;
+            toast(e.killerId === null ? t('versus.selfKill', { victim: name(e.victimId) }) : t('versus.kill', { killer: name(e.killerId), victim: name(e.victimId) }), e.victimId === p.id ? 'warn' : mine ? 'good' : '');
+            break;
+          }
+          case 'versusRound': {
+            const winner = e.winner === null ? null : s.versus?.mode === 'team' ? t(e.winner === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === e.winner)?.name ?? '');
+            toast(winner === null ? t('versus.roundDraw', { round: e.round }) : t('versus.roundWon', { name: winner, round: e.round }), 'final');
+            break;
+          }
+          case 'versusEnd': {
+            const team = s.versus?.mode === 'team' ? s.players.find(x => x.id === e.winners[0])?.team : undefined;
+            const names = e.winners.map(id => s.players.find(x => x.id === id)?.name ?? '').join(' & ');
+            toast(team !== undefined ? t('versus.teamWon', { team: t(team === 0 ? 'versus.red' : 'versus.blue') }) : t('versus.won', { name: names || '–' }), 'final');
+            break;
+          }
           case 'raceLap':
             if (e.playerId === p.id) toast(t('race.lap', { lap: e.lap }), 'good');
             break;
@@ -396,10 +414,23 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         }
       }
 
+      const vs = s.versus;
+      if (vs) {
+        const left = Math.max(0, Math.ceil((vs.endsAt - s.tick) / TICK_RATE));
+        const time = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+        const me = vs.scores[p.id] ?? 0;
+        if (vs.rule === 'rounds') {
+          const mine = vs.mode === 'team' ? (vs.roundWins[p.team ?? 0] ?? 0) : (vs.roundWins[p.id] ?? 0);
+          raceMain.textContent = t('versus.hudRounds', { round: vs.round, me: mine, best: Math.max(0, ...Object.values(vs.roundWins)) });
+        } else if (vs.mode === 'team') raceMain.textContent = t('versus.hudTeam', { red: vs.teamScores[0], blue: vs.teamScores[1], time });
+        else raceMain.textContent = t('versus.hudFfa', { me, lead: Math.max(0, ...Object.values(vs.scores)), time });
+        raceSub.textContent = vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
+      }
       const race = s.run.stage === 'race' ? s.run.race : null;
       const lane = s.run.stage === 'lane' ? s.run.lane : null;
       const maze = s.run.stage === 'maze' ? s.run.maze : null;
-      raceBox.style.display = race || lane || maze ? '' : 'none';
+      raceBox.style.display = race || lane || maze || vs ? '' : 'none';
+      creditRow.style.display = vs ? 'none' : '';
       if (maze && !wasMaze) toast(t('maze.start'), 'final');
       wasMaze = !!maze;
       if (maze) {

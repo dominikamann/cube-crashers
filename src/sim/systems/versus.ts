@@ -76,7 +76,11 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule): vo
     nextCrateAt: s.tick + VERSUS.crateEveryTicks,
   };
   s.players.forEach((p, i) => {
-    if (mode === 'team') p.team = (i % 2) as 0 | 1;
+    // teams wear their colours: red (suit colour 1) and blue (suit colour 0)
+    if (mode === 'team') {
+      p.team = (i % 2) as 0 | 1;
+      p.color = p.team === 0 ? 1 : 0;
+    }
     s.versus!.scores[p.id] = 0;
   });
   // something to grab right away: crates, karts and a jetpack on the map

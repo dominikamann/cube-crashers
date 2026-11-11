@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from './config/balance';
 import { PLAYER_HP } from './config/balance';
 import { DIFFICULTY } from './config/difficulty';
 import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './systems/coop';
@@ -29,7 +30,7 @@ import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
 import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, VersusMode, VersusRule, WeaponKind } from './types';
 
-export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % 6): Player {
+export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % MAX_PLAYERS): Player {
   return {
     id,
     name,

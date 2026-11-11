@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from './sim/config/balance';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
@@ -5,6 +6,7 @@ import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
+import { createVersusBot } from './bots/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
@@ -23,7 +25,7 @@ import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
-import { createScreens, loadSettings, recordScore, saveSettings, type JoinEntry, type RunSummary } from './ui/screens';
+import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -146,6 +148,7 @@ function startGame() {
       play: () => newSoloGame('run'),
       quick: () => newSoloGame('quick'),
       endless: () => newSoloGame('endless'),
+      versus: () => newVersusGame(),
       host: () => void hostGame(),
       join: () => void openJoinList(),
       resume,
@@ -175,6 +178,8 @@ function startGame() {
       // the controller's commands come last, so its move and aim win while it is in use
       if (mode === 'playing' && pad && padActive && !bot) cmds = [...cmds, ...padCtl.commands(pad, s, localId(), now)];
       if (mode === 'playing' && split && pad2) cmds = [...cmds, ...padCtl2.commands(pad2, s, 1, now)];
+      // versus bots play on this computer like extra players
+      if (mode === 'playing' && role === 'solo') for (const b of versusBots) cmds = [...cmds, ...b(s)];
       if (role === 'solo') {
         stepSim(s, cmds);
         keyboard.onEvents(s.events);
@@ -267,6 +272,34 @@ function startGame() {
   let newUnlocks: string[] = [];
 
   function summary(s: SimState): RunSummary {
+    const vs = s.versus;
+    if (vs) {
+      // versus: no tickets or best list, the ranking goes by kills (or rounds)
+      const points = (id: number, team?: 0 | 1) => (vs.rule === 'rounds' ? (vs.roundWins[vs.mode === 'team' ? (team ?? 0) : id] ?? 0) : (vs.scores[id] ?? 0));
+      const top = Math.max(...s.players.map(p => points(p.id, p.team)));
+      const winners = s.players.filter(p => points(p.id, p.team) === top);
+      const label = vs.mode === 'team' ? t('versus.teamWon', { team: t(winners[0]?.team === 0 ? 'versus.red' : 'versus.blue') }) : t('versus.won', { name: winners.map(p => p.name).join(' & ') });
+      return {
+        score: 0,
+        seconds: s.tick / TICK_RATE,
+        kills: totalKills(s),
+        maxCombo: s.stats.maxCombo,
+        credits: 0,
+        nestsDestroyed: 0,
+        nests: 0,
+        best: [],
+        tickets: 0,
+        unlocked: [],
+        won: true,
+        mode: 'versus',
+        floors: 0,
+        difficulty: s.difficulty,
+        headline: label,
+        ranking: [...s.players]
+          .sort((a, b) => points(b.id, b.team) - points(a.id, a.team))
+          .map(p => ({ name: p.name, color: p.color, score: points(p.id, p.team), kills: vs.scores[p.id] ?? 0, revives: 0, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
+      };
+    }
     return {
       score: s.score,
       seconds: s.tick / TICK_RATE,
@@ -295,7 +328,9 @@ function startGame() {
     saveRunLog(buildRunLog(s));
     const result = summary(s);
     const again =
-      role === 'host'
+      role === 'solo' && s.versus
+        ? { label: t('menu.playAgain'), action: () => newVersusGame() }
+        : role === 'host'
         ? { label: t('lobby.back'), action: () => backToLobby() }
         : role === 'client'
           ? { label: t('lobby.back'), action: () => backToLobby() }
@@ -318,7 +353,27 @@ function startGame() {
   }
 
   let lastSoloMode: RunMode = 'run';
+  let versusBots: ((s: SimState) => Command[])[] = [];
+
+  /** Versus on this computer: one or two players (split screen) plus bots. */
+  function newVersusGame() {
+    leaveLan(false);
+    role = 'solo';
+    lastSoloMode = 'versus';
+    setSplit(settings.localPlayers === 2);
+    const humans = split ? 2 : 1;
+    const bots = Math.max(0, Math.min(8 - humans, settings.versusBots));
+    const names = [playerName(), ...(split ? [t('split.player2')] : []), ...Array.from({ length: bots }, () => `Bot ${withDefaults({ name: '', color: null }).name}`)];
+    const colors = settings.color !== null ? [settings.color] : undefined;
+    const map = FLOORS[settings.versusMap]?.map ?? floor01;
+    const fixed = Number(params.get('seed'));
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule } });
+    versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
+    enterPlay();
+  }
   function newSoloGame(mode: RunMode = lastSoloMode) {
+    if (mode === 'versus') return newVersusGame();
+    versusBots = [];
     lastSoloMode = mode;
     leaveLan(false);
     role = 'solo';
@@ -397,7 +452,7 @@ function startGame() {
   let lastAnnounce = '';
   function announce() {
     if (!host || !window.cubeCrashers?.lan) return;
-    const next = { players: host.lobby.length, open: !host.sim && host.lobby.length < 6 };
+    const next = { players: host.lobby.length, open: !host.sim && host.lobby.length < MAX_PLAYERS };
     const key = JSON.stringify(next);
     if (key === lastAnnounce) return;
     lastAnnounce = key;
@@ -595,7 +650,11 @@ function startGame() {
   if (params.has('split')) settings.localPlayers = 2;
   // dev: ?map=race starts a Single floor demo on that map
   if (params.get('map')) settings.quickMap = params.get('map')!;
-  if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
+  // dev: ?versus=team|ffa starts a versus match with bots right away
+  if (params.has('versus')) {
+    settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';
+    newVersusGame();
+  } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
     let clock = 0;

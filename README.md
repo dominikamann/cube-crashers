@@ -4,15 +4,15 @@
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
 ![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
-![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%206%20players-ff7a2f)
+![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%208%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
-**A fast voxel action game for one to six players.** Fight your way up a tower, floor by floor. Hordes of
+**A fast voxel action game for one to eight players.** Fight your way up a tower, floor by floor. Hordes of
 retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
 the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
-Crash Kart and plough through the pixels. Play alone or with up to five friends on your LAN.
+Crash Kart and plough through the pixels. Play alone or with up to seven friends on your LAN.
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
@@ -218,7 +218,7 @@ the whole team.
 
 ## Playing together on the LAN
 
-Up to **6 players** on the same network (Wi-Fi or cable), all with the desktop app.
+Up to **8 players** on the same network (Wi-Fi or cable), all with the desktop app.
 
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
@@ -495,7 +495,7 @@ docs/         gameplay GIF and screenshots
 
 - [x] Tower Run: one big floor with nests, hordes, weapons, towers, kart, power-ups, combo, score
 - [x] Jetpack and rare weapons
-- [x] LAN co-op for up to 6 players with revives and a ranking
+- [x] LAN co-op for up to 8 players with revives and a ranking
 - [x] Difficulty levels
 - [x] Graphics quality setting (sharper shadows, ambient occlusion)
 - [x] A run over 5 floors with different themes, a shaft ride between floors, boss floors
