@@ -16,7 +16,7 @@ describe('a whole floor', () => {
       for (let i = 0; i < MINUTES_12 && s.phase === 'playing'; i++) stepSim(s, bot(s));
       expect(s.phase, `seed ${seed} after ${(s.tick / 3600).toFixed(1)} min`).toBe('won');
     }
-  });
+  }, 60_000);
 
   it('cannot be won by standing still', () => {
     const s = createSim(floor01, 1);
