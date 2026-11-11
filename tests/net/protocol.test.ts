@@ -34,6 +34,8 @@ describe('sanitizeCommands', () => {
     expect(clean([{ type: 'build', padId: 1, tower: 'constructor' }])).toEqual([]);
     expect(clean([{ type: 'build', padId: 1, tower: 'x' }])).toEqual([]);
     expect(clean([{ type: 'build', padId: 1.5, tower: 'laser' }])).toEqual([]);
+    expect(clean([{ type: 'upgrade', padId: 1.5 }])).toEqual([]);
+    expect(clean([{ type: 'upgrade', padId: 2 }])).toEqual([{ type: 'upgrade', playerId: 3, padId: 2 }]);
     expect(clean([{ type: 'teleport' }])).toEqual([]);
   });
 

@@ -1,6 +1,7 @@
 import { buildFlowField, flowDir } from '../../src/sim/map/flowfield';
 import { BLOCKS_ENEMY, hasLos } from '../../src/sim/map/tilemap';
 import { padAt } from '../../src/sim/systems/towers';
+import { TOWERS } from '../../src/sim/config/towers';
 import { maxDashCharges } from '../../src/sim/systems/player';
 import type { Command, SimState, Vec2, WeaponKind } from '../../src/sim/types';
 
@@ -86,8 +87,14 @@ export function createBot(): (s: SimState) => Command[] {
 
     // build a tower when standing on a free pad with coins to spare
     const pad = padAt(s, p.pos);
-    if (pad !== null && p.coins >= 12 && !s.towers.some(t => t.padId === pad)) {
+    if (pad !== null && p.coins >= TOWERS.laser.cost && !s.towers.some(t => t.padId === pad)) {
       cmds.push({ type: 'build', playerId: 0, padId: pad, tower: 'laser' });
+    }
+    // stay on the pad and hold E until the tower stands
+    const site = pad === null ? undefined : s.towers.find(t => t.padId === pad && t.buildLeft > 0);
+    if (site && !(near[0] && near[0].d < 4)) {
+      cmds[cmds.findIndex(c => c.type === 'move')] = { type: 'move', playerId: 0, dir: { x: 0, z: 0 } };
+      cmds.push({ type: 'hold', playerId: 0 });
     }
 
     // fight

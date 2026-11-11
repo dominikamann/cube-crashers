@@ -1,11 +1,11 @@
 import { t } from '../i18n';
-import { TOWERS } from '../sim/config/towers';
+import { MAX_TOWER_LEVEL, TOWERS, towerStats, upgradeCost } from '../sim/config/towers';
 import type { SimEvent, SimState, TowerKind } from '../sim/types';
 
 const ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 
 export interface BuildMenu {
-  update(s: SimState, open: boolean, events: SimEvent[], localId: number): void;
+  update(s: SimState, open: boolean, events: SimEvent[], localId: number, padId: number | null): void;
 }
 
 export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) => void): BuildMenu {
@@ -28,11 +28,43 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
     return { kind, card };
   });
 
+  // on a pad with a finished tower: one card with the next level
+  const up = document.createElement('div');
+  up.className = 'card upgrade txt';
+  up.addEventListener('mousedown', e => {
+    e.preventDefault();
+    onChoose('laser');
+  });
+  wrap.append(up);
+  let upKey = '';
+
   return {
-    update(s, open, events, localId) {
+    update(s, open, events, localId, padId) {
       wrap.style.display = open ? '' : 'none';
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
-      for (const c of cards) c.card.classList.toggle('poor', coins < TOWERS[c.kind].cost);
+      const tower = padId === null ? undefined : s.towers.find(tw => tw.padId === padId);
+      for (const c of cards) c.card.style.display = tower ? 'none' : '';
+      up.style.display = tower ? '' : 'none';
+      if (tower) {
+        const max = tower.level >= MAX_TOWER_LEVEL;
+        const cost = max ? 0 : upgradeCost(tower.kind, tower.level + 1);
+        const key = `${tower.kind}-${tower.level}-${tower.upgrading}`;
+        if (key !== upKey) {
+          upKey = key;
+          const now = towerStats(tower.kind, tower.level), next = towerStats(tower.kind, tower.level + 1);
+          up.innerHTML = max
+            ? `<div class="name">${t(`tower.${tower.kind}`)} · ${t('tower.level', { n: tower.level })}</div><div>${t('tower.maxLevel')}</div>`
+            : `<div class="key">1</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
+        }
+        up.classList.toggle('poor', max || coins < cost);
+      } else {
+        for (const c of cards) c.card.classList.toggle('poor', coins < TOWERS[c.kind].cost);
+      }
+      if (events.some(e => e.type === 'upgradeDenied' && e.reason === 'coins' && e.playerId === localId)) {
+        up.classList.remove('shake');
+        void up.offsetWidth;
+        up.classList.add('shake');
+      }
       if (events.some(e => e.type === 'buildDenied' && e.reason === 'coins' && e.playerId === localId)) {
         for (const c of cards) {
           if (!c.card.classList.contains('poor')) continue;

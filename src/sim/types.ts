@@ -38,6 +38,7 @@ export type Command =
   /** E is held this tick: plants a charge at a nest */
   | { type: 'hold'; playerId: number }
   | { type: 'build'; playerId: number; padId: number; tower: TowerKind }
+  | { type: 'upgrade'; playerId: number; padId: number }
   /** where the player's crosshair is on the ground */
   | { type: 'aim'; playerId: number; point: Vec2 }
   /** the fire button is held this tick */
@@ -277,6 +278,11 @@ export interface Tower {
   hp: number;
   maxHp: number;
   cooldown: number;
+  level: number;
+  /** ticks of building (holding E on the pad) still needed; 0 = finished */
+  buildLeft: number;
+  /** the work in progress is an upgrade: the tower keeps firing at its current level meanwhile */
+  upgrading: boolean;
 }
 
 export interface Nest {
@@ -390,6 +396,9 @@ export type SimEvent =
   | { type: 'coinPicked'; playerId: number; streak: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number; playerId: number }
   | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad'; playerId: number }
+  | { type: 'upgradeDenied'; padId: number; reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad'; playerId: number }
+  | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
+  | { type: 'towerDone'; padId: number; level: number }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }

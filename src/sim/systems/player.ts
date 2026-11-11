@@ -18,7 +18,7 @@ import {
   STOMP_RADIUS,
 } from '../config/balance';
 import { JETPACK } from '../config/rare';
-import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_AIR, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
@@ -167,7 +167,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     } else if (moveDir) {
       const boost = s.tick < p.boostUntil ? BOOST_FACTOR : 1;
       const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * Math.min(len, 1);
-      moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, BLOCKS_WALKER);
+      // in the air you clear barriers (low walls), only real walls stop you
+      moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }
 
     if (it.jump && p.air === 0 && p.dashTicks === 0 && p.jetFuel === 0) {
@@ -175,7 +176,11 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {
       p.air--;
-      if (p.air === 0) stomp(s, p);
+      if (p.air === 0) {
+        // landed on top of a barrier: step off it
+        if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = nearestFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER);
+        stomp(s, p);
+      }
     }
 
     if (p.air === 0) {

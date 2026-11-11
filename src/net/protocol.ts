@@ -115,6 +115,9 @@ export function sanitizeCommands(cmds: unknown[], playerId: number): Command[] {
           out.push({ type: 'build', playerId, padId: c.padId as number, tower: c.tower as 'laser' });
         }
         break;
+      case 'upgrade':
+        if (Number.isInteger(c.padId) && (c.padId as number) >= 0) out.push({ type: 'upgrade', playerId, padId: c.padId as number });
+        break;
       case 'buy':
         if (Number.isInteger(c.offer) && (c.offer as number) >= 0 && (c.offer as number) < 8) out.push({ type: 'buy', playerId, offer: c.offer as number });
         break;

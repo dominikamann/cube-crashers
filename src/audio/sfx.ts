@@ -249,7 +249,12 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('coin', SEMITONE ** Math.min(e.streak, MAX_COIN_STREAK_STEPS));
     case 'towerBuilt':
       return one('towerBuilt');
+    case 'towerDone':
+      return one('towerBuilt', 1.25 + 0.1 * e.level);
+    case 'towerUpgrade':
+      return one('towerBuilt', 0.8);
     case 'buildDenied':
+    case 'upgradeDenied':
       return one('buildDenied');
     case 'towerFired':
       return one(`tower_${e.kind}`);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
+import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import type { FloorMap } from '../sim/map/tilemap';
 import { zoneTiles } from '../sim/systems/nests';
 import { KART } from '../sim/systems/vehicles';
@@ -63,8 +64,25 @@ function makePlayer(color: number) {
   return { root, body, gun, sword, light, pack, flame, glint, swordT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
-function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; lightColor: number } {
+const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
+const scaffoldGeo = (() => {
+  // a scaffold: the outline of a box with cross braces on the sides
+  const pts: number[] = [];
+  const w = 0.75, h = 2.4;
+  const corners = [[-w, -w], [w, -w], [w, w], [-w, w]];
+  for (let i = 0; i < 4; i++) {
+    const [ax, az] = corners[i], [bx, bz] = corners[(i + 1) % 4];
+    for (const y of [0, h / 2, h]) pts.push(ax, y, az, bx, y, bz);
+    pts.push(ax, 0, az, ax, h, az);
+    pts.push(ax, 0, az, bx, h / 2, bz, ax, h / 2, az, bx, h, bz);
+  }
+  return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+})();
+
+function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; head: THREE.Object3D; lightColor: number; scaffold: THREE.LineSegments; pips: THREE.Group; level: number } {
+  const outer = new THREE.Group();
   const root = new THREE.Group();
+  outer.add(root);
   let head: THREE.Object3D;
   let lightColor: number;
   if (kind === 'laser') {
@@ -91,7 +109,11 @@ function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; 
     lightColor = 0x7fdcff;
   }
   root.add(head);
-  return { root, head, lightColor };
+  const scaffold = new THREE.LineSegments(scaffoldGeo, scaffoldMat);
+  const pips = new THREE.Group();
+  pips.position.set(0, 0.12, 0.72);
+  outer.add(scaffold, pips);
+  return { root: outer, body: root, head, lightColor, scaffold, pips, level: 0 };
 }
 
 function makeKart(kind: VehicleKind = 'kart') {
@@ -280,10 +302,24 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   function updateTower(t: Tower, v: ReturnType<typeof makeTower> & { built: number }, theme: Theme, time: number) {
     const age = time - v.built;
     const pop = age < 0.3 ? 0.4 + 0.6 * (age / 0.3) + Math.sin((age / 0.3) * Math.PI) * 0.25 : 1;
+    // a new tower rises out of its scaffold while it is being built
+    const building = t.buildLeft > 0 && !t.upgrading;
+    const progress = building ? 1 - t.buildLeft / BUILD_TICKS : 1;
+    v.scaffold.visible = t.buildLeft > 0;
+    v.body.scale.set(pop, Math.max(0.08, progress) * pop, pop);
+    if (t.upgrading) v.scaffold.rotation.y = time * 1.5;
+    else v.scaffold.rotation.y = 0;
+    v.scaffold.scale.y = t.upgrading ? 1 + 0.15 * (1 - t.buildLeft / UPGRADE_TICKS) : 1;
+    if (v.level !== t.level) {
+      v.level = t.level;
+      v.pips.clear();
+      for (let i = 1; i < t.level; i++) v.pips.add(box(0.22, 0.22, 0.08, glowMat(0xffcf3a, 1.5), (i - t.level / 2) * 0.3, 0, 0));
+      if (t.level > 1) v.built = time;
+    }
+    if (building) return;
     if (t.kind === 'laser') v.head.rotation.y = time * 2;
     if (t.kind === 'frost') v.head.position.y = 1.85 + Math.sin(time * 2) * 0.1;
-    v.root.scale.setScalar(pop);
-    v.root.rotation.z = t.hp < t.maxHp * 0.5 ? Math.sin(time * 30) * 0.02 : 0;
+    v.body.rotation.z = t.hp < t.maxHp * 0.5 ? Math.sin(time * 30) * 0.02 : 0;
     setGlow(v.root, theme.glow);
   }
 

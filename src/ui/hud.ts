@@ -1,4 +1,5 @@
 import { inZone } from '../sim/systems/nests';
+import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t } from '../i18n';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
@@ -251,10 +252,14 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       let hintText = '';
       if (p.downUntil === null && !buildMenuOpen) {
         const pad = padAt(s, p.pos);
+        const padTower = pad === null ? undefined : s.towers.find(tw => tw.padId === pad);
         if (p.vehicleId !== null) hintText = t('hud.leave');
         else if (s.nests.some(n => n.state === 'idle' && dist(n.pos, p.pos) <= PLANT_RANGE)) hintText = t('hud.plant');
         else if (s.vehicles.some(v => v.driverId === null && dist(v.pos, p.pos) <= KART.enterRange)) hintText = t('hud.drive');
-        else if (pad !== null && !s.towers.some(tw => tw.padId === pad)) hintText = t('hud.build');
+        else if (padTower && padTower.buildLeft > 0) hintText = t('hud.building', { pct: Math.floor((1 - padTower.buildLeft / (padTower.upgrading ? UPGRADE_TICKS : BUILD_TICKS)) * 100) });
+        else if (padTower && padTower.hp < padTower.maxHp) hintText = t('hud.repair', { pct: Math.floor((padTower.hp / padTower.maxHp) * 100) });
+        else if (padTower && padTower.level < MAX_TOWER_LEVEL) hintText = t('hud.upgrade');
+        else if (pad !== null && !padTower) hintText = t('hud.build');
         else if (s.elevatorOpen) hintText = t('hud.goElevator');
         else if (tileAt(s.map, p.pos.x, p.pos.z) === Tile.Hazard) hintText = t('hud.glitchFloor');
         else if (tileAt(s.map, p.pos.x, p.pos.z) === Tile.Boost) hintText = t('hud.boostFloor');

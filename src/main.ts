@@ -166,7 +166,7 @@ function startGame() {
       hud.update(s, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
-      buildMenu.update(s, keyboard.buildMenuOpen && mode === 'playing', frameEvents, localId());
+      buildMenu.update(s, keyboard.buildMenuOpen && mode === 'playing', frameEvents, localId(), keyboard.menuPad);
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {

@@ -67,13 +67,19 @@ describe('Keyboard', () => {
     expect(k.buildMenuOpen).toBe(false);
   });
 
-  it('does not open the build menu on a pad that already has a tower', () => {
+  it('on a finished tower the menu offers the upgrade; on a tower under construction it does not open', () => {
     const s = onPad();
-    s.towers.push({ id: 1, kind: 'laser', padId: PAD, pos: { ...floor01.pads[PAD].pos }, hp: 40, maxHp: 40, cooldown: 0 });
+    const tower = { id: 1, kind: 'laser' as const, padId: PAD, pos: { ...floor01.pads[PAD].pos }, hp: 40, maxHp: 40, cooldown: 0, level: 1, buildLeft: 50, upgrading: false };
+    s.towers.push(tower);
     const k = new Keyboard();
     k.keyDown('KeyE', 0);
-    k.commands(s, 0, 300);
+    expect(k.commands(s, 0, 300)).toContainEqual({ type: 'hold', playerId: 0 });
     expect(k.buildMenuOpen).toBe(false);
+    tower.buildLeft = 0;
+    k.commands(s, 0, 400);
+    expect(k.buildMenuOpen).toBe(true);
+    k.keyDown('Digit1', 450);
+    expect(k.commands(s, 0, 500)).toContainEqual({ type: 'upgrade', playerId: 0, padId: PAD });
   });
 
   it('builds via a clicked card while the menu is open', () => {

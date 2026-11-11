@@ -20,7 +20,7 @@ import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
-import { tryBuild, updateTowers } from './systems/towers';
+import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
 import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, WeaponKind } from './types';
@@ -205,6 +205,9 @@ export function stepSim(s: SimState, commands: Command[]): void {
       case 'build':
         tryBuild(s, c.playerId, c.padId, c.tower);
         break;
+      case 'upgrade':
+        tryUpgrade(s, c.playerId, c.padId);
+        break;
     }
   }
   if (s.run.stage === 'shop') {
@@ -229,6 +232,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateWeapons(s, intents);
   updateProjectiles(s);
   updateMines(s);
+  updateTowerWork(s, intents);
   updateTowers(s);
   updateAreas(s);
   updateBoss(s);

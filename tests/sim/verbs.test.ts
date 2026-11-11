@@ -39,6 +39,19 @@ describe('jump', () => {
     expect(jumper.players[0].hp).toBe(100);
   });
 
+  it('jumps over a barrier (low wall); walking into it stops', () => {
+    const walker = quietSim();
+    walker.players[0].pos = { x: 16.5, z: 32.5 };
+    run(walker, 40, () => [move(0, 1)]);
+    expect(walker.players[0].pos.z).toBeLessThan(33);
+
+    const jumper = quietSim();
+    jumper.players[0].pos = { x: 16.5, z: 32.5 };
+    stepSim(jumper, [move(0, 1), jump]);
+    run(jumper, 40, () => [move(0, 1)]);
+    expect(jumper.players[0].pos.z).toBeGreaterThan(35);
+  });
+
   it('takes 10 damage per second standing on glitch floor', () => {
     const s = quietSim();
     s.players[0].pos = { x: 34.5, z: 34.5 };

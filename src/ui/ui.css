@@ -130,6 +130,7 @@ html, body {
 .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
 .btn.alt { background: var(--gold); }
 .screen.title { justify-content: center; gap: clamp(14px, 3vh, 28px); padding: 16px 16px 72px; overflow-y: auto; }
+.screen.title .logo { margin-bottom: clamp(16px, 5vh, 48px); }
 .title-main { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .title-main .chips { margin-top: clamp(18px, 3.5vh, 30px); }
 .title-main .stepper { margin: clamp(14px, 2.5vh, 22px) 0 clamp(18px, 3.5vh, 30px); }

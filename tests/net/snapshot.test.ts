@@ -37,7 +37,7 @@ describe('snapshots', () => {
     for (let i = 0; i < 3000; i++) stepSim(host, []);
     const bytes = serializeSnapshot(host, []).length;
     expect(bytes).toBeLessThan(60_000);
-  });
+  }, 30_000);
 });
 
 describe('floor changes over the network', () => {

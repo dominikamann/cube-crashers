@@ -1,5 +1,5 @@
-import { FROST_SLOW_SECONDS, POPCORN_FLIGHT, POPCORN_RADIUS, TOWERS } from '../config/towers';
-import { DT, TICK_RATE, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
+import { BUILD_TICKS, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
+import { DT, TICK_RATE, type Intent, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
 import { hasLos } from '../map/tilemap';
 import { dist, nearestEnemy, targets } from '../util';
 import { damageEnemy } from './combat';
@@ -31,13 +31,53 @@ export function tryBuild(s: SimState, playerId: number, padId: number, kind: Tow
     return;
   }
   p.coins -= def.cost;
-  s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0 });
+  s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0, level: 1, buildLeft: BUILD_TICKS, upgrading: false });
   s.events.push({ type: 'towerBuilt', kind, padId, playerId });
+}
+
+export function tryUpgrade(s: SimState, playerId: number, padId: number): void {
+  const p = s.players.find(x => x.id === playerId);
+  const t = s.towers.find(x => x.padId === padId);
+  const deny = (reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad') => s.events.push({ type: 'upgradeDenied', padId, reason, playerId });
+  if (!p || !t || p.downUntil !== null || p.vehicleId !== null || padAt(s, p.pos) !== padId) return void deny('notOnPad');
+  if (t.buildLeft > 0) return void deny('building');
+  if (t.level >= MAX_TOWER_LEVEL) return void deny('maxLevel');
+  const cost = upgradeCost(t.kind, t.level + 1);
+  if (p.coins < cost) return void deny('coins');
+  p.coins -= cost;
+  t.buildLeft = UPGRADE_TICKS;
+  t.upgrading = true;
+  s.events.push({ type: 'towerUpgrade', padId, level: t.level + 1, playerId });
+}
+
+/** Players holding E on a pad build its tower (or upgrade) and, once it stands, repair it. */
+export function updateTowerWork(s: SimState, intents: Map<number, Intent>): void {
+  for (const p of s.players) {
+    if (p.downUntil !== null || p.vehicleId !== null || !intents.get(p.id)?.hold) continue;
+    const padId = padAt(s, p.pos);
+    const t = padId === null ? undefined : s.towers.find(x => x.padId === padId);
+    if (!t) continue;
+    if (t.buildLeft > 0) {
+      t.buildLeft--;
+      if (t.buildLeft === 0) {
+        if (t.upgrading) {
+          t.level++;
+          t.upgrading = false;
+          const hp = towerStats(t.kind, t.level).hp;
+          t.hp += hp - t.maxHp;
+          t.maxHp = hp;
+        }
+        s.events.push({ type: 'towerDone', padId: t.padId, level: t.level });
+      }
+    } else if (t.hp < t.maxHp) {
+      t.hp = Math.min(t.maxHp, t.hp + (t.maxHp * REPAIR_PER_SECOND) / TICK_RATE);
+    }
+  }
 }
 
 /** Fires `t` if something is in range. Returns true when it fired. */
 function fire(s: SimState, t: Tower): boolean {
-  const def = TOWERS[t.kind];
+  const def = towerStats(t.kind, t.level);
   switch (t.kind) {
     case 'laser': {
       const e = nearestEnemy(s, t.pos, def.range);
@@ -86,8 +126,10 @@ export function updateTowers(s: SimState): void {
     return false;
   });
   for (const t of s.towers) {
+    // a frame still being built does not fire; an upgrade in progress keeps the old level firing
+    if (t.buildLeft > 0 && !t.upgrading) continue;
     t.cooldown = Math.max(0, t.cooldown - DT);
     if (t.cooldown > 0) continue;
-    if (fire(s, t)) t.cooldown = TOWERS[t.kind].cooldown;
+    if (fire(s, t)) t.cooldown = towerStats(t.kind, t.level).cooldown;
   }
 }

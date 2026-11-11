@@ -82,7 +82,7 @@ describe('a run', () => {
     p.perks.speed = 2;
     p.coins = 77;
     s.credits = 2;
-    s.towers.push({ id: 99, kind: 'laser', padId: 0, pos: { x: 5, z: 5 }, hp: 40, maxHp: 40, cooldown: 0 });
+    s.towers.push({ id: 99, kind: 'laser', padId: 0, pos: { x: 5, z: 5 }, hp: 40, maxHp: 40, cooldown: 0, level: 1, buildLeft: 0, upgrading: false });
     s.alarm.level = 4;
     enterElevator(s);
     stepSim(s, [{ type: 'ready', playerId: 0 }]);

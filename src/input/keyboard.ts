@@ -92,7 +92,7 @@ export class Keyboard {
 
   /** The menu stays open until the sim confirms the build, so a denied build can shake the cards. */
   onEvents(events: SimEvent[]): void {
-    if (events.some(e => e.type === 'towerBuilt' && e.padId === this.menuPad)) {
+    if (events.some(e => (e.type === 'towerBuilt' || e.type === 'towerUpgrade') && e.padId === this.menuPad)) {
       this.closeMenu();
       this.eSince = null;
     }
@@ -163,7 +163,9 @@ export class Keyboard {
     this.slot = null;
 
     const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
-    const pad = onPad !== null && !s.towers.some(t => t.padId === onPad) ? onPad : null;
+    // a tower still being built just gets built while E is held; a finished one offers its upgrade
+    const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
+    const pad = onPad !== null && (!tower || tower.buildLeft === 0) ? onPad : null;
     if (this.eSince !== null && pad !== null && now - this.eSince >= BUILD_HOLD_MS) {
       this.buildMenuOpen = true;
       this.menuPad = pad;
@@ -172,7 +174,9 @@ export class Keyboard {
     }
 
     if (this.buildMenuOpen && this.chosen && this.menuPad !== null) {
-      cmds.push({ type: 'build', playerId, padId: this.menuPad, tower: this.chosen });
+      // on a pad with a tower any of the menu keys picks the single card: the upgrade
+      if (tower) cmds.push({ type: 'upgrade', playerId, padId: this.menuPad });
+      else cmds.push({ type: 'build', playerId, padId: this.menuPad, tower: this.chosen });
       this.chosen = null;
     }
     return cmds;
