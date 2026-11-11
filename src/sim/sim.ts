@@ -4,6 +4,7 @@ import { Rng } from './rng';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
+import { updateHordes } from './systems/hordes';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
@@ -129,6 +130,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
     }
   }
   updatePlayers(s, intents);
+  updateHordes(s);
   updateEnemies(s);
   updateWeapons(s, intents);
   updateProjectiles(s);

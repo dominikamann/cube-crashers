@@ -119,6 +119,7 @@ describe('weapons', () => {
     p.weapons = held('joystickBoomerang');
     const a = spawnEnemy(s, 'tank', rel(p.pos, 0, -4));
     const b = spawnEnemy(s, 'tank', rel(p.pos, 0, -5.5));
+    a.speed = b.speed = 0;
     stepSim(s, [aimAt(rel(p.pos, 0, -6)), fire]);
     run(s, 120);
     expect(a.hp).toBe(40);

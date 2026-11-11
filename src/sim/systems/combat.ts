@@ -1,4 +1,4 @@
-import { CLOSE_BONUS, CLOSE_RANGE, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { MINE } from '../config/weapons';
 import { Tile, tileAt } from '../map/tilemap';
@@ -59,6 +59,8 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
     spawnEnemy(s, 'splitling', { x: e.pos.x + 0.3, z: e.pos.z }, { hordeId: e.hordeId ?? undefined });
   }
   if (e.elite) s.crates.push({ id: s.nextId++, pos: { ...e.pos } });
+  // a bomber that is shot goes off at once, but only hurts its own kind
+  if (e.kind === 'bomber') explode(s, e.pos, BOMBER.deathRadius, { enemy: BOMBER.enemy }, 'explosion', byPlayerId);
 }
 
 /** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter. */
@@ -153,6 +155,13 @@ export function updateProjectiles(s: SimState): void {
       }
       if (s.tick >= p.until) continue;
     } else if (s.tick >= p.until || tileAt(s.map, p.pos.x, p.pos.z) === Tile.Wall) {
+      continue;
+    }
+
+    if (p.hostile) {
+      const victim = s.players.find(pl => pl.downUntil === null && pl.air === 0 && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING);
+      if (victim) damagePlayer(s, victim, p.damage);
+      else keep.push(p);
       continue;
     }
 

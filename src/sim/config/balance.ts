@@ -39,3 +39,14 @@ export const CLOSE_BONUS = 1.5;
 
 export const SAMPLE_TICKS = 600;
 export const IDLE_EPSILON = 0.005;
+
+export const FLOW_REBUILD_TICKS = 15;
+export const AGGRO_RADIUS = 10;
+export const DEAGGRO_RADIUS = 22;
+export const ROAM_SPEED_FACTOR = 0.6;
+export const WANDER_RANGE = 25;
+export const ALARM_SPEED_STEP = 0.05;
+
+export const SHOOTER = { min: 5, max: 7, fireRange: 8, windupTicks: 24, cooldownTicks: 132, bulletSpeed: 6, damage: 10 };
+export const BOMBER = { trigger: 1.6, fuseTicks: 36, radius: 2, player: 25, enemy: 30, tower: 20, deathRadius: 1.8 };
+export const RAMMER = { range: 9, windupTicks: 48, speed: 14, distance: 12, damage: 30, towerDamage: 20, stunTicks: 90, hitStunTicks: 45, cooldownTicks: 180 };
