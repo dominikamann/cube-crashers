@@ -9,3 +9,13 @@ logs/
 docs/superpowers/
 docs/ideas.md
 docs/design/style-reference.html
+
+# signing material never goes into the repo
+*.p12
+*.cer
+*.pem
+*.key
+*.certSigningRequest
+*.provisionprofile
+*.mobileprovision
+.env*
