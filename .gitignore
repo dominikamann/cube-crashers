@@ -4,3 +4,8 @@ release/
 .DS_Store
 .superpowers/
 logs/
+
+# planning notes, kept local
+docs/superpowers/
+docs/ideas.md
+docs/design/style-reference.html

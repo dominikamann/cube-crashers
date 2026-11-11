@@ -15,6 +15,9 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
+- [The run: five floors, shaft ride, shop, bosses](#the-run-five-floors-shaft-ride-shop-bosses)
+- [Unlocks and endless mode](#unlocks-and-endless-mode)
+- [Settings and graphics](#settings-and-graphics)
 - [Playing together on the LAN](#playing-together-on-the-lan)
 - [Controls](#controls)
 - [Weapons, rare weapons, jetpack, perks, towers, kart, power-ups](#weapons-rare-weapons-jetpack-perks-towers-kart-power-ups)
@@ -68,16 +71,18 @@ See [Development](#development). You need Node.js 20 or newer.
 
 ## How to play
 
-1. Start the game and click **Play**. Pick a **difficulty** first if you like (button under *Play*).
+1. Start the game and click **Play** for a full run over five floors (or **Quick floor** for a single floor).
+   Pick a **difficulty** first if you like (button under *Play*).
 2. You start next to the elevator at the bottom of the map. The **minimap** (bottom right) shows the
-   **glitch nests** (pink), karts (yellow), power-ups (white), crates (purple) and the elevator.
+   **glitch nests** (big pulsing pink squares), karts (yellow), power-ups (white), crates (purple) and the
+   elevator. Arrows at the screen edge point to the nearest nests, and each nest has a pink light beam.
 3. **Destroy every nest:**
    - Walk up to a nest and **hold E for one second** to plant a charge.
    - Now **hold the zone** (the ring around the nest) for 25 seconds. Hordes storm in from the approaches,
      so build **towers** on the glowing pads nearby (hold **E** on a pad, then **1–3**).
    - The nest fights back: a red ring marks where it will blast next, right under your feet. **Keep moving.**
    - If you leave the zone, the counter slowly runs back, but the charge stays.
-4. When all nests are gone the **elevator opens**. Step in to clear the floor.
+4. When all nests are gone the **elevator opens**. Step in to clear the floor and ride up to the next one.
 
 **Things to know:**
 - You have **3 credits** (depends on the difficulty). Going down costs one; you get back up at the last safe
@@ -88,6 +93,58 @@ See [Development](#development). You need Node.js 20 or newer.
 - **Combo:** keep killing without a 3-second break. The multiplier (up to ×10) boosts coins and score.
 - **Crates** open into three cards: pick a new weapon, a weapon level-up or a perk by walking into it. Very
   rarely a **golden card** gives you a rare weapon for 60 seconds.
+
+---
+
+## The run: five floors, shaft ride, shop, bosses
+
+| Floor | Theme | What happens |
+|---|---|---|
+| 1 | Arcade Plaza | Nests, daylight |
+| 2 | Candy Factory | Nests; **conveyor belts** push players and monsters |
+| 3 | Mega Block Arena | **Boss: Mega Block** |
+| 4 | Neon City | Nests; permanent night, more elites |
+| 5 | Rooftop | **Boss: Segment Worm** |
+
+- **Shaft ride:** between floors you stand on the elevator platform for 45 seconds while flying **glitch
+  swarmers** attack from every side. Keep shooting.
+- **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
+  or +1 credit for the team (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
+  are ready. The shop closes after 25 seconds or when everyone is ready.
+- **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
+  and calls reinforcements. Get out of the marked areas.
+- **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
+  Its strikes are marked on the ground first.
+- Weapons, perks, coins and credits come with you to the next floor. Towers, karts, monsters and the alarm start
+  fresh. Beat the Segment Worm and take the last elevator to win the run.
+
+---
+
+## Unlocks and endless mode
+
+After every run you earn **tickets** (from your score, the floors you cleared and the difficulty). Spend them
+under **Unlocks** on the title screen:
+
+| Unlock | What it is |
+|---|---|
+| Joystick Boomerang, Disco Ball, Banana Mine, Party Bomb | Weapons that are locked at the start and then show up in crates |
+| **Steamroller** | Slow, very tough, crushes everything it touches; no ramp jumps |
+| **Hoverboard** | Fast, floats over glitch floor and low walls, fragile, does not ram |
+| **Endless mode** | Arcade Plaza without an end: destroyed nests come back elsewhere after 60 seconds and the alarm keeps climbing. Own high score list. |
+
+Progress is saved on your computer. On the LAN, everything any player in the lobby has unlocked is available to
+the whole team.
+
+---
+
+## Settings and graphics
+
+- **Graphics quality:** Low, Medium, High (default) or Ultra. Higher levels use sharper shadows, smoothing,
+  glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
+- **Damage numbers:** floating numbers when you hit something (can be switched off).
+- **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
+- **Your name**, sound and music volume, and whether `W` walks toward the crosshair.
+- **Credits** (title screen): who made the game.
 
 ---
 
@@ -131,6 +188,7 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
 | `E` (tap) | Get in / out of a kart |
 | `E` (hold) | Plant a charge · help a teammate up · build on a pad (then `1`–`3`) |
+| `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `F11` | Fullscreen (desktop app) |
 
@@ -182,11 +240,12 @@ monsters. The tank lasts about 5 seconds of flight, then it is gone.
 | **Popcorn Mortar** | 20 | Lobs shells that hit everything in an area. |
 | **Frost Machine** | 15 | Slows monsters to half speed. |
 
-### Crash Kart
+### Crash Kart, Steamroller, Hoverboard
 
 Tap `E` next to a kart to get in. Twice as fast as walking, rams monsters out of the way, keeps your weapons
 firing and protects you: hits damage the kart instead of you. Boost pads speed you up, ramps launch you over
-low walls. 20 seconds of fuel; comes back 45 seconds after it breaks.
+low walls. 20 seconds of fuel; comes back 45 seconds after it breaks. Once unlocked, the **Steamroller** and
+the **Hoverboard** appear on the map as well (see [Unlocks](#unlocks-and-endless-mode)).
 
 ### Power-ups
 
@@ -209,6 +268,9 @@ announced first.
 | **Shooter** | Keeps its distance and fires slow red bullets. Jump over them. | Aim line on the ground |
 | **Bomber** | Runs at you and blows up. Shoot it first and it explodes among its friends. | Blinking fuse, red ring |
 | **Rammer** | Charges in a straight line; stunned when it hits a wall. Step aside. | Red lane on the ground |
+| **Glitch Swarmer** | Small and weak, flies over walls during the shaft ride. | – |
+| **Mega Block** | Boss of floor 3. | Red rings, marked lines |
+| **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
 
 ---
@@ -225,7 +287,7 @@ Chosen on the title screen (alone) or in the lobby (by the host).
 | High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
 | Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |
 
-The best five scores are kept per difficulty.
+The best five scores are kept per difficulty; endless mode has its own list.
 
 ---
 
@@ -315,7 +377,7 @@ src/
 electron/     desktop app: main process, preload, LAN server
 dev/          dev server plugins (LAN relay)
 tests/        Vitest tests (sim, net, electron, audio, render)
-docs/         design documents, plans, screenshots, ideas
+docs/         gameplay GIF and screenshots
 ```
 
 ## Roadmap
@@ -324,11 +386,12 @@ docs/         design documents, plans, screenshots, ideas
 - [x] Jetpack and rare weapons
 - [x] LAN co-op for up to 6 players with revives and a ranking
 - [x] Difficulty levels
-- [ ] Graphics quality setting (sharper shadows, ambient occlusion)
-- [ ] A run over 5 floors with different themes, a shaft ride between floors, boss floors
-- [ ] Unlocks, more vehicles, endless mode
+- [x] Graphics quality setting (sharper shadows, ambient occlusion)
+- [x] A run over 5 floors with different themes, a shaft ride between floors, boss floors
+- [x] Unlocks, more vehicles, endless mode
+- [ ] Gamepad support and key rebinding
 - [ ] German translation
-- [ ] Ideas for later ([docs/ideas.md](docs/ideas.md)): real-city maps from OpenStreetMap, plugins
+- [ ] Later: real-city maps from OpenStreetMap, plugins
 
 ## Contributing
 
