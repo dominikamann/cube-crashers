@@ -221,6 +221,30 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `F11` | Fullscreen (desktop app) |
 
+### Controller (Xbox and other standard pads)
+
+Connect it and press any button; it takes over as soon as you touch it. It also works in the menus (d-pad or
+stick to choose, **A** to confirm, **B** to go back).
+
+| Button | Action |
+|---|---|
+| Left stick | Move |
+| Right stick | Aim (pushed all the way it also fires) |
+| `RT` | Fire |
+| `A` | Jump; hold to fly with a jetpack |
+| `B` | Dash · close the build menu |
+| `X` | Like `E`: tap for the kart, hold to plant, build, repair, help up |
+| `Y` | Rare weapon |
+| `LB` / `RB` | Previous / next weapon |
+| D-pad | Build menu: ◀ Laser, ▲ Popcorn, ▶ Frost (or the upgrade) · shop: buy offers 1–4 |
+| `Start` | Pause |
+
+### Split screen (two players on one computer)
+
+On the title screen choose **2 players · split screen**. With one controller, player 1 plays with keyboard and
+mouse and player 2 with the controller. With two controllers each player has one. Each half has its own
+camera, HUD and crosshair in the player's suit colour.
+
 Every weapon **reloads on its own, also when it is not selected**. The weapon bar shows each reload and
 glows when a weapon is ready, so you can switch through and fire whatever is loaded.
 
@@ -431,7 +455,8 @@ docs/         gameplay GIF and screenshots
 - [x] Graphics quality setting (sharper shadows, ambient occlusion)
 - [x] A run over 5 floors with different themes, a shaft ride between floors, boss floors
 - [x] Unlocks, more vehicles, endless mode
-- [ ] Gamepad support and key rebinding
+- [x] Controller support and local split screen
+- [ ] Key rebinding
 - [ ] German translation
 - [ ] Later: real-city maps from OpenStreetMap, plugins
 
