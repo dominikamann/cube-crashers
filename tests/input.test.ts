@@ -67,6 +67,15 @@ describe('Keyboard', () => {
     expect(k.buildMenuOpen).toBe(false);
   });
 
+  it('does not open the build menu on a pad that already has a tower', () => {
+    const s = onPad();
+    s.towers.push({ id: 1, kind: 'laser', padId: PAD, pos: { ...floor01.pads[PAD].pos }, hp: 40, maxHp: 40, cooldown: 0 });
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    k.commands(s, 0, 300);
+    expect(k.buildMenuOpen).toBe(false);
+  });
+
   it('builds via a clicked card while the menu is open', () => {
     const s = onPad();
     const k = new Keyboard();

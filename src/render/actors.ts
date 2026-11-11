@@ -272,6 +272,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.root.traverse(o => {
         const mesh = o as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
+        const mats = mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : [];
+        for (const m of mats) m.dispose();
       });
       map_.delete(id);
     }

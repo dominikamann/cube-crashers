@@ -1,4 +1,4 @@
-import { BOMBER, CLOSE_BONUS, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
@@ -40,6 +40,8 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   if (horde) horde.aggro = true;
   if (e.hp > 0) return;
 
+  // a lost run is over: the last explosions of the tick no longer count
+  if (s.phase !== 'playing') return;
   s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos }, elite: e.elite });
   s.stats.kills[killCategory(source)]++;
   const def = ENEMIES[e.kind];
@@ -61,7 +63,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   s.score += points;
   if (p) p.stats.score += points;
   dropCoins(s, e.pos, def.coins * (e.elite ? 3 : 1), Math.round(mult * (1 + 0.25 * greed)));
-  if (e.kind === 'splitter') {
+  if (e.kind === 'splitter' && s.enemies.filter(x => x.hp > 0).length + 2 <= ENEMY_CAP) {
     const r = ENEMIES.splitling.radius;
     for (const side of [-1, 1]) {
       const at = nearestFree(s.map, { x: e.pos.x + side * 0.3, z: e.pos.z }, r, BLOCKS_ENEMY);

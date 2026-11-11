@@ -343,6 +343,7 @@ export type SimEvent =
   | { type: 'towerBuilt'; kind: TowerKind; padId: number }
   | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad' }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
+  | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }
   | { type: 'playerDown'; playerId: number }
   | { type: 'playerDowned'; playerId: number }

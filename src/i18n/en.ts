@@ -83,6 +83,7 @@ export const en = {
   'toast.crateCoins': '+{coins} coins',
   'toast.card': '{name} Lv {level}',
   'toast.combo': 'Combo ×{mult}',
+  'toast.towerDown': 'A tower was destroyed!',
   'toast.rare': 'RARE: {name} for 60 s!',
   'toast.rareGone': '{name} crumbled',
   'toast.jetpack': 'Jetpack! Hold Space to fly',

@@ -92,6 +92,7 @@ export function createHud(root: HTMLElement): Hud {
   const danger = el('div', 'danger', layer);
 
   let lastCoins = -1;
+  let lastAlarm = 0;
   let lastWeaponsKey = '';
   let lastDash = '';
 
@@ -210,8 +211,12 @@ export function createHud(root: HTMLElement): Hud {
       for (const e of events) {
         switch (e.type) {
           case 'alarmChanged':
-            if (e.level >= ALARM_MAX) toast(t('toast.overload'), 'warn');
-            else if (e.level > 0) toast(t('toast.alarm', { level: e.level }), 'warn');
+            // only a rising alarm is a warning; a destroyed nest lowers it and gets its own message
+            if (e.level > lastAlarm) toast(e.level >= ALARM_MAX ? t('toast.overload') : t('toast.alarm', { level: e.level }), 'warn');
+            lastAlarm = e.level;
+            break;
+          case 'towerDestroyed':
+            toast(t('toast.towerDown'), 'warn');
             break;
           case 'nestPlanted':
             toast(t('toast.planted'));

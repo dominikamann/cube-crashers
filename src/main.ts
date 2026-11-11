@@ -354,8 +354,10 @@ function startGame() {
 
   addEventListener('keydown', e => {
     if (e.code === 'Space') e.preventDefault();
-    if (e.repeat) return;
+    // repeats of a held key are let through, so keys still held after a pause work again;
+    // the keyboard only counts the first press for one-off actions
     if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (e.repeat) return;
       if (mode === 'playing') pause();
       else if (mode === 'paused') resume();
       return;

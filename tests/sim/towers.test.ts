@@ -109,3 +109,13 @@ describe('tower behaviour', () => {
     expect(s.towers).toHaveLength(1);
   });
 });
+
+describe('destroyed towers', () => {
+  it('report that they are gone', () => {
+    const { s } = onPad(100);
+    stepSim(s, [build(PAD, 'laser')]);
+    s.towers[0].hp = 0;
+    stepSim(s, []);
+    expect(s.events).toContainEqual({ type: 'towerDestroyed', kind: 'laser', pos: s.map.pads.find(p => p.id === PAD)!.pos });
+  });
+});

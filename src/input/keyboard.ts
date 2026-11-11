@@ -132,7 +132,8 @@ export class Keyboard {
     if (this.slot !== null) cmds.push({ type: 'select', playerId, slot: this.slot });
     this.slot = null;
 
-    const pad = p && p.downUntil === null ? padAt(s, p.pos) : null;
+    const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
+    const pad = onPad !== null && !s.towers.some(t => t.padId === onPad) ? onPad : null;
     if (this.eSince !== null && pad !== null && now - this.eSince >= BUILD_HOLD_MS) {
       this.buildMenuOpen = true;
       this.menuPad = pad;

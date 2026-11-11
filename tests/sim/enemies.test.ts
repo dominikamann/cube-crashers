@@ -7,6 +7,7 @@ import { spawnHorde } from '../../src/sim/systems/hordes';
 import type { SimEvent, SimState, Vec2 } from '../../src/sim/types';
 import { quietSim, rel, run } from './helpers';
 import { ENEMIES } from '../../src/sim/config/enemies';
+import { ENEMY_CAP } from '../../src/sim/config/balance';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 const ROAD = { x: 30.5, z: 54.5 };
@@ -211,5 +212,26 @@ describe('elite', () => {
     damageEnemy(s, e, 100, 'pixelBlaster', 0);
     expect(s.crates).toHaveLength(1);
     expect(s.score).toBe(ENEMIES.blob.score * 5);
+  });
+});
+
+describe('enemy cap', () => {
+  it('is not broken by splitters dying at the cap', () => {
+    const s = quietSim();
+    while (s.enemies.length < ENEMY_CAP) spawnEnemy(s, 'splitter', { x: 15.5, z: 5.5 });
+    for (const e of s.enemies.slice(0, 10)) damageEnemy(s, e, 1000, 'laser');
+    run(s, 1);
+    expect(s.enemies.length).toBeLessThanOrEqual(ENEMY_CAP);
+  });
+});
+
+describe('after the run is lost', () => {
+  it('no more points are counted', () => {
+    const s = quietSim();
+    s.phase = 'lost';
+    const e = spawnEnemy(s, 'blob', { x: 15.5, z: 5.5 });
+    damageEnemy(s, e, 1000, 'pixelBlaster', 0);
+    expect(s.score).toBe(0);
+    expect(s.coins).toHaveLength(0);
   });
 });

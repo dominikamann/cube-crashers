@@ -176,6 +176,10 @@ export function createFx(scene: THREE.Scene): Fx {
             ring(e.pos, 2.5, [0xffe14a, 0xffffff]);
             addShake(0.2);
             break;
+          case 'towerDestroyed':
+            burst(e.pos, 1.2, 70, [0x9a9aa8, 0xff8c42, 0x333344], 6, 0.2);
+            addShake(0.15);
+            break;
           case 'kartDestroyed':
             burst(e.pos, 0.5, 60, [0xe23b3b, 0x333344, 0xffe14a], 6, 0.2);
             addShake(0.3);

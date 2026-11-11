@@ -15,6 +15,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   towerBuilt: { type: 'towerBuilt', kind: 'laser', padId: 0 },
   buildDenied: { type: 'buildDenied', padId: 0, reason: 'coins' },
   towerFired: { type: 'towerFired', kind: 'laser', pos: p, target: p },
+  towerDestroyed: { type: 'towerDestroyed', kind: 'laser', pos: p },
   playerHit: { type: 'playerHit', playerId: 0, hp: 50 },
   playerDown: { type: 'playerDown', playerId: 0 },
   playerRespawn: { type: 'playerRespawn', playerId: 0 },

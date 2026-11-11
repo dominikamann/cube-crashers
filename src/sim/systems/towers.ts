@@ -80,7 +80,11 @@ function fire(s: SimState, t: Tower): boolean {
 }
 
 export function updateTowers(s: SimState): void {
-  s.towers = s.towers.filter(t => t.hp > 0);
+  s.towers = s.towers.filter(t => {
+    if (t.hp > 0) return true;
+    s.events.push({ type: 'towerDestroyed', kind: t.kind, pos: { ...t.pos } });
+    return false;
+  });
   for (const t of s.towers) {
     t.cooldown = Math.max(0, t.cooldown - DT);
     if (t.cooldown > 0) continue;
