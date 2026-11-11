@@ -5,8 +5,12 @@ lane toward your arcade cabinet. Grab wild auto-firing weapons, from a laser swo
 to a hotdog slinger, build towers on glowing pads without ever pausing the action, and crash the
 bosses into a thousand glowing cubes.
 
-> **Status: in development (Phase 1, single player).** The game logic is complete and tested.
-> Graphics, sound, menus and the desktop app are being built right now. See the [roadmap](#roadmap).
+> **Status: first playable version (Phase 1, single player).** Balancing and polish are ongoing.
+> See the [roadmap](#roadmap).
+
+| Day | Boss night |
+|---|---|
+| ![Gameplay](docs/design/screenshots/gameplay.png) | ![Segment Worm at night](docs/design/screenshots/night-boss.png) |
 
 Runs on **Windows and macOS**. Single player first; **LAN co-op for up to 6 players** comes next.
 
@@ -58,6 +62,7 @@ The core idea: **beat up retro monsters with cool (and slightly ridiculous) tech
   towers. Picking up coins in quick succession raises the pitch of the coin sound.
 - **Build pads** are glowing platforms at fixed spots on the map. Stand on one, hold `E`, pick a tower.
   The game keeps running while you build.
+- Coins that lie around for 4 seconds fly to you on their own.
 - If you go down, you get back up after 3 seconds at your start position. You lose 25 % of your coins
   but keep all your weapons.
 
@@ -133,6 +138,15 @@ npm test        # run the test suite (Vitest)
 npm run build   # type-check and build to dist/
 ```
 
+Dev shortcuts (append to the URL):
+
+| URL parameter | What it does |
+|---|---|
+| `?demo=day` | Start fully armed with three towers |
+| `?demo=night` | Start fully armed, straight into the Segment Worm |
+| `&warp=900` | Fast-forward the simulation by that many ticks (60 = 1 s) |
+| `?sound=1` | Soundboard: play every sound effect and music track |
+
 ## Project structure
 
 ```
@@ -147,8 +161,10 @@ cube-crashers/
     input/          keyboard → commands
     ui/             HUD, build menu, screens
     i18n/           all player-visible text (English; German planned)
-    main.ts         wires everything together, game loop
+    loop.ts         fixed-step game loop
+    main.ts         wires everything together
   electron/         desktop app main process
+  scripts/          build helpers (app icon generator)
   tests/            Vitest tests, mirroring src/
   docs/
     superpowers/specs/   design document
@@ -178,12 +194,14 @@ The most important rule: **game logic and presentation are strictly separated.**
 
 ## Building the desktop app
 
-The game is packaged with Electron (in progress):
+The game is packaged with Electron:
 
 ```bash
-npm run app:dev    # run as a desktop app in development
-npm run dist:mac   # build a .dmg for macOS (Apple Silicon + Intel)
-npm run dist:win   # build a Windows installer (.exe)
+npm run app:dev    # run as a desktop app with hot reload
+npm run app        # build and run the desktop app
+npm run dist:mac   # build .dmg files for macOS (Apple Silicon + Intel) into release/
+npm run dist:win   # build a Windows installer (.exe) into release/ (works from macOS too)
+npm run icon       # regenerate the pixel-art app icon (build/icon.png)
 ```
 
 Builds are currently **unsigned**:
@@ -198,10 +216,11 @@ Code signing can be added later.
 - [x] Design and plan
 - [x] Game logic: movement, waves, weapons, coins, crates, towers, player damage, mini-boss,
       Segment Worm, victory and stars (fully tested)
-- [ ] Graphics: voxel world, day/night looks, effects *(in progress)*
-- [ ] Sound effects and music
-- [ ] HUD, build menu, title, pause and result screens
-- [ ] Desktop app for Windows and macOS
+- [x] Graphics: voxel world, day/night looks, effects
+- [x] Sound effects and music
+- [x] HUD, build menu, title, pause and result screens
+- [x] Desktop app for Windows and macOS (unsigned)
+- [ ] Balancing and polish from play-testing
 - [ ] Unlocks: earn stars to unlock weapons, towers and maps
 - [ ] **LAN co-op for up to 6 players.** A server is built into every install: one player clicks
       *Host game*, everyone else picks the game from an automatically discovered list. No IP addresses
@@ -224,4 +243,5 @@ Contributions are welcome once the first playable version is out. Please keep in
 
 ## License
 
-[MIT](LICENSE) © 2026 Dominik Amann
+[MIT](LICENSE) © 2026 Dominik Amann. Third-party assets (the pixel font) are listed in
+[LICENSE-ASSETS.md](LICENSE-ASSETS.md).
