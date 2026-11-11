@@ -353,7 +353,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const wallSide = new THREE.MeshLambertMaterial({ map: wallSideTex, vertexColors: true });
   const wallTop = new THREE.MeshLambertMaterial({ vertexColors: true });
   wallTop.color.setScalar(1.12);
-  const walls = layer(t => t === Tile.Wall, [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], WALL_HEIGHT, -0.4, true, wallGeo);
+  // the race track's walls are low guard rails, so the whole circuit stays in view
+  const wallH = map.id === 'race' ? 0.9 : WALL_HEIGHT;
+  const wallTopY = wallH - 0.4;
+  const walls = layer(t => t === Tile.Wall, [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
 
   const trims: { x: number; z: number; sx: number; sz: number }[] = [];
   for (const c of walls.list) {
@@ -369,7 +372,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   trimMesh.castShadow = false;
   trimMesh.receiveShadow = true;
   trims.forEach((t, i) => {
-    o.position.set(t.x, WALL_TOP + 0.06, t.z);
+    o.position.set(t.x, wallTopY + 0.06, t.z);
     o.scale.set(t.sx, 0.12, t.sz);
     o.updateMatrix();
     trimMesh.setMatrixAt(i, o.matrix);

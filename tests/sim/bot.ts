@@ -49,6 +49,33 @@ export function createBot(): (s: SimState) => Command[] {
       }
       return [{ type: 'move', playerId: 0, dir: flowDir(s.map, field, p.pos) }];
     }
+    if (s.run.stage === 'maze' && s.run.maze) {
+      // Glitch Maze: head for the nearest pixel, run from a ghost that gets close (unless powered up)
+      const maze = s.run.maze;
+      const powered = s.tick < maze.powerUntil;
+      const ghost = s.enemies.filter(e => e.kind === 'ghost').sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos))[0];
+      if (ghost && !powered && d(ghost.pos, p.pos) < 3) {
+        const len = d(ghost.pos, p.pos) || 1;
+        return [{ type: 'move', playerId: 0, dir: { x: (p.pos.x - ghost.pos.x) / len, z: (p.pos.z - ghost.pos.z) / len } }];
+      }
+      let best = -1, bestD = Infinity;
+      for (const i of maze.pixels) {
+        const dd = Math.abs((i % s.map.w) + 0.5 - p.pos.x) + Math.abs(Math.floor(i / s.map.w) + 0.5 - p.pos.z);
+        if (dd < bestD) {
+          bestD = dd;
+          best = i;
+        }
+      }
+      if (best < 0) return [];
+      const target = { x: (best % s.map.w) + 0.5, z: Math.floor(best / s.map.w) + 0.5 };
+      const key = `maze:${best}`;
+      if (key !== fieldKey || !field) {
+        fieldKey = key;
+        field = buildFlowField(s.map, [target], BLOCKS_WALKER);
+      }
+      const close = d(target, p.pos) < 1.2;
+      return [{ type: 'move', playerId: 0, dir: close ? { x: target.x - p.pos.x, z: target.z - p.pos.z } : flowDir(s.map, field, p.pos) }];
+    }
     const cmds: Command[] = [];
     const enemies = s.enemies.filter(e => e.hp > 0);
     const near = enemies.map(e => ({ e, d: d(e.pos, p.pos) })).sort((a, b) => a.d - b.d);

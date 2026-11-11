@@ -118,3 +118,20 @@ describe('glitch maze', () => {
     expect(s.phase).toBe('won');
   });
 });
+
+describe('glitch maze fairness', () => {
+  it('the ghost that caught a player goes back to its cage, and weapons or dashes cannot hurt ghosts', async () => {
+    const { damageEnemy } = await import('../../src/sim/systems/combat');
+    const s = mazeSim();
+    const p = s.players[0];
+    p.invulnUntil = 0;
+    const ghost = s.enemies.find(e => e.kind === 'ghost')!;
+    ghost.pos = { x: 10.5, z: 7.5 };
+    p.pos = { ...ghost.pos };
+    stepSim(s, []);
+    expect(Math.hypot(ghost.pos.x - MAZE_CAGE.x, ghost.pos.z - MAZE_CAGE.z)).toBeLessThan(1.5);
+    const hp = ghost.hp;
+    damageEnemy(s, ghost, 50, 'dash', p.id);
+    expect(ghost.hp).toBe(hp);
+  });
+});

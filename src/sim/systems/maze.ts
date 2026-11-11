@@ -126,7 +126,8 @@ export function updateMaze(s: SimState): void {
         break;
       }
       if (s.tick < p.invulnUntil) continue;
-      // caught: back to the start, no harm done
+      // caught: back to the start, no harm done; the ghost goes back to its cage too (no camping at the start)
+      g.pos = { x: MAZE_CAGE.x, z: MAZE_CAGE.z };
       p.pos = { ...s.map.spawn };
       p.safePoint = { ...p.pos };
       p.invulnUntil = s.tick + MAZE.catchInvulnTicks;

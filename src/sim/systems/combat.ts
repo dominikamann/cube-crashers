@@ -34,6 +34,8 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  */
 export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
   if (e.hp <= 0) return;
+  // maze ghosts are only crashed by touching them while powered up
+  if (e.kind === 'ghost') return;
   if ((e.kind === 'megaBlock' || e.kind === 'wormSegment') && (source === 'stomp' || source === 'kart')) amount *= BOSS_BODY_RESIST;
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;

@@ -33,6 +33,22 @@ Crash Kart and plough through the pixels. Play alone or with up to five friends 
     <td align="center"><sub>Neon City: always night, more elites</sub></td>
     <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
   </tr>
+  <tr>
+    <td><img src="docs/design/race.gif" alt="Kart Rally between floors" /></td>
+    <td><img src="docs/design/lane.gif" alt="Lane Defense: hold the lane, save the arcade cabinet" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Kart Rally: most laps in two minutes</sub></td>
+    <td align="center"><sub>Lane Defense: keep the arcade cabinet alive</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/maze.gif" alt="Glitch Maze: collect pixels, dodge the ghosts" /></td>
+    <td><img src="docs/design/highway.gif" alt="Neon Highway" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Glitch Maze: no weapons, just you, the pixels and the ghosts</sub></td>
+    <td align="center"><sub>Neon Highway: boost lanes, jumps, nests under the overpasses</sub></td>
+  </tr>
 </table>
 
 Runs on **Windows and macOS**. Free and open source (MIT).
@@ -43,7 +59,7 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
-- [The run: five floors, shaft ride, shop, bosses](#the-run-five-floors-shaft-ride-shop-bosses)
+- [The run: five floors, a different game between them, shop, bosses](#the-run-five-floors-a-different-game-between-them-shop-bosses)
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
 - [Playing together on the LAN](#playing-together-on-the-lan)
@@ -99,7 +115,8 @@ See [Development](#development). You need Node.js 20 or newer.
 
 1. Start the game, pick a mode under **Play** and click it:
    - **Tower Run**: the full game over five floors.
-   - **Single floor**: just the Arcade Plaza, a short game.
+   - **Single floor**: one map of your choice, a short game. Every floor, both bosses and the three
+     minigames (Kart Rally, Lane Defense, Glitch Maze) are there to pick.
    - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
 
    Set the **difficulty** with the arrows below.
@@ -114,6 +131,9 @@ See [Development](#development). You need Node.js 20 or newer.
    - The nest fights back: a red ring marks where it will blast next, right under your feet. **Keep moving.**
    - If you leave the zone, the counter slowly runs back, but the charge stays.
 4. When all nests are gone the **elevator opens**. Step in to clear the floor and ride up to the next one.
+
+After the last floor (or a lost run) the **result screen** shows every player: score, monsters crashed, their
+best weapon, best combo, towers built, coins collected, revives and downs.
 
 **Things to know:**
 - You have **3 credits** (depends on the difficulty). Going down costs one; you get back up at the last safe
@@ -131,18 +151,29 @@ See [Development](#development). You need Node.js 20 or newer.
 
 ---
 
-## The run: five floors, shaft ride, shop, bosses
+## The run: five floors, a different game between them, shop, bosses
 
-| Floor | Theme | What happens |
-|---|---|---|
-| 1 | Arcade Plaza | Nests, daylight |
-| 2 | Candy Factory | Nests; **conveyor belts** push players and monsters |
-| 3 | Mega Block Arena | **Boss: Mega Block** |
-| 4 | Neon City | Nests; permanent night, more elites |
-| 5 | Rooftop | **Boss: Segment Worm** |
+| Floor | Theme | What happens | Then |
+|---|---|---|---|
+| 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
+| 2 | Candy Factory | Nests; **conveyor belts** push players and monsters | **Lane Defense** |
+| 3 | Mega Block Arena | **Boss: Mega Block** | **Glitch Maze** |
+| 4 | Neon City *or* Neon Highway | Nests; permanent night, more elites | **Shaft ride** |
+| 5 | Rooftop | **Final boss: Segment Worm** | – |
 
-- **Shaft ride:** between floors you stand on the elevator platform for 45 seconds while flying **glitch
-  swarmers** attack from every side. Keep shooting.
+Between the floors the elevator takes you to a short game of its own, then to the shop:
+
+- **Kart Rally:** everyone sits in their own kart (no getting out), two minutes on a race track with a jump, boost
+  pads, an S-bend and a narrow canyon. Laps only count through every checkpoint in order. Ram or shoot the monsters
+  on the track. Alone you drive for a bronze, silver or gold medal; together the most laps win a bonus.
+- **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
+  march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
+  defence pays extra. Build pads line the lane, coins and power-ups wait further up.
+- **Glitch Maze:** no weapons, no jumping. Collect the pixels in the maze while the glitch ghosts hunt you; a
+  caught player goes back to the start (no damage, no credit lost). A power cube in each corner turns the
+  ghosts blue for a few seconds: crash them for coins. Clear the maze for a bonus.
+- **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
+  every side. Keep shooting.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
   or +1 credit for the team (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
   are ready. The shop closes after 25 seconds or when everyone is ready.
@@ -273,7 +304,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels. |
 | **Laser Sword** | Wide swing toward the crosshair. |
 | **Candy Cannon** | Spread of candy pellets. |
-| **Hotdog Slinger** | Lobs a hotdog to the crosshair; the mustard puddle keeps hurting. |
+| **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
 | **Disco Ball** | Zaps the nearest monsters around you. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
@@ -470,6 +501,10 @@ docs/         gameplay GIF and screenshots
 - [x] A run over 5 floors with different themes, a shaft ride between floors, boss floors
 - [x] Unlocks, more vehicles, endless mode
 - [x] Controller support and local split screen
+- [x] A different minigame between the floors: Kart Rally, Lane Defense, Glitch Maze
+- [x] Neon Highway
+- [ ] Versus on the LAN (up to 8): free for all, teams, arena or with monsters, King of the Cube, bots
+- [ ] First-person view as a switch
 - [ ] Key rebinding
 - [ ] German translation
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
