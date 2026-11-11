@@ -101,6 +101,9 @@ html, body {
 .minimap { width: 175px; height: 175px; image-rendering: pixelated; }
 
 .hint { position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%); font-size: 12px; animation: blink 1s steps(2) infinite; white-space: nowrap; }
+.hint.steady { animation: none; }
+.plant-bar { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 220px; height: 10px; border: 2px solid #fff; background: rgba(20, 16, 50, 0.7); }
+.plant-fill { height: 100%; width: 0; background: #ff2bd6; box-shadow: 0 0 10px #ff2bd6; }
 @keyframes blink { 50% { opacity: 0.4; } }
 
 .down { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; color: var(--red); }

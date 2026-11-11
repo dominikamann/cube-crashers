@@ -119,6 +119,7 @@ export const en = {
   'hud.combo': 'Combo {n}',
   'hud.build': 'Hold E to build',
   'hud.plant': 'Hold E to plant the charge',
+  'hud.planting': 'Planting the charge – keep holding E',
   'hud.drive': 'E: drive',
   'hud.leave': 'E: get out',
   'hud.goElevator': 'Get to the elevator!',

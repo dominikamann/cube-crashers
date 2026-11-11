@@ -1,7 +1,7 @@
 import { t } from '../i18n';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { JETPACK } from '../sim/config/rare';
-import { ALARM_MAX, HOLD_RADIUS, HOLD_TICKS, PLANT_RANGE, START_CREDITS } from '../sim/config/balance';
+import { ALARM_MAX, HOLD_RADIUS, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
@@ -113,6 +113,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const bossFill = el('i', '', bossBar);
   for (const f of [0.66, 0.33]) el('div', 'mark', bossBar).style.left = `${f * 100}%`;
   const hint = el('div', 'hint txt', layer);
+  // fills while E is held at a nest, so you can see the charge going in
+  const plantBar = el('div', 'plant-bar', layer);
+  const plantFill = el('div', 'plant-fill', plantBar);
   const down = el('div', 'down txt', layer);
   const danger = el('div', 'danger', layer);
 
@@ -252,8 +255,13 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         else if (pad !== null && !s.towers.some(tw => tw.padId === pad)) hintText = t('hud.build');
         else if (s.elevatorOpen) hintText = t('hud.goElevator');
       }
+      const planting = p.plantTicks > 0 && hintText === t('hud.plant');
+      if (planting) hintText = t('hud.planting');
       hint.textContent = hintText;
       hint.style.display = hintText ? '' : 'none';
+      hint.classList.toggle('steady', planting);
+      plantBar.style.display = planting ? '' : 'none';
+      plantFill.style.width = `${Math.min(1, p.plantTicks / PLANT_TICKS) * 100}%`;
 
       if (p.downUntil !== null && s.phase === 'playing') {
         down.style.display = '';
