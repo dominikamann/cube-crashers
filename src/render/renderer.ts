@@ -15,6 +15,8 @@ import { createWorld } from './world';
 export interface GameRenderer {
   /** `alpha` is the fraction of a sim tick since the last step (positions are not interpolated yet). */
   render(s: SimState, alpha: number, events: SimEvent[], frameDt: number): void;
+  /** whose eyes we look through (the camera follows this player) */
+  setLocalPlayer(id: number): void;
   /** The point on the ground under a screen position, or null if the ray misses the ground. */
   groundPoint(clientX: number, clientY: number): Vec2 | null;
   dispose(): void;
@@ -69,6 +71,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   observer.observe(canvas);
   resize();
 
+  let localId = 0;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -105,7 +108,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
       world.update(s, theme, time);
       entities.update(s, theme, time);
-      actors.update(s, events, theme, time, frameDt);
+      actors.update(s, events, theme, time, frameDt, localId);
       pickups.update(s, theme, time);
       fx.update(s, events, theme, frameDt, time);
 
@@ -121,6 +124,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       sun.target.position.copy(camLook);
 
       composer.render();
+    },
+    setLocalPlayer(id) {
+      localId = id;
     },
     groundPoint(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();

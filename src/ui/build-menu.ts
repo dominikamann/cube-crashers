@@ -5,7 +5,7 @@ import type { SimEvent, SimState, TowerKind } from '../sim/types';
 const ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 
 export interface BuildMenu {
-  update(s: SimState, open: boolean, events: SimEvent[]): void;
+  update(s: SimState, open: boolean, events: SimEvent[], localId: number): void;
 }
 
 export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) => void): BuildMenu {
@@ -29,9 +29,9 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
   });
 
   return {
-    update(s, open, events) {
+    update(s, open, events, localId) {
       wrap.style.display = open ? '' : 'none';
-      const coins = s.players[0].coins;
+      const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
       for (const c of cards) c.card.classList.toggle('poor', coins < TOWERS[c.kind].cost);
       if (events.some(e => e.type === 'buildDenied' && e.reason === 'coins')) {
         for (const c of cards) {

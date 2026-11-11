@@ -11,7 +11,7 @@ import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
 
 export interface Hud {
-  update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number): void;
+  update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number, localId: number): void;
   setVisible(v: boolean): void;
 }
 
@@ -111,8 +111,8 @@ export function createHud(root: HTMLElement): Hud {
     setVisible(v) {
       layer.style.display = v ? '' : 'none';
     },
-    update(s, events, buildMenuOpen, time) {
-      const p = s.players[0];
+    update(s, events, buildMenuOpen, time, localId) {
+      const p = s.players.find(x => x.id === localId) ?? s.players[0];
 
       creditEls.forEach((c, i) => c.classList.toggle('on', i < s.credits));
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
@@ -249,7 +249,7 @@ export function createHud(root: HTMLElement): Hud {
         }
       }
 
-      minimap.update(s, time);
+      minimap.update(s, time, p.id);
     },
   };
 }

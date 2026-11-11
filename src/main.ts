@@ -6,15 +6,18 @@ import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
 import { createLoop } from './loop';
+import { createLan, type Lan } from './net/lan';
+import type { LobbyPlayer } from './net/protocol';
+import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
+import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
+import { totalKills } from './sim/systems/stats';
 import { TICK_RATE, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
-import { buildRunLog, saveRunLog } from './runlog';
-import { totalKills } from './sim/systems/stats';
-import { createScreens, loadSettings, recordScore } from './ui/screens';
+import { createScreens, loadSettings, recordScore, saveSettings, type JoinEntry, type RunSummary } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -26,6 +29,8 @@ if (params.has('sound')) {
   startGame();
 }
 
+const randomSeed = () => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+
 function startGame() {
   app.innerHTML = '<canvas id="game"></canvas>';
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
@@ -33,11 +38,21 @@ function startGame() {
   const keyboard = new Keyboard();
   const settings = loadSettings();
 
-  let sim: SimState = createSim(floor01, 1);
-  let mode: 'title' | 'playing' | 'paused' | 'over' = 'title';
+  /** solo: this sim; LAN: whatever the host or the snapshots show */
+  let solo: SimState = createSim(floor01, 1);
+  let role: 'solo' | 'host' | 'client' = 'solo';
+  let host: HostSession | null = null;
+  let client: ClientSession | null = null;
+  let lan: Lan | null = null;
+  let stopDiscovery: (() => void) | null = null;
+  let mode: 'title' | 'playing' | 'paused' | 'over' | 'lobby' = 'title';
   let frameEvents: SimEvent[] = [];
+  let lastLobby = '';
   const mouse = { x: innerWidth / 2, y: innerHeight / 3 };
   let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
+
+  const view = (): SimState => (role === 'host' ? host?.sim : role === 'client' ? client?.view : null) ?? solo;
+  const localId = () => (role === 'client' ? (client?.playerId ?? 0) : 0);
 
   function ensureAudio() {
     if (!audio) {
@@ -57,12 +72,31 @@ function startGame() {
   }
   applySettings();
 
+  const playerName = () => settings.name || 'Player';
+
+  const lanActions = {
+    start: () => {
+      if (!host) return;
+      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty);
+      enterPlay();
+    },
+    leave: () => leaveLan(),
+    setDifficulty: (d: SimState['difficulty']) => {
+      host?.setDifficulty(d);
+      settings.difficulty = d;
+      saveSettings(settings);
+    },
+    connect: (target: string) => void joinGame(target),
+  };
+
   const hud = createHud(app);
   const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
   const screens = createScreens(
     app,
     {
-      play: newGame,
+      play: newSoloGame,
+      host: () => void hostGame(),
+      join: () => void openJoinList(),
       resume,
       mainMenu: toTitle,
       quit: () => window.close(),
@@ -74,18 +108,38 @@ function startGame() {
 
   const loop = createLoop(
     () => {
-      if (mode !== 'playing') return;
-      keyboard.setAim(renderer.groundPoint(mouse.x, mouse.y));
-      stepSim(sim, keyboard.commands(sim, 0, performance.now()));
-      keyboard.onEvents(sim.events);
-      frameEvents.push(...sim.events);
+      if (mode !== 'playing' && !(mode === 'paused' && role !== 'solo')) return;
+      const s = view();
+      if (s.phase !== 'playing') return;
+      keyboard.setAim(mode === 'playing' ? renderer.groundPoint(mouse.x, mouse.y) : null);
+      const cmds = mode === 'playing' ? keyboard.commands(s, localId(), performance.now()) : [];
+      if (role === 'solo') {
+        stepSim(s, cmds);
+        keyboard.onEvents(s.events);
+        frameEvents.push(...s.events);
+      } else if (role === 'host') {
+        host!.step(cmds);
+      } else {
+        client!.sendInput(cmds);
+      }
     },
     (alpha, frameDt) => {
+      if (role === 'host' && host) frameEvents.push(...host.takeEvents());
+      if (role === 'client' && client) {
+        const evs = client.takeEvents();
+        keyboard.onEvents(evs);
+        frameEvents.push(...evs);
+        watchClient();
+      }
+      if (role === 'host' && mode === 'lobby') watchHostLobby();
+
+      const s = view();
       // the crosshair replaces the mouse pointer while playing
       canvas.style.cursor = mode === 'playing' ? 'none' : '';
-      renderer.render(sim, alpha, frameEvents, frameDt);
-      hud.update(sim, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000);
-      buildMenu.update(sim, keyboard.buildMenuOpen && mode === 'playing', frameEvents);
+      renderer.setLocalPlayer(localId());
+      renderer.render(s, alpha, frameEvents, frameDt);
+      hud.update(s, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000, localId());
+      buildMenu.update(s, keyboard.buildMenuOpen && mode === 'playing', frameEvents, localId());
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
@@ -94,36 +148,49 @@ function startGame() {
         }
       }
       for (const e of frameEvents) {
-        if (e.type === 'gameWon' || e.type === 'gameLost') finish(e.type === 'gameWon');
+        if ((e.type === 'gameWon' || e.type === 'gameLost') && (mode === 'playing' || mode === 'paused')) finish(e.type === 'gameWon');
       }
       frameEvents = [];
     },
   );
 
+  function summary(s: SimState): RunSummary {
+    return {
+      score: s.score,
+      seconds: s.tick / TICK_RATE,
+      kills: totalKills(s),
+      maxCombo: s.stats.maxCombo,
+      credits: s.credits,
+      nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
+      nests: s.nests.length,
+      best: recordScore(s.score, s.difficulty),
+      difficulty: s.difficulty,
+      ranking: [...s.players]
+        .sort((a, b) => b.stats.score - a.stats.score)
+        .map(p => ({ name: p.name, color: p.color, score: p.stats.score, kills: p.stats.kills, revives: p.stats.revives, downs: p.stats.downs, bestCombo: p.stats.bestCombo })),
+    };
+  }
+
   function finish(won: boolean) {
     mode = 'over';
     keyboard.releaseAll();
-    saveRunLog(buildRunLog(sim));
-    const summary = {
-      score: sim.score,
-      seconds: sim.tick / TICK_RATE,
-      kills: totalKills(sim),
-      maxCombo: sim.stats.maxCombo,
-      credits: sim.credits,
-      nestsDestroyed: sim.nests.filter(n => n.state === 'destroyed').length,
-      nests: sim.nests.length,
-      best: recordScore(sim.score),
-    };
+    const s = view();
+    saveRunLog(buildRunLog(s));
+    const result = summary(s);
+    const again =
+      role === 'host'
+        ? { label: t('lobby.back'), action: () => backToLobby() }
+        : role === 'client'
+          ? { label: t('lobby.back'), action: () => backToLobby() }
+          : undefined;
     setTimeout(() => {
+      if (mode !== 'over') return;
       hud.setVisible(false);
-      screens.result(won, summary);
+      screens.result(won, result, again);
     }, 1800);
   }
 
-  function newGame() {
-    const fixed = Number(params.get('seed'));
-    sim = createSim(floor01, fixed > 0 ? fixed : (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
-    if (params.has('demo')) applyDemo(sim);
+  function enterPlay() {
     frameEvents = [];
     keyboard.releaseAll();
     screens.hide();
@@ -133,32 +200,157 @@ function startGame() {
     ensureAudio().music.playTrack('battle');
   }
 
+  function newSoloGame() {
+    leaveLan(false);
+    role = 'solo';
+    const fixed = Number(params.get('seed'));
+    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { difficulty: settings.difficulty, names: [playerName()] });
+    if (params.has('demo')) applyDemo(solo);
+    enterPlay();
+  }
+
+  // ---------- LAN ----------
+
+  async function ensureLan(): Promise<Lan | null> {
+    lan ??= await createLan();
+    if (!lan) screens.notice(t('net.noLan'));
+    return lan;
+  }
+
+  async function hostGame() {
+    if (!(await ensureLan())) return;
+    try {
+      const transport = await lan!.host(playerName());
+      leaveLan(false);
+      role = 'host';
+      host = new HostSession(transport, { name: playerName() });
+      host.setDifficulty(settings.difficulty);
+      showLobby();
+    } catch {
+      screens.notice(t('net.failed'));
+    }
+  }
+
+  async function openJoinList() {
+    if (!(await ensureLan())) return;
+    let games: JoinEntry[] = [];
+    const draw = () => screens.joinList(games, lan!.canEnterAddress, lanActions);
+    draw();
+    stopDiscovery?.();
+    stopDiscovery = lan!.discover(found => {
+      const key = JSON.stringify(found);
+      if (key === JSON.stringify(games)) return;
+      games = found;
+      if (mode === 'title') draw();
+    });
+  }
+
+  async function joinGame(target: string) {
+    stopDiscovery?.();
+    stopDiscovery = null;
+    try {
+      const transport = await lan!.join(target);
+      leaveLan(false);
+      role = 'client';
+      client = new ClientSession(transport, { name: playerName() });
+      mode = 'lobby';
+      lastLobby = '';
+    } catch {
+      screens.notice(t('net.failed'));
+    }
+  }
+
+  function showLobby() {
+    mode = 'lobby';
+    lastLobby = '';
+    hud.setVisible(false);
+    if (role === 'host') watchHostLobby();
+  }
+
+  function watchHostLobby() {
+    if (!host) return;
+    const key = JSON.stringify([host.lobby, host.difficulty]);
+    if (key === lastLobby) return;
+    lastLobby = key;
+    screens.lobby(host.lobby, host.difficulty, true, 0, lanActions);
+  }
+
+  /** follows what the host does: lobby changes, the start of a run, the host leaving */
+  function watchClient() {
+    if (!client) return;
+    if (client.status === 'rejected') {
+      const reason = client.rejectReason ?? 'full';
+      leaveLan(false);
+      screens.notice(t(`net.rejected.${reason}` as 'net.rejected.full'));
+      mode = 'title';
+      return;
+    }
+    if (client.status === 'hostLeft') {
+      leaveLan(false);
+      hud.setVisible(false);
+      mode = 'title';
+      screens.notice(t('net.hostLeft'));
+      return;
+    }
+    if (client.status === 'playing' && mode === 'lobby') {
+      enterPlay();
+      return;
+    }
+    if (mode === 'lobby' && client.status === 'lobby') {
+      const key = JSON.stringify([client.lobby, client.difficulty]);
+      if (key === lastLobby) return;
+      lastLobby = key;
+      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions);
+    }
+  }
+
+  function backToLobby() {
+    if (role === 'host') host?.endRun();
+    showLobby();
+    if (role === 'client') watchClient();
+  }
+
+  function leaveLan(toTitleScreen = true) {
+    stopDiscovery?.();
+    stopDiscovery = null;
+    host?.close();
+    client?.leave();
+    host = null;
+    client = null;
+    role = 'solo';
+    if (toTitleScreen) toTitle();
+  }
+
+  // ---------- pause and menus ----------
+
   function resume() {
     if (mode !== 'paused') return;
     screens.hide();
     mode = 'playing';
-    loop.resume();
+    if (role === 'solo') loop.resume();
   }
 
   function pause() {
     if (mode !== 'playing') return;
     mode = 'paused';
     keyboard.releaseAll();
-    loop.pause();
+    // a LAN game keeps running for everyone else
+    if (role === 'solo') loop.pause();
     screens.pause();
   }
 
   function toTitle() {
+    if (role !== 'solo') leaveLan(false);
     mode = 'title';
-    sim = createSim(floor01, 1);
+    solo = createSim(floor01, 1);
     hud.setVisible(false);
     screens.title();
     if (audio) audio.music.playTrack('menu');
   }
 
   addEventListener('keydown', e => {
-    if (e.repeat) return;
     if (e.code === 'Space') e.preventDefault();
+    if (e.repeat) return;
     if (e.code === 'Escape' || e.code === 'KeyP') {
       if (mode === 'playing') pause();
       else if (mode === 'paused') resume();
@@ -181,24 +373,25 @@ function startGame() {
     if (mode === 'playing') keyboard.wheel(e.deltaY);
   }, { passive: true });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
-  addEventListener('blur', pause);
+  addEventListener('blur', () => (role === 'solo' ? pause() : keyboard.releaseAll()));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pause();
+    if (document.hidden && role === 'solo') pause();
   });
   addEventListener('pointerdown', () => {
     if (mode === 'title' && audio === null) ensureAudio().music.playTrack('menu');
   }, { once: true });
+  addEventListener('beforeunload', () => leaveLan(false));
 
   hud.setVisible(false);
   screens.title();
-  if (params.has('demo')) newGame();
+  if (params.has('demo')) newSoloGame();
   requestAnimationFrame(function frame(now) {
     loop.frame(now);
     requestAnimationFrame(frame);
   });
 }
 
-/** Dev helper (?demo=1&warp=ticks): armed player with coins. */
+/** Dev helper (?demo=1|rare|nest&warp=ticks): armed player with coins. */
 function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));

@@ -6,15 +6,18 @@ import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle } from
 import { box, glowMat, lambert, setGlow } from './pool';
 import type { Theme } from './theme';
 
+/** suit colours of the up to six players (also used by the HUD and minimap) */
+export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4];
+
 export interface Actors {
-  update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number): void;
+  update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number, localId: number): void;
   playerPos(): THREE.Vector3;
 }
 
-function makePlayer() {
+function makePlayer(color: number) {
   const root = new THREE.Group();
   const body = new THREE.Group();
-  const suit = lambert(0x3d8bfd);
+  const suit = lambert(PLAYER_COLORS[color % PLAYER_COLORS.length]);
   const skin = lambert(0xffd2a8);
   const dark = lambert(0x2a2a50);
   body.add(box(0.22, 0.4, 0.22, dark, -0.13, 0.2, 0));
@@ -165,7 +168,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
     let v = players.get(p.id);
     if (!v) {
-      v = makePlayer();
+      v = makePlayer(p.color);
       scene.add(v.root);
       players.set(p.id, v);
     }
@@ -275,11 +278,19 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   }
 
   return {
-    update(s, events, theme, time, frameDt) {
+    update(s, events, theme, time, frameDt, localId) {
       for (const p of s.players) updatePlayer(s, p, theme, time, frameDt);
+      const here = new Set(s.players.map(p => p.id));
+      for (const [id, v] of players) {
+        if (here.has(id)) continue;
+        scene.remove(v.root);
+        players.delete(id);
+      }
       for (const e of events) {
         if (e.type === 'shot' && e.weapon === 'laserSword') {
-          for (const v of players.values()) v.swordT = 0;
+          const shooter = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
+          const v = shooter ? players.get(shooter.id) : undefined;
+          if (v) v.swordT = 0;
         }
       }
 
@@ -308,7 +319,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       beaconMat.opacity = 0.22 + 0.1 * Math.sin(time * 4);
       plateGlow.emissiveIntensity = (s.elevatorOpen ? 2.5 : 0.3) * Math.min(theme.glow, 1.4);
 
-      const p0 = s.players[0];
+      const p0 = s.players.find(p => p.id === localId) ?? s.players[0];
       if (p0) {
         focus.set(p0.pos.x, 0, p0.pos.z);
         reticle.visible = p0.downUntil === null;

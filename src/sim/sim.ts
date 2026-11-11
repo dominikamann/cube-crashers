@@ -68,7 +68,10 @@ registerPlayerFactory(createPlayer);
 export interface SimOptions {
   players?: number;
   difficulty?: Difficulty;
+  /** LAN: the player ids and lobby colours, in lobby order */
+  ids?: number[];
   names?: string[];
+  colors?: number[];
 }
 
 export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): SimState {
@@ -117,7 +120,10 @@ export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): S
     events: [],
     flow: null,
   };
-  for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) addPlayer(s, i, opts.names?.[i]);
+  for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
+    const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
+    if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
+  }
   setupFloor(s);
   return s;
 }

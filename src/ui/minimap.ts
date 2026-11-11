@@ -1,10 +1,11 @@
 import { Tile } from '../sim/map/tilemap';
+import { PLAYER_COLORS } from '../render/actors';
 import type { SimState } from '../sim/types';
 
 const SCALE = 2.5;
 
 export interface Minimap {
-  update(s: SimState, time: number): void;
+  update(s: SimState, time: number, localId: number): void;
 }
 
 /** Small overview map: the tiles are drawn once, the moving things ten times a second. */
@@ -41,7 +42,7 @@ export function createMinimap(parent: HTMLElement): Minimap {
   }
 
   return {
-    update(s, time) {
+    update(s, time, localId) {
       if (time - last < 0.1 && baseMap === s.map.id) return;
       last = time;
       if (!base || baseMap !== s.map.id) {
@@ -69,8 +70,9 @@ export function createMinimap(parent: HTMLElement): Minimap {
       }
       if (!s.elevatorOpen || blink) dot(s.map.elevator.x, s.map.elevator.z, 7, s.elevatorOpen ? '#2bf0ff' : '#5a7a88');
       for (const p of s.players) {
-        dot(p.pos.x, p.pos.z, 8, '#1b1440');
-        dot(p.pos.x, p.pos.z, 5, '#ffffff');
+        const me = p.id === localId;
+        dot(p.pos.x, p.pos.z, me ? 9 : 7, '#1b1440');
+        dot(p.pos.x, p.pos.z, me ? 6 : 4, me ? '#ffffff' : `#${PLAYER_COLORS[p.color].toString(16).padStart(6, '0')}`);
       }
     },
   };
