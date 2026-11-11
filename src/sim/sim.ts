@@ -6,6 +6,7 @@ import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
 import { updateHordes } from './systems/hordes';
 import { setupFloor, updateAlarm, updateNests } from './systems/nests';
+import { updateOffers } from './systems/offers';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
@@ -144,6 +145,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateAreas(s);
   removeDead(s);
   updateCoins(s);
+  updateOffers(s);
   updateOutcome(s);
   sampleStats(s);
   s.tick++;

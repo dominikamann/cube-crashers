@@ -25,6 +25,7 @@ const PRIORITY: { kind: WeaponKind; range: number }[] = [
 export function createBot(): (s: SimState) => Command[] {
   let fieldKey = '';
   let field: Int16Array | null = null;
+  let crateId = -1;
 
   return s => {
     const p = s.players[0];
@@ -38,8 +39,14 @@ export function createBot(): (s: SimState) => Command[] {
     const nest = live.filter(n => n.state === 'planted').sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos))[0]
       ?? live.sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos))[0];
     const card = s.offers.flatMap(o => (s.tick >= o.armedAt ? [o.cardPos[0]] : [])).sort((a, b) => d(a, p.pos) - d(b, p.pos))[0];
+    // once a crate is chosen the bot sticks with it, otherwise it would flip between goals at the range limit
+    if (!s.crates.some(c => c.id === crateId)) {
+      crateId = s.crates.find(c => d(c.pos, p.pos) < 8)?.id ?? -1;
+    }
+    const crate = s.crates.find(c => c.id === crateId)?.pos;
     let goal: Vec2;
     if (card && d(card, p.pos) < 14) goal = card;
+    else if (crate) goal = crate;
     else if (s.elevatorOpen) goal = s.map.elevator;
     else if (nest) goal = nest.pos;
     else goal = s.map.spawn;
