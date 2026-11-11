@@ -430,7 +430,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       const lane = s.run.stage === 'lane' ? s.run.lane : null;
       const maze = s.run.stage === 'maze' ? s.run.maze : null;
       raceBox.style.display = race || lane || maze || vs ? '' : 'none';
-      creditRow.style.display = vs ? 'none' : '';
+      // versus has no credits, nests or alarm: the whole panel goes
+      runBox.style.display = vs ? 'none' : '';
       if (maze && !wasMaze) toast(t('maze.start'), 'final');
       wasMaze = !!maze;
       if (maze) {
