@@ -39,4 +39,6 @@ export const en = {
   'weapon.hotdogSlinger': 'Hotdog Slinger',
   'weapon.joystickBoomerang': 'Joystick Boomerang',
   'weapon.discoBall': 'Disco Ball',
+  'weapon.bananaMine': 'Banana Mine',
+  'weapon.bomb': 'Party Bomb',
 };

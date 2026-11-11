@@ -37,6 +37,7 @@ export function contactDamage(s: SimState): void {
     const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
     if (dps === 0) continue;
     for (const p of s.players) {
+      if (p.air > 0 || p.vehicleId !== null) continue;
       if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, dps * DT);
     }
   }

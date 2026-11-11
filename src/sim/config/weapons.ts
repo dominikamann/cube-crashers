@@ -4,32 +4,34 @@ export const MAX_WEAPONS = 6;
 export const MAX_WEAPON_LEVEL = 5;
 
 export interface WeaponDef {
-  /** seconds between shots */
+  /** seconds to reload */
   cooldown: number;
-  /** auto-target range */
-  range: number;
   damage: number;
 }
 
 export const WEAPONS: Record<WeaponKind, WeaponDef> = {
-  pixelBlaster: { cooldown: 0.35, range: 9, damage: 4 },
-  laserSword: { cooldown: 0.9, range: 1.8, damage: 8 },
-  candyCannon: { cooldown: 0.8, range: 7, damage: 2 },
-  hotdogSlinger: { cooldown: 1.6, range: 8, damage: 3 },
-  joystickBoomerang: { cooldown: 1.4, range: 7, damage: 5 },
-  discoBall: { cooldown: 0.5, range: 6, damage: 3 },
+  pixelBlaster: { cooldown: 0.16, damage: 5 },
+  laserSword: { cooldown: 0.5, damage: 18 },
+  candyCannon: { cooldown: 0.8, damage: 4 },
+  hotdogSlinger: { cooldown: 3, damage: 4 },
+  joystickBoomerang: { cooldown: 2, damage: 10 },
+  discoBall: { cooldown: 3.5, damage: 12 },
+  bananaMine: { cooldown: 2.5, damage: 40 },
+  bomb: { cooldown: 5, damage: 50 },
 };
+
+export const ALL_WEAPONS = Object.keys(WEAPONS) as WeaponKind[];
 
 /** +20 % damage per level above 1. */
 export function levelMul(level: number): number {
   return 1 + 0.2 * (level - 1);
 }
 
-export const BOLT_SPEED = 16;
-export const CANDY_SPEED = 12;
-export const BOOMERANG_SPEED = 14;
-export const BOOMERANG_DISTANCE = 7;
-export const HOTDOG_FLIGHT = 0.6;
-export const HOTDOG_PUDDLE = { radius: 1.5, duration: 2, interval: 0.25 };
-export const SWORD_RADIUS_PER_LEVEL = 0.2;
-export const CANDY_SPREAD_DEG = 40;
+export const BLASTER = { speed: 20, range: 9 };
+export const SWORD = { radius: 2.2, radiusPerLevel: 0.2, halfArcDeg: 70 };
+export const CANDY = { speed: 14, range: 5, pellets: 6, spreadDeg: 40 };
+export const HOTDOG = { range: 8, flightTicks: 36, radius: 1.5, durationTicks: 120, intervalTicks: 15 };
+export const BOOMERANG = { speed: 14, distance: 7 };
+export const DISCO = { range: 5, targets: 4 };
+export const MINE = { armTicks: 30, trigger: 1.0, radius: 2.5, lifetimeTicks: 1800, max: 5 };
+export const BOMB = { range: 7, flightTicks: 42, radius: 3 };

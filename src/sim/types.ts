@@ -13,7 +13,9 @@ export type WeaponKind =
   | 'candyCannon'
   | 'hotdogSlinger'
   | 'joystickBoomerang'
-  | 'discoBall';
+  | 'discoBall'
+  | 'bananaMine'
+  | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -28,7 +30,24 @@ export type Command =
   | { type: 'use'; playerId: number }
   /** E is held this tick: plants a charge at a nest */
   | { type: 'hold'; playerId: number }
-  | { type: 'build'; playerId: number; padId: number; tower: TowerKind };
+  | { type: 'build'; playerId: number; padId: number; tower: TowerKind }
+  /** where the player's crosshair is on the ground */
+  | { type: 'aim'; playerId: number; point: Vec2 }
+  /** the fire button is held this tick */
+  | { type: 'fire'; playerId: number }
+  | { type: 'select'; playerId: number; slot: number };
+
+/** Everything one player asked for in one tick, collected from the commands. */
+export interface Intent {
+  move: Vec2;
+  jump: boolean;
+  dash: boolean;
+  use: boolean;
+  hold: boolean;
+  fire: boolean;
+  aim: Vec2 | null;
+  select: number | null;
+}
 
 export interface HeldWeapon {
   kind: WeaponKind;
@@ -41,6 +60,11 @@ export interface Player {
   pos: Vec2;
   /** unit vector of the last movement direction */
   facing: Vec2;
+  /** unit vector from the player toward the crosshair */
+  aim: Vec2;
+  aimPoint: Vec2;
+  /** index of the weapon that fires */
+  selected: number;
   hp: number;
   maxHp: number;
   coins: number;
@@ -155,6 +179,15 @@ export interface Area {
   until: number;
 }
 
+export interface Mine {
+  id: number;
+  pos: Vec2;
+  ownerId: number;
+  damage: number;
+  armedAt: number;
+  expiresAt: number;
+}
+
 export interface Coin {
   id: number;
   pos: Vec2;
@@ -243,6 +276,7 @@ export interface RunStats {
 
 export type SimEvent =
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
+  | { type: 'weaponSelected'; playerId: number; slot: number }
   | { type: 'enemyHit'; pos: Vec2 }
   | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
   | { type: 'coinPicked'; playerId: number; streak: number }
@@ -289,6 +323,7 @@ export interface SimState {
   hordes: Horde[];
   projectiles: Projectile[];
   areas: Area[];
+  mines: Mine[];
   coins: Coin[];
   crates: Crate[];
   offers: Offer[];

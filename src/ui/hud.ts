@@ -10,6 +10,8 @@ export const WEAPON_GLYPH: Record<WeaponKind, string> = {
   hotdogSlinger: '🌭',
   joystickBoomerang: '🪃',
   discoBall: '🪩',
+  bananaMine: '🍌',
+  bomb: '💣',
 };
 
 export interface Hud {

@@ -1,158 +1,148 @@
-import {
-  BOLT_SPEED,
-  BOOMERANG_DISTANCE,
-  BOOMERANG_SPEED,
-  CANDY_SPEED,
-  CANDY_SPREAD_DEG,
-  HOTDOG_FLIGHT,
-  HOTDOG_PUDDLE,
-  SWORD_RADIUS_PER_LEVEL,
-  WEAPONS,
-  levelMul,
-} from '../config/weapons';
-import { DT, TICK_RATE, type HeldWeapon, type Player, type SimState, type Vec2 } from '../types';
-import { nearestEnemies, nearestEnemy } from '../util';
-import { damageInRadius, damageEnemy } from './combat';
-
-function dirTo(from: Vec2, to: Vec2): Vec2 {
-  const dx = to.x - from.x, dz = to.z - from.z;
-  const d = Math.hypot(dx, dz) || 1;
-  return { x: dx / d, z: dz / d };
-}
+import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWORD, WEAPONS, levelMul } from '../config/weapons';
+import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
+import { dist, nearestEnemies, targets } from '../util';
+import { hitEnemy } from './combat';
 
 function rotate(v: Vec2, rad: number): Vec2 {
   const c = Math.cos(rad), si = Math.sin(rad);
   return { x: v.x * c - v.z * si, z: v.x * si + v.z * c };
 }
 
-function swordRadius(level: number): number {
-  return WEAPONS.laserSword.range + SWORD_RADIUS_PER_LEVEL * (level - 1);
+/** The aim point, pulled in to at most `range` tiles from the player. */
+function aimWithin(p: Player, range: number): Vec2 {
+  const d = dist(p.pos, p.aimPoint);
+  if (d <= range) return { ...p.aimPoint };
+  return { x: p.pos.x + ((p.aimPoint.x - p.pos.x) / d) * range, z: p.pos.z + ((p.aimPoint.z - p.pos.z) / d) * range };
 }
 
-/** Fires `w` if a target is in range. Returns true when it fired. */
+function bolt(s: SimState, p: Player, w: HeldWeapon, pos: Vec2, dir: Vec2, speed: number, range: number, damage: number): Projectile {
+  return {
+    id: s.nextId++,
+    kind: w.kind,
+    behavior: 'bolt',
+    pos,
+    vel: { x: dir.x * speed, z: dir.z * speed },
+    damage,
+    pierce: 0,
+    until: s.tick + Math.ceil((range / speed) * 60),
+    hitIds: [],
+    ownerId: p.id,
+  };
+}
+
+/** Fires `w` toward the player's aim. Returns false if the shot would be wasted and should not use the charge. */
 function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
   const def = WEAPONS[w.kind];
-  const mul = levelMul(w.level);
-  const base = {
-    kind: w.kind,
-    ownerId: p.id,
-    hitIds: [] as number[],
-  };
+  const damage = def.damage * levelMul(w.level);
 
   switch (w.kind) {
     case 'pixelBlaster': {
-      const t = nearestEnemy(s, p.pos, def.range);
-      if (!t) return false;
-      const dir = dirTo(p.pos, t.pos);
       const bolts = 1 + Math.floor((w.level - 1) / 2);
       for (let i = 0; i < bolts; i++) {
         const off = (i - (bolts - 1) / 2) * 0.25;
-        s.projectiles.push({
-          ...base,
-          id: s.nextId++,
-          behavior: 'bolt',
-          pos: { x: p.pos.x - dir.z * off, z: p.pos.z + dir.x * off },
-          vel: { x: dir.x * BOLT_SPEED, z: dir.z * BOLT_SPEED },
-          damage: def.damage * mul,
-          pierce: 0,
-          until: s.tick + TICK_RATE,
-          hitIds: [],
-        });
+        const pos = { x: p.pos.x - p.aim.z * off, z: p.pos.z + p.aim.x * off };
+        s.projectiles.push(bolt(s, p, w, pos, p.aim, BLASTER.speed, BLASTER.range, damage));
       }
       return true;
     }
     case 'laserSword': {
-      const r = swordRadius(w.level);
-      if (!nearestEnemy(s, p.pos, r)) return false;
-      damageInRadius(s, p.pos, r, def.damage * mul, w.kind);
-      return true;
-    }
-    case 'candyCannon': {
-      const t = nearestEnemy(s, p.pos, def.range);
-      if (!t) return false;
-      const dir = dirTo(p.pos, t.pos);
-      const balls = 5 + (w.level - 1);
-      const spread = (CANDY_SPREAD_DEG * Math.PI) / 180;
-      for (let i = 0; i < balls; i++) {
-        const v = rotate(dir, -spread / 2 + (spread * i) / (balls - 1));
-        s.projectiles.push({
-          ...base,
-          id: s.nextId++,
-          behavior: 'bolt',
-          pos: { ...p.pos },
-          vel: { x: v.x * CANDY_SPEED, z: v.z * CANDY_SPEED },
-          damage: def.damage,
-          pierce: 0,
-          until: s.tick + Math.round(0.6 * TICK_RATE),
-          hitIds: [],
-        });
+      const radius = SWORD.radius + SWORD.radiusPerLevel * (w.level - 1);
+      const minDot = Math.cos((SWORD.halfArcDeg * Math.PI) / 180);
+      for (const e of targets(s)) {
+        const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d > radius + e.radius) continue;
+        if (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot) continue;
+        hitEnemy(s, e, damage, w.kind, p.id);
       }
       return true;
     }
-    case 'hotdogSlinger': {
-      const t = nearestEnemy(s, p.pos, def.range);
-      if (!t) return false;
-      // lead the target a little: it keeps walking during the flight
-      const target = { x: t.pos.x, z: t.pos.z + t.speed * HOTDOG_FLIGHT };
+    case 'candyCannon': {
+      const pellets = CANDY.pellets + (w.level - 1);
+      const spread = (CANDY.spreadDeg * Math.PI) / 180;
+      for (let i = 0; i < pellets; i++) {
+        const dir = rotate(p.aim, -spread / 2 + (spread * i) / (pellets - 1));
+        s.projectiles.push(bolt(s, p, w, { ...p.pos }, dir, CANDY.speed, CANDY.range, def.damage));
+      }
+      return true;
+    }
+    case 'hotdogSlinger':
+    case 'bomb': {
+      const hotdog = w.kind === 'hotdogSlinger';
+      const target = aimWithin(p, hotdog ? HOTDOG.range : BOMB.range);
       s.projectiles.push({
-        ...base,
         id: s.nextId++,
+        kind: w.kind,
         behavior: 'lob',
         pos: { ...p.pos },
         vel: { x: 0, z: 0 },
         damage: 0,
         pierce: 0,
+        hitIds: [],
+        ownerId: p.id,
         from: { ...p.pos },
         target,
         launchedAt: s.tick,
-        until: s.tick + Math.round(HOTDOG_FLIGHT * TICK_RATE),
-        land: {
-          radius: HOTDOG_PUDDLE.radius,
-          damage: def.damage * mul,
-          duration: Math.round(HOTDOG_PUDDLE.duration * TICK_RATE),
-          interval: Math.round(HOTDOG_PUDDLE.interval * TICK_RATE),
-        },
+        until: s.tick + (hotdog ? HOTDOG.flightTicks : BOMB.flightTicks),
+        land: hotdog
+          ? { radius: HOTDOG.radius, damage, duration: HOTDOG.durationTicks, interval: HOTDOG.intervalTicks }
+          : { radius: BOMB.radius, damage },
       });
       return true;
     }
     case 'joystickBoomerang': {
-      const t = nearestEnemy(s, p.pos, def.range);
-      if (!t) return false;
-      const dir = dirTo(p.pos, t.pos);
       s.projectiles.push({
-        ...base,
         id: s.nextId++,
+        kind: w.kind,
         behavior: 'boomerang',
         pos: { ...p.pos },
-        vel: { x: dir.x * BOOMERANG_SPEED, z: dir.z * BOOMERANG_SPEED },
-        damage: def.damage * mul,
+        vel: { x: p.aim.x * BOOMERANG.speed, z: p.aim.z * BOOMERANG.speed },
+        damage,
         pierce: Infinity,
-        until: s.tick + 3 * TICK_RATE,
+        until: s.tick + 240,
+        hitIds: [],
+        ownerId: p.id,
         travelled: 0,
-        range: BOOMERANG_DISTANCE,
+        range: BOOMERANG.distance,
         returning: false,
       });
       return true;
     }
     case 'discoBall': {
-      const hits = nearestEnemies(s, p.pos, def.range, 2 + (w.level - 1));
+      const hits = nearestEnemies(s, p.pos, DISCO.range, DISCO.targets + (w.level - 1));
       if (hits.length === 0) return false;
-      for (const e of hits) damageEnemy(s, e, def.damage, w.kind);
+      for (const e of hits) hitEnemy(s, e, damage, w.kind, p.id);
+      return true;
+    }
+    case 'bananaMine': {
+      const own = s.mines.filter(m => m.ownerId === p.id);
+      if (own.length >= MINE.max) s.mines.splice(s.mines.indexOf(own[0]), 1);
+      s.mines.push({
+        id: s.nextId++,
+        pos: { ...p.pos },
+        ownerId: p.id,
+        damage,
+        armedAt: s.tick + MINE.armTicks,
+        expiresAt: s.tick + MINE.lifetimeTicks,
+      });
       return true;
     }
   }
 }
 
-export function updateWeapons(s: SimState): void {
+export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
   for (const p of s.players) {
-    if (p.downUntil !== null) continue;
+    const rate = s.tick < p.rapidUntil ? 2 : 1;
     for (const w of p.weapons) {
-      w.cooldown = Math.max(0, w.cooldown - DT);
-      if (w.cooldown > 0) continue;
-      if (fire(s, p, w)) {
-        w.cooldown = WEAPONS[w.kind].cooldown;
-        s.events.push({ type: 'shot', weapon: w.kind, pos: { ...p.pos } });
-      }
+      w.cooldown -= DT * rate;
+      if (w.cooldown < 1e-9) w.cooldown = 0;
+    }
+    if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
+    const w = p.weapons[p.selected];
+    if (!w || w.cooldown > 0) continue;
+    if (fire(s, p, w)) {
+      w.cooldown = WEAPONS[w.kind].cooldown;
+      s.events.push({ type: 'shot', weapon: w.kind, pos: { ...p.pos } });
     }
   }
 }

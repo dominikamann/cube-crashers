@@ -1,20 +1,24 @@
 import { PLAYER_HP, START_CREDITS } from './config/balance';
 import type { FloorMap } from './map/tilemap';
 import { Rng } from './rng';
-import { removeDead, updateAreas, updateProjectiles } from './systems/combat';
+import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
+import { sampleStats } from './systems/stats';
 import { tryBuild, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
-import type { Command, Player, SimState, Vec2 } from './types';
+import type { Command, Intent, Player, SimState, Vec2 } from './types';
 
 export function createPlayer(id: number, pos: Vec2): Player {
   return {
     id,
     pos: { ...pos },
     facing: { x: 0, z: -1 },
+    aim: { x: 0, z: -1 },
+    aimPoint: { x: pos.x, z: pos.z - 4 },
+    selected: 0,
     hp: PLAYER_HP,
     maxHp: PLAYER_HP,
     coins: 0,
@@ -52,6 +56,7 @@ export function createSim(map: FloorMap, seed: number): SimState {
     hordes: [],
     projectiles: [],
     areas: [],
+    mines: [],
     coins: [],
     crates: [],
     offers: [],
@@ -82,22 +87,57 @@ export function createSim(map: FloorMap, seed: number): SimState {
   };
 }
 
+function emptyIntent(): Intent {
+  return { move: { x: 0, z: 0 }, jump: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null };
+}
+
 export function stepSim(s: SimState, commands: Command[]): void {
   s.events = [];
   if (s.phase !== 'playing') return;
-  const moves = new Map<number, Vec2>();
+  const intents = new Map<number, Intent>(s.players.map(p => [p.id, emptyIntent()]));
   for (const c of commands) {
-    if (c.type === 'move') moves.set(c.playerId, c.dir);
-    else if (c.type === 'build') tryBuild(s, c.playerId, c.padId, c.tower);
+    const it = intents.get(c.playerId);
+    if (!it) continue;
+    switch (c.type) {
+      case 'move':
+        it.move = c.dir;
+        break;
+      case 'jump':
+        it.jump = true;
+        break;
+      case 'dash':
+        it.dash = true;
+        break;
+      case 'use':
+        it.use = true;
+        break;
+      case 'hold':
+        it.hold = true;
+        break;
+      case 'fire':
+        it.fire = true;
+        break;
+      case 'aim':
+        it.aim = c.point;
+        break;
+      case 'select':
+        it.select = c.slot;
+        break;
+      case 'build':
+        tryBuild(s, c.playerId, c.padId, c.tower);
+        break;
+    }
   }
-  updatePlayers(s, moves);
+  updatePlayers(s, intents);
   updateEnemies(s);
-  updateWeapons(s);
+  updateWeapons(s, intents);
   updateProjectiles(s);
+  updateMines(s);
   updateTowers(s);
   updateAreas(s);
   removeDead(s);
   updateCoins(s);
   updateOutcome(s);
+  sampleStats(s);
   s.tick++;
 }

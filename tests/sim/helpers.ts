@@ -9,6 +9,7 @@ export function quietSim(seed = 7): SimState {
   s.hordes = [];
   s.nests = [];
   s.crates = [];
+  s.mines = [];
   s.vehicles = [];
   s.powerups = [];
   s.nextPowerupAt = Number.MAX_SAFE_INTEGER;
@@ -37,3 +38,8 @@ export function padAtPos(s: SimState, x: number, z: number): number {
 
 /** the pad on the ring road just north-west of the spawn room gate */
 export const GATE_PAD = { x: 31.5, z: 56.5 };
+
+export const aimAt = (point: Vec2): Command => ({ type: 'aim', playerId: 0, point });
+export const fire: Command = { type: 'fire', playerId: 0 };
+export const jump: Command = { type: 'jump', playerId: 0 };
+export const dash: Command = { type: 'dash', playerId: 0 };

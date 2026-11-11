@@ -45,6 +45,11 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 500, freqEnd: 900, attack: 0.01, sustain: 0.12, decay: 0.1, volume: 0.07, vibrato: { rate: 20, depth: 40 } },
   ],
   shot_discoBall: notes('triangle', [1047, 1319, 1568, 2093], 0.035, 0.08, 0.08, 0.01),
+  shot_bananaMine: [
+    { wave: 'triangle', freq: 500, freqEnd: 250, attack: 0.003, sustain: 0.04, decay: 0.08, volume: 0.14 },
+    { wave: 'noise', freq: 500, attack: 0.002, sustain: 0.01, decay: 0.05, volume: 0.1, lowpass: 900 },
+  ],
+  shot_bomb: [{ wave: 'sine', freq: 260, freqEnd: 520, attack: 0.01, sustain: 0.12, decay: 0.12, volume: 0.22 }],
   enemyHit: [{ wave: 'square', freq: 220, freqEnd: 170, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
   enemyKilled: [
     { wave: 'noise', freq: 1200, attack: 0.001, sustain: 0.03, decay: 0.15, volume: 0.25, lowpass: 3000 },
