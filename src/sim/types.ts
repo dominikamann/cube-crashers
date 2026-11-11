@@ -18,6 +18,7 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
+export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
@@ -60,8 +61,19 @@ export interface HeldWeapon {
   cooldown: number;
 }
 
+export interface PlayerStats {
+  kills: number;
+  revives: number;
+  downs: number;
+  bestCombo: number;
+  score: number;
+}
+
 export interface Player {
   id: number;
+  name: string;
+  /** index into PLAYER_COLORS */
+  color: number;
   pos: Vec2;
   /** unit vector of the last movement direction */
   facing: Vec2;
@@ -104,6 +116,11 @@ export interface Player {
   flying: boolean;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
+  /** downed in a team game: can be helped up until this tick */
+  reviveUntil: number | null;
+  /** ticks a teammate has been helping */
+  reviveProgress: number;
+  stats: PlayerStats;
 }
 
 export type EnemyState = 'move' | 'windup' | 'charge' | 'stunned' | 'fuse';
@@ -328,6 +345,9 @@ export type SimEvent =
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }
   | { type: 'playerDown'; playerId: number }
+  | { type: 'playerDowned'; playerId: number }
+  | { type: 'playerRevived'; playerId: number; by: number }
+  | { type: 'teamWipe' }
   | { type: 'playerRespawn'; playerId: number }
   | { type: 'creditLost'; credits: number }
   | { type: 'jump'; playerId: number }
@@ -365,6 +385,7 @@ export type SimEvent =
 export interface SimState {
   tick: number;
   seed: number;
+  difficulty: Difficulty;
   rng: Rng;
   map: FloorMap;
   players: Player[];

@@ -1,4 +1,6 @@
-import { PLAYER_HP, START_CREDITS } from './config/balance';
+import { PLAYER_HP } from './config/balance';
+import { DIFFICULTY } from './config/difficulty';
+import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './systems/coop';
 import type { FloorMap } from './map/tilemap';
 import { Rng } from './rng';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
@@ -15,11 +17,13 @@ import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
 import { tryBuild, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
-import type { Command, Intent, Player, SimState, Vec2 } from './types';
+import type { Command, Difficulty, Intent, Player, SimState, Vec2 } from './types';
 
-export function createPlayer(id: number, pos: Vec2): Player {
+export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % 6): Player {
   return {
     id,
+    name,
+    color,
     pos: { ...pos },
     facing: { x: 0, z: -1 },
     aim: { x: 0, z: -1 },
@@ -53,16 +57,29 @@ export function createPlayer(id: number, pos: Vec2): Player {
     flying: false,
     rare: null,
     rareSelected: false,
+    reviveUntil: null,
+    reviveProgress: 0,
+    stats: { kills: 0, revives: 0, downs: 0, bestCombo: 0, score: 0 },
   };
 }
 
-export function createSim(map: FloorMap, seed: number): SimState {
+registerPlayerFactory(createPlayer);
+
+export interface SimOptions {
+  players?: number;
+  difficulty?: Difficulty;
+  names?: string[];
+}
+
+export function createSim(map: FloorMap, seed: number, opts: SimOptions = {}): SimState {
+  const difficulty = opts.difficulty ?? 'medium';
   const s: SimState = {
     tick: 0,
     seed,
+    difficulty,
     rng: new Rng(seed),
     map,
-    players: [createPlayer(0, map.spawn)],
+    players: [],
     enemies: [],
     hordes: [],
     projectiles: [],
@@ -81,7 +98,7 @@ export function createSim(map: FloorMap, seed: number): SimState {
     jetpacks: [],
     nextJetpackAt: 0,
     bubbles: [],
-    credits: START_CREDITS,
+    credits: DIFFICULTY[difficulty].credits,
     alarm: { level: 0, nextAt: 0 },
     elevatorOpen: false,
     score: 0,
@@ -100,6 +117,7 @@ export function createSim(map: FloorMap, seed: number): SimState {
     events: [],
     flow: null,
   };
+  for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) addPlayer(s, i, opts.names?.[i]);
   setupFloor(s);
   return s;
 }
@@ -149,6 +167,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
     }
   }
   updatePlayers(s, intents);
+  updateRevives(s, intents);
   updateVehicles(s, intents);
   updateNests(s, intents);
   updateBlasts(s);

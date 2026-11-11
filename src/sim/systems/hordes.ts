@@ -2,6 +2,7 @@ import { AGGRO_RADIUS, DEAGGRO_RADIUS, WANDER_RANGE } from '../config/balance';
 import { BLOCKS_ENEMY, hasLos, isFree, nearestFree } from '../map/tilemap';
 import type { Enemy, EnemyKind, Horde, SimState, Vec2 } from '../types';
 import { dist } from '../util';
+import { hordeScale } from './coop';
 import { spawnEnemy } from './enemies';
 
 export type HordeComp = { kind: EnemyKind; count: number }[];
@@ -25,8 +26,9 @@ export function spawnHorde(s: SimState, pos: Vec2, comp: HordeComp, opts: { rush
   };
   s.hordes.push(horde);
   let elite = s.rng.next() < (opts.eliteChance ?? 0);
+  const scale = hordeScale(s);
   for (const group of comp) {
-    for (let i = 0; i < group.count; i++) {
+    for (let i = 0; i < Math.ceil(group.count * scale - 1e-9); i++) {
       let at = nearestFree(s.map, pos, 0.6, BLOCKS_ENEMY);
       for (let tries = 0; tries < 8; tries++) {
         const c = { x: pos.x + s.rng.range(-2.5, 2.5), z: pos.z + s.rng.range(-2.5, 2.5) };

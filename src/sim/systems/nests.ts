@@ -21,6 +21,7 @@ import {
   RUSH_SIZE_PER_ALARM,
   START_CLEAR_RADIUS,
 } from '../config/balance';
+import { DIFFICULTY } from '../config/difficulty';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -29,6 +30,10 @@ import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
+
+function alarmTicks(s: SimState): number {
+  return Math.round(ALARM_TICKS / DIFFICULTY[s.difficulty].alarmSpeed);
+}
 
 function shuffled<T>(s: SimState, list: T[]): T[] {
   const out = [...list];
@@ -70,7 +75,7 @@ function canSpawn(s: SimState, comp: HordeComp): boolean {
 
 /** Fills a fresh floor: which nest spots are used, their first hordes, and a few roaming hordes. */
 export function setupFloor(s: SimState): void {
-  s.alarm = { level: 0, nextAt: ALARM_TICKS };
+  s.alarm = { level: 0, nextAt: alarmTicks(s) };
   const spots = shuffled(s, s.map.nestSpots).slice(0, NESTS_PER_FLOOR);
   s.nests = spots.map(spot => ({
     id: s.nextId++,
@@ -108,7 +113,7 @@ function destroyNest(s: SimState, n: Nest): void {
     s.alarm.level--;
     s.events.push({ type: 'alarmChanged', level: s.alarm.level });
   }
-  s.alarm.nextAt = s.tick + ALARM_TICKS;
+  s.alarm.nextAt = s.tick + alarmTicks(s);
   for (const p of s.players) p.safePoint = { ...n.pos };
   if (s.nests.every(x => x.state === 'destroyed')) {
     s.elevatorOpen = true;
@@ -202,7 +207,7 @@ export function updateAlarm(s: SimState): void {
   if (s.tick >= s.alarm.nextAt) {
     if (s.alarm.level < ALARM_MAX) {
       s.alarm.level++;
-      s.alarm.nextAt = s.tick + (s.alarm.level === ALARM_MAX ? OVERLOAD_RUSH_TICKS : ALARM_TICKS);
+      s.alarm.nextAt = s.tick + (s.alarm.level === ALARM_MAX ? OVERLOAD_RUSH_TICKS : alarmTicks(s));
       s.events.push({ type: 'alarmChanged', level: s.alarm.level });
       sendHunters(s);
     } else {

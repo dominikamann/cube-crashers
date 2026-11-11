@@ -82,3 +82,14 @@ export const TIME_BONUS_PER_SECOND = 10;
 
 /** a planted nest fights back: it blasts the ground under whoever holds the zone */
 export const NEST_DEFENCE = { firstTicks: 90, intervalTicks: 100, intervalPerAlarm: 10, warnTicks: 50, radius: 2.0, damage: 25 };
+
+export const MAX_PLAYERS = 6;
+/** a downed teammate can be helped up for this long */
+export const REVIVE_TICKS = 480;
+export const REVIVE_HOLD_TICKS = 90;
+export const REVIVE_RANGE = 1.5;
+export const REVIVE_INVULN_TICKS = 120;
+/** hordes grow by this much per extra player, monster health by the second value */
+export const TEAM_HORDE_STEP = 0.35;
+export const TEAM_HP_STEP = 0.15;
+export const PLAYER_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6'];

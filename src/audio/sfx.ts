@@ -16,6 +16,8 @@ export type SoundId =
   | 'playerDown'
   | 'playerRespawn'
   | 'creditLost'
+  | 'playerDowned'
+  | 'playerRevived'
   | 'jump'
   | 'stomp'
   | 'dash'
@@ -119,6 +121,8 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 90, freqEnd: 40, attack: 0.002, sustain: 0.1, decay: 0.3, volume: 0.45 },
     ...notes('square', [392, 330, 262], 0.12, 0.09, 0.12, 0.06),
   ],
+  playerDowned: [{ wave: 'square', freq: 520, freqEnd: 260, attack: 0.005, sustain: 0.2, decay: 0.2, volume: 0.12, vibrato: { rate: 9, depth: 20 } }],
+  playerRevived: notes('triangle', [392, 523, 659, 784, 1047], 0.06, 0.15, 0.15, 0.04),
   jump: [{ wave: 'square', freq: 300, freqEnd: 700, attack: 0.002, sustain: 0.05, decay: 0.08, volume: 0.08 }],
   stomp: [
     { wave: 'sine', freq: 140, freqEnd: 50, attack: 0.001, sustain: 0.04, decay: 0.16, volume: 0.45 },
@@ -237,6 +241,12 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('playerRespawn');
     case 'creditLost':
       return one('creditLost');
+    case 'playerDowned':
+      return one('playerDowned');
+    case 'playerRevived':
+      return one('playerRevived');
+    case 'teamWipe':
+      return one('playerDown', 0.7);
     case 'jump':
       return one('jump');
     case 'stomp':

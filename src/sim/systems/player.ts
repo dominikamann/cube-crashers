@@ -5,7 +5,6 @@ import {
   DASH_RECHARGE_TICKS,
   DASH_SPEED,
   DASH_TICKS,
-  DOWN_COIN_LOSS,
   HAZARD_DPS,
   IDLE_EPSILON,
   JUMP_TICKS,
@@ -13,6 +12,7 @@ import {
   PLAYER_SPEED,
   RESPAWN_INVULN_TICKS,
   RESPAWN_TICKS,
+  REVIVE_TICKS,
   STOMP_DAMAGE,
   STOMP_KNOCKBACK,
   STOMP_RADIUS,
@@ -23,12 +23,15 @@ import { DT, type Intent, type Player, type SimState } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
+import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
+import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { updateFlight } from './rare';
 import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
+  amount *= DIFFICULTY[s.difficulty].enemyDamage;
   if (p.vehicleId !== null) {
     damageVehicle(s, p.vehicleId, amount);
     return;
@@ -42,21 +45,35 @@ export function damagePlayer(s: SimState, p: Player, amount: number): void {
   }
   if (p.hp > 0) return;
 
-  s.credits--;
   s.stats.downs++;
+  p.stats.downs++;
   p.combo = 0;
   p.air = 0;
   p.flying = false;
   p.dashTicks = 0;
   p.plantTicks = 0;
-  s.events.push({ type: 'playerDown', playerId: p.id }, { type: 'creditLost', credits: s.credits });
-  p.downUntil = s.tick + RESPAWN_TICKS;
-  if (s.credits <= 0) {
-    s.phase = 'lost';
-    s.events.push({ type: 'gameLost' });
+  s.events.push({ type: 'playerDown', playerId: p.id });
+
+  const teammateUp = s.players.some(o => o !== p && o.downUntil === null);
+  if (teammateUp) {
+    // a teammate can still help: wait for a revive before it costs a credit
+    p.reviveUntil = s.tick + REVIVE_TICKS;
+    p.reviveProgress = 0;
+    p.downUntil = Number.MAX_SAFE_INTEGER;
+    s.events.push({ type: 'playerDowned', playerId: p.id });
     return;
   }
-  p.coins -= Math.floor(p.coins * DOWN_COIN_LOSS);
+  if (s.players.length > 1) {
+    p.downUntil = Number.MAX_SAFE_INTEGER;
+    p.reviveUntil = s.tick;
+    checkTeamWipe(s);
+    return;
+  }
+  if (!loseCredit(s)) {
+    p.downUntil = s.tick + RESPAWN_TICKS;
+    return;
+  }
+  sendToRespawn(s, p);
 }
 
 export function maxDashCharges(p: Player): number {

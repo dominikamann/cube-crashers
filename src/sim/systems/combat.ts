@@ -1,6 +1,7 @@
 import { BOMBER, CLOSE_BONUS, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
+import { DIFFICULTY } from '../config/difficulty';
 import { MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
@@ -53,8 +54,12 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
     greed = p.perks.greed;
     if (mult > before) s.events.push({ type: 'comboUp', playerId: p.id, mult });
     s.stats.maxCombo = Math.max(s.stats.maxCombo, p.combo);
+    p.stats.bestCombo = Math.max(p.stats.bestCombo, p.combo);
+    p.stats.kills++;
   }
-  s.score += def.score * (e.elite ? ELITE.score : 1) * mult;
+  const points = Math.round(def.score * (e.elite ? ELITE.score : 1) * mult * DIFFICULTY[s.difficulty].score);
+  s.score += points;
+  if (p) p.stats.score += points;
   dropCoins(s, e.pos, def.coins * (e.elite ? 3 : 1), Math.round(mult * (1 + 0.25 * greed)));
   if (e.kind === 'splitter') {
     const r = ENEMIES.splitling.radius;

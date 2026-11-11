@@ -7,12 +7,13 @@ import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState,
 import { dist } from '../util';
 import { damageEnemy, explode } from './combat';
 import { airborne, held } from './rare';
+import { hpScale } from './coop';
 import { damagePlayer } from './player';
 
 export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hordeId?: number; elite?: boolean } = {}): Enemy {
   const def = ENEMIES[kind];
   const elite = opts.elite ?? false;
-  const hp = def.hp * (elite ? ELITE.hp : 1);
+  const hp = def.hp * (elite ? ELITE.hp : 1) * hpScale(s);
   const e: Enemy = {
     id: s.nextId++,
     kind,
