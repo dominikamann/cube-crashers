@@ -19,7 +19,7 @@ describe('AmannLabs floor logos', () => {
       if (spots.length === 2) {
         const [a, b] = spots;
         expect(Math.hypot(a.tx - b.tx, a.tz - b.tz)).toBeGreaterThan(10);
-        expect(new Set(spots.map(s => s.kind)).size).toBe(2);
+        expect(spots.map(s => s.kind)).toEqual(['wordmark', 'small']);
       }
       expect(logoSpots(map)).toEqual(spots);
     });

@@ -1,6 +1,6 @@
 import { padAt } from '../sim/systems/towers';
 import { instantUse } from './context';
-import { FP_AIM, forwardOf, MOUSE_TURN, viewMove, yawOf } from './first-person';
+import { FP_AIM, forwardOf, lookOf, MOUSE_TURN, viewMove, yawOf } from './first-person';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
 /** the build menu's cards from left to right */
@@ -75,6 +75,12 @@ export class Keyboard {
 
   ready(): void {
     this.readyPressed = true;
+  }
+
+  /** switch first person on or off from outside (versus starts in it), looking along `aim` */
+  setFirstPerson(on: boolean, aim: Vec2): void {
+    this.firstPerson = on;
+    if (on) this.yaw = yawOf(aim);
   }
 
   /** mouse movement while the pointer is captured (first person): turns the view */
@@ -171,7 +177,7 @@ export class Keyboard {
     if (this.toggleView) {
       this.toggleView = false;
       this.firstPerson = !this.firstPerson;
-      if (this.firstPerson && p) this.yaw = yawOf(p.aim);
+      if (this.firstPerson && p) this.yaw = yawOf(lookOf(p));
     }
     if (this.firstPerson) {
       // first person: W walks (and drives) where the view looks, A and D step sideways

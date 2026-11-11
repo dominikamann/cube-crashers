@@ -14,7 +14,8 @@ export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
 
 /** top of the wall blocks; floor tops are at 0 */
-const WALL_TOP = WALL_HEIGHT - 0.4;
+/** wall heights as multiples of WALL_HEIGHT: low blocks to see over, and taller ones that hide what is behind */
+const WALL_STEPS = [1, 1, 1.45, 1.9];
 
 export interface World {
   update(s: SimState, theme: Theme, time: number): void;
@@ -171,15 +172,13 @@ function loadMark(): Promise<HTMLImageElement> {
   return markImage;
 }
 
-/** a quiet floor stamp: the A on its own, or the A with "AmannLabs" next to it */
+/** a quiet floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
 function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: LogoSpot, px: number) {
   const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
   const markH = h * 0.78, markW = markH * (img.width / img.height);
   g.save();
   g.globalAlpha = 0.32;
-  if (spot.kind === 'mark') {
-    g.drawImage(img, x + (w - markW) / 2, y + (h - markH) / 2, markW, markH);
-  } else {
+  {
     const size = Math.round(h * 0.42);
     g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     const amann = g.measureText('Amann').width;
@@ -239,15 +238,16 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const tileOf = (tx: number, tz: number): Tile => (tx < 0 || tz < 0 || tx >= map.w || tz >= map.h ? Tile.Wall : map.tiles[tz * map.w + tx]);
   const isWall = (tx: number, tz: number) => tileOf(tx, tz) === Tile.Wall;
 
-  function layer(filter: (t: Tile) => boolean, material: THREE.Material | THREE.Material[], height: number, yBase: number, shadows: boolean, geometry: THREE.BufferGeometry = unit) {
+  function layer(filter: (t: Tile) => boolean, material: THREE.Material | THREE.Material[], height: number | ((tx: number, tz: number) => number), yBase: number, shadows: boolean, geometry: THREE.BufferGeometry = unit) {
     const list = cells.filter(c => filter(c.tile));
     const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, list.length));
     mesh.count = list.length;
     mesh.castShadow = shadows;
     mesh.receiveShadow = true;
     list.forEach((c, i) => {
-      o.position.set(c.tx + 0.5, yBase + height / 2, c.tz + 0.5);
-      o.scale.set(1, height, 1);
+      const h = typeof height === 'number' ? height : height(c.tx, c.tz);
+      o.position.set(c.tx + 0.5, yBase + h / 2, c.tz + 0.5);
+      o.scale.set(1, h, 1);
       o.updateMatrix();
       mesh.setMatrixAt(i, o.matrix);
       mesh.setColorAt(i, new THREE.Color(0xffffff));
@@ -409,17 +409,20 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const wallTop = new THREE.MeshLambertMaterial({ vertexColors: true });
   wallTop.color.setScalar(1.12);
   // the race track's walls are low guard rails, so the whole circuit stays in view
-  const wallH = map.id === 'race' ? 0.9 : WALL_HEIGHT;
-  const wallTopY = wallH - 0.4;
+  // elsewhere the blocks come in three heights (by 4x4 patch), so in first person you cannot see over all of them
+  const wallH = (tx: number, tz: number) => (map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)]);
+  const wallTopY = (tx: number, tz: number) => wallH(tx, tz) - 0.4;
   const walls = layer(t => t === Tile.Wall, [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
 
-  const trims: { x: number; z: number; sx: number; sz: number }[] = [];
+  const trims: { x: number; z: number; sx: number; sz: number; y: number }[] = [];
+  // a trim on every edge that drops: next to the floor or a lower block
+  const higher = (c: { tx: number; tz: number }, tx: number, tz: number) => !isWall(tx, tz) || wallH(tx, tz) < wallH(c.tx, c.tz);
   for (const c of walls.list) {
-    const cx = c.tx + 0.5, cz = c.tz + 0.5;
-    if (!isWall(c.tx + 1, c.tz)) trims.push({ x: cx + 0.45, z: cz, sx: 0.16, sz: 1.04 });
-    if (!isWall(c.tx - 1, c.tz)) trims.push({ x: cx - 0.45, z: cz, sx: 0.16, sz: 1.04 });
-    if (!isWall(c.tx, c.tz + 1)) trims.push({ x: cx, z: cz + 0.45, sx: 1.04, sz: 0.16 });
-    if (!isWall(c.tx, c.tz - 1)) trims.push({ x: cx, z: cz - 0.45, sx: 1.04, sz: 0.16 });
+    const cx = c.tx + 0.5, cz = c.tz + 0.5, y = wallTopY(c.tx, c.tz);
+    if (higher(c, c.tx + 1, c.tz)) trims.push({ x: cx + 0.45, z: cz, sx: 0.16, sz: 1.04, y });
+    if (higher(c, c.tx - 1, c.tz)) trims.push({ x: cx - 0.45, z: cz, sx: 0.16, sz: 1.04, y });
+    if (higher(c, c.tx, c.tz + 1)) trims.push({ x: cx, z: cz + 0.45, sx: 1.04, sz: 0.16, y });
+    if (higher(c, c.tx, c.tz - 1)) trims.push({ x: cx, z: cz - 0.45, sx: 1.04, sz: 0.16, y });
   }
   const trimMat = lambert(0xffffff);
   const trimMesh = new THREE.InstancedMesh(unit, trimMat, Math.max(1, trims.length));
@@ -427,7 +430,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   trimMesh.castShadow = false;
   trimMesh.receiveShadow = true;
   trims.forEach((t, i) => {
-    o.position.set(t.x, wallTopY + 0.06, t.z);
+    o.position.set(t.x, t.y + 0.06, t.z);
     o.scale.set(t.sx, 0.12, t.sz);
     o.updateMatrix();
     trimMesh.setMatrixAt(i, o.matrix);
@@ -622,7 +625,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     } else {
       g.add(box(0.8, 0.22, 0.4, pot, 0, 0.11, 0), box(0.7, 0.25, 0.32, leafA, 0, 0.32, 0));
     }
-    g.position.set(c.tx + 0.5, WALL_TOP, c.tz + 0.5);
+    g.position.set(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
     g.rotation.y = Math.floor(hash(c.tx, c.tz * 7) * 4) * (Math.PI / 2);
     props.add(g);
   }

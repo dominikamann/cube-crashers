@@ -1,4 +1,4 @@
-import type { Vec2 } from '../sim/types';
+import type { Player, Vec2 } from '../sim/types';
 
 /** how far ahead of the eyes the aim point sits in first person */
 export const FP_AIM = 8;
@@ -16,3 +16,6 @@ export function viewMove(yaw: number, side: number, ahead: number): Vec2 {
   const f = forwardOf(yaw);
   return { x: f.x * ahead - f.z * side, z: f.z * ahead + f.x * side };
 }
+
+/** where a player looks when first person is switched on: the way they drive, or where they aim on foot */
+export const lookOf = (p: Pick<Player, 'vehicleId' | 'facing' | 'aim'>): Vec2 => (p.vehicleId !== null ? p.facing : p.aim);

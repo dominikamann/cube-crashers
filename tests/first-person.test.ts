@@ -75,3 +75,17 @@ describe('first-person view, controller', () => {
     expect(c.firstPerson).toBe(false);
   });
 });
+
+describe('first-person view as a default', () => {
+  it('can be switched on from outside, looking where the player aims', () => {
+    const k = new Keyboard();
+    k.setFirstPerson(true, { x: 1, z: 0 });
+    expect(k.firstPerson).toBe(true);
+    expect(Math.sin(k.yaw)).toBeCloseTo(-1);
+    const c = new PadControls();
+    c.setFirstPerson(true, { x: 0, z: 1 });
+    expect(Math.cos(c.yaw)).toBeCloseTo(-1);
+    c.setFirstPerson(false, { x: 0, z: 1 });
+    expect(c.firstPerson).toBe(false);
+  });
+});

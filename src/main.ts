@@ -6,6 +6,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
+import { lookOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery } from './sim/systems/versus';
@@ -185,6 +186,26 @@ function startGame() {
     root.append(c);
     return c;
   });
+  // first person in a vehicle: a cockpit frame (kart, roller) or the nose of the board along the bottom
+  const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 120" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 104 L172 104 M100 104 L100 160" stroke="#2a2550" stroke-width="16"/><circle cx="100" cy="104" r="16" fill="#ff2bd6"/></svg>`;
+  const BOARD_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M120 100 Q130 40 200 28 Q270 40 280 100 Z" fill="#2bf0ff" opacity="0.9"/><path d="M140 100 Q150 52 200 42 Q250 52 260 100" fill="none" stroke="#1d1a33" stroke-width="5"/></svg>`;
+  const cockpits = hudRoots.map(root => {
+    const c = document.createElement('div');
+    c.className = 'fp-cockpit';
+    c.style.display = 'none';
+    // under the HUD
+    root.prepend(c);
+    return { el: c, kind: '' };
+  });
+  const showCockpit = (i: number, on: boolean, playerId: number) => {
+    const s = view();
+    const p = s.players.find(x => x.id === playerId);
+    const kind = on && p?.vehicleId != null ? (s.vehicles.find(v => v.id === p.vehicleId)?.kind ?? '') : '';
+    const c = cockpits[i];
+    c.el.style.display = kind ? '' : 'none';
+    if (kind && kind !== c.kind) c.el.innerHTML = kind === 'hoverboard' ? BOARD_FRAME : KART_FRAME;
+    c.kind = kind;
+  };
   /** the mouse is captured in first person so it can turn the view */
   const lockPointer = (on: boolean) => {
     if (on && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
@@ -294,14 +315,16 @@ function startGame() {
       renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
-      // first person: view 0 follows whichever input player 1 is using, view 1 the second pad
+      // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
-      const fp0on = !!fp0?.firstPerson && view().run.stage === 'floor';
+      const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(0, fp0on ? fp0!.yaw : null);
-      const fp1on = split && padCtl2.firstPerson && view().run.stage === 'floor';
+      const fp1on = split && padCtl2.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(1, fp1on ? padCtl2.yaw : null);
       fpCross[0].style.display = fp0on && mode === 'playing' ? '' : 'none';
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
+      showCockpit(0, fp0on && mode === 'playing', localId());
+      showCockpit(1, fp1on && mode === 'playing', 1);
       if (mode !== 'playing' || padActive || !keyboard.firstPerson) lockPointer(false);
       renderer.setLookAhead(0, padActive);
       // the mouse player's camera leans by where the pointer sits on screen (no feedback loop)
@@ -437,6 +460,14 @@ function startGame() {
     screens.hide();
     setHudVisible(true);
     mode = 'playing';
+    // versus is played in first person by default (V / View switches back); everything else from above
+    const s = view();
+    const versus = s.run.mode === 'versus';
+    const aimOf = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
+    keyboard.setFirstPerson(versus, aimOf(localId()));
+    padCtl.setFirstPerson(versus, aimOf(localId()));
+    padCtl2.setFirstPerson(versus, aimOf(1));
+    if (versus && !padActive) lockPointer(true);
     loop.resume();
     ensureAudio().music.playTrack('battle');
   }

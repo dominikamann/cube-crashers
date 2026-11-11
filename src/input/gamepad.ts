@@ -1,7 +1,7 @@
 import { padAt } from '../sim/systems/towers';
 import type { Command, Player, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 import { instantUse } from './context';
-import { FP_AIM, forwardOf, PAD_TURN, viewMove, yawOf } from './first-person';
+import { FP_AIM, forwardOf, lookOf, PAD_TURN, viewMove, yawOf } from './first-person';
 import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
 
 /** What we read from a browser Gamepad each frame (kept plain so it can be tested without a DOM). */
@@ -90,6 +90,12 @@ export class PadControls {
     return this.pressed(pad, PAD.START);
   }
 
+  /** switch first person on or off from outside (versus starts in it), looking along `aim` */
+  setFirstPerson(on: boolean, aim: Vec2): void {
+    this.firstPerson = on;
+    if (on) this.yaw = yawOf(aim);
+  }
+
   onEvents(events: SimEvent[]): void {
     if (events.some(e => (e.type === 'towerBuilt' || e.type === 'towerUpgrade') && e.padId === this.menuPad)) {
       this.closeMenu();
@@ -126,7 +132,7 @@ export class PadControls {
     this.lastNow = now;
     if (press(PAD.BACK)) {
       this.firstPerson = !this.firstPerson;
-      if (this.firstPerson && p) this.yaw = yawOf(p.aim);
+      if (this.firstPerson && p) this.yaw = yawOf(lookOf(p));
     }
     const move = stick(pad.axes[0] ?? 0, pad.axes[1] ?? 0, DEADZONE);
     if (this.firstPerson) {

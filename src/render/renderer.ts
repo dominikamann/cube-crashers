@@ -13,6 +13,7 @@ import { createFx } from './fx';
 import { createPickups } from './pickups';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
+import { createViewModel } from './viewmodel';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -214,6 +215,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const overlay = new THREE.Scene();
   const entities = createEntities(scene, overlay);
   const actors = createActors(scene, map);
+  const viewModel = createViewModel();
   const fx = createFx(scene);
   const pickups = createPickups(scene);
 
@@ -375,6 +377,11 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
         renderer.autoClear = false;
         renderer.render(overlay, v.camera);
+        // first person: the weapon in your hand on top of everything
+        if (v.fpYaw !== null) {
+          viewModel.update(s, v.id, time, frameDt);
+          viewModel.render(renderer, v.camera.aspect);
+        }
         renderer.autoClear = true;
       });
       if (views.length > 1) {
