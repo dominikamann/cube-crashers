@@ -19,7 +19,7 @@ export const en = {
   'mode.run': 'Tower Run',
   'mode.runHint': 'Five floors, a shaft ride and a shop between them, two bosses.',
   'mode.quick': 'Single floor',
-  'mode.quickHint': 'Just the Arcade Plaza: destroy the nests, take the elevator. A short game.',
+  'mode.quickHint': 'One floor of your choice: destroy the nests (or beat the boss), take the elevator. A short game.',
   'mode.endless': 'Endless',
   'mode.endlessHint': 'Nests keep coming back and the alarm never stops. Play for the high score.',
   'mode.locked': 'Unlock it with tickets under Unlocks.',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { HOTDOG } from '../../src/sim/config/weapons';
 import { stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Command, HeldWeapon, WeaponKind } from '../../src/sim/types';
@@ -122,17 +123,24 @@ describe('weapons', () => {
     expect(new Set(s.projectiles.map(b => b.vel.x.toFixed(3))).size).toBe(6);
   });
 
-  it('hotdog slinger leaves a mustard puddle at the aim point', () => {
+  it('hotdog slinger bursts on impact and leaves a sticky mustard puddle', () => {
     const s = quietSim();
     const p = s.players[0];
     p.pos.z = 66.5;
     p.weapons = held('hotdogSlinger');
     const target = rel(p.pos, 0, -6);
     const e = spawnEnemy(s, 'tank', target);
+    e.speed = 0;
     stepSim(s, [aimAt(target), fire]);
+    run(s, HOTDOG.flightTicks);
+    // ketchup burst on impact
+    expect(e.hp).toBeLessThanOrEqual(TANK - HOTDOG.impact);
+    // the mustard keeps hurting a little and slows whatever stands in it
+    run(s, 30);
+    expect(e.slowUntil).toBeGreaterThan(s.tick);
     run(s, 120);
-    expect(e.hp).toBeLessThan(TANK);
-    expect(e.hp).toBeGreaterThan(TANK - 40);
+    expect(e.hp).toBeLessThan(TANK - HOTDOG.impact);
+    expect(e.hp).toBeGreaterThan(TANK - HOTDOG.impact - 50);
   });
 
   it('boomerang pierces and comes back', () => {

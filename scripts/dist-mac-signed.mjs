@@ -22,7 +22,7 @@ rmSync(out, { recursive: true, force: true });
 const env = { ...process.env, APPLE_KEYCHAIN_PROFILE: process.env.APPLE_KEYCHAIN_PROFILE || 'cube-crashers' };
 const r = spawnSync(
   'npx',
-  ['electron-builder', '--mac', '--publish', 'never', `-c.directories.output=${out}`, '-c.mac.hardenedRuntime=true', '-c.mac.notarize=true', '-c.mac.entitlements=build/entitlements.mac.plist', '-c.mac.entitlementsInherit=build/entitlements.mac.plist'],
+  ['electron-builder', '--mac', '--publish', 'never', `-c.directories.output=${out}`, '-c.mac.hardenedRuntime=true', '-c.dmg.sign=true', '-c.mac.notarize=true', '-c.mac.entitlements=build/entitlements.mac.plist', '-c.mac.entitlementsInherit=build/entitlements.mac.plist'],
   { stdio: 'inherit', env },
 );
 if (r.status === 0) {

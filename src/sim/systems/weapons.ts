@@ -86,7 +86,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         launchedAt: s.tick,
         until: s.tick + (hotdog ? HOTDOG.flightTicks : BOMB.flightTicks),
         land: hotdog
-          ? { radius: HOTDOG.radius, damage, duration: HOTDOG.durationTicks, interval: HOTDOG.intervalTicks }
+          ? { radius: HOTDOG.radius, damage, duration: HOTDOG.durationTicks, interval: HOTDOG.intervalTicks, impact: HOTDOG.impact * (damage / WEAPONS.hotdogSlinger.damage), slows: true }
           : { radius: BOMB.radius, damage },
       });
       return true;

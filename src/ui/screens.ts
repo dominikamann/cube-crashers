@@ -4,6 +4,7 @@ import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
 import { ALL_RARE } from '../sim/config/rare';
+import { FLOORS, RUN_FLOORS } from '../sim/config/floors';
 import { TOWERS } from '../sim/config/towers';
 import { WEAPONS } from '../sim/config/weapons';
 import { buyUnlock, UNLOCKS, type Profile } from '../profile';
@@ -22,11 +23,13 @@ export interface Settings {
   color: number | null;
   /** players on this computer: 2 = split screen */
   localPlayers: 1 | 2;
+  /** the map of a "Single floor" game (a floor id) */
+  quickMap: string;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1 };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01' };
 
 export function loadSettings(): Settings {
   try {
@@ -308,6 +311,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   let titleMode: 'run' | 'quick' | 'endless' = 'run';
+  /** maps for "Single floor": the floors of the tower in their order */
+  const QUICK_MAPS = RUN_FLOORS.filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
   function lanScreen() {
     show('', s => {
@@ -355,7 +360,27 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             chips.append(c);
           }
           hint.textContent = modes.find(m => m.id === titleMode)!.hint;
+          // "Single floor": pick any floor of the tower, bosses included
+          maps.innerHTML = '';
+          maps.style.display = titleMode === 'quick' ? '' : 'none';
+          if (titleMode !== 'quick') return;
+          if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
+          for (const id of QUICK_MAPS) {
+            const c = document.createElement('button');
+            c.className = `chip small${id === settings.quickMap ? ' on' : ''}`;
+            c.textContent = t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : '');
+            c.addEventListener('click', () => {
+              actions.click();
+              settings.quickMap = id;
+              changed();
+              drawChips();
+            });
+            maps.append(c);
+          }
         };
+        const maps = document.createElement('div');
+        maps.className = 'chips maps';
+        main.insertBefore(maps, hint.nextSibling);
         drawChips();
         const diff = document.createElement('div');
         diff.className = 'stepper txt';

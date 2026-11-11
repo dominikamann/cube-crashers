@@ -191,6 +191,10 @@ export interface LandEffect {
   /** if set, leaves an area that pulses `damage` every `interval` ticks for `duration` ticks */
   duration?: number;
   interval?: number;
+  /** a burst of damage on landing before the area starts */
+  impact?: number;
+  /** the area slows monsters inside it */
+  slows?: boolean;
 }
 
 export interface Projectile {
@@ -233,6 +237,8 @@ export interface Area {
   interval: number;
   nextAt: number;
   until: number;
+  /** monsters inside are slowed (mustard) */
+  slows?: boolean;
 }
 
 export interface Mine {

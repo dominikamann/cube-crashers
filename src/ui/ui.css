@@ -139,6 +139,8 @@ html, body {
 .screen.title .logo { margin-bottom: clamp(16px, 5vh, 48px); }
 .title-main { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .title-main .chips { margin-top: clamp(18px, 3.5vh, 30px); }
+.title-main .maps { margin-top: 2px; max-width: 640px; }
+.chip.small { font-size: 9px; padding: 6px 9px; }
 .title-main .players { margin-bottom: clamp(14px, 2.5vh, 22px); }
 .hud-root { position: fixed; inset: 0; transform: translateZ(0); pointer-events: none; }
 .hud-root.right { display: none; }

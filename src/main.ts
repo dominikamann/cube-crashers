@@ -13,6 +13,7 @@ import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
 import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
+import { FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
 import { loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
@@ -318,7 +319,9 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     const names = split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
-    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
+    // "Single floor" plays the map chosen on the title screen
+    const first = mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
+    solo = createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }

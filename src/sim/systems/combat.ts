@@ -2,7 +2,7 @@ import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETI
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
-import { MINE } from '../config/weapons';
+import { HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
@@ -130,6 +130,7 @@ export function updateProjectiles(s: SimState): void {
       if (s.tick >= p.until) {
         const land = p.land!;
         if (land.duration) {
+          if (land.impact) explode(s, p.target!, land.radius, { enemy: land.impact }, p.kind, owner(p.ownerId));
           s.areas.push({
             id: s.nextId++,
             kind: p.kind,
@@ -140,6 +141,7 @@ export function updateProjectiles(s: SimState): void {
             interval: land.interval!,
             nextAt: s.tick,
             until: s.tick + land.duration,
+            slows: land.slows,
           });
         } else {
           explode(s, p.target!, land.radius, { enemy: land.damage }, p.kind, owner(p.ownerId));
@@ -236,6 +238,7 @@ export function updateAreas(s: SimState): void {
     if (s.tick < a.nextAt) continue;
     a.nextAt = s.tick + a.interval;
     damageInRadius(s, a.pos, a.radius, a.damage, a.kind, owner(a.ownerId));
+    if (a.slows) for (const e of s.enemies) if (dist(e.pos, a.pos) <= a.radius + e.radius) e.slowUntil = Math.max(e.slowUntil, s.tick + HOTDOG.slowTicks);
   }
 }
 
