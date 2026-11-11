@@ -31,7 +31,20 @@ describe('Keyboard', () => {
     const cmds = k.commands(s, 0, 220);
     expect(cmds.filter(c => c.type === 'build')).toEqual([{ type: 'build', playerId: 0, padId: 2, tower: 'popcorn' }]);
     expect(k.commands(s, 0, 240).filter(c => c.type === 'build')).toHaveLength(0);
+    k.onEvents([{ type: 'towerBuilt', kind: 'popcorn', padId: 2 }]);
     expect(k.buildMenuOpen).toBe(false);
+  });
+
+  it('keeps the menu open after a denied build so the cards can shake', () => {
+    const s = onPad();
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    k.commands(s, 0, 200);
+    k.keyDown('Digit1', 210);
+    k.commands(s, 0, 220);
+    k.onEvents([{ type: 'buildDenied', padId: 2, reason: 'coins' }]);
+    expect(k.buildMenuOpen).toBe(true);
+    expect(k.commands(s, 0, 240).filter(c => c.type === 'build')).toHaveLength(0);
   });
 
   it('does not open the build menu away from a pad', () => {

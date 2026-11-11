@@ -72,6 +72,7 @@ function startGame() {
     () => {
       if (mode !== 'playing') return;
       stepSim(sim, keyboard.commands(sim, 0, performance.now()));
+      keyboard.onEvents(sim.events);
       frameEvents.push(...sim.events);
     },
     (alpha, frameDt) => {

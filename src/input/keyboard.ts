@@ -1,5 +1,5 @@
 import { padAt } from '../sim/systems/towers';
-import type { Command, SimState, TowerKind } from '../sim/types';
+import type { Command, SimEvent, SimState, TowerKind } from '../sim/types';
 
 export const BUILD_HOLD_MS = 150;
 const TOWER_KEYS: Record<string, TowerKind> = { Digit1: 'laser', Digit2: 'popcorn', Digit3: 'frost', Numpad1: 'laser', Numpad2: 'popcorn', Numpad3: 'frost' };
@@ -34,6 +34,14 @@ export class Keyboard {
     this.closeMenu();
   }
 
+  /** The menu stays open until the sim confirms the build, so a denied build can shake the cards. */
+  onEvents(events: SimEvent[]): void {
+    if (events.some(e => e.type === 'towerBuilt' && e.padId === this.menuPad)) {
+      this.closeMenu();
+      this.eSince = null;
+    }
+  }
+
   chooseTower(kind: TowerKind): void {
     if (this.buildMenuOpen) this.chosen = kind;
   }
@@ -66,8 +74,7 @@ export class Keyboard {
 
     if (this.buildMenuOpen && this.chosen && this.menuPad !== null) {
       cmds.push({ type: 'build', playerId, padId: this.menuPad, tower: this.chosen });
-      this.closeMenu();
-      this.eSince = null;
+      this.chosen = null;
     }
     return cmds;
   }

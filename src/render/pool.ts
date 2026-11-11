@@ -23,6 +23,8 @@ export class InstancedPool {
 
   private create(capacity: number): THREE.InstancedMesh {
     const m = new THREE.InstancedMesh(this.geometry, this.material, capacity);
+    // white by default: three zero-fills instanceColor, which would render untinted instances black
+    m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3);
     m.castShadow = this.shadows;
     m.receiveShadow = false;
     m.frustumCulled = false;
@@ -43,10 +45,8 @@ export class InstancedPool {
       for (let i = 0; i < this.count; i++) {
         old.getMatrixAt(i, tmp.matrix);
         this.mesh.setMatrixAt(i, tmp.matrix);
-        if (old.instanceColor) {
-          old.getColorAt(i, tmpColor);
-          this.mesh.setColorAt(i, tmpColor);
-        }
+        old.getColorAt(i, tmpColor);
+        this.mesh.setColorAt(i, tmpColor);
       }
       this.scene.remove(old);
       old.dispose();
@@ -56,7 +56,7 @@ export class InstancedPool {
     tmp.scale.setScalar(scale);
     tmp.updateMatrix();
     this.mesh.setMatrixAt(this.count, tmp.matrix);
-    if (color !== undefined) this.mesh.setColorAt(this.count, tmpColor.setHex(color));
+    this.mesh.setColorAt(this.count, tmpColor.setHex(color ?? 0xffffff));
     this.count++;
   }
 

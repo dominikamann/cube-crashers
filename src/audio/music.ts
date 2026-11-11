@@ -123,6 +123,13 @@ function drum(ctx: BaseAudioContext, dest: AudioNode, kind: string, when: number
   for (const v of voices[kind] ?? []) playSynth(ctx, dest, v, when);
 }
 
+/** Skips steps whose time has already passed (timer throttled while the window was hidden). */
+export function catchUp(step: number, nextTime: number, now: number, stepDur: number): { step: number; nextTime: number } {
+  if (nextTime >= now) return { step, nextTime };
+  const missed = Math.ceil((now - nextTime) / stepDur - 1e-9);
+  return { step: step + missed, nextTime: nextTime + missed * stepDur };
+}
+
 export interface MusicPlayer {
   playTrack(id: TrackId | null): void;
   current(): TrackId | null;
@@ -158,6 +165,7 @@ export function createMusic(ctx: AudioContext, out: AudioNode): MusicPlayer {
     const t = TRACKS[trackId];
     const pats = parsed.get(trackId)!;
     const stepDur = 60 / t.bpm / 4;
+    ({ step, nextTime } = catchUp(step, nextTime, ctx.currentTime, stepDur));
     while (nextTime < ctx.currentTime + HORIZON_S) {
       const totalSteps = t.order.length * 16;
       const s = step % totalSteps;

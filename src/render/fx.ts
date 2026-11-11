@@ -112,6 +112,9 @@ export function createFx(scene: THREE.Scene): Fx {
             if (p) burst(p.pos, 1, 30, [0xff9f2e, 0xfff6d0, 0xffe14a], 4, 0.12);
             break;
           }
+          case 'bossSpawn':
+            addShake(0.4);
+            break;
           case 'baseHit':
             addShake(0.15);
             break;
