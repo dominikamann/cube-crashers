@@ -9,6 +9,7 @@ import { floorRooftop } from './floor-rooftop';
 import { floorRace } from './floor-race';
 import { floorLane } from './floor-lane';
 import { floorMaze } from './floor-maze';
+import { floorHighway } from './floor-highway';
 
 export interface FloorDef {
   map: FloorMap;
@@ -26,6 +27,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floor01.id]: { map: floor01, theme: 'plaza', kind: 'nests', name: 'floor.plaza', eliteBonus: 0 },
   [floorCandy.id]: { map: floorCandy, theme: 'candy', kind: 'nests', name: 'floor.candy', eliteBonus: 0.05 },
   [floorNeon.id]: { map: floorNeon, theme: 'neon', kind: 'nests', name: 'floor.neon', eliteBonus: 0.15 },
+  [floorHighway.id]: { map: floorHighway, theme: 'neon', kind: 'nests', name: 'floor.highway', eliteBonus: 0.15 },
   [floorArena.id]: { map: floorArena, theme: 'arena', kind: 'boss', boss: 'megaBlock', name: 'floor.arena', eliteBonus: 0 },
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
@@ -36,6 +38,13 @@ export const FLOORS: Record<string, FloorDef> = {
 
 /** the floors of a full run, bottom to top */
 export const RUN_FLOORS: string[] = [floor01.id, floorCandy.id, floorArena.id, floorNeon.id, floorRooftop.id];
+
+/** the floors of one run: the fourth is Neon City or Neon Highway, picked by the seed (same for every LAN player) */
+export function runFloors(seed: number): string[] {
+  const floors = [...RUN_FLOORS];
+  if (seed % 2 === 1) floors[3] = floorHighway.id;
+  return floors;
+}
 
 export function floorDef(mapId: string): FloorDef | undefined {
   return FLOORS[mapId];

@@ -47,6 +47,7 @@ export const en = {
   'floor.arena': 'Mega Block Arena',
   'floor.neon': 'Neon City',
   'floor.rooftop': 'Rooftop',
+  'floor.highway': 'Neon Highway',
   'floor.race': 'Kart Rally',
   'floor.lane': 'Lane Defense',
   'floor.maze': 'Glitch Maze',
