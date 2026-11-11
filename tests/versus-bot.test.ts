@@ -42,3 +42,22 @@ describe('versus bots', () => {
     expect(after).toBeLessThan(before);
   });
 });
+
+describe('versus bots and objectives', () => {
+  it('in capture the cube a bot steals the enemy cube and brings it home', () => {
+    const s = createSim(floorNeon, 3, { mode: 'versus', players: 2, versus: { mode: 'team', rule: 'capture' } });
+    // the human of the other team stays at home and does nothing
+    const bot = createVersusBot(s.players[0].id);
+    for (let i = 0; i < 150 * 60 && s.versus!.teamScores[s.players[0].team!] === 0; i++) stepSim(s, bot(s));
+    expect(s.versus!.teamScores[s.players[0].team!]).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('in king of the cube a bot goes for the zone', () => {
+    const s = createSim(floorNeon, 3, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'king' } });
+    s.players[0].pos = { x: 200, z: 200 };
+    s.players.splice(0, 1);
+    const bot = createVersusBot(s.players[0].id);
+    for (let i = 0; i < 60 * 60; i++) stepSim(s, bot(s));
+    expect(s.versus!.scores[s.players[0].id]).toBeGreaterThan(5);
+  }, 60_000);
+});

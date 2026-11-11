@@ -56,11 +56,31 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
     }
     if (tick < unstickUntil) return [{ type: 'move', playerId: id, dir: unstickDir }];
     const foes = rivals(s, id).sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos));
-    const seen = foes.find(f => d(f.pos, p.pos) < 14 && hasLos(s.map, p.pos, f.pos));
+    // the objective of the mode, if it has one: the king zone, or the cubes
+    const v = s.versus;
+    let objective: Vec2 | null = null;
+    if (v.king) objective = v.king.pos;
+    if (v.flags && p.team !== undefined) {
+      const own = v.flags[p.team], enemy = v.flags[1 - p.team];
+      if (enemy.carrier === p.id) objective = own.base;
+      else if (own.carrier === null && d(own.pos, own.base) > 0.5) objective = own.pos;
+      else if (enemy.carrier === null) objective = enemy.pos;
+      else if (own.carrier !== null) objective = s.players.find(x => x.id === own.carrier)?.pos ?? null;
+    }
+    // with an objective only fight what is close; a carrier runs home
+    const carrying = !!v.flags?.some(f => f.carrier === id);
+    const fightRange = carrying ? 4 : objective ? 9 : 14;
+    const seen = foes.find(f => d(f.pos, p.pos) < fightRange && hasLos(s.map, p.pos, f.pos));
     const target = seen ?? foes[0];
 
     let move: Vec2;
-    if (seen) {
+    if (objective && (!seen || carrying)) {
+      move = go(s, p.pos, objective);
+      if (seen) {
+        cmds.push({ type: 'aim', playerId: id, point: { ...seen.pos } });
+        if ((p.weapons[p.selected]?.cooldown ?? 1) === 0) cmds.push({ type: 'fire', playerId: id });
+      }
+    } else if (seen) {
       // fight: hold a distance that suits the weapon, circle a little
       const w = p.weapons[p.selected];
       const want = Math.min(6, (REACH[w?.kind ?? 'pixelBlaster'] ?? 6) * 0.7);
