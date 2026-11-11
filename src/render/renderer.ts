@@ -43,6 +43,8 @@ export interface GameRenderer {
   setViews(ids: number[]): void;
   /** zoomed out for a wider view (per view) */
   setZoomedOut(view: number, out: boolean): void;
+  /** the camera slides toward the aim; only for controllers, since with a mouse it would move the point under the pointer */
+  setLookAhead(view: number, on: boolean): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
@@ -132,6 +134,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     /** 1 = normal, higher = further away */
     zoom: number;
     wantZoom: number;
+    lookAhead: boolean;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -142,6 +145,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     camLook: new THREE.Vector3(at.x, 0, at.z - 2),
     zoom: 1,
     wantZoom: 1,
+    lookAhead: false,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -278,7 +282,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         }
         // look-ahead: the camera slides toward where the player aims (right stick or mouse)
         const me = s.players.find(pl => pl.id === v.id);
-        if (me && me.downUntil === null) {
+        if (me && me.downUntil === null && v.lookAhead) {
           const ax = me.aimPoint.x - me.pos.x, az = me.aimPoint.z - me.pos.z;
           const ad = Math.hypot(ax, az);
           const ahead = Math.min(ad * LOOK_AHEAD, LOOK_AHEAD_MAX);
@@ -328,6 +332,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setLocalPlayer(id) {
       if (views.length === 1) views[0].id = id;
+    },
+    setLookAhead(view, on) {
+      if (views[view]) views[view].lookAhead = on;
     },
     setZoomedOut(view, out) {
       if (views[view]) views[view].wantZoom = out ? ZOOM_OUT : 1;

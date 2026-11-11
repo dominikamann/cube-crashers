@@ -35,6 +35,19 @@ describe('PadControls', () => {
     expect(cmds).toContainEqual({ type: 'fire', playerId: 0 });
   });
 
+  it('keeps the aim when the right stick springs back to the centre (no jump from the overshoot)', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0];
+    const c = new PadControls();
+    c.commands(pad({ axes: [0, 0, 1, 0] }), s, 0, 0);
+    c.commands(pad({ axes: [0, 0, 0.6, 0] }), s, 0, 16);
+    // the stick overshoots a little past the centre on its way back
+    const back = c.commands(pad({ axes: [0, 0, 0.1, 0.45] }), s, 0, 32).find(x => x.type === 'aim');
+    if (back?.type !== 'aim') throw new Error('no aim');
+    expect(back.point.x).toBeGreaterThan(p.pos.x + 2);
+    expect(Math.abs(back.point.z - p.pos.z)).toBeLessThan(0.01);
+  });
+
   it('fires when the right stick is pushed far, without the trigger', () => {
     const s = createSim(floor01, 1);
     const c = new PadControls();

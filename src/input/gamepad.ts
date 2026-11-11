@@ -43,6 +43,8 @@ export class PadControls {
   private prev: boolean[] = [];
   private xSince: number | null = null;
   private aimDir: Vec2 = { x: 0, z: -1 };
+  /** right stick deflection last frame, to tell a push from the stick springing back */
+  private prevAim = 0;
 
   /** buttons that went down this frame */
   private pressed(pad: PadSnapshot, i: number): boolean {
@@ -94,8 +96,14 @@ export class PadControls {
 
     const aim = stick(pad.axes[2] ?? 0, pad.axes[3] ?? 0, AIM_DEADZONE);
     const aimLen = Math.hypot(aim.x, aim.z);
+    const rawAimLen = Math.hypot(pad.axes[2] ?? 0, pad.axes[3] ?? 0);
+    // a stick springing back to the centre overshoots: only a deliberate push (steady or growing) turns the aim
+    const pushing = rawAimLen >= this.prevAim - 0.08 || rawAimLen > 0.85;
+    this.prevAim = rawAimLen;
     // without the right stick the crosshair follows the walking direction
-    if (aimLen > 0) this.aimDir = { x: aim.x / aimLen, z: aim.z / aimLen };
+    if (aimLen > 0) {
+      if (pushing) this.aimDir = { x: aim.x / aimLen, z: aim.z / aimLen };
+    }
     else if (Math.hypot(move.x, move.z) > 0.3) {
       const l = Math.hypot(move.x, move.z);
       this.aimDir = { x: move.x / l, z: move.z / l };

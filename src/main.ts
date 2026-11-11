@@ -204,6 +204,8 @@ function startGame() {
       renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
+      renderer.setLookAhead(0, padActive);
+      if (split) renderer.setLookAhead(1, true);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive);
