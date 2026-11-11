@@ -5,6 +5,7 @@ import type { SimState } from '../sim/types';
 import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
+import { LANE_CORE } from '../sim/config/floor-lane';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -591,6 +592,19 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
     });
     addToScene(race);
+  }
+
+  // Lane Defense: the arcade cabinet the players defend
+  if (map.id === 'lane') {
+    const cab = new THREE.Group();
+    const body = lambert(0x3a2a6a), side = lambert(0xff2bd6), screen = glowMat(0x2bf0ff, 1.6), marquee = glowMat(0xffcf3a, 1.6);
+    cab.add(box(1.8, 2.4, 1.2, body, 0, 1.2, 0));
+    cab.add(box(0.12, 2.5, 1.25, side, -0.92, 1.25, 0), box(0.12, 2.5, 1.25, side, 0.92, 1.25, 0));
+    cab.add(box(1.4, 1.0, 0.08, screen, 0, 1.55, -0.62));
+    cab.add(box(1.6, 0.35, 0.1, marquee, 0, 2.3, -0.62));
+    cab.add(box(1.5, 0.12, 0.5, lambert(0x1a1a24), 0, 0.95, -0.75));
+    cab.position.set(LANE_CORE.x, 0, LANE_CORE.z);
+    addToScene(cab);
   }
 
   const color = new THREE.Color();

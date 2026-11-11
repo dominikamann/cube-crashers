@@ -29,6 +29,7 @@ import { dist } from '../util';
 import { dropCoins, explode } from './combat';
 import { spawnBoss } from './boss';
 import { enterRace } from './race';
+import { enterLane } from './lane';
 import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
@@ -88,6 +89,12 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   const def = floorDef(s.map.id);
+  if (def?.kind === 'lane') {
+    // Lane Defense played on its own
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    enterLane(s);
+    return;
+  }
   if (def?.kind === 'race') {
     // the Kart Rally played on its own
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;

@@ -1,4 +1,5 @@
 import { enterRace } from './race';
+import { enterLane } from './lane';
 import { CREDIT_BONUS, PAR_SECONDS, TIME_BONUS_PER_SECOND } from '../config/balance';
 import { floorDef, FLOORS } from '../config/floors';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
@@ -18,7 +19,7 @@ export function initRun(s: SimState, mode: RunMode, floors: string[]): void {
 
 /** The elevator was reached: the next stage of the run, or the end of it. */
 /** what comes after floor i of a run, before the shop */
-export const INTERMISSIONS: ('race' | 'shaft')[] = ['race', 'shaft', 'shaft', 'shaft'];
+export const INTERMISSIONS: ('race' | 'lane' | 'shaft')[] = ['race', 'lane', 'shaft', 'shaft'];
 
 export function floorCleared(s: SimState): void {
   const last = s.run.mode !== 'run' || s.run.floor >= s.run.floors.length - 1;
@@ -33,7 +34,9 @@ export function floorCleared(s: SimState): void {
   s.score += FLOOR_BONUS;
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
   // between floors: a different game each time (the shaft ride where nothing else is planned yet)
-  if (INTERMISSIONS[s.run.floor] === 'race') enterRace(s);
+  const next = INTERMISSIONS[s.run.floor];
+  if (next === 'race') enterRace(s);
+  else if (next === 'lane') enterLane(s);
   else enterShaft(s);
 }
 

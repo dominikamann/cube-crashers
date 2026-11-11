@@ -18,7 +18,7 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
-export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
@@ -384,12 +384,14 @@ export interface RunState {
   /** map ids of the floors of this run, in order */
   floors: string[];
   floor: number;
-  stage: 'floor' | 'shaft' | 'shop' | 'race';
+  stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane';
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;
   /** the Kart Rally, while it runs */
   race?: RaceState | null;
+  /** Lane Defense, while it runs: the arcade cabinet's health and the waves sent so far */
+  lane?: { coreHp: number; waves: number } | null;
 }
 
 export interface RaceState {
@@ -434,6 +436,8 @@ export type SimEvent =
   | { type: 'upgradeDenied'; padId: number; reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad'; playerId: number }
   | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
   | { type: 'raceLap'; playerId: number; lap: number }
+  | { type: 'laneLeak'; pos: Vec2; coreHp: number }
+  | { type: 'laneEnd'; coreLeft: number; coins: number }
   | { type: 'raceEnd'; laps: Record<number, number>; medal: 'gold' | 'silver' | 'bronze' | null; winners: number[] }
   | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }

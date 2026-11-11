@@ -274,7 +274,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   beacon.visible = false;
   elevator.add(beacon);
   elevator.position.set(map.elevator.x, 0, map.elevator.z);
-  elevator.visible = map.id !== 'race';
+  elevator.visible = map.id !== 'race' && map.id !== 'lane';
   scene.add(elevator);
 
   function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
@@ -507,7 +507,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     setMap(m) {
       elevator.position.set(m.elevator.x, 0, m.elevator.z);
       // the rally track has no elevator to ride
-      elevator.visible = m.id !== 'race';
+      elevator.visible = m.id !== 'race' && m.id !== 'lane';
       // towers, karts and nests of the old floor go; the next update builds the new ones
       sweep(towers, new Set());
       sweep(karts, new Set());

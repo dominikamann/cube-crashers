@@ -7,11 +7,12 @@ import { floorShaft } from './floor-shaft';
 import { floorArena } from './floor-arena';
 import { floorRooftop } from './floor-rooftop';
 import { floorRace } from './floor-race';
+import { floorLane } from './floor-lane';
 
 export interface FloorDef {
   map: FloorMap;
   theme: ThemeId;
-  kind: 'nests' | 'boss' | 'shaft' | 'race';
+  kind: 'nests' | 'boss' | 'shaft' | 'race' | 'lane';
   boss?: 'megaBlock' | 'worm';
   /** shown in the HUD */
   name: string;
@@ -28,6 +29,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
   [floorRace.id]: { map: floorRace, theme: 'race', kind: 'race', name: 'floor.race', eliteBonus: 0 },
+  [floorLane.id]: { map: floorLane, theme: 'lane', kind: 'lane', name: 'floor.lane', eliteBonus: 0 },
 };
 
 /** the floors of a full run, bottom to top */

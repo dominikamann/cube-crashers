@@ -164,6 +164,22 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         day: { ...THEMES.day, background: 0xffb48a, skyTop: 0x5a3a9a, roadA: 0x8f95a8, roadB: 0x858b9e, wallA: 0x4a5070, wallB: 0x424866, sunColor: 0xffc890, sunIntensity: 1.5 },
         night: THEMES.night,
       };
+    case 'lane': {
+      // an arcade hall at night: dark carpet, purple walls, neon trim
+      const laneLook: Theme = {
+        ...THEMES.night,
+        background: 0x1c1238,
+        skyTop: 0x07051a,
+        roadA: 0x2c2350,
+        roadB: 0x271f48,
+        wallA: 0x5a2fb0,
+        wallB: 0x4f299c,
+        fillColor: 0xff2bd6,
+        fillIntensity: 0.5,
+        glow: 2.2,
+      };
+      return { day: laneLook, night: laneLook };
+    }
     case 'race': {
       // asphalt at dusk: dark road, neon-blue barriers, warm sky on the horizon
       const raceLook: Theme = {

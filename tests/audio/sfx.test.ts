@@ -18,6 +18,8 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   towerUpgrade: { type: 'towerUpgrade', padId: 0, level: 2, playerId: 0 },
   towerDone: { type: 'towerDone', padId: 0, level: 1 },
   raceLap: { type: 'raceLap', playerId: 0, lap: 1 },
+  laneLeak: { type: 'laneLeak', pos: { x: 0, z: 0 }, coreHp: 90 },
+  laneEnd: { type: 'laneEnd', coreLeft: 1, coins: 120 },
   raceEnd: { type: 'raceEnd', laps: { 0: 2 }, medal: 'bronze', winners: [] },
   raceWreck: { type: 'raceWreck', playerId: 0, pos: { x: 0, z: 0 } },
   towerFired: { type: 'towerFired', kind: 'laser', pos: p, target: p },

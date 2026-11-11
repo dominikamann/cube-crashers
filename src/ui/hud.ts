@@ -1,5 +1,6 @@
 import { inZone } from '../sim/systems/nests';
 import { RACE } from '../sim/systems/race';
+import { LANE } from '../sim/systems/lane';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t } from '../i18n';
@@ -75,6 +76,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const raceMain = el('div', '', raceBox);
   const raceSub = el('div', 'sub', raceBox);
   let wasRace = false;
+  // Lane Defense: the cabinet's health
+  const laneBar = el('div', 'bar', raceBox);
+  const laneFill = el('i', '', laneBar);
+  let wasLane = false;
+  let lastLeakToast = -1e9;
   const holdBox = el('div', 'hold txt', layer);
   const holdText = el('div', '', holdBox);
   const holdFill = el('i', '', el('div', 'bar', holdBox));
@@ -314,6 +320,15 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'final');
             else toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
             break;
+          case 'laneLeak':
+            if (time - lastLeakToast > 2) {
+              lastLeakToast = time;
+              toast(t('lane.leak'), 'warn');
+            }
+            break;
+          case 'laneEnd':
+            toast(e.coreLeft > 0 ? t('lane.end', { pct: Math.round(e.coreLeft * 100), coins: e.coins }) : t('lane.lost'), e.coreLeft > 0 ? 'final' : 'warn');
+            break;
           case 'raceLap':
             if (e.playerId === p.id) toast(t('race.lap', { lap: e.lap }), 'good');
             break;
@@ -368,7 +383,17 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       const race = s.run.stage === 'race' ? s.run.race : null;
-      raceBox.style.display = race ? '' : 'none';
+      const lane = s.run.stage === 'lane' ? s.run.lane : null;
+      raceBox.style.display = race || lane ? '' : 'none';
+      laneBar.style.display = lane ? '' : 'none';
+      if (lane && !wasLane) toast(t('lane.start'), 'final');
+      wasLane = !!lane;
+      if (lane) {
+        const left = Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE));
+        raceMain.textContent = t('lane.hud', { time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` });
+        raceSub.textContent = '';
+        laneFill.style.width = `${(lane.coreHp / LANE.coreHp) * 100}%`;
+      }
       if (race && !wasRace) toast(t('race.start'), 'final');
       wasRace = !!race;
       if (race) {
