@@ -8,7 +8,7 @@ export const en = {
   'menu.mainMenu': 'Main menu',
   'menu.playAgain': 'Play again',
   'menu.back': 'Back',
-  'menu.controls': 'WASD move · hold E on a pad to build · 1-3 pick tower · Esc pause',
+  'menu.controls': 'WASD move · mouse aim · click fire · 1-6 weapon · Space jump · Shift dash · E use / hold E plant & build',
   'settings.title': 'Settings',
   'settings.music': 'Music',
   'settings.sfx': 'Sound effects',

@@ -1,18 +1,8 @@
 import { t } from '../i18n';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS } from '../sim/config/weapons';
 import { padAt } from '../sim/systems/towers';
-import { TICK_RATE, type SimEvent, type SimState, type WeaponKind } from '../sim/types';
-
-export const WEAPON_GLYPH: Record<WeaponKind, string> = {
-  pixelBlaster: '✦',
-  laserSword: '⚔',
-  candyCannon: '🍬',
-  hotdogSlinger: '🌭',
-  joystickBoomerang: '🪃',
-  discoBall: '🪩',
-  bananaMine: '🍌',
-  bomb: '💣',
-};
+import { WEAPON_GLYPH } from '../render/pickups';
+import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 
 export interface Hud {
   update(s: SimState, events: SimEvent[], buildMenuOpen: boolean): void;

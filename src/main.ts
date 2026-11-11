@@ -34,6 +34,7 @@ function startGame() {
   let sim: SimState = createSim(floor01, 1);
   let mode: 'title' | 'playing' | 'paused' | 'over' = 'title';
   let frameEvents: SimEvent[] = [];
+  const mouse = { x: innerWidth / 2, y: innerHeight / 3 };
   let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
 
   function ensureAudio() {
@@ -70,11 +71,14 @@ function startGame() {
   const loop = createLoop(
     () => {
       if (mode !== 'playing') return;
+      keyboard.setAim(renderer.groundPoint(mouse.x, mouse.y));
       stepSim(sim, keyboard.commands(sim, 0, performance.now()));
       keyboard.onEvents(sim.events);
       frameEvents.push(...sim.events);
     },
     (alpha, frameDt) => {
+      // the crosshair replaces the mouse pointer while playing
+      canvas.style.cursor = mode === 'playing' ? 'none' : '';
       renderer.render(sim, alpha, frameEvents, frameDt);
       hud.update(sim, frameEvents, keyboard.buildMenuOpen);
       buildMenu.update(sim, keyboard.buildMenuOpen && mode === 'playing', frameEvents);
@@ -138,6 +142,7 @@ function startGame() {
 
   addEventListener('keydown', e => {
     if (e.repeat) return;
+    if (e.code === 'Space') e.preventDefault();
     if (e.code === 'Escape' || e.code === 'KeyP') {
       if (mode === 'playing') pause();
       else if (mode === 'paused') resume();
@@ -146,6 +151,20 @@ function startGame() {
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
   });
   addEventListener('keyup', e => keyboard.keyUp(e.code));
+  addEventListener('mousemove', e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0 && mode === 'playing') keyboard.mouseDown();
+  });
+  addEventListener('mouseup', e => {
+    if (e.button === 0) keyboard.mouseUp();
+  });
+  addEventListener('wheel', e => {
+    if (mode === 'playing') keyboard.wheel(e.deltaY);
+  }, { passive: true });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('blur', pause);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pause();
@@ -165,8 +184,8 @@ function startGame() {
 
 /** Dev helper (?demo=1&warp=ticks): armed player with coins. */
 function applyDemo(sim: SimState) {
-  const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'discoBall'];
-  sim.players[0].weapons = all.map(kind => ({ kind, level: 3, cooldown: 0 }));
+  const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
+  sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
   const warp = Number(params.get('warp') ?? 0);
   for (let i = 0; i < warp; i++) stepSim(sim, []);

@@ -39,6 +39,25 @@ export function createEntities(scene: THREE.Scene): Entities {
   const plateMat = lambert(0x5f6478);
   const plates = new InstancedPool(scene, new THREE.BoxGeometry(1.35, 0.18, 1.35), plateMat, 128);
 
+  const eliteMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+  const eliteRings = new InstancedPool(scene, new THREE.RingGeometry(0.85, 1, 20).rotateX(-Math.PI / 2), eliteMat, 32, false);
+  const hornMat = glowMat(0xffe14a, 1.2);
+  const horns = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.16, 0.5), hornMat, 64);
+  const fuseMat = glowMat(0xffe14a, 3);
+  const fuses = new InstancedPool(scene, new THREE.BoxGeometry(0.12, 0.3, 0.12), fuseMat, 64, false);
+  // telegraphs: where a rammer will charge, where a bomber will blow, where a shooter aims
+  const warnMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+  const lanes = new InstancedPool(scene, new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5), warnMat, 32, false);
+  const blastRings = new InstancedPool(scene, new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
+  const hostileMat = glowMat(0xff3b3b, 4);
+  const hostile = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.28, 0.28), hostileMat, 128, false);
+  const bananaMat = lambert(0xffe135);
+  const bananas = new InstancedPool(scene, new THREE.BoxGeometry(0.5, 0.16, 0.2), bananaMat, 64);
+  const mineLightMat = glowMat(0xff3b3b, 3);
+  const mineLights = new InstancedPool(scene, new THREE.BoxGeometry(0.1, 0.1, 0.1), mineLightMat, 64, false);
+  const bombMat = lambert(0x2a2a35);
+  const bombs = new InstancedPool(scene, new THREE.BoxGeometry(0.45, 0.45, 0.45), bombMat, 32);
+
   const boltMat = glowMat(0xfff27a, 3);
   const bolts = new InstancedPool(scene, new THREE.BoxGeometry(0.18, 0.18, 0.5), boltMat, 512, false);
   const candyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x333333, roughness: 0.4 });
@@ -70,6 +89,8 @@ export function createEntities(scene: THREE.Scene): Entities {
 
   const bob = (id: number, time: number, amp: number) => Math.abs(Math.sin(time * 8 + id * 1.7)) * amp;
 
+  const tmpFrom = new THREE.Vector3();
+
   return {
     update(s, theme, time) {
       const night = theme.pointLights;
@@ -86,6 +107,10 @@ export function createEntities(scene: THREE.Scene): Entities {
       eyes.begin();
       pupils.begin();
       plates.begin();
+      const extra = [eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs];
+      for (const p of extra) p.begin();
+      warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
+      tmpFrom.y = 0.06;
 
       const slowed = (until: number) => until > s.tick;
       for (const e of s.enemies) {
@@ -93,8 +118,26 @@ export function createEntities(scene: THREE.Scene): Entities {
         const scale = e.elite ? 1.4 : 1;
         const y = (l.h / 2) * scale + bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2);
         const yaw = Math.atan2(e.dir.x, e.dir.z);
-        const tint = slowed(e.slowUntil) ? 0x9fe8ff : undefined;
-        bodies.get(e.kind)!.add(e.pos.x, y, e.pos.z, yaw, scale, tint);
+        const winding = e.state === 'windup' || e.state === 'fuse';
+        const tint = e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) ? 0x9fe8ff : undefined;
+        const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
+        bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
+        if (e.elite) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 2, e.radius * 2.2 * (1 + 0.08 * Math.sin(time * 6)));
+        if (e.kind === 'rammer') {
+          for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);
+          if (e.state === 'windup' || e.state === 'charge') {
+            tmpFrom.set(e.pos.x, 0.06, e.pos.z);
+            lanes.addStretched(tmpFrom, yaw, e.radius * 2, e.state === 'charge' ? e.chargeLeft : 12);
+          }
+        }
+        if (e.kind === 'bomber') {
+          fuses.add(e.pos.x, y + 0.45 * scale, e.pos.z, time * 10, scale * (e.state === 'fuse' ? 1.6 : 1));
+          if (e.state === 'fuse') blastRings.add(e.pos.x, 0.06, e.pos.z, 0, 2);
+        }
+        if (e.kind === 'shooter' && e.state === 'windup') {
+          tmpFrom.set(e.pos.x, 0.06, e.pos.z);
+          lanes.addStretched(tmpFrom, yaw, 0.12, 8);
+        }
         if (e.kind === 'tank') plates.add(e.pos.x, y + (l.h / 2) * scale - 0.05, e.pos.z, yaw, scale);
         const ey = y - (l.h / 2 - l.eyeY) * scale;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
@@ -108,13 +151,19 @@ export function createEntities(scene: THREE.Scene): Entities {
       }
       for (const k of KINDS) bodies.get(k)!.end();
       for (const p of [eyes, pupils, plates]) p.end();
+      hostileMat.emissiveIntensity = 4 * Math.min(theme.glow, 1.4);
 
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
       for (const p of s.projectiles) {
+        if (p.hostile) {
+          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, 1, undefined, time * 6);
+          continue;
+        }
         if (p.behavior === 'lob') {
           const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
           const y = 0.6 + 4 * 2.5 * t * (1 - t);
           if (p.kind === 'popcorn') popcorns.add(p.pos.x, y, p.pos.z, time * 6, 1, undefined, time * 5);
+          else if (p.kind === 'bomb') bombs.add(p.pos.x, y, p.pos.z, time * 5, 1, undefined, time * 7);
           else hotdogs.add(p.pos.x, y, p.pos.z, time * 4, 1, undefined, time * 8);
           continue;
         }
@@ -133,11 +182,19 @@ export function createEntities(scene: THREE.Scene): Entities {
         puddles.add(a.pos.x, 0.03, a.pos.z, 0, a.radius * (0.85 + 0.15 * fade));
       }
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.end();
+      for (const m of s.mines) {
+        bananas.add(m.pos.x, 0.1, m.pos.z, m.id);
+        bananas.add(m.pos.x, 0.18, m.pos.z, m.id + 0.5, 0.8);
+        if (s.tick >= m.armedAt && Math.floor(time * 4) % 2 === 0) mineLights.add(m.pos.x, 0.32, m.pos.z);
+      }
+      for (const p of extra) p.end();
 
       coins.begin();
       coinInner.begin();
       coinMat.emissiveIntensity = 0.35 * theme.glow;
       for (const c of s.coins) {
+        // about to vanish: blink
+        if (c.expiresAt - s.tick < 180 && Math.floor(time * 8) % 2 === 0) continue;
         const y = 0.35 + Math.sin(time * 4 + c.id) * 0.08;
         const rot = time * 3 + c.id;
         coins.add(c.pos.x, y, c.pos.z, rot);
@@ -154,27 +211,27 @@ export function createEntities(scene: THREE.Scene): Entities {
   };
 }
 
-/** 16x16 pixel crate face with a "?" (original art). */
+/** 16x16 pixel face of the token chest: purple with a gold star (original art). */
 function makeCrateTexture(): THREE.CanvasTexture {
   const rows = [
     'oooooooooooooooo',
-    'obbbbbbbbbbbbbbo',
-    'obyyyyyyyyyyyybo',
-    'obyyyywwwwyyyybo',
-    'obyyywwyywwyyybo',
-    'obyyyyyyywwyyybo',
-    'obyyyyyywwyyyybo',
-    'obyyyyywwyyyyybo',
-    'obyyyyywwyyyyybo',
-    'obyyyyyyyyyyyybo',
-    'obyyyyywwyyyyybo',
-    'obyyyyywwyyyyybo',
-    'obyyyyyyyyyyyybo',
-    'obyyyyyyyyyyyybo',
-    'obbbbbbbbbbbbbbo',
+    'oppppppppppppppo',
+    'opddddddddddddpo',
+    'opdddddyydddddpo',
+    'opdddddyydddddpo',
+    'opddddyyyyddddpo',
+    'opyyyyyyyyyyyypo',
+    'opdyyyyyyyyyydpo',
+    'opddyyyyyyyyddpo',
+    'opdddyyyyyydddpo',
+    'opddyyyyyyyyddpo',
+    'opddyyydyyyyddpo',
+    'opdyyydddyyyydpo',
+    'opddddddddddddpo',
+    'oppppppppppppppo',
     'oooooooooooooooo',
   ];
-  const pal: Record<string, string> = { o: '#5a2d0c', b: '#c2671f', y: '#ff9f2e', w: '#fff6d0' };
+  const pal: Record<string, string> = { o: '#1b1440', p: '#b07cff', d: '#5a2fa8', y: '#ffc928' };
   const c = document.createElement('canvas');
   c.width = c.height = 16;
   const ctx = c.getContext('2d')!;

@@ -51,16 +51,16 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const floor = layer(t => t === Tile.Floor, lambert(0xffffff), () => 0.4, -0.4, false);
   const walls = layer(t => t === Tile.Wall, lambert(0xffffff), c => WALL_HEIGHT + Math.floor(hash(c.tx, c.tz) * 3) * 0.2, -0.4, true);
   const lowWalls = layer(t => t === Tile.LowWall, lambert(0xffc94a), () => LOW_WALL_HEIGHT + 0.4, -0.4, true);
-  const hazardMat = glowMat(0xff2bd6, 1.1);
+  const hazardMat = glowMat(0xd81fb8, 0.6);
   layer(t => t === Tile.Hazard, hazardMat, () => 0.36, -0.4, false);
-  const boostMat = glowMat(0x2bf0ff, 0.9);
+  const boostMat = glowMat(0x1fb8d8, 0.5);
   layer(t => t === Tile.Boost, boostMat, () => 0.42, -0.4, false);
   const rampMat = glowMat(0xffe14a, 0.5);
   layer(t => t === Tile.Ramp, rampMat, () => 0.55, -0.4, false);
 
   // build pads
-  const padMat = glowMat(0x2bd8ff, 0.7);
-  const padMatActive = glowMat(0x7ffcff, 2.4);
+  const padMat = glowMat(0x157a94, 0.3);
+  const padMatActive = glowMat(0x4fe8ff, 1.2);
   const padBase = lambert(0x5a6378);
   const pads = map.pads.map(p => {
     const g = new THREE.Group();
@@ -87,8 +87,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(hash(c.tz, c.tx) > 0.5 ? theme.wallA : theme.wallB)));
         walls.mesh.instanceColor!.needsUpdate = true;
       }
-      hazardMat.emissiveIntensity = (0.8 + 0.4 * Math.sin(time * 5)) * Math.min(theme.glow, 1.4);
-      boostMat.emissiveIntensity = (0.6 + 0.4 * Math.abs(Math.sin(time * 3))) * Math.min(theme.glow, 1.4);
+      hazardMat.emissiveIntensity = (0.5 + 0.25 * Math.sin(time * 5)) * Math.min(theme.glow, 1.4);
+      boostMat.emissiveIntensity = (0.35 + 0.25 * Math.abs(Math.sin(time * 3))) * Math.min(theme.glow, 1.4);
       rampMat.emissiveIntensity = 0.5 * Math.min(theme.glow, 1.4);
       void lowWalls;
 
@@ -99,8 +99,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         p.glow.material = active ? padMatActive : padMat;
         p.glow.scale.setScalar(active ? 1 + Math.sin(time * 8) * 0.04 : 1);
       }
-      padMat.emissiveIntensity = 0.7 * Math.min(theme.glow, 1.1);
-      padMatActive.emissiveIntensity = 2.4 * Math.min(theme.glow, 1.3);
+      padMat.emissiveIntensity = 0.35 * Math.min(theme.glow, 1.3);
+      padMatActive.emissiveIntensity = 1.2 * Math.min(theme.glow, 1.3);
     },
   };
 }

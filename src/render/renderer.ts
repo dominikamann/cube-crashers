@@ -4,16 +4,19 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { FloorMap } from '../sim/map/tilemap';
-import type { SimEvent, SimState } from '../sim/types';
+import type { SimEvent, SimState, Vec2 } from '../sim/types';
 import { createActors } from './actors';
 import { createEntities } from './entities';
 import { createFx } from './fx';
+import { createPickups } from './pickups';
 import { blendTheme, THEMES } from './theme';
 import { createWorld } from './world';
 
 export interface GameRenderer {
   /** `alpha` is the fraction of a sim tick since the last step (positions are not interpolated yet). */
   render(s: SimState, alpha: number, events: SimEvent[], frameDt: number): void;
+  /** The point on the ground under a screen position, or null if the ray misses the ground. */
+  groundPoint(clientX: number, clientY: number): Vec2 | null;
   dispose(): void;
 }
 
@@ -50,8 +53,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   const world = createWorld(scene, map);
   const entities = createEntities(scene);
-  const actors = createActors(scene);
+  const actors = createActors(scene, map);
   const fx = createFx(scene);
+  const pickups = createPickups(scene);
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -64,6 +68,11 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   resize();
+
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hitPoint = new THREE.Vector3();
 
   let night = 0;
   let time = 0;
@@ -96,8 +105,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
       world.update(s, theme, time);
       entities.update(s, theme, time);
-      actors.update(s, theme, time, frameDt);
-      fx.update(s, events, theme, frameDt);
+      actors.update(s, events, theme, time, frameDt);
+      pickups.update(s, theme, time);
+      fx.update(s, events, theme, frameDt, time);
 
       const p = actors.playerPos();
       wantPos.set(p.x, 15, p.z + 11);
@@ -111,6 +121,13 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       sun.target.position.copy(camLook);
 
       composer.render();
+    },
+    groundPoint(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.ray.intersectPlane(ground, hitPoint);
+      return hit ? { x: hit.x, z: hit.z } : null;
     },
     dispose() {
       observer.disconnect();

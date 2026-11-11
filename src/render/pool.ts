@@ -70,6 +70,16 @@ export class InstancedPool {
     this.mesh.setMatrixAt(this.count - 1, tmp.matrix);
   }
 
+  /** A unit square on the ground (starting at `from`, pointing along +z) turned by `yaw`, `width` wide and `length` long. */
+  addStretched(from: THREE.Vector3, yaw: number, width: number, length: number): void {
+    this.add(from.x, from.y, from.z, yaw);
+    tmp.position.copy(from);
+    tmp.rotation.set(0, yaw, 0);
+    tmp.scale.set(width, 1, length);
+    tmp.updateMatrix();
+    this.mesh.setMatrixAt(this.count - 1, tmp.matrix);
+  }
+
   end(): void {
     this.mesh.count = this.count;
     this.mesh.instanceMatrix.needsUpdate = true;

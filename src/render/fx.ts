@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SimEvent, SimState, Vec2 } from '../sim/types';
+import type { PowerupKind, SimEvent, SimState, Vec2 } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
 import { glowMat, InstancedPool } from './pool';
 import type { Theme } from './theme';
@@ -25,10 +25,18 @@ interface Beam {
   color: number;
 }
 
-const MAX_PARTICLES = 2500;
+const MAX_PARTICLES = 3000;
+
+export const POWERUP_COLOR: Record<PowerupKind, number> = {
+  magnet: 0xff4d6d,
+  rapid: 0xffe14a,
+  bomb: 0xff8c42,
+  frost: 0x7fdcff,
+  heart: 0xff6fae,
+};
 
 export interface Fx {
-  update(s: SimState, events: SimEvent[], theme: Theme, frameDt: number): void;
+  update(s: SimState, events: SimEvent[], theme: Theme, frameDt: number, time: number): void;
   /** camera offset for screen shake */
   shake(): THREE.Vector3;
 }
@@ -39,15 +47,13 @@ export function createFx(scene: THREE.Scene): Fx {
   const cubes = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), cubeMat, 1024, false);
 
   const beams: Beam[] = [];
-  const beamMat = glowMat(0xffffff, 3);
   const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2);
-  const beamPool = new InstancedPool(scene, beamGeo, beamMat, 64, false);
-  const beamColors = new Map<number, InstancedPool>();
+  const beamPools = new Map<number, InstancedPool>();
   const beamPoolFor = (color: number) => {
-    let p = beamColors.get(color);
+    let p = beamPools.get(color);
     if (!p) {
       p = new InstancedPool(scene, beamGeo, glowMat(color, 3), 64, false);
-      beamColors.set(color, p);
+      beamPools.set(color, p);
     }
     return p;
   };
@@ -58,7 +64,7 @@ export function createFx(scene: THREE.Scene): Fx {
   let rnd = 12345;
   const rand = () => ((rnd = (rnd * 16807) % 2147483647) / 2147483647);
 
-  function burst(pos: Vec2, y: number, count: number, colors: number[], speed: number, size: number) {
+  function burst(pos: Vec2, y: number, count: number, colors: number[], speed: number, size: number, up = 1) {
     for (let i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
       const a = rand() * Math.PI * 2;
       const sp = speed * (0.4 + rand() * 0.8);
@@ -68,7 +74,7 @@ export function createFx(scene: THREE.Scene): Fx {
         y,
         z: pos.z,
         vx: Math.cos(a) * sp,
-        vy: 2 + rand() * speed,
+        vy: (2 + rand() * speed) * up,
         vz: Math.sin(a) * sp,
         life,
         maxLife: life,
@@ -79,17 +85,42 @@ export function createFx(scene: THREE.Scene): Fx {
     }
   }
 
+  /** a ring of cubes racing outward along the ground */
+  function ring(pos: Vec2, radius: number, colors: number[]) {
+    const n = Math.round(10 + radius * 8);
+    for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const life = 0.3;
+      particles.push({
+        x: pos.x,
+        y: 0.15,
+        z: pos.z,
+        vx: (Math.cos(a) * radius) / life,
+        vy: 1,
+        vz: (Math.sin(a) * radius) / life,
+        life,
+        maxLife: life,
+        size: 0.16,
+        color: colors[i % colors.length],
+        spin: 3,
+      });
+    }
+  }
+
   function addShake(amp: number) {
     shakeAmp = Math.max(shakeAmp, amp);
     shakeTime = 0.25;
+    shakeOffset.set(amp, amp * 0.5, 0);
   }
 
   function beam(from: Vec2, fy: number, to: Vec2, ty: number, color: number, life = 0.08) {
     beams.push({ from: new THREE.Vector3(from.x, fy, from.z), to: new THREE.Vector3(to.x, ty, to.z), life, color });
   }
 
+  const playerPos = (s: SimState, id: number): Vec2 | undefined => s.players.find(p => p.id === id)?.pos;
+
   return {
-    update(s, events, theme, dt) {
+    update(s, events, theme, dt, time) {
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {
@@ -101,25 +132,75 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'playerHit':
             addShake(0.06);
             break;
+          case 'playerDown':
+            addShake(0.3);
+            break;
+          case 'explosion':
+            burst(e.pos, 0.3, Math.round(20 + e.radius * 14), [0xff8c42, 0xffe14a, 0xff3b3b, 0x553344], 3 + e.radius * 1.5, 0.2);
+            ring(e.pos, e.radius, [0xffe14a, 0xff8c42]);
+            addShake(Math.min(0.4, 0.08 * e.radius));
+            break;
+          case 'stomp':
+            ring(e.pos, e.radius, [0xffffff, 0x2bf0ff]);
+            break;
+          case 'nestDestroyed':
+            burst(e.pos, 1, 220, [0x2a1040, 0xff2bd6, 0x7b4fd1, 0xffffff], 10, 0.24);
+            addShake(0.5);
+            break;
+          case 'kartRam':
+            addShake(0.05);
+            break;
+          case 'kartLand':
+            ring(e.pos, 2.5, [0xffe14a, 0xffffff]);
+            addShake(0.2);
+            break;
+          case 'kartDestroyed':
+            burst(e.pos, 0.5, 60, [0xe23b3b, 0x333344, 0xffe14a], 6, 0.2);
+            addShake(0.3);
+            break;
+          case 'enemyShot':
+            burst(e.pos, 0.7, 6, [0xff3b3b, 0xffffff], 2, 0.1);
+            break;
+          case 'comboUp': {
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 1.2, 24, [0xffc928, 0xfff3a0, 0xff2bd6], 4, 0.12);
+            break;
+          }
+          case 'cardPicked': {
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 1, 30, [0xffc928, 0x2bf0ff, 0xffffff], 4, 0.12);
+            break;
+          }
+          case 'powerupPicked': {
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 1, 30, [POWERUP_COLOR[e.kind], 0xffffff], 5, 0.14);
+            break;
+          }
           case 'towerFired':
             if (e.kind === 'laser') beam(e.pos, 2.1, e.target, 0.4, 0xff8c42, 0.09);
             if (e.kind === 'frost') burst(e.pos, 1.8, 12, [0xc8f4ff, 0x7fdcff], 5, 0.1);
             break;
           case 'shot':
             if (e.weapon === 'discoBall') {
-              const t = performance.now() / 1000;
-              const from = { x: e.pos.x + Math.cos(t * 2.5) * 2, z: e.pos.z + Math.sin(t * 2.5) * 2 };
+              const from = { x: e.pos.x + Math.cos(time * 2.5) * 1.2, z: e.pos.z + Math.sin(time * 2.5) * 1.2 };
               const near = s.enemies
-                .filter(x => x.hp > 0)
                 .map(x => ({ x, d: Math.hypot(x.pos.x - e.pos.x, x.pos.z - e.pos.z) }))
-                .filter(o => o.d <= 6)
+                .filter(o => o.d <= 5.5)
                 .sort((a, b) => a.d - b.d)
-                .slice(0, 3);
+                .slice(0, 8);
               const colors = [0xff4dd2, 0x4dd2ff, 0xffe14a];
-              near.forEach((o, i) => beam(from, 1.4, o.x.pos, 0.4, colors[i % colors.length], 0.12));
+              near.forEach((o, i) => beam(from, 1.5, o.x.pos, 0.4, colors[i % colors.length], 0.14));
             }
             break;
         }
+      }
+
+      // dash trail and smoke from damaged karts
+      for (const p of s.players) {
+        if (p.dashTicks > 0) burst(p.pos, 0.6, 3, [0x2bf0ff, 0xffffff], 1, 0.14, 0.3);
+      }
+      for (const v of s.vehicles) {
+        if (v.hp < 30 && rand() < 0.3) burst(v.pos, 0.6, 1, [0x333344, 0x666677], 0.5, 0.2);
       }
 
       cubes.begin();
@@ -147,8 +228,7 @@ export function createFx(scene: THREE.Scene): Fx {
       cubes.end();
       cubeMat.emissiveIntensity = 0.3 * theme.glow;
 
-      beamPool.begin();
-      for (const p of beamColors.values()) p.begin();
+      for (const p of beamPools.values()) p.begin();
       for (let i = beams.length - 1; i >= 0; i--) {
         const b = beams[i];
         b.life -= dt;
@@ -159,16 +239,15 @@ export function createFx(scene: THREE.Scene): Fx {
         const len = b.from.distanceTo(b.to);
         const yaw = Math.atan2(b.to.x - b.from.x, b.to.z - b.from.z);
         const pitch = -Math.asin((b.to.y - b.from.y) / Math.max(len, 0.001));
-        const pool = beamPoolFor(b.color);
-        pool.addBeam(b.from, yaw, pitch, len);
+        beamPoolFor(b.color).addBeam(b.from, yaw, pitch, len);
       }
-      beamPool.end();
-      for (const p of beamColors.values()) p.end();
+      for (const p of beamPools.values()) p.end();
 
       if (shakeTime > 0) {
         shakeTime -= dt;
         const a = shakeAmp * Math.max(0, shakeTime / 0.25);
-        shakeOffset.set((rand() - 0.5) * 2 * a, (rand() - 0.5) * 2 * a, (rand() - 0.5) * a);
+        if (a > 0) shakeOffset.set((rand() - 0.5) * 2 * a, (rand() - 0.5) * 2 * a, (rand() - 0.5) * a);
+        else shakeOffset.set(0, 0, 0);
       } else {
         shakeAmp = 0;
         shakeOffset.set(0, 0, 0);

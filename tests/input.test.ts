@@ -76,3 +76,66 @@ describe('Keyboard', () => {
     expect(k.commands(s, 0, 210).filter(c => c.type === 'build')).toEqual([{ type: 'build', playerId: 0, padId: PAD, tower: 'frost' }]);
   });
 });
+
+describe('action keys and mouse', () => {
+  const types = (k: Keyboard, s: ReturnType<typeof createSim>, now: number) => k.commands(s, 0, now).map(c => c.type);
+
+  it('sends one jump per press of Space and one dash per press of Shift', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.keyDown('Space', 0);
+    k.keyDown('ShiftLeft', 0);
+    expect(types(k, s, 10)).toEqual(expect.arrayContaining(['jump', 'dash']));
+    expect(types(k, s, 20)).not.toEqual(expect.arrayContaining(['jump']));
+    expect(types(k, s, 20)).not.toEqual(expect.arrayContaining(['dash']));
+  });
+
+  it('sends use once when E goes down and hold on every tick while it stays down', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    expect(types(k, s, 10)).toEqual(expect.arrayContaining(['use', 'hold']));
+    const second = types(k, s, 20);
+    expect(second).toContain('hold');
+    expect(second).not.toContain('use');
+    k.keyUp('KeyE');
+    expect(types(k, s, 30)).not.toContain('hold');
+  });
+
+  it('aims at the mouse point and fires while the button is held', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.setAim({ x: 3, z: 4 });
+    k.mouseDown();
+    const cmds = k.commands(s, 0, 10);
+    expect(cmds).toContainEqual({ type: 'aim', playerId: 0, point: { x: 3, z: 4 } });
+    expect(cmds).toContainEqual({ type: 'fire', playerId: 0 });
+    k.mouseUp();
+    expect(types(k, s, 20)).not.toContain('fire');
+  });
+
+  it('selects weapons with the number keys and the mouse wheel', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].weapons.push({ kind: 'bomb', level: 1, cooldown: 0 }, { kind: 'laserSword', level: 1, cooldown: 0 });
+    const k = new Keyboard();
+    k.keyDown('Digit3', 0);
+    expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: 2 });
+    s.players[0].selected = 2;
+    k.wheel(1);
+    expect(k.commands(s, 0, 20)).toContainEqual({ type: 'select', playerId: 0, slot: 0 });
+    s.players[0].selected = 0;
+    k.wheel(-1);
+    expect(k.commands(s, 0, 30)).toContainEqual({ type: 'select', playerId: 0, slot: 2 });
+  });
+
+  it('uses the number keys for towers while the build menu is open', () => {
+    const s = onPad();
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    k.commands(s, 0, 200);
+    k.keyDown('Digit2', 210);
+    const cmds = k.commands(s, 0, 220);
+    expect(cmds.some(c => c.type === 'select')).toBe(false);
+    expect(cmds.some(c => c.type === 'build')).toBe(true);
+  });
+});
