@@ -17,7 +17,13 @@ export interface Profile {
   version: 1;
   tickets: number;
   unlocked: string[];
+  /** one-off thank-you bonuses already paid out */
+  bonuses: string[];
 }
+
+/** tickets for a one-off thank-you: looking at the credits, clicking the sponsor button */
+export const BONUSES = { credits: 1, sponsor: 10 } as const;
+export type BonusId = keyof typeof BONUSES;
 
 interface Store {
   getItem(key: string): string | null;
@@ -27,14 +33,15 @@ interface Store {
 const KEY = 'cube-crashers.profile';
 const KNOWN = new Set<string>(UNLOCKS.map(u => u.id));
 
-export const defaultProfile = (): Profile => ({ version: 1, tickets: 0, unlocked: [] });
+export const defaultProfile = (): Profile => ({ version: 1, tickets: 0, unlocked: [], bonuses: [] });
 
 /** Local progress; anything missing, broken or from another version gives a fresh profile. */
 export function loadProfile(store: Store): Profile {
   try {
     const raw = JSON.parse(store.getItem(KEY) ?? 'null');
     if (!raw || raw.version !== 1 || typeof raw.tickets !== 'number' || !Array.isArray(raw.unlocked)) return defaultProfile();
-    return { version: 1, tickets: Math.max(0, Math.floor(raw.tickets)), unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)) };
+    const bonuses = Array.isArray(raw.bonuses) ? raw.bonuses.filter((x: unknown) => typeof x === 'string' && Object.hasOwn(BONUSES, x)) : [];
+    return { version: 1, tickets: Math.max(0, Math.floor(raw.tickets)), unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)), bonuses };
   } catch {
     return defaultProfile();
   }
@@ -70,4 +77,12 @@ export function buyUnlock(p: Profile, id: UnlockId): boolean {
   p.tickets -= u.cost;
   p.unlocked.push(id);
   return true;
+}
+
+/** Pays a thank-you bonus the first time; returns the tickets granted (0 if it was paid before). */
+export function claimBonus(p: Profile, id: BonusId): number {
+  if (p.bonuses.includes(id)) return 0;
+  p.bonuses.push(id);
+  p.tickets += BONUSES[id];
+  return BONUSES[id];
 }

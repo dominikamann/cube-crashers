@@ -282,3 +282,7 @@ body.split .card { width: 110px; }
 .settings-cell.colors .swatch { width: 28px; height: 28px; }
 .screen.settings .controls-help { max-width: 620px; font-size: 9px; line-height: 1.8; opacity: 0.75; }
 @media (max-width: 560px) { .settings-card { grid-template-columns: 1fr; } .settings-label { text-align: left; } }
+
+.credits-thanks { min-height: 1.6em; margin: 2px 0 6px; font-size: 10px; color: var(--gold); }
+.credits-thanks.pop { animation: thanks-pop 600ms ease-out; }
+@keyframes thanks-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }

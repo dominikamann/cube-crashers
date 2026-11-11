@@ -7,7 +7,7 @@ import { ALL_RARE } from '../sim/config/rare';
 import { FLOORS, RUN_FLOORS } from '../sim/config/floors';
 import { TOWERS } from '../sim/config/towers';
 import { WEAPONS } from '../sim/config/weapons';
-import { buyUnlock, UNLOCKS, type Profile } from '../profile';
+import { buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 
 export interface Settings {
@@ -275,7 +275,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   /** A link that opens in the browser (the desktop app hands it to the system browser). */
-  function link(parent: HTMLElement, cls: string, label: string, url: string) {
+  function link(parent: HTMLElement, cls: string, label: string, url: string, onOpen?: () => void) {
     const a = document.createElement('a');
     a.className = cls;
     a.href = url;
@@ -286,6 +286,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       e.preventDefault();
       actions.click();
       window.open(url, '_blank', 'noopener');
+      onOpen?.();
     });
     parent.append(a);
   }
@@ -324,7 +325,19 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
-      link(s, 'sponsor-badge', t('credits.support'), 'https://github.com/sponsors/dominikamann');
+      link(s, 'sponsor-badge', t('credits.support'), 'https://github.com/sponsors/dominikamann', () => thank('sponsor'));
+      // a one-off thank-you in tickets: for reading the credits, and for the sponsor button
+      const thanks = text(s, 'p', 'credits-thanks', '');
+      const thank = (id: BonusId) => {
+        const n = claimBonus(profile, id);
+        if (!n) return;
+        saveProfile();
+        thanks.textContent = t(id === 'sponsor' ? 'credits.thanksSponsor' : 'credits.thanksRead', { n });
+        thanks.classList.remove('pop');
+        void thanks.offsetWidth;
+        thanks.classList.add('pop');
+      };
+      thank('credits');
       button(s, t('menu.back'), () => back(), true);
     });
   }

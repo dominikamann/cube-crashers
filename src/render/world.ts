@@ -7,6 +7,8 @@ import type { Theme } from './theme';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
 import { MAZE_CUBES } from '../sim/config/floor-maze';
+import { logoSpots, type LogoSpot } from './logo-spots';
+import markUrl from './amannlabs-mark.png';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -157,6 +159,46 @@ function glitchTexture(): THREE.CanvasTexture {
 }
 
 /** build pads: a ring with a plus in the middle, glowing */
+/** the AmannLabs logo, loaded once and painted into each map's floor */
+let markImage: Promise<HTMLImageElement> | null = null;
+function loadMark(): Promise<HTMLImageElement> {
+  markImage ??= new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = markUrl;
+  });
+  return markImage;
+}
+
+/** a quiet floor stamp: the A on its own, or the A with "AmannLabs" next to it */
+function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: LogoSpot, px: number) {
+  const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
+  const markH = h * 0.78, markW = markH * (img.width / img.height);
+  g.save();
+  g.globalAlpha = 0.32;
+  if (spot.kind === 'mark') {
+    g.drawImage(img, x + (w - markW) / 2, y + (h - markH) / 2, markW, markH);
+  } else {
+    const size = Math.round(h * 0.42);
+    g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+    const amann = g.measureText('Amann').width;
+    g.font = `300 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+    const labs = g.measureText('Labs').width;
+    const gap = h * 0.22;
+    const total = markW + gap + amann + labs;
+    const left = x + (w - total) / 2;
+    g.drawImage(img, left, y + (h - markH) / 2, markW, markH);
+    g.fillStyle = '#2a2550';
+    g.textBaseline = 'middle';
+    g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+    g.fillText('Amann', left + markW + gap, y + h / 2);
+    g.font = `300 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
+    g.fillText('Labs', left + markW + gap + amann, y + h / 2);
+  }
+  g.restore();
+}
+
 function padTexture(): THREE.CanvasTexture {
   return canvasTexture(64, 64, g => {
     g.fillStyle = '#000000';
@@ -288,6 +330,19 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     }
   }, false);
   disposables.push(floorTex);
+  // the AmannLabs logo once or twice per map, painted in when the image is ready
+  let disposed = false;
+  const spots = logoSpots(map);
+  if (spots.length) {
+    loadMark()
+      .then(img => {
+        if (disposed) return;
+        const g = (floorTex.image as HTMLCanvasElement).getContext('2d')!;
+        for (const spot of spots) paintLogo(g, img, spot, px);
+        floorTex.needsUpdate = true;
+      })
+      .catch(() => {});
+  }
   const floorGeo = (() => {
     const pos: number[] = [], uv: number[] = [], col: number[] = [], idx: number[] = [];
     const quad = (pts: number[][], uvs: number[][], shadeV: number) => {
@@ -719,6 +774,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       padMatActive.emissiveIntensity = 1.4 * Math.min(theme.glow, 1.3);
     },
     dispose() {
+      disposed = true;
       for (const obj of added) {
         scene.remove(obj);
         obj.traverse(x => {
