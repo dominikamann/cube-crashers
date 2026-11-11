@@ -1,5 +1,5 @@
 import { PLAYER_RADIUS } from '../config/balance';
-import { rivals, VERSUS } from './versus';
+import { pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
 import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWORD, WEAPONS, levelMul } from '../config/weapons';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
@@ -64,7 +64,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         const dx = r.pos.x - p.pos.x, dz = r.pos.z - p.pos.z;
         const d = Math.hypot(dx, dz);
         if (d > radius + PLAYER_RADIUS || (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot)) continue;
-        damagePlayer(s, r, damage * VERSUS.damageScale, 'other', p.id);
+        damagePlayer(s, r, pvpDamage(damage), 'other', p.id);
       }
       return true;
     }

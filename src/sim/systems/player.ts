@@ -28,7 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
-import { rivals, VERSUS, versusDeath } from './versus';
+import { pvpDamage, rivals, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
@@ -106,7 +106,7 @@ function stomp(s: SimState, p: Player): void {
     e.knock.z += (e.pos.z - p.pos.z) * k;
   }  // versus: a stomp lands on rivals too
   for (const r of rivals(s, p.id)) {
-    if (!airborne(r) && dist(p.pos, r.pos) <= radius + PLAYER_RADIUS) damagePlayer(s, r, damage * VERSUS.damageScale, 'other', p.id);
+    if (!airborne(r) && dist(p.pos, r.pos) <= radius + PLAYER_RADIUS) damagePlayer(s, r, pvpDamage(damage), 'other', p.id);
   }
 }
 

@@ -306,6 +306,8 @@ export interface Tower {
   buildLeft: number;
   /** the work in progress is an upgrade: the tower keeps firing at its current level meanwhile */
   upgrading: boolean;
+  /** who built it (versus: it fights that player's rivals) */
+  ownerId?: number;
 }
 
 export interface Nest {

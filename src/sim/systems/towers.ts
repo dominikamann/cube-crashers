@@ -1,3 +1,5 @@
+import { rivals, VERSUS } from './versus';
+import { damagePlayer } from './player';
 import { BUILD_TICKS, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
 import { DT, TICK_RATE, type Intent, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
 import { hasLos } from '../map/tilemap';
@@ -32,7 +34,9 @@ export function tryBuild(s: SimState, playerId: number, padId: number, kind: Tow
   }
   p.coins -= def.cost;
   p.stats.towersBuilt++;
-  s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0, level: 1, buildLeft: BUILD_TICKS, upgrading: false });
+  // versus: one tower per player, a new one replaces the old
+  if (s.versus) s.towers = s.towers.filter(t => t.ownerId !== playerId);
+  s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0, level: 1, buildLeft: BUILD_TICKS, upgrading: false, ownerId: playerId });
   s.events.push({ type: 'towerBuilt', kind, padId, playerId });
 }
 
@@ -42,7 +46,8 @@ export function tryUpgrade(s: SimState, playerId: number, padId: number): void {
   const deny = (reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad') => s.events.push({ type: 'upgradeDenied', padId, reason, playerId });
   if (!p || !t || p.downUntil !== null || p.vehicleId !== null || padAt(s, p.pos) !== padId) return void deny('notOnPad');
   if (t.buildLeft > 0) return void deny('building');
-  if (t.level >= MAX_TOWER_LEVEL) return void deny('maxLevel');
+  // versus towers stay small
+  if (t.level >= MAX_TOWER_LEVEL || s.versus) return void deny('maxLevel');
   const cost = upgradeCost(t.kind, t.level + 1);
   if (p.coins < cost) return void deny('coins');
   p.coins -= cost;
@@ -82,7 +87,14 @@ function fire(s: SimState, t: Tower): boolean {
   switch (t.kind) {
     case 'laser': {
       const e = nearestEnemy(s, t.pos, def.range);
-      if (!e) return false;
+      if (!e) {
+        // versus: no monster in reach, so the nearest rival of the owner it can see
+        const r = t.ownerId === undefined ? undefined : rivals(s, t.ownerId).filter(p => dist(p.pos, t.pos) <= def.range && hasLos(s.map, t.pos, p.pos)).sort((a, b) => dist(a.pos, t.pos) - dist(b.pos, t.pos))[0];
+        if (!r) return false;
+        s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...r.pos } });
+        damagePlayer(s, r, def.damage * VERSUS.towerScale, 'shot', t.ownerId);
+        return true;
+      }
       s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...e.pos } });
       damageEnemy(s, e, def.damage, t.kind);
       return true;

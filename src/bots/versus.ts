@@ -20,6 +20,12 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
   let strafe = 1;
   let wander: Vec2 | null = null;
   let tick = 0;
+  /** where each rival was a moment ago, to aim ahead of where it runs */
+  const seenAt = new Map<number, Vec2>();
+  /** stuck detection: our position a second ago, and a sidestep while we get loose */
+  let checkPos: Vec2 | null = null;
+  let unstickUntil = 0;
+  let unstickDir: Vec2 = { x: 1, z: 0 };
 
   const go = (s: SimState, pos: Vec2, goal: Vec2): Vec2 => {
     const key = `${Math.floor(goal.x)},${Math.floor(goal.z)}`;
@@ -37,6 +43,18 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
     const p = s.players.find(x => x.id === id);
     if (!p || p.downUntil !== null || !s.versus || s.phase !== 'playing') return [];
     const cmds: Command[] = [];
+    // stuck: barely moved for a second while wanting to → sidestep for a moment
+    if (tick % 60 === 0) {
+      if (checkPos && d(checkPos, p.pos) < 0.4 && p.vehicleId === null) {
+        const a = ((tick / 60 + id) % 8) * (Math.PI / 4);
+        unstickDir = { x: Math.cos(a), z: Math.sin(a) };
+        unstickUntil = tick + 40;
+        strafe = -strafe;
+        wander = null;
+      }
+      checkPos = { ...p.pos };
+    }
+    if (tick < unstickUntil) return [{ type: 'move', playerId: id, dir: unstickDir }];
     const foes = rivals(s, id).sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos));
     const seen = foes.find(f => d(f.pos, p.pos) < 14 && hasLos(s.map, p.pos, f.pos));
     const target = seen ?? foes[0];
@@ -51,7 +69,14 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
       if (tick % 90 === 0) strafe = -strafe;
       const push = dist > want + 1 ? 1 : dist < want - 1 ? -1 : 0;
       move = { x: tx * push - tz * strafe * 0.7, z: tz * push + tx * strafe * 0.7 };
-      cmds.push({ type: 'aim', playerId: id, point: { ...seen.pos } });
+      // lead the target: aim where it will be when the shot gets there
+      const before = seenAt.get(seen.id) ?? seen.pos;
+      const vx = (seen.pos.x - before.x) * 60, vz = (seen.pos.z - before.z) * 60;
+      const flight = Math.min(0.6, dist / 20);
+      cmds.push({ type: 'aim', playerId: id, point: { x: seen.pos.x + vx * flight, z: seen.pos.z + vz * flight } });
+      // a wall in the strafing direction: turn around
+      const side = { x: p.pos.x - tz * strafe * 1.2, z: p.pos.z + tx * strafe * 1.2 };
+      if (!hasLos(s.map, p.pos, side)) strafe = -strafe;
       // the best loaded weapon in reach
       let best = -1, bestDmg = 0;
       p.weapons.forEach((wp, i) => {
@@ -78,6 +103,7 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
       move = go(s, p.pos, goal);
       if (target) cmds.push({ type: 'aim', playerId: id, point: { ...target.pos } });
     }
+    for (const f of foes) seenAt.set(f.id, { ...f.pos });
     const len = Math.hypot(move.x, move.z);
     cmds.push({ type: 'move', playerId: id, dir: len > 1 ? { x: move.x / len, z: move.z / len } : move });
     return cmds;

@@ -11,8 +11,14 @@ export const VERSUS = {
   respawnTicks: 3 * TICK_RATE,
   /** safe for a moment after (re)spawning */
   spawnInvulnTicks: Math.round(1.5 * TICK_RATE),
-  /** players are tougher than monsters: weapons do this share of their monster damage to players */
-  damageScale: 0.5,
+  /**
+   * weapons do this much of their monster damage to players (about 13 blaster hits down a player), but one
+   * hit never takes more than `maxHit`, so a bomb hurts without wiping someone out on its own
+   */
+  damageScale: 2,
+  maxHit: 45,
+  /** towers only nibble at players: this share of their monster damage */
+  towerScale: 1 / 3,
   limit: { ffa: 15, team: 30 },
   minutes: { ffa: 5, team: 6 },
   roundsToWin: 4,
@@ -21,6 +27,11 @@ export const VERSUS = {
   crateEveryTicks: 12 * TICK_RATE,
   maxCrates: 4,
 };
+
+/** what a weapon hit worth `amount` against monsters does to a player */
+export function pvpDamage(amount: number): number {
+  return Math.min(VERSUS.maxHit, amount * VERSUS.damageScale);
+}
 
 /** players `ownerId` may hurt: everyone else who is up, except teammates */
 export function rivals(s: SimState, ownerId: number): Player[] {
