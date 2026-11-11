@@ -42,7 +42,22 @@ export interface Settings {
   versusSize: number;
 }
 
-const TIP_COUNT = 15;
+const TIP_COUNT = 16;
+const FP_TIP_KEY = 'cube-crashers.fpTipSeen';
+const seen = (key: string) => {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+};
+const markSeen = (key: string) => {
+  try {
+    localStorage.setItem(key, '1');
+  } catch {
+    // storage unavailable: the tip comes back next time
+  }
+};
 const svg = (body: string) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 const ICONS = {
   settings: svg('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
@@ -306,16 +321,38 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       line.textContent = t(`tip.${tipAt}` as 'tip.0');
       tipAt = (tipAt + 1) % TIP_COUNT;
     };
-    next();
-    const timer = window.setInterval(() => {
-      if (!box.isConnected) return window.clearInterval(timer);
-      box.classList.add('fade');
-      window.setTimeout(() => {
-        next();
-        box.classList.remove('fade');
-      }, 300);
-    }, 7000);
-    box.addEventListener('click', () => next());
+    const rotate = () => {
+      next();
+      const timer = window.setInterval(() => {
+        if (!box.isConnected) return window.clearInterval(timer);
+        box.classList.add('fade');
+        window.setTimeout(() => {
+          next();
+          box.classList.remove('fade');
+        }, 300);
+      }, 7000);
+      box.addEventListener('click', () => next());
+    };
+    // the first-person tip stays until it is closed once, so everyone learns about it
+    if (!seen(FP_TIP_KEY)) {
+      box.classList.add('pinned');
+      line.textContent = t('tip.firstPerson');
+      const close = document.createElement('button');
+      close.className = 'tip-close';
+      close.textContent = '\u2715';
+      close.title = t('tip.close');
+      close.addEventListener('click', e => {
+        e.stopPropagation();
+        actions.click();
+        markSeen(FP_TIP_KEY);
+        close.remove();
+        box.classList.remove('pinned');
+        rotate();
+      });
+      box.append(close);
+      return;
+    }
+    rotate();
   }
 
   function creditsScreen() {

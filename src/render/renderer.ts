@@ -50,6 +50,8 @@ export interface GameRenderer {
    * Taken from the screen, not the world, so moving the camera never moves the point under the pointer.
    */
   setMouseLook(view: number, offset: { x: number; y: number } | null): void;
+  /** first person for view `view`, looking along `yaw` (see input/first-person); null = the normal view from above */
+  setFirstPerson(view: number, yaw: number | null): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
@@ -65,6 +67,9 @@ const LOOK_AHEAD = 0.45;
 const LOOK_AHEAD_MAX = 3;
 /** camera distance when zoomed out */
 const ZOOM_OUT = 1.5;
+/** first person: eye height above the feet, and a wider lens */
+const FP_EYE = 1.3;
+const FP_FOV = 72;
 
 /** Soft vignette and a touch of contrast and saturation: makes the colours pop without blurring anything. */
 const GradeShader = {
@@ -141,6 +146,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     wantZoom: number;
     lookAhead: boolean;
     mouseLook: { x: number; y: number } | null;
+    /** first person: the direction the eyes look, or null for the view from above */
+    fpYaw: number | null;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -153,6 +160,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     wantZoom: 1,
     lookAhead: false,
     mouseLook: null,
+    fpYaw: null,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -314,6 +322,22 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           ox += v.mouseLook.x * LOOK_AHEAD_MAX;
           oz += v.mouseLook.y * LOOK_AHEAD_MAX;
         }
+        const fov = v.fpYaw === null ? 45 : FP_FOV;
+        if (v.camera.fov !== fov) {
+          v.camera.fov = fov;
+          v.camera.updateProjectionMatrix();
+        }
+        if (v.fpYaw !== null) {
+          // first person: the eyes sit in the head, straight ahead along the view, no lag
+          const model = actors.playerModel(v.id);
+          const eyeY = (model?.position.y ?? 0) + FP_EYE;
+          const fx = -Math.sin(v.fpYaw), fz = -Math.cos(v.fpYaw);
+          v.camPos.set(p.x, eyeY, p.z);
+          v.camLook.set(p.x + fx * 10, eyeY - 0.9, p.z + fz * 10);
+          v.camera.position.copy(v.camPos).addScaledVector(shake, 0.3);
+          v.camera.lookAt(v.camLook);
+          return;
+        }
         wantPos.set(p.x + ox, 15 * v.zoom, p.z + oz + 11 * v.zoom);
         wantLook.set(p.x + ox, 0, p.z + oz - 2);
         v.camPos.lerp(wantPos, k);
@@ -341,7 +365,12 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           renderer.setScissorTest(true);
         }
         sky.mesh.position.copy(v.camera.position);
+        // first person: you do not see the inside of your own head
+        const own = v.fpYaw !== null ? actors.playerModel(v.id) : undefined;
+        const shown = own?.visible ?? false;
+        if (own) own.visible = false;
         v.composer!.render();
+        if (own) own.visible = shown;
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
         renderer.autoClear = false;
         renderer.render(overlay, v.camera);
@@ -357,6 +386,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setMouseLook(view, offset) {
       if (views[view]) views[view].mouseLook = offset;
+    },
+    setFirstPerson(view, yaw) {
+      if (views[view]) views[view].fpYaw = yaw;
     },
     setLookAhead(view, on) {
       if (views[view]) views[view].lookAhead = on;

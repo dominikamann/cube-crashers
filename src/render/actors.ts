@@ -16,6 +16,8 @@ export interface Actors {
   update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number, localIds: number[]): void;
   /** where the camera of view `i` should look */
   playerPos(i?: number): THREE.Vector3;
+  /** the model of player `id` (first person hides it for that view) */
+  playerModel(id: number): THREE.Object3D | undefined;
   /** a new floor: move the elevator */
   setMap(map: FloorMap): void;
 }
@@ -537,6 +539,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       });
     },
     playerPos: (i = 0) => foci[i],
+    playerModel: id => players.get(id)?.root,
     setMap(m) {
       elevator.position.set(m.elevator.x, 0, m.elevator.z);
       // the rally track has no elevator to ride

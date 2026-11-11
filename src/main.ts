@@ -32,14 +32,13 @@ import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, t
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
+const randomSeed = () => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
 
 if (params.has('sound')) {
   void import('./audio/soundboard').then(m => m.showSoundboard(app));
 } else {
   startGame();
 }
-
-const randomSeed = () => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
 
 function startGame() {
   app.innerHTML = '<canvas id="game"></canvas>';
@@ -178,6 +177,19 @@ function startGame() {
     app.append(d);
     return d;
   });
+  // first person: a crosshair in the middle of each view
+  const fpCross = hudRoots.map(root => {
+    const c = document.createElement('div');
+    c.className = 'fp-cross';
+    c.style.display = 'none';
+    root.append(c);
+    return c;
+  });
+  /** the mouse is captured in first person so it can turn the view */
+  const lockPointer = (on: boolean) => {
+    if (on && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
+    if (!on && document.pointerLockElement === canvas) document.exitPointerLock();
+  };
   const markers = createMarkers(hudRoots[0]);
   const hud = createHud(hudRoots[0], { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
   const buildMenu = createBuildMenu(hudRoots[0], kind => keyboard.chooseTower(kind));
@@ -282,9 +294,18 @@ function startGame() {
       renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
+      // first person: view 0 follows whichever input player 1 is using, view 1 the second pad
+      const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
+      const fp0on = !!fp0?.firstPerson && view().run.stage === 'floor';
+      renderer.setFirstPerson(0, fp0on ? fp0!.yaw : null);
+      const fp1on = split && padCtl2.firstPerson && view().run.stage === 'floor';
+      renderer.setFirstPerson(1, fp1on ? padCtl2.yaw : null);
+      fpCross[0].style.display = fp0on && mode === 'playing' ? '' : 'none';
+      fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
+      if (mode !== 'playing' || padActive || !keyboard.firstPerson) lockPointer(false);
       renderer.setLookAhead(0, padActive);
       // the mouse player's camera leans by where the pointer sits on screen (no feedback loop)
-      if (!padActive && mode === 'playing') {
+      if (!padActive && mode === 'playing' && !fp0on) {
         const r = canvas.getBoundingClientRect();
         const vw = r.width / (split ? 2 : 1);
         const clamp = (v: number) => Math.max(-1, Math.min(1, v));
@@ -609,6 +630,7 @@ function startGame() {
     if (mode !== 'paused') return;
     screens.hide();
     mode = 'playing';
+    if (keyboard.firstPerson && !padActive) lockPointer(true);
     // buttons still held from the pause menu (A on "Resume") must not jump or dash
     const pads = readPads();
     padCtl.releaseAll(split ? (pads.length >= 2 ? pads[0] : undefined) : pads[0]);
@@ -704,6 +726,8 @@ function startGame() {
       return;
     }
     if (mode === 'playing' && e.code === 'KeyZ' && !e.repeat) zoomedOut = !zoomedOut;
+    // V: first person on or off; the mouse gets captured to turn the view
+    if (mode === 'playing' && e.code === 'KeyV' && !e.repeat) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
@@ -713,9 +737,12 @@ function startGame() {
     if (Math.abs(e.movementX) + Math.abs(e.movementY) > 3) padActive = false;
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    if (document.pointerLockElement === canvas) keyboard.look(e.movementX, e.movementY);
   });
   canvas.addEventListener('mousedown', e => {
     if (e.button === 0 && mode === 'playing') keyboard.mouseDown();
+    // back from the pause menu in first person: a click captures the mouse again
+    if (mode === 'playing' && keyboard.firstPerson && !padActive) lockPointer(true);
   });
   addEventListener('mouseup', e => {
     if (e.button === 0) keyboard.mouseUp();

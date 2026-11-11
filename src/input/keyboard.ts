@@ -1,5 +1,6 @@
 import { padAt } from '../sim/systems/towers';
 import { instantUse } from './context';
+import { FP_AIM, forwardOf, MOUSE_TURN, viewMove, yawOf } from './first-person';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
 /** the build menu's cards from left to right */
@@ -17,6 +18,11 @@ export class Keyboard {
   buildMenuOpen = false;
   /** on foot, W walks toward the crosshair instead of up the screen */
   steerWithMouse = false;
+  /** first-person view (V): the mouse turns the view, W walks where it looks */
+  firstPerson = false;
+  /** where the first-person view looks (see forwardOf) */
+  yaw = 0;
+  private toggleView = false;
   private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
   menuPad: number | null = null;
@@ -49,6 +55,7 @@ export class Keyboard {
     }
     if (code === 'Space' && !this.down.has('Space')) this.jump = true;
     if (code.startsWith('Shift') && !this.down.has(code)) this.dash = true;
+    if (code === 'KeyV' && !this.down.has(code)) this.toggleView = true;
     this.down.add(code);
     if (this.buildMenuOpen) {
       if (TOWER_KEYS[code]) this.chosen = TOWER_KEYS[code];
@@ -70,6 +77,10 @@ export class Keyboard {
     this.readyPressed = true;
   }
 
+  /** mouse movement while the pointer is captured (first person): turns the view */
+  look(dx: number, _dy: number): void {
+    if (this.firstPerson) this.yaw -= dx * MOUSE_TURN;
+  }
   /** where the mouse points on the ground, or null when it is outside the game */
   setAim(point: Vec2 | null): void {
     this.aim = point;
@@ -157,8 +168,19 @@ export class Keyboard {
     this.shopKey = null;
     this.buys = [];
     this.readyPressed = false;
+    if (this.toggleView) {
+      this.toggleView = false;
+      this.firstPerson = !this.firstPerson;
+      if (this.firstPerson && p) this.yaw = yawOf(p.aim);
+    }
+    if (this.firstPerson) {
+      // first person: W walks (and drives) where the view looks, A and D step sideways
+      const d = viewMove(this.yaw, x, -z);
+      x = d.x;
+      z = d.z;
+    }
     // on foot only: a kart is always steered with the keys alone, the mouse just aims
-    if (this.steerWithMouse && p && p.vehicleId === null && this.aim) {
+    else if (this.steerWithMouse && p && p.vehicleId === null && this.aim) {
       const fx = this.aim.x - p.pos.x, fz = this.aim.z - p.pos.z;
       const fl = Math.hypot(fx, fz);
       // too close to tell a direction: keep the last one
@@ -199,7 +221,10 @@ export class Keyboard {
       this.wheelSteps = 0;
     }
 
-    if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
+    if (this.firstPerson && p) {
+      const f = forwardOf(this.yaw);
+      cmds.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * FP_AIM, z: p.pos.z + f.z * FP_AIM } });
+    } else if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
     if (this.jump) cmds.push({ type: 'jump', playerId });
     if (this.down.has('Space')) cmds.push({ type: 'fly', playerId });

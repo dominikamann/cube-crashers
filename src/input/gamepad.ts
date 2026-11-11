@@ -1,6 +1,7 @@
 import { padAt } from '../sim/systems/towers';
-import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
+import type { Command, Player, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 import { instantUse } from './context';
+import { FP_AIM, forwardOf, PAD_TURN, viewMove, yawOf } from './first-person';
 import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
 
 /** What we read from a browser Gamepad each frame (kept plain so it can be tested without a DOM). */
@@ -62,6 +63,10 @@ function stick(x: number, y: number, dead: number): Vec2 {
 export class PadControls {
   buildMenuOpen = false;
   menuPad: number | null = null;
+  /** first-person view (View button): the right stick turns, the left stick walks where it looks */
+  firstPerson = false;
+  yaw = 0;
+  private lastNow: number | null = null;
   /** the highlighted card in the build menu: X builds it */
   selected: TowerKind = DEFAULT_TOWER;
   /** the X press that is still held opened the build menu (so letting go is not "use") */
@@ -106,7 +111,6 @@ export class PadControls {
   }
 
   commands(pad: PadSnapshot, s: SimState, playerId: number, now: number): Command[] {
-    const down = (i: number) => !!pad.buttons[i]?.pressed;
     const press = (i: number) => this.pressed(pad, i);
     const out: Command[] = [];
     const p = s.players.find(pl => pl.id === playerId);
@@ -118,7 +122,24 @@ export class PadControls {
       return out;
     }
 
+    const dt = this.lastNow === null ? 0 : Math.min(0.1, Math.max(0, (now - this.lastNow) / 1000));
+    this.lastNow = now;
+    if (press(PAD.BACK)) {
+      this.firstPerson = !this.firstPerson;
+      if (this.firstPerson && p) this.yaw = yawOf(p.aim);
+    }
     const move = stick(pad.axes[0] ?? 0, pad.axes[1] ?? 0, DEADZONE);
+    if (this.firstPerson) {
+      // the right stick turns the view; the left one walks relative to it; RT fires
+      const turn = stick(pad.axes[2] ?? 0, 0, AIM_DEADZONE).x;
+      this.yaw -= turn * PAD_TURN * dt;
+      out.push({ type: 'move', playerId, dir: viewMove(this.yaw, move.x, -move.z) });
+      const f = forwardOf(this.yaw);
+      this.aimDir = f;
+      if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * FP_AIM, z: p.pos.z + f.z * FP_AIM } });
+      if ((pad.buttons[PAD.RT]?.value ?? 0) > TRIGGER_FIRE) out.push({ type: 'fire', playerId });
+      return this.actions(pad, s, p, playerId, now, out);
+    }
     out.push({ type: 'move', playerId, dir: move });
 
     const aim = stick(pad.axes[2] ?? 0, pad.axes[3] ?? 0, AIM_DEADZONE);
@@ -139,6 +160,13 @@ export class PadControls {
     if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + this.aimDir.x * reach, z: p.pos.z + this.aimDir.z * reach } });
     const rawAim = Math.hypot(pad.axes[2] ?? 0, pad.axes[3] ?? 0);
     if ((pad.buttons[PAD.RT]?.value ?? 0) > TRIGGER_FIRE || rawAim > STICK_FIRE) out.push({ type: 'fire', playerId });
+    return this.actions(pad, s, p, playerId, now, out);
+  }
+
+  /** everything but moving and aiming: jump, dash, use and build, weapons, zoom */
+  private actions(pad: PadSnapshot, s: SimState, p: Player | undefined, playerId: number, now: number, out: Command[]): Command[] {
+    const down = (i: number) => !!pad.buttons[i]?.pressed;
+    const press = (i: number) => this.pressed(pad, i);
 
     if (press(PAD.A)) out.push({ type: 'jump', playerId });
     if (down(PAD.A)) out.push({ type: 'fly', playerId });

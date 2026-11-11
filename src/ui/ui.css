@@ -291,3 +291,12 @@ body.split .card { width: 110px; }
 .lobby-group-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .lobby-group .lobby-bots { margin: 0; }
 .vote-card .chaos { color: #ff7a9a; font-size: 9px; }
+
+.fp-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); pointer-events: none; }
+.fp-cross::before, .fp-cross::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6); }
+.fp-cross::before { left: 10px; top: 0; width: 2px; height: 22px; }
+.fp-cross::after { top: 10px; left: 0; width: 22px; height: 2px; }
+
+.tip-box.pinned { border-style: solid; border-color: var(--gold); background: rgba(40, 30, 0, 0.55); padding-right: 36px; position: relative; cursor: default; }
+.tip-close { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 11px; cursor: pointer; pointer-events: auto; }
+.tip-close:hover { background: rgba(255, 255, 255, 0.35); }

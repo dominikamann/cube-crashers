@@ -317,6 +317,8 @@ export const en = {
   'build.helpUpgrade': 'E upgrades',
   'build.helpUpgradePad': 'X upgrades · B closes',
   'tip.label': 'Tip',
+  'tip.firstPerson': 'New: first-person view! In a game press V (View button on a controller). Mouse or right stick turns, W walks where you look.',
+  'tip.close': 'Got it',
   'tip.0': 'On a build pad, press E (X) to open the towers, pick one, press again to build.',
   'tip.1': 'On your tower, press E (X) to upgrade it, up to level 3. Hold E to repair it.',
   'tip.2': "Monsters can't cross a glitch floor. Use it to catch your breath.",
@@ -331,5 +333,6 @@ export const en = {
   'tip.11': 'Discovery picks a new rule, map and team setup after every match.',
   'tip.12': "On the LAN, 'Let everyone vote' puts two matches up for a 30-second vote.",
   'tip.13': 'Bots fill the LAN lobby up to the size you choose and make room when friends join.',
+  'tip.15': 'Press V (View on a controller) to play in first person, like a classic shooter.',
   'tip.14': 'Now and then a reward card offers a rare weapon. Don\'t miss it!',
 };
