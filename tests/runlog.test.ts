@@ -13,7 +13,7 @@ describe('run log', () => {
     const bot = createBot();
     for (let i = 0; i < 12 * 3600 && s.phase === 'playing'; i++) stepSim(s, bot(s));
     const log = buildRunLog(s);
-    expect(log).toMatchObject({ version: 1, seed: 1, map: 'floor01', result: 'won', score: s.score, credits: s.credits, nestsDestroyed: 4 });
+    expect(log).toMatchObject({ version: 1, seed: 1, map: 'floor01', difficulty: 'medium', result: 'won', score: s.score, credits: s.credits, nestsDestroyed: 4 });
     expect(log.durationSeconds).toBeCloseTo(s.tick / 60, 1);
     expect(log.samples).toHaveLength(Math.floor(s.tick / 600));
     const moved = log.samples.reduce((sum, x) => sum + x.distance, 0);

@@ -5,6 +5,8 @@ export interface RunLog {
   version: 1;
   seed: number;
   map: string;
+  difficulty: string;
+  mode: string;
   result: 'won' | 'lost' | 'playing';
   durationSeconds: number;
   score: number;
@@ -17,6 +19,8 @@ export interface RunLog {
   kills: Record<KillCategory, number>;
   maxCombo: number;
   damageTaken: number;
+  /** damage taken by source: contact, shot, explosion, glitch, rammer, other */
+  damageBy: Record<string, number>;
   downs: number;
   distance: number;
   /** share of the run the player did not move (0..1) */
@@ -43,6 +47,8 @@ export function buildRunLog(s: SimState): RunLog {
     version: 1,
     seed: s.seed,
     map: s.map.id,
+    difficulty: s.difficulty,
+    mode: s.run.mode,
     result: s.phase,
     durationSeconds: s.tick / TICK_RATE,
     score: s.score,
@@ -55,6 +61,7 @@ export function buildRunLog(s: SimState): RunLog {
     kills: { ...s.stats.kills },
     maxCombo: s.stats.maxCombo,
     damageTaken: Math.round(s.stats.damageTaken),
+    damageBy: Object.fromEntries(Object.entries(s.stats.damageBy).map(([k, v]) => [k, Math.round(v)])),
     downs: s.stats.downs,
     distance: s.stats.distance,
     idleShare: s.tick > 0 ? s.stats.idleTicks / s.tick : 0,

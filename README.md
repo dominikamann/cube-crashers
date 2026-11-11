@@ -319,11 +319,15 @@ Chosen on the title screen (alone) or in the lobby (by the host).
 
 | Level | Monster health | Monster damage | Horde size | Credits | Alarm speed | Points |
 |---|---|---|---|---|---|---|
-| Ultra Low | ×0.6 | ×0.5 | ×0.6 | 5 | slower | ×0.5 |
-| Low | ×0.8 | ×0.75 | ×0.8 | 4 | slower | ×0.75 |
+| Ultra Low | ×0.5 | ×0.35 | ×0.5 | 6 | half speed | ×0.5 |
+| Low | ×0.75 | ×0.6 | ×0.75 | 4 | slower | ×0.75 |
 | Medium | ×1 | ×1 | ×1 | 3 | normal | ×1 |
 | High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
 | Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |
+
+On **Ultra Low** and **Low** you heal slowly (6 or 3 health per second) after 4 seconds without being hit.
+On every level, a crowd of monsters around you hurts less than the sum of its members: the strongest one hits in
+full, every further one at 30 %.
 
 The best five scores are kept per difficulty; endless mode has its own list.
 

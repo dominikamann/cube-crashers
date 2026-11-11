@@ -177,10 +177,10 @@ describe('difficulty', () => {
     expect(fresh.alarm.nextAt).toBe(Math.round(ALARM_TICKS / DIFFICULTY.ultraHigh.alarmSpeed));
   });
 
-  it('Ultra Low has 5 credits and smaller hordes', () => {
+  it('Ultra Low has 6 credits and hordes of half the size', () => {
     const s = team(1, 'ultraLow');
-    expect(s.credits).toBe(5);
+    expect(s.credits).toBe(6);
     spawnHorde(s, { x: 15.5, z: 5.5 }, [{ kind: 'blob', count: 10 }]);
-    expect(s.enemies).toHaveLength(6);
+    expect(s.enemies).toHaveLength(5);
   });
 });

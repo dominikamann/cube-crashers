@@ -105,7 +105,7 @@ export function explode(
   s.events.push({ type: 'explosion', pos: { ...pos }, radius });
   if (damage.enemy) damageInRadius(s, pos, radius, damage.enemy, source, byPlayerId);
   if (damage.player) {
-    for (const p of s.players) if (!airborne(p) && dist(p.pos, pos) <= radius) damagePlayer(s, p, damage.player);
+    for (const p of s.players) if (!airborne(p) && dist(p.pos, pos) <= radius) damagePlayer(s, p, damage.player, 'explosion');
   }
   if (damage.tower) {
     for (const t of s.towers) if (dist(t.pos, pos) <= radius) t.hp -= damage.tower;
@@ -206,7 +206,7 @@ export function updateProjectiles(s: SimState): void {
 
     if (p.hostile) {
       const victim = s.players.find(pl => pl.downUntil === null && !airborne(pl) && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING);
-      if (victim) damagePlayer(s, victim, p.damage);
+      if (victim) damagePlayer(s, victim, p.damage, 'shot');
       else keep.push(p);
       continue;
     }

@@ -7,6 +7,10 @@ export const DOWN_COIN_LOSS = 0.25;
 export const PLAYER_SPEED = 6;
 export const PLAYER_RADIUS = 0.4;
 export const PLAYER_HP = 100;
+/** easy levels: healing starts this long after the last hit */
+export const REGEN_DELAY_TICKS = 240;
+/** every monster touching you beyond the strongest one adds only this share of its contact damage */
+export const CROWD_CONTACT_SHARE = 0.3;
 
 export const JUMP_TICKS = 30;
 export const STOMP_RADIUS = 1.2;

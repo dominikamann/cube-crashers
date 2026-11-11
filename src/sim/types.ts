@@ -125,6 +125,8 @@ export interface Player {
   jetpack: boolean;
   /** ticks Space has been held in a row */
   flyHold: number;
+  /** tick of the last damage taken (for healing on easy levels) */
+  lastDamageAt: number;
   jetFuel: number;
   flying: boolean;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
@@ -274,6 +276,9 @@ export interface Offer {
   expiresAt: number;
 }
 
+/** what hurt a player (for the run log) */
+export type HurtSource = 'contact' | 'shot' | 'explosion' | 'glitch' | 'rammer' | 'other';
+
 export interface Tower {
   id: number;
   kind: TowerKind;
@@ -386,6 +391,7 @@ export interface RunStats {
   kills: Record<KillCategory, number>;
   maxCombo: number;
   damageTaken: number;
+  damageBy: Record<HurtSource, number>;
   downs: number;
   distance: number;
   idleTicks: number;

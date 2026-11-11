@@ -16,10 +16,11 @@ import {
   STOMP_DAMAGE,
   STOMP_KNOCKBACK,
   STOMP_RADIUS,
+  REGEN_DELAY_TICKS,
 } from '../config/balance';
 import { JETPACK } from '../config/rare';
 import { BLOCKS_AIR, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { DT, type Intent, type Player, type SimState } from '../types';
+import { DT, type HurtSource, type Intent, type Player, type SimState } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
@@ -29,7 +30,7 @@ import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { updateFlight } from './rare';
 import { damageVehicle } from './vehicles';
 
-export function damagePlayer(s: SimState, p: Player, amount: number): void {
+export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other'): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
   amount *= DIFFICULTY[s.difficulty].enemyDamage;
   if (p.vehicleId !== null) {
@@ -37,7 +38,9 @@ export function damagePlayer(s: SimState, p: Player, amount: number): void {
     return;
   }
   p.hp = Math.max(0, p.hp - amount);
+  p.lastDamageAt = s.tick;
   s.stats.damageTaken += amount;
+  s.stats.damageBy[source] += amount;
   // continuous damage (contact, glitch floor) would report a hit every tick; four times a second is enough
   if (s.tick - p.lastHitEventAt >= HIT_EVENT_TICKS || amount >= 5 || p.hp <= 0) {
     p.lastHitEventAt = s.tick;
@@ -106,6 +109,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
   }
 
   if (p.perks.regen > 0) p.hp = Math.min(p.maxHp, p.hp + p.perks.regen * DT);
+  const easyRegen = DIFFICULTY[s.difficulty].regen;
+  if (easyRegen > 0 && p.downUntil === null && s.tick - p.lastDamageAt >= REGEN_DELAY_TICKS) p.hp = Math.min(p.maxHp, p.hp + easyRegen * DT);
 
   if (p.combo > 0 && s.tick >= p.comboUntil) {
     if (comboMult(p) > 1) s.events.push({ type: 'comboLost', playerId: p.id });
@@ -185,7 +190,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
 
     if (p.air === 0) {
       const tile = tileAt(s.map, p.pos.x, p.pos.z);
-      if (tile === Tile.Hazard) damagePlayer(s, p, HAZARD_DPS * DT);
+      if (tile === Tile.Hazard) damagePlayer(s, p, HAZARD_DPS * DT, 'glitch');
       if (tile === Tile.Boost) {
         if (s.tick >= p.boostUntil) s.events.push({ type: 'boost', playerId: p.id });
         p.boostUntil = s.tick + BOOST_TICKS;

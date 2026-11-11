@@ -1,4 +1,4 @@
-import { ALARM_SPEED_STEP, BOMBER, FLOW_REBUILD_TICKS, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, CROWD_CONTACT_SHARE, FLOW_REBUILD_TICKS, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
@@ -102,7 +102,7 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
   for (const p of players) {
     if (airborne(p) || s.tick < p.invulnUntil) continue;
     if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
-    damagePlayer(s, p, RAMMER.damage);
+    damagePlayer(s, p, RAMMER.damage, 'rammer');
     moveCircle(s.map, p.pos, e.dir.x * 1.5, e.dir.z * 1.5, PLAYER_RADIUS, BLOCKS_WALKER);
     stun(RAMMER.hitStunTicks);
     return;
@@ -174,15 +174,19 @@ function flySwarmer(s: SimState, e: Enemy, players: Player[]): void {
   e.pos.z = Math.min(s.map.h - 0.5, Math.max(0.5, e.pos.z));
 }
 
+/** Monsters touching a player hurt: the strongest in full, every further one only in part, so a crowd is not instant death. */
 function contactDamage(s: SimState, players: Player[]): void {
-  for (const e of s.enemies) {
-    if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;
-    const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
-    if (dps === 0) continue;
-    for (const p of players) {
-      if (airborne(p) || p.vehicleId !== null) continue;
-      if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, dps * DT);
+  for (const p of players) {
+    if (airborne(p) || p.vehicleId !== null) continue;
+    let strongest = 0, total = 0;
+    for (const e of s.enemies) {
+      if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;
+      if (dist(p.pos, e.pos) >= e.radius + PLAYER_RADIUS) continue;
+      const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
+      total += dps;
+      strongest = Math.max(strongest, dps);
     }
+    if (total > 0) damagePlayer(s, p, (strongest + CROWD_CONTACT_SHARE * (total - strongest)) * DT, 'contact');
   }
 }
 
