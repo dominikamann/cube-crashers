@@ -31,6 +31,7 @@ export function tryBuild(s: SimState, playerId: number, padId: number, kind: Tow
     return;
   }
   p.coins -= def.cost;
+  p.stats.towersBuilt++;
   s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0, level: 1, buildLeft: BUILD_TICKS, upgrading: false });
   s.events.push({ type: 'towerBuilt', kind, padId, playerId });
 }

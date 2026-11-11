@@ -1,5 +1,5 @@
 import { SAMPLE_TICKS } from '../config/balance';
-import { TICK_RATE, type DamageSource, type KillCategory, type SimState } from '../types';
+import { TICK_RATE, type DamageSource, type KillCategory, type PlayerStats, type SimState } from '../types';
 
 export function killCategory(source: DamageSource): KillCategory {
   switch (source) {
@@ -34,4 +34,11 @@ export function sampleStats(s: SimState): void {
     kills: totalKills(s),
     alarm: s.alarm.level,
   });
+}
+
+/** what a player killed the most with, or null before the first kill */
+export function bestWeapon(stats: PlayerStats): string | null {
+  let best: string | null = null;
+  for (const [k, n] of Object.entries(stats.killsBy)) if (best === null || n > stats.killsBy[best]) best = k;
+  return best;
 }

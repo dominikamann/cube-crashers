@@ -3,6 +3,9 @@ import type { LobbyPlayer } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
+import { ALL_RARE } from '../sim/config/rare';
+import { TOWERS } from '../sim/config/towers';
+import { WEAPONS } from '../sim/config/weapons';
 import { buyUnlock, UNLOCKS, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 
@@ -77,8 +80,14 @@ export interface RunSummary {
   difficulty: Difficulty;
   /** tickets earned for unlocks */
   tickets: number;
-  /** co-op: one row per player, best first */
-  ranking?: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number }[];
+  /** unlocks earned by this run (e.g. Endless for beating the Tower Run) */
+  unlocked: string[];
+  won: boolean;
+  mode: string;
+  /** floors cleared */
+  floors: number;
+  /** one row per player, best first */
+  ranking: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number; bestWeapon: string | null; coins: number; towers: number }[];
 }
 
 export interface ScreenActions {
@@ -159,6 +168,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
 
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   const nextDiff = (d: Difficulty) => DIFFICULTIES[(DIFFICULTIES.indexOf(d) + 1) % DIFFICULTIES.length];
+  /** a kill source as players know it: weapon, rare weapon, tower or move */
+  const sourceName = (k: string | null) => {
+    if (!k) return '–';
+    if (k in WEAPONS) return t(`weapon.${k}` as 'weapon.pixelBlaster');
+    if ((ALL_RARE as readonly string[]).includes(k)) return t(`rare.${k}` as 'rare.slushMachine');
+    if (k in TOWERS) return t(`tower.${k}` as 'tower.laser');
+    return t(`source.${k}` as 'source.stomp');
+  };
   const hex = (c: number) => `#${PLAYER_COLORS[c % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`;
 
   function nameField(parent: HTMLElement) {
@@ -403,36 +420,42 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       });
     },
     result(won, r, again) {
-      show('', s => {
-        text(s, 'h2', '', t(won ? 'won.title' : 'lost.title'));
+      show('result', s => {
+        // a won Tower Run gets its own headline: the whole tower is done
+        const title = won && r.mode === 'run' ? t('won.run') : t(won ? 'won.title' : 'lost.title');
+        text(s, 'h2', '', title);
         if (!won) text(s, 'p', '', t('lost.subtitle'));
-        text(s, 'p', '', t(`difficulty.${r.difficulty}`));
-        text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
-        if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
-        if (r.ranking && r.ranking.length > 1) {
-          const table = document.createElement('table');
-          table.className = 'ranking txt';
-          table.innerHTML = `<tr><th></th><th>${t('rank.player')}</th><th>${t('rank.score')}</th><th>${t('rank.kills')}</th><th>${t('rank.combo')}</th><th>${t('rank.revives')}</th><th>${t('rank.downs')}</th></tr>`;
-          r.ranking.forEach((row, i) => {
-            const tr = document.createElement('tr');
-            const cells = [`${i + 1}.`, row.name, row.score, row.kills, row.bestCombo, row.revives, row.downs];
-            cells.forEach((c, j) => {
-              const td = document.createElement('td');
-              td.textContent = String(c);
-              if (j === 1) td.style.color = hex(row.color);
-              tr.append(td);
-            });
-            table.append(tr);
-          });
-          s.append(table);
-        }
-        if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
-        text(s, 'p', '', t('result.stats', { time: `${m}:${sec}`, kills: r.kills, combo: r.maxCombo, credits: r.credits, nests: `${r.nestsDestroyed}/${r.nests}` }));
+        text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors })}` : ''}`);
+        text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
+        if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
+        for (const u of r.unlocked) text(s, 'p', 'newbest', t('result.unlocked', { name: t(`unlock.${u}` as 'unlock.endless') }));
+        if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
+
+        const table = document.createElement('table');
+        table.className = 'ranking txt';
+        const head = ['', t('rank.player'), t('rank.score'), t('rank.kills'), t('rank.weapon'), t('rank.combo'), t('rank.towers'), t('rank.coins'), t('rank.revives'), t('rank.downs')];
+        table.innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>`;
+        r.ranking.forEach((row, i) => {
+          const tr = document.createElement('tr');
+          const cells = [i === 0 && r.ranking.length > 1 ? '\u2605' : `${i + 1}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
+          cells.forEach((c, j) => {
+            const td = document.createElement('td');
+            td.textContent = String(c);
+            if (j === 1) td.style.color = hex(row.color);
+            tr.append(td);
+          });
+          table.append(tr);
+        });
+        s.append(table);
+        text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
         text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
-        if (again) button(s, again.label, again.action, true);
-        else button(s, t('menu.playAgain'), actions.play, true);
-        button(s, t('menu.mainMenu'), actions.mainMenu);
+        const row = document.createElement('div');
+        row.className = 'row2';
+        s.append(row);
+        if (again) button(row, again.label, again.action, true);
+        else button(row, t('menu.playAgain'), actions.play, true);
+        button(row, t('menu.mainMenu'), actions.mainMenu);
       });
     },
     lobby(players, difficulty, isHost, me, lan) {

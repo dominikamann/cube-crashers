@@ -4,6 +4,9 @@ import { PERK_MAX } from '../../src/sim/config/perks';
 import { POPCORN_FLIGHT, TOWERS } from '../../src/sim/config/towers';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
+import { damageEnemy } from '../../src/sim/systems/combat';
+import { bestWeapon } from '../../src/sim/systems/stats';
+import { BOSS_BODY_RESIST } from '../../src/sim/config/balance';
 import { takeCard } from '../../src/sim/systems/offers';
 import { enterFloor } from '../../src/sim/systems/run';
 import { quietSim } from './helpers';
@@ -48,5 +51,38 @@ describe('review fixes', () => {
     expect(shell!.target!.x).toBeCloseTo(e.pos.x + e.dir.x * lead, 0);
     expect(shell!.target!.z).toBeCloseTo(e.pos.z + e.dir.z * lead, 0);
     void TOWERS;
+  });
+});
+
+describe('bosses and stomps', () => {
+  it('bosses take only a quarter of stomp and kart damage, full damage from weapons', () => {
+    const s = quietSim();
+    const seg = spawnEnemy(s, 'wormSegment', { x: 30.5, z: 40.5 });
+    const hp = seg.hp;
+    damageEnemy(s, seg, 20, 'stomp', 0);
+    expect(seg.hp).toBeCloseTo(hp - 20 * BOSS_BODY_RESIST, 5);
+    damageEnemy(s, seg, 20, 'kart', 0);
+    expect(seg.hp).toBeCloseTo(hp - 40 * BOSS_BODY_RESIST, 5);
+    damageEnemy(s, seg, 20, 'pixelBlaster', 0);
+    expect(seg.hp).toBeCloseTo(hp - 40 * BOSS_BODY_RESIST - 20, 5);
+  });
+
+});
+
+describe('per-player stats for the result screen', () => {
+  it('counts each player kills by weapon, coins collected and towers built', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    const a = spawnEnemy(s, 'blob', { x: 30.5, z: 40.5 });
+    const b = spawnEnemy(s, 'blob', { x: 31.5, z: 40.5 });
+    const c = spawnEnemy(s, 'blob', { x: 32.5, z: 40.5 });
+    damageEnemy(s, a, 999, 'candyCannon', p.id);
+    damageEnemy(s, b, 999, 'candyCannon', p.id);
+    damageEnemy(s, c, 999, 'stomp', p.id);
+    expect(p.stats.killsBy).toEqual({ candyCannon: 2, stomp: 1 });
+    expect(bestWeapon(p.stats)).toBe('candyCannon');
+    s.coins.push({ id: 777, pos: { ...p.pos }, value: 3, expiresAt: s.tick + 100 });
+    stepSim(s, []);
+    expect(p.stats.coins).toBe(3);
   });
 });

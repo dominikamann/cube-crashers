@@ -68,7 +68,7 @@ export function createPlayer(id: number, pos: Vec2, name = defaultName(id), colo
     rareSelected: false,
     reviveUntil: null,
     reviveProgress: 0,
-    stats: { kills: 0, revives: 0, downs: 0, bestCombo: 0, score: 0 },
+    stats: { kills: 0, killsBy: {}, coins: 0, towersBuilt: 0, revives: 0, downs: 0, bestCombo: 0, score: 0 },
   };
 }
 

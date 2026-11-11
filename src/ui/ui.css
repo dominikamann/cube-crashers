@@ -73,6 +73,9 @@ html, body {
 .toast { font-size: clamp(14px, 2.2vw, 24px); text-align: center; white-space: nowrap; animation: toast 1.8s ease-out forwards; }
 .toast.warn { color: var(--red); }
 .toast.good { color: var(--green); }
+.toast.final { font-size: clamp(22px, 4vw, 44px); color: var(--gold); text-shadow: 4px 4px 0 var(--pink), 7px 7px 0 var(--shadow); animation: toast 3.8s ease-out forwards; }
+.boss.final { color: var(--gold); }
+.boss.final .bar > i { background: linear-gradient(90deg, var(--gold), var(--pink)); }
 @keyframes toast { 0% { opacity: 0; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }
 
 .hud-bottom { position: absolute; bottom: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
@@ -217,5 +220,6 @@ body.split .card { width: 110px; }
 .lobby-row i { width: 18px; height: 18px; border: 2px solid var(--shadow); }
 .blinking { animation: blink 1s steps(2) infinite; }
 .ranking { border-collapse: collapse; font-size: 11px; background: var(--panel); }
-.ranking th, .ranking td { padding: 8px 12px; border-bottom: 2px solid var(--shadow); text-align: left; }
+.screen.result { justify-content: flex-start; overflow-y: auto; padding-top: clamp(16px, 5vh, 48px); gap: 12px; }
+.ranking th, .ranking td { padding: 6px 10px; font-size: 10px; border-bottom: 2px solid var(--shadow); text-align: left; }
 .ranking th { color: var(--cyan); font-size: 9px; }

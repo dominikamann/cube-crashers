@@ -72,6 +72,10 @@ export interface HeldWeapon {
 
 export interface PlayerStats {
   kills: number;
+  /** kills by what did them (weapon kind, rare weapon, stomp, dash, kart, ...) */
+  killsBy: Record<string, number>;
+  coins: number;
+  towersBuilt: number;
   revives: number;
   downs: number;
   bestCombo: number;

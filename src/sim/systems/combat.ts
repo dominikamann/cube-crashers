@@ -1,4 +1,4 @@
-import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
@@ -34,6 +34,7 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  */
 export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
   if (e.hp <= 0) return;
+  if ((e.kind === 'megaBlock' || e.kind === 'wormSegment') && (source === 'stomp' || source === 'kart')) amount *= BOSS_BODY_RESIST;
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;
   s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt });
@@ -59,6 +60,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
     s.stats.maxCombo = Math.max(s.stats.maxCombo, p.combo);
     p.stats.bestCombo = Math.max(p.stats.bestCombo, p.combo);
     p.stats.kills++;
+    p.stats.killsBy[source] = (p.stats.killsBy[source] ?? 0) + 1;
   }
   const points = Math.round(def.score * (e.elite ? ELITE.score : 1) * mult * DIFFICULTY[s.difficulty].score);
   s.score += points;

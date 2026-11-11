@@ -57,6 +57,13 @@ export function ticketsForRun(r: { score: number; floors: number; difficulty: Di
   return Math.max(1, Math.round(base * DIFF_FACTOR[r.difficulty]));
 }
 
+/** Rewards beyond tickets: beating the Tower Run unlocks Endless. Returns what was newly unlocked. */
+export function rewardForRun(p: Profile, r: { mode: string; won: boolean }): UnlockId[] {
+  if (r.mode !== 'run' || !r.won || p.unlocked.includes('endless')) return [];
+  p.unlocked.push('endless');
+  return ['endless'];
+}
+
 export function buyUnlock(p: Profile, id: UnlockId): boolean {
   const u = UNLOCKS.find(x => x.id === id);
   if (!u || p.unlocked.includes(id) || p.tickets < u.cost) return false;

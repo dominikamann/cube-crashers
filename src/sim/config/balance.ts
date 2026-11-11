@@ -16,6 +16,8 @@ export const JUMP_TICKS = 30;
 export const STOMP_RADIUS = 1.2;
 export const STOMP_DAMAGE = 15;
 export const STOMP_KNOCKBACK = 6;
+/** bosses take only this share of stomp and kart damage: they have to be shot */
+export const BOSS_BODY_RESIST = 0.25;
 
 export const DASH_TICKS = 9;
 /** 4 tiles in 0.15 s */

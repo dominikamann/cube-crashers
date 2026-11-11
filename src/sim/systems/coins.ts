@@ -20,6 +20,7 @@ export function updateCoins(s: SimState): void {
     if (!nearest) return s.tick < c.expiresAt;
     if (nearestD <= PICKUP_RADIUS) {
       nearest.coins += c.value;
+      nearest.stats.coins += c.value;
       nearest.coinStreak = s.tick - nearest.lastCoinTick <= STREAK_WINDOW_TICKS ? nearest.coinStreak + 1 : 1;
       nearest.lastCoinTick = s.tick;
       if (nearest.combo > 0) nearest.comboUntil = s.tick + COMBO_TICKS;

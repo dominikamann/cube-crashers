@@ -37,6 +37,9 @@ export interface ShopActions {
   ready(): void;
 }
 
+/** the last floor of a run: its boss is the final boss */
+const isFinalFloor = (s: SimState) => s.run.mode === 'run' && s.run.floor === s.run.floors.length - 1;
+
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud', root);
   let padMode: string | null = null;
@@ -131,9 +134,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let lastWeaponsKey = '';
   let lastDash = '';
 
-  function toast(text: string, kind: '' | 'warn' | 'good' = '') {
+  function toast(text: string, kind: '' | 'warn' | 'good' | 'final' = '') {
     const e = el('div', `toast txt ${kind}`, toasts, text);
-    setTimeout(() => e.remove(), 1900);
+    setTimeout(() => e.remove(), kind === 'final' ? 3900 : 1900);
     while (toasts.childElementCount > 4) toasts.firstElementChild!.remove();
   }
 
@@ -297,7 +300,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('toast.nestBack'), 'warn');
             break;
           case 'bossSpawn':
-            toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
+            if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'final');
+            else toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
             break;
           case 'floorStart':
             toast(t('toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
@@ -348,7 +352,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       layer.classList.toggle('has-bar', !!s.boss || holdBox.style.display === '');
       if (s.boss) {
         bossBox.style.display = '';
-        bossName.textContent = t(s.boss.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock');
+        const name = t(s.boss.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock');
+        bossName.textContent = isFinalFloor(s) ? t('boss.final', { name }) : name;
+        bossBox.classList.toggle('final', isFinalFloor(s));
         bossFill.style.width = `${Math.max(0, bossHp(s) / s.boss.maxHp) * 100}%`;
       } else bossBox.style.display = 'none';
       minimap.update(s, time, p.id);

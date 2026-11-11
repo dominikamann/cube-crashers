@@ -150,6 +150,7 @@ See [Development](#development). You need Node.js 20 or newer.
   and calls reinforcements. Get out of the marked areas.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
+- The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
 - Weapons, perks, coins and credits come with you to the next floor. Towers, karts, monsters and the alarm start
   fresh. Beat the Segment Worm and take the last elevator to win the run.
 
@@ -157,7 +158,7 @@ See [Development](#development). You need Node.js 20 or newer.
 
 ## Unlocks and endless mode
 
-After every run you earn **tickets** (from your score, the floors you cleared and the difficulty). Spend them
+Beating the Tower Run unlocks **Endless mode** right away. After every run you earn **tickets** (from your score, the floors you cleared and the difficulty). Spend them
 under **Unlocks** on the title screen:
 
 | Unlock | What it is |

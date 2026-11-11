@@ -15,7 +15,8 @@ import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
-import { loadProfile, saveProfile, ticketsForRun } from './profile';
+import { loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
+import { bestWeapon } from './sim/systems/stats';
 import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
@@ -251,9 +252,11 @@ function startGame() {
     const floors = s.run.floor + (s.phase === 'won' ? 1 : 0);
     const n = ticketsForRun({ score: s.score, floors, difficulty: s.difficulty });
     profile.tickets += n;
+    newUnlocks = rewardForRun(profile, { mode: s.run.mode, won: s.phase === 'won' });
     storeProfile();
     return n;
   }
+  let newUnlocks: string[] = [];
 
   function summary(s: SimState): RunSummary {
     return {
@@ -266,10 +269,14 @@ function startGame() {
       nests: s.nests.length,
       best: recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.difficulty),
       tickets: earnTickets(s),
+      unlocked: newUnlocks,
+      won: s.phase === 'won',
+      mode: s.run.mode,
+      floors: s.run.floor + (s.phase === 'won' ? 1 : 0),
       difficulty: s.difficulty,
       ranking: [...s.players]
         .sort((a, b) => b.stats.score - a.stats.score)
-        .map(p => ({ name: p.name, color: p.color, score: p.stats.score, kills: p.stats.kills, revives: p.stats.revives, downs: p.stats.downs, bestCombo: p.stats.bestCombo })),
+        .map(p => ({ name: p.name, color: p.color, score: p.stats.score, kills: p.stats.kills, revives: p.stats.revives, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
     };
   }
 
@@ -478,6 +485,10 @@ function startGame() {
     if (audio) audio.music.playTrack('menu');
   }
 
+  let padScreen: Element | null = null;
+  let padLockUntil = 0;
+  const PAD_SCREEN_LOCK_MS = 1500;
+
   /** Controller in menus: d-pad or stick moves the focus, A presses, B goes back, Start pauses and resumes. */
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
@@ -495,6 +506,13 @@ function startGame() {
       return;
     }
     if (mode === 'playing') return;
+    // a new screen ignores the pad for a moment: players still mashing A from the game must not hit "Play again"
+    const screen = document.querySelector('.screen');
+    if (screen !== padScreen) {
+      padScreen = screen;
+      padLockUntil = performance.now() + PAD_SCREEN_LOCK_MS;
+    }
+    if (performance.now() < padLockUntil) return;
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('.screen button:not(:disabled)')].filter(b => b.offsetParent !== null);
     if (buttons.length === 0) return;
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -587,6 +605,19 @@ function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
+  // ?demo=win: a quick floor that is won right away (to look at the result screen)
+  if (params.get('demo') === 'win') {
+    for (const n of sim.nests) n.state = 'destroyed';
+    sim.elevatorOpen = true;
+    sim.players.forEach((p, i) => {
+      p.pos = { ...sim.map.elevator };
+      p.stats.kills = 120 - i * 30;
+      p.stats.killsBy = i === 0 ? { candyCannon: 70, stomp: 50 } : { laserSword: 60, kart: 30 };
+      p.stats.score = 9000 - i * 2500;
+      p.stats.towersBuilt = 3 - i;
+      p.stats.coins = 340 - i * 80;
+    });
+  }
   if (params.get('demo') === 'rare') {
     sim.players[0].jetFuel = 300;
     sim.players[0].rare = { kind: (params.get('kind') as RareKind) ?? 'slushMachine', until: sim.tick + 3600, cooldown: 0 };

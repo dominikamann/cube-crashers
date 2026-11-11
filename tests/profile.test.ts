@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buyUnlock, defaultProfile, loadProfile, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
+import { buyUnlock, defaultProfile, loadProfile, rewardForRun, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
 
 function memory(initial: Record<string, string> = {}) {
   const data = { ...initial };
@@ -46,5 +46,16 @@ describe('profile', () => {
     p.tickets = 0;
     expect(buyUnlock(p, 'endless')).toBe(false);
     expect(p.unlocked).toEqual(['bomb']);
+  });
+});
+
+describe('rewards', () => {
+  it('winning the Tower Run unlocks Endless once; other results do not', () => {
+    const p = defaultProfile();
+    expect(rewardForRun(p, { mode: 'quick', won: true })).toEqual([]);
+    expect(rewardForRun(p, { mode: 'run', won: false })).toEqual([]);
+    expect(rewardForRun(p, { mode: 'run', won: true })).toEqual(['endless']);
+    expect(p.unlocked).toContain('endless');
+    expect(rewardForRun(p, { mode: 'run', won: true })).toEqual([]);
   });
 });
