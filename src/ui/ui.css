@@ -142,6 +142,13 @@ html, body {
 .screen.title .logo { margin-bottom: clamp(16px, 5vh, 48px); }
 .title-main { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .title-main .chips { margin-top: clamp(18px, 3.5vh, 30px); }
+.vote { display: flex; gap: 16px; }
+.vote-card { font-family: inherit; color: var(--ink); background: var(--panel); border: 3px solid var(--cyan); box-shadow: 0 5px 0 var(--shadow); padding: 12px 16px; min-width: 200px; font-size: 11px; line-height: 1.8; cursor: pointer; }
+.vote-card.on { border-color: var(--gold); transform: translateY(-4px); }
+.vote-card .key { display: inline-block; background: var(--cyan); color: var(--shadow); padding: 2px 6px; }
+.vote-card .name { font-size: 13px; color: var(--gold); }
+.vote-card .map { color: var(--cyan); }
+.vote-card .count { color: var(--pink); letter-spacing: 3px; }
 .title-main .maps { margin-top: 2px; max-width: 640px; }
 .chip.small { font-size: 9px; padding: 6px 9px; }
 .title-main .players { margin-bottom: clamp(14px, 2.5vh, 22px); }

@@ -1,3 +1,4 @@
+import type { VersusOption } from './net/protocol';
 import { MAX_PLAYERS } from './sim/config/balance';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
@@ -104,6 +105,7 @@ function startGame() {
   const lanActions = {
     start: () => {
       if (!host) return;
+      lanBots = [];
       host.start(Number(params.get('seed')) || randomSeed(), host.difficulty);
       enterPlay();
     },
@@ -114,7 +116,25 @@ function startGame() {
       saveSettings(settings);
     },
     connect: (target: string) => void joinGame(target),
+    addBot: () => host?.addBot(`Bot ${withDefaults({ name: '', color: null }).name}`),
+    removeBot: () => host?.removeBot(),
+    startVote: () => host?.startVote(voteOptions()),
+    vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
   };
+
+  /** two different versus cards for a vote: mode, rule and map at random */
+  function voteOptions(): [VersusOption, VersusOption] {
+    const maps = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
+    const pick = (): VersusOption => ({
+      mode: Math.random() < 0.5 ? 'ffa' : 'team',
+      rule: Math.random() < 0.6 ? 'score' : 'rounds',
+      map: maps[Math.floor(Math.random() * maps.length)],
+    });
+    const a = pick();
+    let b = pick();
+    while (b.map === a.map && b.mode === a.mode && b.rule === a.rule) b = pick();
+    return [a, b];
+  }
 
   createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
   // HUD layers: the left one fills the window, in split screen each player gets a half
@@ -187,6 +207,11 @@ function startGame() {
         padCtl2.onEvents(s.events);
         frameEvents.push(...s.events);
       } else if (role === 'host') {
+        // the lobby's bots play on the host
+        if (host!.sim?.versus && mode === 'playing') {
+          if (lanBots.length === 0) lanBots = host!.lobby.filter(p => p.bot).map(p => createVersusBot(p.id));
+          for (const b of lanBots) cmds = [...cmds, ...b(host!.sim)];
+        }
         host!.step(cmds);
       } else {
         client!.sendInput(cmds);
@@ -208,7 +233,14 @@ function startGame() {
         frameEvents.push(...evs);
         watchClient();
       }
-      if (role === 'host' && mode === 'lobby') watchHostLobby();
+      if (role === 'host' && mode === 'lobby') {
+        host?.checkVote();
+        // a vote just closed and started a match: join it
+        if (host?.sim) {
+          lanBots = [];
+          enterPlay();
+        } else watchHostLobby();
+      }
 
       const s = view();
       // the crosshair replaces the mouse pointer while playing
@@ -354,6 +386,8 @@ function startGame() {
 
   let lastSoloMode: RunMode = 'run';
   let versusBots: ((s: SimState) => Command[])[] = [];
+  /** bots of a LAN versus match (they run on the host) */
+  let lanBots: ((s: SimState) => Command[])[] = [];
 
   /** Versus on this computer: one or two players (split screen) plus bots. */
   function newVersusGame() {
@@ -462,10 +496,10 @@ function startGame() {
   function watchHostLobby() {
     if (!host) return;
     announce();
-    const key = JSON.stringify([host.lobby, host.difficulty]);
+    const key = JSON.stringify([host.lobby, host.difficulty, host.voteInfo()]);
     if (key === lastLobby) return;
     lastLobby = key;
-    screens.lobby(host.lobby, host.difficulty, true, 0, lanActions);
+    screens.lobby(host.lobby, host.difficulty, true, 0, lanActions, host.voteInfo());
   }
 
   /** follows what the host does: lobby changes, the start of a run, the host leaving */
@@ -492,10 +526,10 @@ function startGame() {
       return;
     }
     if (mode === 'lobby' && !running) {
-      const key = JSON.stringify([client.lobby, client.difficulty, client.status]);
+      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote]);
       if (key === lastLobby) return;
       lastLobby = key;
-      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions);
+      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote);
     }
   }
 
@@ -617,6 +651,8 @@ function startGame() {
       return;
     }
     if (mode === 'playing' && e.code === 'KeyZ' && !e.repeat) zoomedOut = !zoomedOut;
+    // a versus vote in the lobby: 1 or 2
+    if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
   });
   addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));

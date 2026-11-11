@@ -1,5 +1,6 @@
+import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
-import type { Command, Difficulty, RunMode, SimEvent } from '../sim/types';
+import type { Command, Difficulty, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
 import type { SnapState } from './snapshot';
 
 export const PROTOCOL_VERSION = 2;
@@ -13,20 +14,39 @@ export interface LobbyPlayer {
   id: number;
   name: string;
   color: number;
+  /** a bot the host runs */
+  bot?: boolean;
+}
+
+/** one card of a versus vote */
+export interface VersusOption {
+  mode: VersusMode;
+  rule: VersusRule;
+  /** floor id */
+  map: string;
+}
+
+export interface LobbyVote {
+  options: [VersusOption, VersusOption];
+  /** choice per player id */
+  votes: Record<number, 0 | 1>;
+  /** seconds left */
+  endsIn: number;
 }
 
 /** client → host */
 export type ClientMessage =
   | { type: 'hello'; v: number; name: string; color?: number; unlocked?: string[] }
   | { type: 'input'; seq: number; cmds: Command[] }
+  | { type: 'vote'; choice: 0 | 1 }
   | { type: 'leave' };
 
 /** host → client */
 export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
-  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[] }
+  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule }; mapId?: string }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -37,7 +57,13 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 
 const validPlayers = (x: unknown) =>
-  Array.isArray(x) && x.length >= 1 && x.length <= 6 && x.every(p => isObj(p) && isNum(p.id) && typeof p.name === 'string' && isNum(p.color));
+  Array.isArray(x) && x.length >= 1 && x.length <= MAX_PLAYERS && x.every(p => isObj(p) && isNum(p.id) && typeof p.name === 'string' && isNum(p.color));
+
+const validOption = (o: unknown) =>
+  isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && (o.rule === 'score' || o.rule === 'rounds') && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
+const validVote = (v: unknown) =>
+  v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
+const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && (v.rule === 'score' || v.rule === 'rounds'));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
 export function parseMessage(raw: string): Message | null {
@@ -62,6 +88,8 @@ export function parseMessage(raw: string): Message | null {
     case 'input':
       if (!isNum(m.seq) || !Array.isArray(m.cmds) || m.cmds.length > 32) return null;
       return { type: 'input', seq: m.seq, cmds: m.cmds as Command[] };
+    case 'vote':
+      return m.choice === 0 || m.choice === 1 ? { type: 'vote', choice: m.choice } : null;
     case 'leave':
       return { type: 'leave' };
     case 'welcome':
@@ -69,9 +97,11 @@ export function parseMessage(raw: string): Message | null {
     case 'reject':
       return ['version', 'full', 'started'].includes(m.reason as string) ? (m as HostMessage) : null;
     case 'lobby':
-      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) ? (m as unknown as HostMessage) : null;
+      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) ? (m as unknown as HostMessage) : null;
     case 'start':
-      return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) ? (m as unknown as HostMessage) : null;
+      return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVersus(m.versus) && (m.mapId === undefined || (typeof m.mapId === 'string' && Object.hasOwn(FLOORS, m.mapId)))
+        ? (m as unknown as HostMessage)
+        : null;
     case 'snap':
       return isObj(m.state) && isNum(m.state.tick) && Array.isArray(m.events) && Array.isArray(m.state.players) && Array.isArray(m.state.enemies) && Array.isArray(m.state.coins) ? (m as unknown as HostMessage) : null;
     case 'bye':

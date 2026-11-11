@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import type { LobbyPlayer } from '../net/protocol';
+import type { LobbyPlayer, LobbyVote } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
@@ -148,6 +148,11 @@ export interface LanActions {
   leave(): void;
   setDifficulty(d: Difficulty): void;
   connect(target: string): void;
+  addBot(): void;
+  removeBot(): void;
+  /** host: two versus cards to vote on */
+  startVote(): void;
+  vote(choice: 0 | 1): void;
 }
 
 export interface Screens {
@@ -155,7 +160,7 @@ export interface Screens {
   pause(): void;
   result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
-  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions): void;
+  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null): void;
   /** the list of games found on the network; call again to refresh */
   joinList(games: JoinEntry[], canEnterAddress: boolean, lan: LanActions): void;
   notice(text: string): void;
@@ -562,7 +567,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(row, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    lobby(players, difficulty, isHost, me, lan) {
+    lobby(players, difficulty, isHost, me, lan, vote) {
       show('', s => {
         text(s, 'h2', '', t('lobby.title', { n: players.length }));
         const list = document.createElement('div');
@@ -572,17 +577,45 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           row.className = 'lobby-row';
           const swatch = document.createElement('i');
           swatch.style.background = hex(p.color);
-          row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}`));
+          row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}`));
           list.append(row);
         }
         s.append(list);
+        // a versus vote: two cards, click (or 1 / 2) to vote, the countdown below
+        if (vote) {
+          const cards = document.createElement('div');
+          cards.className = 'vote';
+          vote.options.forEach((o, i) => {
+            const n = Object.values(vote.votes).filter(c => c === i).length;
+            const mine = vote.votes[me] === i;
+            const c = document.createElement('button');
+            c.className = `vote-card${mine ? ' on' : ''}`;
+            c.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(o.mode === 'ffa' ? 'versus.ffa' : 'versus.team')}</div><div>${t(o.rule === 'score' ? 'versus.score' : 'versus.rounds')}</div><div class="map">${t(FLOORS[o.map].name as 'floor.plaza')}</div><div class="count">${'●'.repeat(n) || '–'}</div>`;
+            c.addEventListener('click', () => {
+              actions.click();
+              lan.vote(i as 0 | 1);
+            });
+            cards.append(c);
+          });
+          s.append(cards);
+          text(s, 'p', '', t('lobby.voteEnds', { s: vote.endsIn }));
+        }
         if (isHost) {
           const diff = button(s, diffLabel(difficulty), () => {
             difficulty = nextDiff(difficulty);
             diff.textContent = diffLabel(difficulty);
             lan.setDifficulty(difficulty);
           });
-          button(s, t('lobby.start'), lan.start, true);
+          const row = document.createElement('div');
+          row.className = 'row2';
+          s.append(row);
+          button(row, t('lobby.start'), lan.start, true);
+          if (!vote) button(row, t('lobby.versus'), lan.startVote, true);
+          const bots = document.createElement('div');
+          bots.className = 'row2';
+          s.append(bots);
+          if (players.length < 8) button(bots, t('lobby.addBot'), lan.addBot).classList.add('small');
+          if (players.some(p => p.bot)) button(bots, t('lobby.removeBot'), lan.removeBot).classList.add('small');
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));

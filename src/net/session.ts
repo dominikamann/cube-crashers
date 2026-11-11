@@ -1,9 +1,10 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { floor01 } from '../sim/config/floor01';
+import { FLOORS } from '../sim/config/floors';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
-import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer } from './protocol';
+import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type VersusOption } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
 
@@ -11,6 +12,11 @@ import type { Transport } from './transport';
 const SILENT_INPUT_TICKS = 15;
 /** a client gives up on a host that sent nothing for this long while playing */
 export const HOST_TIMEOUT_MS = 5000;
+
+/** bots get ids from here on, far away from the transport's peer ids */
+export const BOT_IDS = 1000;
+/** how long a versus vote stays open */
+export const VOTE_SECONDS = 30;
 
 const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready']);
 const HELD = new Set(['hold', 'fire', 'fly']);
@@ -43,7 +49,13 @@ export class HostSession {
 
   private unlocked = new Set<string>();
 
-  constructor(private net: Transport, opts: { name: string; color?: number | null; unlocked?: string[] }) {
+  /** a running versus vote: the two options, who chose what, and when it closes (ms) */
+  private vote: { options: [VersusOption, VersusOption]; votes: Record<number, 0 | 1>; until: number } | null = null;
+  private now: () => number;
+  private lastVoteSecond = -1;
+
+  constructor(private net: Transport, opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number }) {
+    this.now = opts.now ?? (() => Date.now());
     for (const u of opts.unlocked ?? []) this.unlocked.add(u);
     this.lobby = [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
     net.onMessage((from, data) => this.receive(from, data));
@@ -70,7 +82,88 @@ export class HostSession {
   }
 
   private broadcastLobby(): void {
-    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty });
+    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined });
+  }
+
+  /** the vote as the lobby shows it, or null */
+  voteInfo(): LobbyVote | null {
+    if (!this.vote) return null;
+    return { options: this.vote.options, votes: { ...this.vote.votes }, endsIn: Math.max(0, Math.ceil((this.vote.until - this.now()) / 1000)) };
+  }
+
+  /** a bot joins the lobby (versus): it plays on the host */
+  addBot(name?: string): void {
+    if (this.lobby.length >= MAX_PLAYERS || this.sim) return;
+    const used = new Set(this.lobby.map(p => p.color));
+    const color = [...Array(MAX_PLAYERS).keys()].find(c => !used.has(c)) ?? 0;
+    let id = BOT_IDS;
+    while (this.lobby.some(p => p.id === id)) id++;
+    this.lobby.push({ id, name: (name ?? `Bot ${this.lobby.length}`).slice(0, MAX_NAME), color, bot: true });
+    this.broadcastLobby();
+  }
+
+  removeBot(): void {
+    const i = this.lobby.map(p => !!p.bot).lastIndexOf(true);
+    if (i < 0) return;
+    this.lobby.splice(i, 1);
+    this.broadcastLobby();
+  }
+
+  /** Starts a versus vote: two cards, VOTE_SECONDS to choose. A majority of the humans starts it at once. */
+  startVote(options: [VersusOption, VersusOption]): void {
+    if (this.sim) return;
+    this.vote = { options, votes: {}, until: this.now() + VOTE_SECONDS * 1000 };
+    this.broadcastLobby();
+  }
+
+  /** the host's own vote */
+  castVote(choice: 0 | 1): void {
+    this.countVote(0, choice);
+  }
+
+  private countVote(from: number, choice: 0 | 1): void {
+    if (!this.vote || this.sim || !this.lobby.some(p => p.id === from && !p.bot)) return;
+    this.vote.votes[from] = choice;
+    const humans = this.lobby.filter(p => !p.bot).length;
+    const forIt = Object.values(this.vote.votes).filter(c => c === choice).length;
+    if (forIt > humans / 2) this.closeVote(choice);
+    else this.broadcastLobby();
+  }
+
+  /** Called every frame while the lobby is open: ends a vote whose time is up. */
+  checkVote(): void {
+    if (!this.vote || this.sim) return;
+    // the clients' countdown follows the host's, once a second
+    const left = this.voteInfo()!.endsIn;
+    if (left !== this.lastVoteSecond) {
+      this.lastVoteSecond = left;
+      this.broadcastLobby();
+    }
+    if (this.now() < this.vote.until) return;
+    const votes = Object.values(this.vote.votes);
+    const a = votes.filter(c => c === 0).length, b = votes.filter(c => c === 1).length;
+    this.closeVote(a === b ? (Math.floor(this.now() / 7) % 2 as 0 | 1) : a > b ? 0 : 1);
+  }
+
+  private closeVote(choice: 0 | 1): void {
+    const option = this.vote!.options[choice];
+    this.vote = null;
+    this.startVersus(option, (this.now() * 7919) % 2147483647 || 1);
+  }
+
+  /** A versus match on `option`'s map with the whole lobby, bots included. */
+  startVersus(option: VersusOption, seed: number): void {
+    const def = FLOORS[option.map];
+    if (!def) return;
+    this.sim = createSim(def.map, seed, {
+      mode: 'versus',
+      versus: { mode: option.mode, rule: option.rule },
+      players: this.lobby.length,
+      ids: this.lobby.map(p => p.id),
+      names: this.lobby.map(p => p.name),
+      colors: this.lobby.map(p => p.color),
+    });
+    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus: { mode: option.mode, rule: option.rule }, mapId: option.map });
   }
 
   setDifficulty(d: Difficulty): void {
@@ -104,6 +197,8 @@ export class HostSession {
       if (list.length < 30) list.push(sanitizeCommands(m.cmds, from));
       this.pending.set(from, list);
       this.lastInputAt.set(from, this.sim.tick);
+    } else if (m.type === 'vote') {
+      this.countVote(from, m.choice);
     } else if (m.type === 'leave') {
       const i = this.lobby.findIndex(p => p.id === from);
       if (i >= 0) {
@@ -117,16 +212,19 @@ export class HostSession {
   start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run'): void {
     this.difficulty = difficulty;
     const unlocked = [...this.unlocked];
+    // bots only play versus: a co-op run is for the humans in the lobby
+    const humans = this.lobby.filter(p => !p.bot);
+    this.vote = null;
     this.sim = createSim(floor01, seed, {
       mode,
       unlocked,
       difficulty,
-      players: this.lobby.length,
-      ids: this.lobby.map(p => p.id),
-      names: this.lobby.map(p => p.name),
-      colors: this.lobby.map(p => p.color),
+      players: humans.length,
+      ids: humans.map(p => p.id),
+      names: humans.map(p => p.name),
+      colors: humans.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: this.lobby, mode, unlocked });
+    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked });
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -219,14 +317,17 @@ export class ClientSession {
       case 'lobby':
         this.lobby = m.players;
         this.difficulty = m.difficulty;
+        this.vote = m.vote ?? null;
         // the host only sends the lobby while nobody plays: a finished run goes back to it
         if (this.status === 'playing' && this.view?.phase !== 'playing') this.status = 'lobby';
         break;
       case 'start':
         this.difficulty = m.difficulty;
         this.lobby = m.players;
-        this.view = createSim(floor01, m.seed, {
-          mode: m.mode === 'quick' ? 'quick' : 'run',
+        this.vote = null;
+        this.view = createSim(m.versus && m.mapId ? FLOORS[m.mapId].map : floor01, m.seed, {
+          mode: m.versus ? 'versus' : m.mode === 'quick' ? 'quick' : 'run',
+          versus: m.versus,
           unlocked: m.unlocked ?? [],
           difficulty: m.difficulty,
           players: m.players.length,
@@ -245,6 +346,13 @@ export class ClientSession {
         this.status = 'hostLeft';
         break;
     }
+  }
+
+  /** the versus vote the host is running, if any */
+  vote: LobbyVote | null = null;
+
+  castVote(choice: 0 | 1): void {
+    this.net.send('all', JSON.stringify({ type: 'vote', choice }));
   }
 
   /** Sends this tick's commands for the own player. */
