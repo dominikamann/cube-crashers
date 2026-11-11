@@ -7,6 +7,7 @@
 ![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%206%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 **A fast voxel action game for one to six players.** Fight your way up a tower, floor by floor. Hordes of
 retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
@@ -472,7 +473,7 @@ docs/         gameplay GIF and screenshots
 - [x] Controller support and local split screen
 - [ ] Key rebinding
 - [ ] German translation
-- [ ] Later: real-city maps from OpenStreetMap, plugins
+- [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing
 
