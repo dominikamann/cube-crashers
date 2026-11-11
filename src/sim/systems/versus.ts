@@ -2,6 +2,9 @@ import { PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type Player, type SimState, type Vec2, type VersusMode, type VersusRule } from '../types';
 import { dist } from '../util';
+import { placeStartCrates } from './offers';
+import { placeStartJetpack } from './rare';
+import { placeStartKarts } from './vehicles';
 
 export const VERSUS = {
   /** score race: back in the game this long after going down */
@@ -76,6 +79,11 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule): vo
     if (mode === 'team') p.team = (i % 2) as 0 | 1;
     s.versus!.scores[p.id] = 0;
   });
+  // something to grab right away: crates, karts and a jetpack on the map
+  placeStartCrates(s);
+  placeStartKarts(s);
+  placeStartJetpack(s);
+  s.nextPowerupAt = s.tick + 20 * TICK_RATE;
   startRound(s);
 }
 
