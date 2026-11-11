@@ -3,6 +3,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { ALL_WEAPONS } from '../../src/sim/config/weapons';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { grantWeapon } from '../../src/sim/systems/offers';
+import { RARE } from '../../src/sim/config/rare';
 import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import type { Card, SimState } from '../../src/sim/types';
 import { move, quietSim, rel, run } from './helpers';
@@ -65,6 +66,8 @@ describe('crates', () => {
   });
 
   it('only offer level-ups of held weapons when all 6 slots are full', () => {
+    const chance = RARE.cardChance;
+    RARE.cardChance = 0;
     const s = withCrate();
     const p = s.players[0];
     p.weapons = ALL_WEAPONS.slice(0, 6).map(kind => ({ kind, level: 1, cooldown: 0 }));
@@ -74,6 +77,7 @@ describe('crates', () => {
       expect(c.type).toBe('weapon');
       if (c.type === 'weapon') expect(p.weapons.some(w => w.kind === c.weapon)).toBe(true);
     }
+    RARE.cardChance = chance;
   });
 
   it('are placed on three crate spots at the start of a floor', () => {

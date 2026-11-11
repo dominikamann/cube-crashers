@@ -3,6 +3,7 @@ import type { LobbyPlayer } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
+import { buyUnlock, UNLOCKS, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 
 export interface Settings {
@@ -41,8 +42,8 @@ export function saveSettings(s: Settings): void {
 }
 
 /** Adds a score to the local top 5 of this difficulty and returns the list (highest first). */
-export function recordScore(score: number, difficulty: Difficulty): number[] {
-  let all: Partial<Record<Difficulty, number[]>> = {};
+export function recordScore(score: number, difficulty: Difficulty | 'endless'): number[] {
+  let all: Partial<Record<Difficulty | 'endless', number[]>> = {};
   try {
     const raw = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '{}');
     // version 0.1 kept a single list: it becomes the Medium list
@@ -72,6 +73,8 @@ export interface RunSummary {
   /** local top scores of this difficulty, including this run */
   best: number[];
   difficulty: Difficulty;
+  /** tickets earned for unlocks */
+  tickets: number;
   /** co-op: one row per player, best first */
   ranking?: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number }[];
 }
@@ -79,6 +82,7 @@ export interface RunSummary {
 export interface ScreenActions {
   play(): void;
   quick(): void;
+  endless(): void;
   host(): void;
   join(): void;
   resume(): void;
@@ -115,7 +119,7 @@ export interface Screens {
   readonly visible: boolean;
 }
 
-export function createScreens(root: HTMLElement, actions: ScreenActions, settings: Settings): Screens {
+export function createScreens(root: HTMLElement, actions: ScreenActions, settings: Settings, profile: Profile, saveProfile: () => void): Screens {
   const layer = document.createElement('div');
   layer.className = 'ui-layer';
   root.append(layer);
@@ -176,6 +180,31 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   function changed() {
     saveSettings(settings);
     actions.settingsChanged(settings);
+  }
+
+  function unlocksScreen() {
+    show('', s => {
+      text(s, 'h2', '', t('unlocks.title'));
+      text(s, 'div', 'bigscore', t('unlocks.tickets', { n: profile.tickets }));
+      text(s, 'p', '', t('unlocks.hint'));
+      const grid = document.createElement('div');
+      grid.className = 'unlocks';
+      for (const u of UNLOCKS) {
+        const owned = profile.unlocked.includes(u.id);
+        const name = u.kind === 'weapon' ? t(`weapon.${u.id}` as 'weapon.bomb') : t(`unlock.${u.id}` as 'unlock.roller');
+        const b = button(grid, owned ? `${name} ✓` : t('unlocks.buy', { name, cost: u.cost }), () => {
+          if (owned) return;
+          if (buyUnlock(profile, u.id)) {
+            saveProfile();
+            unlocksScreen();
+          }
+        });
+        if (owned) b.classList.add('alt');
+        else if (profile.tickets < u.cost) b.disabled = true;
+      }
+      s.append(grid);
+      button(s, t('menu.back'), () => back(), true);
+    });
   }
 
   function creditsScreen() {
@@ -271,6 +300,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           changed();
         });
         button(s, t('menu.quick'), actions.quick);
+        if (profile.unlocked.includes('endless')) button(s, t('menu.endless'), actions.endless);
+        button(s, t('menu.unlocks'), unlocksScreen);
         button(s, t('menu.host'), actions.host);
         button(s, t('menu.join'), actions.join);
         button(s, t('menu.settings'), settingsScreen);
@@ -294,6 +325,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         text(s, 'p', '', t(`difficulty.${r.difficulty}`));
         text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
+        if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
         if (r.ranking && r.ranking.length > 1) {
           const table = document.createElement('table');
           table.className = 'ranking txt';

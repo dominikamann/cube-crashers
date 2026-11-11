@@ -19,6 +19,7 @@ export type WeaponKind =
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft';
+export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
@@ -288,6 +289,8 @@ export interface Nest {
   nextSpawnAt: number;
   nextRushAt: number;
   nextBlastAt: number;
+  /** endless mode: when a destroyed nest comes back somewhere else */
+  respawnAt?: number;
 }
 
 /** A delayed ground blast that is shown as a warning ring first. Only hurts players. */
@@ -314,7 +317,7 @@ export interface BossState {
 
 export interface Vehicle {
   id: number;
-  kind: 'kart';
+  kind: VehicleKind;
   pos: Vec2;
   vel: Vec2;
   /** durability */
@@ -407,6 +410,7 @@ export type SimEvent =
   | { type: 'explosion'; pos: Vec2; radius: number }
   | { type: 'blastWarning'; pos: Vec2; radius: number }
   | { type: 'nestPlanted'; id: number }
+  | { type: 'nestAppeared'; id: number; pos: Vec2 }
   | { type: 'nestDestroyed'; id: number; pos: Vec2 }
   | { type: 'alarmChanged'; level: number }
   | { type: 'elevatorOpen' }
@@ -458,7 +462,9 @@ export interface SimState {
   boss: BossState | null;
   blasts: Blast[];
   vehicles: Vehicle[];
-  vehicleRespawns: { spot: number; at: number }[];
+  vehicleRespawns: { spot: number; at: number; kind: VehicleKind }[];
+  /** what this run may use (locked weapons never appear in crates, locked vehicles are not parked) */
+  unlocks: { weapons: WeaponKind[]; vehicles: VehicleKind[] };
   powerups: Powerup[];
   nextPowerupAt: number;
   jetpacks: JetpackItem[];

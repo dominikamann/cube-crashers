@@ -289,6 +289,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('blastWarning');
     case 'nestPlanted':
       return one('nestPlanted');
+    case 'nestAppeared':
+      return one('alarm', 0.8);
     case 'nestDestroyed':
       return one('nestDestroyed');
     case 'alarmChanged':

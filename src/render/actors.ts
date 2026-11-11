@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { HOLD_RADIUS, HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import type { FloorMap } from '../sim/map/tilemap';
 import { KART } from '../sim/systems/vehicles';
-import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle } from '../sim/types';
+import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
 import type { Theme } from './theme';
 
@@ -96,9 +96,24 @@ function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; 
   return { root, head, light };
 }
 
-function makeKart() {
+function makeKart(kind: VehicleKind = 'kart') {
   const root = new THREE.Group();
   const body = new THREE.Group();
+  if (kind === 'roller') {
+    // a steamroller: big drum in front, cabin behind
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.7, 12).rotateZ(Math.PI / 2), lambert(0x6a6f80));
+    drum.position.set(0, 0.55, -0.7);
+    drum.castShadow = true;
+    body.add(drum, box(1.3, 0.6, 1.2, lambert(0xffb020), 0, 0.6, 0.45), box(0.9, 0.6, 0.7, lambert(0x333344), 0, 1.2, 0.55), box(0.35, 0.2, 0.25, glowMat(0xffe14a, 2), 0, 0.95, 1.08));
+    root.add(body);
+    return { root, body, yaw: 0 };
+  }
+  if (kind === 'hoverboard') {
+    // a glowing board floating above the ground
+    body.add(box(0.9, 0.12, 1.6, lambert(0x2bd4d4), 0, 0.45, 0), box(0.7, 0.05, 1.3, glowMat(0x2bf0ff, 3), 0, 0.37, 0), box(0.3, 0.1, 0.25, glowMat(0xff2bd6, 2), 0, 0.5, 0.8));
+    root.add(body);
+    return { root, body, yaw: 0 };
+  }
   body.add(box(1.1, 0.35, 1.7, lambert(0xe23b3b), 0, 0.4, 0));
   body.add(box(0.9, 0.3, 0.5, lambert(0xffffff), 0, 0.6, -0.55));
   body.add(box(0.8, 0.5, 0.2, lambert(0x333344), 0, 0.8, 0.55));
@@ -235,7 +250,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   function updateKart(k: Vehicle, theme: Theme, time: number) {
     let v = karts.get(k.id);
     if (!v) {
-      v = makeKart();
+      v = makeKart(k.kind);
       scene.add(v.root);
       karts.set(k.id, v);
     }
@@ -245,7 +260,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.root.position.set(k.pos.x, hop, k.pos.z);
     v.root.rotation.y = v.yaw;
     v.body.rotation.x = k.air > 0 ? -0.25 : 0;
-    v.body.position.y = k.driverId === null ? Math.sin(time * 3 + k.id) * 0.03 : Math.sin(time * 40) * 0.015 * Math.min(1, speed / 6);
+    const hover = k.kind === 'hoverboard' ? 0.25 + Math.sin(time * 4 + k.id) * 0.08 : 0;
+    v.body.position.y = hover + (k.driverId === null ? Math.sin(time * 3 + k.id) * 0.03 : Math.sin(time * 40) * 0.015 * Math.min(1, speed / 6));
     setGlow(v.root, theme.glow);
   }
 

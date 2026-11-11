@@ -46,6 +46,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   el('div', '', alarmBox, t('hud.alarm'));
   const alarmRow = el('div', 'alarm', alarmBox);
   const alarmEls = Array.from({ length: ALARM_MAX }, () => el('i', '', alarmRow));
+  const alarmExtra = el('span', 'alarm-extra', alarmRow);
 
   const scoreBox = el('div', 'hud-box txt score', top);
   const scoreText = el('div', '', scoreBox);
@@ -171,6 +172,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         }
       }
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));
+      alarmExtra.textContent = s.alarm.level > ALARM_MAX ? `+${s.alarm.level - ALARM_MAX}` : '';
       alarmBox.classList.toggle('overload', s.alarm.level >= ALARM_MAX);
       scoreText.textContent = t('hud.score', { score: s.score });
       if (p.coins !== lastCoins) {
@@ -266,6 +268,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             // only a rising alarm is a warning; a destroyed nest lowers it and gets its own message
             if (e.level > lastAlarm) toast(e.level >= ALARM_MAX ? t('toast.overload') : t('toast.alarm', { level: e.level }), 'warn');
             lastAlarm = e.level;
+            break;
+          case 'nestAppeared':
+            toast(t('toast.nestBack'), 'warn');
             break;
           case 'bossSpawn':
             toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');

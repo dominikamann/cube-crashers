@@ -22,7 +22,8 @@ import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
 import { tryBuild, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
-import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2 } from './types';
+import { ALL_WEAPONS } from './config/weapons';
+import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, WeaponKind } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % 6): Player {
   return {
@@ -70,11 +71,24 @@ export function createPlayer(id: number, pos: Vec2, name = defaultName(id), colo
 
 registerPlayerFactory(createPlayer);
 
+const LOCKABLE_WEAPONS: WeaponKind[] = ['joystickBoomerang', 'discoBall', 'bananaMine', 'bomb'];
+
+function unlocksFrom(unlocked?: string[]): SimState['unlocks'] {
+  const all = ALL_WEAPONS;
+  if (!unlocked) return { weapons: [...all], vehicles: ['kart', 'roller', 'hoverboard'] };
+  return {
+    weapons: all.filter(w => !LOCKABLE_WEAPONS.includes(w) || unlocked.includes(w)),
+    vehicles: ['kart', ...(['roller', 'hoverboard'] as const).filter(v => unlocked.includes(v))],
+  };
+}
+
 export interface SimOptions {
   players?: number;
   difficulty?: Difficulty;
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
+  /** unlocked items (profile ids); leave out to allow everything */
+  unlocked?: string[];
   /** LAN: the player ids and lobby colours, in lobby order */
   ids?: number[];
   names?: string[];
@@ -109,6 +123,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     blasts: [],
     vehicles: [],
     vehicleRespawns: [],
+    unlocks: unlocksFrom(opts.unlocked),
     powerups: [],
     nextPowerupAt: 0,
     jetpacks: [],

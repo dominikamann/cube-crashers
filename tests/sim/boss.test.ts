@@ -81,6 +81,8 @@ describe('Mega Block', () => {
   });
 
   it('stomps where a player stands after a warning: hits who stays, misses who leaves', () => {
+    const chance = BOSS.stompChance;
+    BOSS.stompChance = 1;
     const s = bossFloor('megaBlock');
     const p = s.players[0];
     s.boss!.nextAttackAt = s.tick;
@@ -96,6 +98,7 @@ describe('Mega Block', () => {
     q.pos = rel(q.pos, 4, 0);
     run(t, 70);
     expect(q.hp).toBe(100);
+    BOSS.stompChance = chance;
   });
 });
 

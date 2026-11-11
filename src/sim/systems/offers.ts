@@ -26,10 +26,11 @@ export function grantWeapon(p: Player, kind: WeaponKind): number {
   return 1;
 }
 
-function options(p: Player): Card[] {
+function options(s: SimState, p: Player): Card[] {
   const cards: Card[] = [];
   for (const kind of ALL_WEAPONS) {
     const held = p.weapons.find(w => w.kind === kind);
+    if (!held && !s.unlocks.weapons.includes(kind)) continue;
     if (held ? held.level < MAX_WEAPON_LEVEL : p.weapons.length < MAX_WEAPONS) cards.push({ type: 'weapon', weapon: kind });
   }
   for (const perk of ALL_PERKS) {
@@ -57,7 +58,7 @@ function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
 }
 
 function openCrate(s: SimState, crate: Crate, p: Player): void {
-  const pool = options(p);
+  const pool = options(s, p);
   if (pool.length === 0) {
     p.coins += EMPTY_CRATE_COINS;
     s.events.push({ type: 'crateCoins', playerId: p.id, coins: EMPTY_CRATE_COINS });

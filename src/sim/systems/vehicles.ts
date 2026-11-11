@@ -1,6 +1,6 @@
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle } from '../types';
+import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
 import { dist } from '../util';
 import { damageEnemy, damageInRadius } from './combat';
 
@@ -27,13 +27,26 @@ export const KART = {
   ejectInvulnTicks: 60,
 };
 
+/** What each vehicle can do. The kart is the all-rounder. */
+export const VEHICLES: Record<VehicleKind, { speed: number; accel: number; hp: number; ramDamage: number; radius: number; jumps: boolean; hovers: boolean }> = {
+  kart: { speed: KART.speed, accel: KART.accel, hp: KART.hp, ramDamage: KART.ramDamage, radius: KART.radius, jumps: true, hovers: false },
+  // slow and heavy: flattens everything, does not fly off ramps
+  roller: { speed: KART.speed * 0.7, accel: 18, hp: 250, ramDamage: 80, radius: 0.9, jumps: false, hovers: false },
+  // fast and light: floats over glitch floor and low walls, no ramming
+  hoverboard: { speed: KART.speed * 1.3, accel: 36, hp: 60, ramDamage: 0, radius: 0.6, jumps: false, hovers: true },
+};
+
 export function addKart(s: SimState, pos: Vec2, spot: number): Vehicle {
+  return addVehicle(s, 'kart', pos, spot);
+}
+
+export function addVehicle(s: SimState, kind: VehicleKind, pos: Vec2, spot: number): Vehicle {
   const v: Vehicle = {
     id: s.nextId++,
-    kind: 'kart',
+    kind,
     pos: { ...pos },
     vel: { x: 0, z: 0 },
-    hp: KART.hp,
+    hp: VEHICLES[kind].hp,
     fuel: KART.fuelTicks,
     driverId: null,
     air: 0,
@@ -45,9 +58,12 @@ export function addKart(s: SimState, pos: Vec2, spot: number): Vehicle {
 
 export function placeStartKarts(s: SimState): void {
   const spots = s.map.vehicleSpots.map((_, i) => i);
+  const extras = s.unlocks.vehicles.filter(k => k !== 'kart');
   for (let n = 0; n < KART.startKarts && spots.length > 0; n++) {
     const [spot] = spots.splice(Math.floor(s.rng.next() * spots.length), 1);
-    addKart(s, s.map.vehicleSpots[spot], spot);
+    // the first is always a kart; the second may be something unlocked
+    const kind = n > 0 && extras.length > 0 && s.rng.next() < 0.6 ? s.rng.pick(extras) : 'kart';
+    addVehicle(s, kind, s.map.vehicleSpots[spot], spot);
   }
 }
 
@@ -97,16 +113,18 @@ function approach(v: Vec2, target: Vec2, step: number): void {
 }
 
 function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent | undefined): void {
+  const stats = VEHICLES[v.kind];
   const len = it ? Math.hypot(it.move.x, it.move.z) : 0;
   if (driver && it && len > 0) {
-    const top = KART.speed * (s.tick < driver.boostUntil ? BOOST_FACTOR : 1);
-    approach(v.vel, { x: (it.move.x / len) * top, z: (it.move.z / len) * top }, KART.accel * DT);
+    const top = stats.speed * (s.tick < driver.boostUntil ? BOOST_FACTOR : 1);
+    approach(v.vel, { x: (it.move.x / len) * top, z: (it.move.z / len) * top }, stats.accel * DT);
     driver.facing = { x: it.move.x / len, z: it.move.z / len };
   } else {
     approach(v.vel, { x: 0, z: 0 }, KART.friction * DT);
   }
 
-  const hit = moveCircle(s.map, v.pos, v.vel.x * DT, v.vel.z * DT, KART.radius, v.air > 0 ? BLOCKS_AIR : BLOCKS_KART);
+  const blocks = v.air > 0 || stats.hovers ? BLOCKS_AIR : BLOCKS_KART;
+  const hit = moveCircle(s.map, v.pos, v.vel.x * DT, v.vel.z * DT, stats.radius, blocks);
   if (hit.hitX) v.vel.x = 0;
   if (hit.hitZ) v.vel.z = 0;
   const speed = Math.hypot(v.vel.x, v.vel.z);
@@ -129,7 +147,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   }
 
   const tile = tileAt(s.map, v.pos.x, v.pos.z);
-  if (tile === Tile.Ramp && speed > KART.rampSpeed) {
+  if (tile === Tile.Ramp && speed > KART.rampSpeed && stats.jumps) {
     v.air = KART.airTicks;
     s.events.push({ type: 'kartJump', pos: { ...v.pos } });
     return;
@@ -139,14 +157,14 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
     driver.boostUntil = s.tick + BOOST_TICKS;
   }
 
-  if (!driver || speed <= KART.ramSpeed) return;
+  if (!driver || speed <= KART.ramSpeed || stats.ramDamage === 0) return;
   for (const e of s.enemies) {
-    if (e.hp <= 0 || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > KART.radius + e.radius) continue;
+    if (e.hp <= 0 || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > stats.radius + e.radius) continue;
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
-    v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
-    damageEnemy(s, e, KART.ramDamage, 'kart', driver.id);
+    if (v.kind === 'kart') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
+    damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
   }
 }
@@ -157,7 +175,7 @@ export function updateVehicles(s: SimState, intents: Map<number, Intent>): void 
   }
 
   for (const r of s.vehicleRespawns) {
-    if (s.tick >= r.at) addKart(s, s.map.vehicleSpots[r.spot], r.spot);
+    if (s.tick >= r.at) addVehicle(s, r.kind, s.map.vehicleSpots[r.spot], r.spot);
   }
   s.vehicleRespawns = s.vehicleRespawns.filter(r => s.tick < r.at);
 
@@ -171,7 +189,7 @@ export function updateVehicles(s: SimState, intents: Map<number, Intent>): void 
       leave(s, driver, v);
       driver.invulnUntil = Math.max(driver.invulnUntil, s.tick + KART.ejectInvulnTicks);
     }
-    s.vehicleRespawns.push({ spot: v.spot, at: s.tick + KART.respawnTicks });
+    s.vehicleRespawns.push({ spot: v.spot, at: s.tick + KART.respawnTicks, kind: v.kind });
     return false;
   });
 }

@@ -35,6 +35,9 @@ import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes'
 
 const eliteBonus = (s: SimState) => floorDef(s.map.id)?.eliteBonus ?? 0;
 
+const ENDLESS_NEST_RESPAWN_TICKS = 3600;
+const ENDLESS_ALARM_MAX = 9;
+
 function alarmTicks(s: SimState): number {
   return Math.round(ALARM_TICKS / DIFFICULTY[s.difficulty].alarmSpeed);
 }
@@ -133,6 +136,10 @@ function destroyNest(s: SimState, n: Nest): void {
   }
   s.alarm.nextAt = s.tick + alarmTicks(s);
   for (const p of s.players) p.safePoint = { ...n.pos };
+  if (s.run.mode === 'endless') {
+    n.respawnAt = s.tick + ENDLESS_NEST_RESPAWN_TICKS;
+    return;
+  }
   if (s.nests.every(x => x.state === 'destroyed')) {
     s.elevatorOpen = true;
     s.events.push({ type: 'elevatorOpen' });
@@ -160,6 +167,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
   }
 
   for (const n of s.nests) {
+    if (n.state === 'destroyed' && n.respawnAt !== undefined && s.tick >= n.respawnAt) respawnNest(s, n);
     if (n.state === 'idle') {
       if (s.tick < n.nextSpawnAt) continue;
       n.nextSpawnAt = s.tick + Math.round(NEST_SPAWN_TICKS / (1 + 0.25 * s.alarm.level));
@@ -213,6 +221,17 @@ function sendHunters(s: SimState): void {
   }
 }
 
+/** Endless mode: a destroyed nest grows back on a free spot away from the players. */
+function respawnNest(s: SimState, n: Nest): void {
+  const used = new Set(s.nests.filter(x => x !== n && x.state !== 'destroyed').map(x => x.spotId));
+  const free = s.map.nestSpots.filter(sp => !used.has(sp.id) && s.players.every(p => dist(p.pos, sp.pos) > 15));
+  if (free.length === 0) return;
+  const spot = s.rng.pick(free);
+  Object.assign(n, { spotId: spot.id, pos: { ...spot.pos }, state: 'idle', progress: 0, nextSpawnAt: s.tick + NEST_SPAWN_TICKS, nextRushAt: 0, nextBlastAt: 0, respawnAt: undefined });
+  spawnHorde(s, besideNest(s, n), roamingComp(s, GUARD_FACTOR));
+  s.events.push({ type: 'nestAppeared', id: n.id, pos: { ...n.pos } });
+}
+
 export function updateBlasts(s: SimState): void {
   s.blasts = s.blasts.filter(b => {
     if (s.tick < b.at) return true;
@@ -222,10 +241,12 @@ export function updateBlasts(s: SimState): void {
 }
 
 export function updateAlarm(s: SimState): void {
+  // endless keeps climbing past the overload, so the hordes keep growing
+  const max = s.run.mode === 'endless' ? ENDLESS_ALARM_MAX : ALARM_MAX;
   if (s.tick >= s.alarm.nextAt) {
-    if (s.alarm.level < ALARM_MAX) {
+    if (s.alarm.level < max) {
       s.alarm.level++;
-      s.alarm.nextAt = s.tick + (s.alarm.level === ALARM_MAX ? OVERLOAD_RUSH_TICKS : alarmTicks(s));
+      s.alarm.nextAt = s.tick + (s.alarm.level >= ALARM_MAX ? OVERLOAD_RUSH_TICKS * (s.alarm.level === ALARM_MAX ? 1 : 4) : alarmTicks(s));
       s.events.push({ type: 'alarmChanged', level: s.alarm.level });
       sendHunters(s);
     } else {

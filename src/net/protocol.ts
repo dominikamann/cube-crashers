@@ -16,7 +16,7 @@ export interface LobbyPlayer {
 
 /** client → host */
 export type ClientMessage =
-  | { type: 'hello'; v: number; name: string; color?: number }
+  | { type: 'hello'; v: number; name: string; color?: number; unlocked?: string[] }
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'leave' };
 
@@ -25,7 +25,7 @@ export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[] }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -51,7 +51,13 @@ export function parseMessage(raw: string): Message | null {
   switch (m.type) {
     case 'hello':
       if (!isNum(m.v) || typeof m.name !== 'string') return null;
-      return { type: 'hello', v: m.v, name: m.name.slice(0, MAX_NAME), color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < 6 ? (m.color as number) : undefined };
+      return {
+        type: 'hello',
+        v: m.v,
+        name: m.name.slice(0, MAX_NAME),
+        color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < 6 ? (m.color as number) : undefined,
+        unlocked: Array.isArray(m.unlocked) ? m.unlocked.filter((x): x is string => typeof x === 'string' && x.length < 24).slice(0, 16) : [],
+      };
     case 'input':
       if (!isNum(m.seq) || !Array.isArray(m.cmds) || m.cmds.length > 32) return null;
       return { type: 'input', seq: m.seq, cmds: m.cmds as Command[] };

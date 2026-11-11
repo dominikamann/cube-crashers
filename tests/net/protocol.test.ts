@@ -3,7 +3,7 @@ import { MAX_MESSAGE_BYTES, parseMessage, PROTOCOL_VERSION, sanitizeCommands } f
 
 describe('parseMessage', () => {
   it('accepts a valid hello', () => {
-    expect(parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim' }))).toEqual({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim' });
+    expect(parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim' }))).toMatchObject({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', unlocked: [] });
   });
 
   it('rejects garbage, unknown types, missing fields and oversized messages', () => {

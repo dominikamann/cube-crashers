@@ -34,6 +34,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   explosion: { type: 'explosion', pos: p, radius: 2 },
   blastWarning: { type: 'blastWarning', pos: p, radius: 1.8 },
   nestPlanted: { type: 'nestPlanted', id: 1 },
+  nestAppeared: { type: 'nestAppeared', id: 1, pos: p },
   nestDestroyed: { type: 'nestDestroyed', id: 1, pos: p },
   alarmChanged: { type: 'alarmChanged', level: 2 },
   elevatorOpen: { type: 'elevatorOpen' },

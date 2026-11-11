@@ -14,6 +14,8 @@ export const BOSS = {
   wormSpeed: 2.2,
   wormMinSplit: 3,
   wormMaxWorms: 4,
+  /** share of Mega Block attacks that are stomps (the rest are shockwave lines) */
+  stompChance: 0.6,
   stompRadius: 2.5,
   stompDamage: 30,
   strikeRadius: 2,
@@ -70,7 +72,7 @@ function attack(s: SimState, b: BossState): void {
   if (b.kind === 'megaBlock') {
     const boss = byId(s, b.enemyId!);
     // stomps under every player (and a tower now and then), or a shockwave line toward one player
-    if (!boss || s.rng.next() < 0.6) {
+    if (!boss || s.rng.next() < BOSS.stompChance) {
       for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
       if (s.towers.length > 0 && s.rng.next() < 0.5) telegraph(s, s.rng.pick(s.towers).pos, BOSS.stompRadius, BOSS.stompDamage);
     } else {

@@ -41,7 +41,10 @@ export class HostSession {
   private outEvents: SimEvent[] = [];
   private leftDuringRun: number[] = [];
 
-  constructor(private net: Transport, opts: { name: string; color?: number | null }) {
+  private unlocked = new Set<string>();
+
+  constructor(private net: Transport, opts: { name: string; color?: number | null; unlocked?: string[] }) {
+    for (const u of opts.unlocked ?? []) this.unlocked.add(u);
     this.lobby = [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
@@ -91,6 +94,8 @@ export class HostSession {
       const wish = m.color !== undefined && !used.has(m.color) ? m.color : undefined;
       const color = wish ?? [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;
       this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color });
+      // what anyone in the lobby has unlocked is available to everyone
+      for (const u of m.unlocked ?? []) this.unlocked.add(u);
       this.send(from, { type: 'welcome', playerId: from });
       this.broadcastLobby();
     } else if (m.type === 'input') {
@@ -111,15 +116,17 @@ export class HostSession {
 
   start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run'): void {
     this.difficulty = difficulty;
+    const unlocked = [...this.unlocked];
     this.sim = createSim(floor01, seed, {
       mode,
+      unlocked,
       difficulty,
       players: this.lobby.length,
       ids: this.lobby.map(p => p.id),
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: this.lobby, mode });
+    this.send('all', { type: 'start', seed, difficulty, players: this.lobby, mode, unlocked });
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -189,12 +196,12 @@ export class ClientSession {
   private clock = 0;
   private now = () => this.clock;
 
-  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null }) {
+  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null; unlocked?: string[] }) {
     net.onMessage((_from, data) => this.receive(data));
     net.onClose(() => {
       if (this.status !== 'rejected') this.status = 'hostLeft';
     });
-    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined }));
+    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined, unlocked: opts.unlocked ?? [] }));
   }
 
   private receive(data: string): void {
@@ -220,6 +227,7 @@ export class ClientSession {
         this.lobby = m.players;
         this.view = createSim(floor01, m.seed, {
           mode: m.mode === 'quick' ? 'quick' : 'run',
+          unlocked: m.unlocked ?? [],
           difficulty: m.difficulty,
           players: m.players.length,
           ids: m.players.map(p => p.id),

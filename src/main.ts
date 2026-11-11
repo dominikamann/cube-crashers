@@ -14,7 +14,8 @@ import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
-import { TICK_RATE, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
+import { loadProfile, saveProfile, ticketsForRun } from './profile';
+import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createMarkers } from './ui/markers';
@@ -39,6 +40,8 @@ function startGame() {
   const renderer = createRenderer(canvas, floor01);
   const keyboard = new Keyboard();
   const settings = loadSettings();
+  const profile = loadProfile(window.localStorage);
+  const storeProfile = () => saveProfile(window.localStorage, profile);
   const forced = params.get('graphics');
   if (forced === 'low' || forced === 'medium' || forced === 'high' || forced === 'ultra') settings.graphics = forced;
 
@@ -108,6 +111,7 @@ function startGame() {
     {
       play: () => newSoloGame('run'),
       quick: () => newSoloGame('quick'),
+      endless: () => newSoloGame('endless'),
       host: () => void hostGame(),
       join: () => void openJoinList(),
       resume,
@@ -117,6 +121,8 @@ function startGame() {
       click: () => ensureAudio().mixer.play('uiClick'),
     },
     settings,
+    profile,
+    storeProfile,
   );
 
   const loop = createLoop(
@@ -175,6 +181,15 @@ function startGame() {
     },
   );
 
+  /** tickets for this run go into the local profile (in LAN games every player earns their own) */
+  function earnTickets(s: SimState): number {
+    const floors = s.run.floor + (s.phase === 'won' ? 1 : 0);
+    const n = ticketsForRun({ score: s.score, floors, difficulty: s.difficulty });
+    profile.tickets += n;
+    storeProfile();
+    return n;
+  }
+
   function summary(s: SimState): RunSummary {
     return {
       score: s.score,
@@ -184,7 +199,8 @@ function startGame() {
       credits: s.credits,
       nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
       nests: s.nests.length,
-      best: recordScore(s.score, s.difficulty),
+      best: recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.difficulty),
+      tickets: earnTickets(s),
       difficulty: s.difficulty,
       ranking: [...s.players]
         .sort((a, b) => b.stats.score - a.stats.score)
@@ -221,13 +237,13 @@ function startGame() {
     ensureAudio().music.playTrack('battle');
   }
 
-  let lastSoloMode: 'run' | 'quick' = 'run';
-  function newSoloGame(mode: 'run' | 'quick' = lastSoloMode) {
+  let lastSoloMode: RunMode = 'run';
+  function newSoloGame(mode: RunMode = lastSoloMode) {
     lastSoloMode = mode;
     leaveLan(false);
     role = 'solo';
     const fixed = Number(params.get('seed'));
-    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
+    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, unlocked: profile.unlocked, difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }
@@ -246,7 +262,7 @@ function startGame() {
       const transport = await lan!.host(playerName());
       leaveLan(false);
       role = 'host';
-      host = new HostSession(transport, { name: playerName(), color: settings.color });
+      host = new HostSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
       host.setDifficulty(settings.difficulty);
       showLobby();
     } catch {
@@ -275,7 +291,7 @@ function startGame() {
       const transport = await lan!.join(target);
       leaveLan(false);
       role = 'client';
-      client = new ClientSession(transport, { name: playerName(), color: settings.color });
+      client = new ClientSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
       mode = 'lobby';
       lastLobby = '';
     } catch {
