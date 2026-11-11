@@ -76,7 +76,21 @@ genügt, keine IP-Adresse.
   - **Pizza Cutter:** wirft eine Sägescheibe, die bis zu 6-mal von Wänden abprallt und alles durchschneidet, 4 s lang.
 - Seltene Waffen haben eigene Sounds und einen goldenen Glanz am Spieler.
 
-## 4. Reihenfolge **[Builder-Entscheidung]**
+## 4. Schwierigkeitsstufen **[Dominik: „Ultra Low, Low, Medium, High, Ultra High … für jedes Spiel, LAN und Einzelspieler“]**
+- Vor jeder Runde wählbar (Einzelspieler: im Startmenü; LAN: der Host wählt in der Lobby, alle sehen sie).
+- Werte **[Builder-Entscheidung]** (Faktoren gegenüber heute = Medium):
+
+| Stufe | Gegner-Leben | Gegner-Schaden | Hordengröße | Credits | Alarm-Tempo | Punkte |
+|---|---|---|---|---|---|---|
+| Ultra Low | ×0,6 | ×0,5 | ×0,6 | 5 | ×0,65 | ×0,5 |
+| Low | ×0,8 | ×0,75 | ×0,8 | 4 | ×0,8 | ×0,75 |
+| Medium | ×1 | ×1 | ×1 | 3 | ×1 | ×1 |
+| High | ×1,25 | ×1,25 | ×1,2 | 3 | ×1,2 | ×1,5 |
+| Ultra High | ×1,5 | ×1,5 | ×1,4 | 2 | ×1,4 | ×2 |
+
+- Die Bestenliste wird pro Stufe geführt; der Ergebnisbildschirm nennt die Stufe.
+
+## 5. Reihenfolge **[Builder-Entscheidung]**
 1. Funde aus dem Review der Stufe 1 beheben.
 2. Jetpack und seltene Waffen (Einzelspieler, sofort spielbar).
 3. Mehrspieler in der Simulation (mehrere Spieler, Aufhelfen, Skalierung, Farben, Rangliste).
@@ -84,5 +98,5 @@ genügt, keine IP-Adresse.
 5. Electron: WebSocket-Server, UDP-Anmeldung und Suche, IPC.
 6. Doku, Installer.
 
-## 5. Nicht-Ziele
+## 6. Nicht-Ziele
 Internet-Spiel, Accounts, Spielstände übers Netz, Sprach-Chat, Zuschauer, Anti-Cheat.

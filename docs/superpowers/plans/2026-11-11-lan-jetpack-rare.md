@@ -52,7 +52,10 @@ Apply the Critical/Important findings of the Stage 1 final review, each with a f
 - [ ] Failing tests: picking up the jetpack gives 300 fuel; holding fly crosses a wall (player x passes from one side of a wall to the other), fuel goes down by the ticks flown; release over open floor lands with a stomp; fuel running out above a wall ends on a free tile (**Review Focus 4**); no flying in a kart; a jetpack respawns after 5400 ticks only if none is on the map. Rare: with a forced rng the crate offers a rare card; taking it fills the rare slot, Q selects it, after 3600 ticks `rareExpired` and slot cleared; slush freezes a blob after 60 ticks in the cone and frozen enemies don't move; bubble sticks enemies and pops for 40; blower pushes a blob away and wall-slams for 15; pizza saw bounces off a wall and hits an enemy behind the player.
 - [ ] Implement → tests green → screenshots → commit `feat: findable jetpack and rare 60-second weapons`.
 
-### Task 3: Multiplayer in the sim
+### Task 3: Multiplayer and difficulty in the sim
+
+(Difficulty added on user request: `Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh'`, `DIFFICULTY` table in `config/difficulty.ts` with `enemyHp, enemyDamage, hordeSize, credits, alarmSpeed, score` from spec §4; `createSim(map, seed, { players, difficulty })`; `s.difficulty`; applied at enemy spawn (hp), in `damagePlayer` callers for enemy damage, horde/rush sizes, start credits, alarm interval, score. Tests: Ultra High has 2 credits and tougher enemies; Ultra Low has 5 credits and smaller hordes; Medium equals today's numbers.)
+
 
 **Files:** `src/sim/sim.ts`, `types.ts`, `systems/player.ts`, `systems/coop.ts` (new), `systems/nests.ts`, `systems/enemies.ts`, `systems/hordes.ts`, `config/balance.ts`. Tests: `tests/sim/coop.test.ts`.
 
