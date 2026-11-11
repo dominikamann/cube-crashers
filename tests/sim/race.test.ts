@@ -12,6 +12,9 @@ const centre = (i: number): Vec2 => {
   return { x: (c.x0 + c.x1 + 1) / 2, z: (c.z0 + c.z1 + 1) / 2 };
 };
 
+/** every checkpoint in driving order, ending on the finish line */
+const LAP = [...RACE_CHECKPOINTS.keys()].slice(1).concat(0);
+
 /** puts player `id`'s kart onto checkpoint `i` and lets one tick pass */
 function driveTo(s: SimState, id: number, i: number) {
   const p = s.players.find(x => x.id === id)!;
@@ -49,13 +52,9 @@ describe('kart rally', () => {
   it('counts a lap only for passing every checkpoint in order', () => {
     const s = raceSim();
     // skipping checkpoint 2 does not count
-    driveTo(s, 0, 1);
-    driveTo(s, 0, 3);
-    driveTo(s, 0, 0);
+    for (const i of LAP.filter(i => i !== 2)) driveTo(s, 0, i);
     expect(s.run.race!.laps[0]).toBe(0);
-    driveTo(s, 0, 2);
-    driveTo(s, 0, 3);
-    driveTo(s, 0, 0);
+    for (const i of LAP.slice(1)) driveTo(s, 0, i);
     expect(s.run.race!.laps[0]).toBe(1);
     expect(s.events).toContainEqual({ type: 'raceLap', playerId: 0, lap: 1 });
   });
@@ -76,7 +75,7 @@ describe('kart rally', () => {
   it('ends after two minutes: solo earns a medal in coins, then the elevator shop opens', () => {
     const s = raceSim();
     const coins = s.players[0].coins;
-    for (let lap = 0; lap < 3; lap++) for (const i of [1, 2, 3, 0]) driveTo(s, 0, i);
+    for (let lap = 0; lap < 3; lap++) for (const i of LAP) driveTo(s, 0, i);
     s.run.stageUntil = s.tick;
     stepSim(s, []);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd' }));
@@ -87,7 +86,7 @@ describe('kart rally', () => {
   it('with several players the most laps win a bonus', () => {
     const s = raceSim(2);
     const before = s.players.map(p => p.coins);
-    for (const i of [1, 2, 3, 0]) driveTo(s, 0, i);
+    for (const i of LAP) driveTo(s, 0, i);
     s.run.stageUntil = s.tick;
     stepSim(s, []);
     expect(s.players[0].coins - before[0]).toBe(RACE.coinsPerLap + RACE.winnerBonus);

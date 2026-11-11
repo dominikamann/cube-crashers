@@ -366,11 +366,12 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         }
         sky.mesh.position.copy(v.camera.position);
         // first person: you do not see the inside of your own head
-        const own = v.fpYaw !== null ? actors.playerModel(v.id) : undefined;
-        const shown = own?.visible ?? false;
-        if (own) own.visible = false;
+        // (nor the ground crosshair: the screen has one in the middle)
+        const hidden = v.fpYaw !== null ? [actors.playerModel(v.id), actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
+        const shown = hidden.map(o => o.visible);
+        for (const o of hidden) o.visible = false;
         v.composer!.render();
-        if (own) own.visible = shown;
+        hidden.forEach((o, k) => (o.visible = shown[k]));
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
         renderer.autoClear = false;
         renderer.render(overlay, v.camera);

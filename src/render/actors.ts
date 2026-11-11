@@ -18,6 +18,8 @@ export interface Actors {
   playerPos(i?: number): THREE.Vector3;
   /** the model of player `id` (first person hides it for that view) */
   playerModel(id: number): THREE.Object3D | undefined;
+  /** the ground crosshair of view `i` (first person has one in the middle of the screen instead) */
+  reticle(i: number): THREE.Object3D | undefined;
   /** a new floor: move the elevator */
   setMap(map: FloorMap): void;
 }
@@ -540,6 +542,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     },
     playerPos: (i = 0) => foci[i],
     playerModel: id => players.get(id)?.root,
+    reticle: i => reticles[i]?.group,
     setMap(m) {
       elevator.position.set(m.elevator.x, 0, m.elevator.z);
       // the rally track has no elevator to ride
