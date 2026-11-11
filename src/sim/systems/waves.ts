@@ -1,5 +1,6 @@
 import { WAVE_PAUSE_SECONDS, WAVES } from '../config/waves';
 import { TICK_RATE, type SimState } from '../types';
+import { startBoss } from './boss';
 import { spawnCrate } from './crates';
 import { spawnEnemy } from './enemies';
 
@@ -20,6 +21,7 @@ function startWave(s: SimState): void {
   queue.sort((a, b) => a.at - b.at);
   s.wave.spawnQueue = queue;
   s.events.push({ type: 'waveStart', wave: s.wave.index + 1 });
+  if (def.boss) startBoss(s, def.boss);
 }
 
 export function updateWaves(s: SimState): void {

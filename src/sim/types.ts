@@ -5,7 +5,7 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'dasher' | 'tank' | 'splitter' | 'splitling' | 'miniboss';
+export type EnemyKind = 'blob' | 'dasher' | 'tank' | 'splitter' | 'splitling' | 'miniboss' | 'wormSegment';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -137,14 +137,40 @@ export interface WaveState {
   pauseUntil: number | null;
 }
 
+export interface Worm {
+  id: number;
+  /** enemy ids of the segments, head first */
+  segmentIds: number[];
+  /** tick the worm got its current head (start of its serpentine motion) */
+  t0: number;
+  wiggle: number;
+}
+
+export interface Telegraph {
+  id: number;
+  pos: Vec2;
+  radius: number;
+  impactAt: number;
+  /** damage to players; towers always take TELEGRAPH_TOWER_DAMAGE */
+  damage: number;
+}
+
 export interface BossState {
   kind: 'miniboss' | 'worm';
+  maxHp: number;
+  phase: 1 | 2 | 3;
+  /** the mini-boss enemy id (null for the worm) */
+  enemyId: number | null;
+  worms: Worm[];
+  telegraphs: Telegraph[];
+  nextAttackAt: number;
+  lastPos: Vec2;
 }
 
 export type SimEvent =
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
   | { type: 'enemyHit'; pos: Vec2 }
-  | { type: 'enemyKilled'; kind: EnemyKind | 'segment'; pos: Vec2 }
+  | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2 }
   | { type: 'coinPicked'; playerId: number; streak: number }
   | { type: 'crateOpened'; playerId: number; weapon: WeaponKind; level: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number }

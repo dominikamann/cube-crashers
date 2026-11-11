@@ -1,4 +1,5 @@
 import { Rng } from './rng';
+import { moveBoss, updateBoss } from './systems/boss';
 import { removeDead, updateAreas, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateCrates } from './systems/crates';
@@ -58,10 +59,12 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updatePlayers(s, moves);
   updateWaves(s);
   updateEnemies(s);
+  moveBoss(s);
   updateWeapons(s);
   updateProjectiles(s);
   updateTowers(s);
   updateAreas(s);
+  updateBoss(s);
   updateCrates(s);
   removeDead(s);
   updateCoins(s);
