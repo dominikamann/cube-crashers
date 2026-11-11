@@ -39,7 +39,7 @@ describe('player damage', () => {
     const p = s.players[0];
     p.weapons = [{ kind: 'discoBall', level: 3, cooldown: 0 }];
     p.hp = 1;
-    p.pos = { x: 4, z: 0 };
+    p.pos = { x: p.pos.x + 4, z: p.pos.z };
     const tank = spawnEnemy(s, 'tank', { ...p.pos });
     tank.speed = 0;
     tank.hp = 1e9;
@@ -52,7 +52,7 @@ describe('player damage', () => {
     }
     expect(respawnAt - downAt).toBe(180);
     expect(p.hp).toBe(100);
-    expect(p.pos).toEqual(s.map.playerSpawn);
+    expect(p.pos).toEqual(s.map.spawn);
     expect(p.weapons).toEqual([expect.objectContaining({ kind: 'discoBall', level: 3 })]);
   });
 });

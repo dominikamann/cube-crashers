@@ -136,44 +136,26 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'enemyHit':
       return one('enemyHit');
     case 'enemyKilled':
-      return one('enemyKilled', e.kind === 'tank' || e.kind === 'miniboss' ? 0.7 : e.kind === 'splitling' ? 1.4 : 1);
+      return one('enemyKilled', e.kind === 'tank' || e.elite ? 0.7 : e.kind === 'splitling' ? 1.4 : 1);
     case 'coinPicked':
       return one('coin', SEMITONE ** Math.min(e.streak, MAX_COIN_STREAK_STEPS));
-    case 'crateOpened':
-      return one('crate');
     case 'towerBuilt':
       return one('towerBuilt');
     case 'buildDenied':
       return one('buildDenied');
     case 'towerFired':
       return one(`tower_${e.kind}`);
-    case 'baseHit':
-      return one('baseHit');
     case 'playerHit':
       return one('playerHit');
     case 'playerDown':
       return one('playerDown');
     case 'playerRespawn':
       return one('playerRespawn');
-    case 'waveStart':
-      return one('waveStart');
-    case 'waveCleared':
-      return [];
-    case 'bossSpawn':
-      return one('bossSpawn');
-    case 'bossPhase':
-      return one('bossPhase');
-    case 'bossTelegraph':
-      return one('bossTelegraph');
-    case 'bossImpact':
-      return one('bossImpact');
-    case 'wormSplit':
-      return one('wormSplit');
-    case 'bossDead':
-      return one('bossDead');
     case 'gameWon':
       return one('gameWon');
     case 'gameLost':
       return one('gameLost');
+    default:
+      return [];
   }
 }

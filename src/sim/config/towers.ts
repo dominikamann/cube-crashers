@@ -10,9 +10,9 @@ export interface TowerDef {
 }
 
 export const TOWERS: Record<TowerKind, TowerDef> = {
-  laser: { cost: 15, hp: 40, range: 7, cooldown: 0.4, damage: 6 },
-  popcorn: { cost: 25, hp: 40, range: 9, cooldown: 2, damage: 10 },
-  frost: { cost: 20, hp: 40, range: 5, cooldown: 1.5, damage: 0 },
+  laser: { cost: 12, hp: 40, range: 7, cooldown: 0.4, damage: 6 },
+  popcorn: { cost: 20, hp: 40, range: 9, cooldown: 2, damage: 10 },
+  frost: { cost: 15, hp: 40, range: 5, cooldown: 1.5, damage: 0 },
 };
 
 export const POPCORN_FLIGHT = 0.8;

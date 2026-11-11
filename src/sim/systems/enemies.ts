@@ -1,43 +1,47 @@
-import { ENEMIES } from '../config/enemies';
-import { dist } from '../util';
-import { damagePlayer, PLAYER_RADIUS } from './player';
+import { PLAYER_RADIUS } from '../config/balance';
+import { ELITE, ENEMIES } from '../config/enemies';
 import { DT, type Enemy, type EnemyKind, type SimState, type Vec2 } from '../types';
+import { dist } from '../util';
+import { damagePlayer } from './player';
 
-export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2): Enemy {
+export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hordeId?: number; elite?: boolean } = {}): Enemy {
   const def = ENEMIES[kind];
+  const elite = opts.elite ?? false;
+  const hp = def.hp * (elite ? ELITE.hp : 1);
   const e: Enemy = {
     id: s.nextId++,
     kind,
     pos: { ...pos },
-    hp: def.hp,
-    maxHp: def.hp,
+    hp,
+    maxHp: hp,
     speed: def.speed,
     slowUntil: -1,
-    radius: def.radius,
+    radius: def.radius * (elite ? ELITE.radius : 1),
+    hordeId: opts.hordeId ?? null,
+    elite,
+    state: 'move',
+    stateUntil: 0,
+    dir: { x: 0, z: 1 },
+    knock: { x: 0, z: 0 },
+    cooldownUntil: 0,
+    ramHitUntil: 0,
+    chargeLeft: 0,
   };
   s.enemies.push(e);
   return e;
 }
 
-export function damageBase(s: SimState, amount: number): void {
-  if (s.base.hp <= 0) return;
-  s.base.hp = Math.max(0, s.base.hp - amount);
-  s.events.push({ type: 'baseHit', hp: s.base.hp });
+export function contactDamage(s: SimState): void {
+  for (const e of s.enemies) {
+    if (e.hp <= 0) continue;
+    const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
+    if (dps === 0) continue;
+    for (const p of s.players) {
+      if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, dps * DT);
+    }
+  }
 }
 
 export function updateEnemies(s: SimState): void {
-  const survivors: Enemy[] = [];
-  for (const e of s.enemies) {
-    const slow = e.slowUntil > s.tick ? 0.5 : 1;
-    e.pos.z += e.speed * slow * DT;
-    if (e.pos.z >= s.map.baseZ) {
-      damageBase(s, ENEMIES[e.kind].baseDamage);
-      continue;
-    }
-    survivors.push(e);
-    for (const p of s.players) {
-      if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, ENEMIES[e.kind].contactDamage * DT);
-    }
-  }
-  s.enemies = survivors;
+  contactDamage(s);
 }

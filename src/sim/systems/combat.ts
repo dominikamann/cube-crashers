@@ -4,6 +4,7 @@ import { dist, targets } from '../util';
 import { spawnEnemy } from './enemies';
 
 const HIT_PADDING = 0.15;
+export const COIN_LIFETIME_TICKS = 480;
 
 export function dropCoins(s: SimState, pos: Vec2, count: number): void {
   for (let i = 0; i < count; i++) {
@@ -11,18 +12,18 @@ export function dropCoins(s: SimState, pos: Vec2, count: number): void {
       id: s.nextId++,
       pos: { x: pos.x + s.rng.range(-0.4, 0.4), z: pos.z + s.rng.range(-0.4, 0.4) },
       value: 1,
-      spawnedAt: s.tick,
+      expiresAt: s.tick + COIN_LIFETIME_TICKS,
     });
   }
 }
 
 /** All damage in the game goes through here. Dead enemies are swept by removeDead. */
-export function damageEnemy(s: SimState, e: Enemy, amount: number, _source: DamageSource): void {
+export function damageEnemy(s: SimState, e: Enemy, amount: number, _source: DamageSource, _byPlayerId?: number): void {
   if (e.hp <= 0) return;
   e.hp -= amount;
   s.events.push({ type: 'enemyHit', pos: { ...e.pos } });
   if (e.hp > 0) return;
-  s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos } });
+  s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos }, elite: e.elite });
   dropCoins(s, e.pos, ENEMIES[e.kind].coins);
   if (e.kind === 'splitter') {
     spawnEnemy(s, 'splitling', { x: e.pos.x - 0.3, z: e.pos.z });
@@ -40,16 +41,6 @@ export function removeDead(s: SimState): void {
   s.enemies = s.enemies.filter(e => e.hp > 0);
 }
 
-function hitCrates(s: SimState, pos: Vec2, damage: number): boolean {
-  for (const c of s.crates) {
-    if (c.hp > 0 && dist(pos, c.pos) <= 0.5) {
-      c.hp -= damage;
-      return true;
-    }
-  }
-  return false;
-}
-
 export function updateProjectiles(s: SimState): void {
   const keep = [];
   for (const p of s.projectiles) {
@@ -63,6 +54,7 @@ export function updateProjectiles(s: SimState): void {
           s.areas.push({
             id: s.nextId++,
             kind: p.kind,
+            ownerId: p.ownerId,
             pos: { ...p.target! },
             radius: land.radius,
             damage: land.damage,
@@ -114,7 +106,6 @@ export function updateProjectiles(s: SimState): void {
       }
       p.pierce--;
     }
-    if (alive && p.behavior === 'bolt' && hitCrates(s, p.pos, p.damage)) alive = false;
     if (alive) keep.push(p);
   }
   s.projectiles = keep;

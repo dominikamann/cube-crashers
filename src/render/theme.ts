@@ -12,6 +12,8 @@ export interface Theme {
   roadB: number;
   grassA: number;
   grassB: number;
+  wallA: number;
+  wallB: number;
   laneEdge: number;
   laneEdgeIntensity: number;
   /** how strongly emissive accents glow */
@@ -37,6 +39,8 @@ export const THEMES: { day: Theme; night: Theme } = {
     roadB: 0xe0d1a5,
     grassA: 0x7cc56a,
     grassB: 0x6db85c,
+    wallA: 0x5b8def,
+    wallB: 0x4f7fe0,
     laneEdge: 0x2bf0ff,
     laneEdgeIntensity: 0.6,
     glow: 1,
@@ -58,6 +62,8 @@ export const THEMES: { day: Theme; night: Theme } = {
     roadB: 0x423f78,
     grassA: 0x2d5a5a,
     grassB: 0x264f4f,
+    wallA: 0x3d49a8,
+    wallB: 0x35409a,
     laneEdge: 0x2bf0ff,
     laneEdgeIntensity: 3,
     glow: 2.2,
@@ -77,6 +83,8 @@ const COLOR_KEYS = new Set<keyof Theme>([
   'roadB',
   'grassA',
   'grassB',
+  'wallA',
+  'wallB',
   'laneEdge',
 ]);
 

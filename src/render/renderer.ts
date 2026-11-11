@@ -3,7 +3,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import type { MapDef, SimEvent, SimState } from '../sim/types';
+import type { FloorMap } from '../sim/map/tilemap';
+import type { SimEvent, SimState } from '../sim/types';
 import { createActors } from './actors';
 import { createEntities } from './entities';
 import { createFx } from './fx';
@@ -18,7 +19,7 @@ export interface GameRenderer {
 
 const LOOK_BLEND_SECONDS = 1.5;
 
-export function createRenderer(canvas: HTMLCanvasElement, map: MapDef): GameRenderer {
+export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRenderer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -66,8 +67,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: MapDef): GameRend
 
   let night = 0;
   let time = 0;
-  const camPos = new THREE.Vector3(0, 13, 14);
-  const camLook = new THREE.Vector3(0, 0, -3);
+  const camPos = new THREE.Vector3(map.spawn.x, 15, map.spawn.z + 11);
+  const camLook = new THREE.Vector3(map.spawn.x, 0, map.spawn.z - 2);
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
@@ -99,8 +100,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: MapDef): GameRend
       fx.update(s, events, theme, frameDt);
 
       const p = actors.playerPos();
-      wantPos.set(p.x * 0.3, 13, p.z + 9);
-      wantLook.set(p.x * 0.3, 0, p.z - 8);
+      wantPos.set(p.x, 15, p.z + 11);
+      wantLook.set(p.x, 0, p.z - 2);
       const k = 1 - Math.exp(-frameDt * 5);
       camPos.lerp(wantPos, k);
       camLook.lerp(wantLook, k);

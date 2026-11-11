@@ -1,5 +1,6 @@
 import { FROST_SLOW_SECONDS, POPCORN_FLIGHT, POPCORN_RADIUS, TOWERS } from '../config/towers';
 import { DT, TICK_RATE, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
+import { hasLos } from '../map/tilemap';
 import { dist, nearestEnemy, targets } from '../util';
 import { damageEnemy } from './combat';
 
@@ -69,7 +70,7 @@ function fire(s: SimState, t: Tower): boolean {
       return true;
     }
     case 'frost': {
-      const inRange = targets(s).filter(e => dist(t.pos, e.pos) <= def.range);
+      const inRange = targets(s).filter(e => dist(t.pos, e.pos) <= def.range && hasLos(s.map, t.pos, e.pos));
       if (inRange.length === 0) return false;
       for (const e of inRange) e.slowUntil = s.tick + FROST_SLOW_SECONDS * TICK_RATE;
       s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...t.pos } });

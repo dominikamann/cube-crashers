@@ -2,11 +2,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../../src/sim/rng';
-import { createSim, stepSim } from '../../src/sim/sim';
-import { map01 } from '../../src/sim/config/map01';
-import type { Command } from '../../src/sim/types';
-
-const move = (x: number, z: number): Command => ({ type: 'move', playerId: 0, dir: { x, z } });
+import { stepSim } from '../../src/sim/sim';
+import { move, quietSim, run } from './helpers';
 
 describe('Rng', () => {
   it('is deterministic per seed', () => {
@@ -21,34 +18,37 @@ describe('Rng', () => {
 });
 
 describe('player movement', () => {
-  it('moves 6 units per second', () => {
-    const s = createSim(map01, 1);
+  it('moves 6 tiles per second on open floor', () => {
+    const s = quietSim();
     const x0 = s.players[0].pos.x;
-    for (let i = 0; i < 60; i++) stepSim(s, [move(1, 0)]);
+    run(s, 60, () => [move(1, 0)]);
     expect(s.players[0].pos.x - x0).toBeCloseTo(6, 3);
   });
 
-  it('is clamped to the player area', () => {
-    const s = createSim(map01, 1);
-    for (let i = 0; i < 600; i++) stepSim(s, [move(1, 0)]);
-    expect(s.players[0].pos.x).toBe(6);
+  it('stops at a wall', () => {
+    const s = quietSim();
+    s.players[0].pos.z = 60.5;
+    run(s, 600, () => [move(1, 0)]);
+    // spawn room ends at the wall x = 44
+    expect(s.players[0].pos.x).toBeGreaterThan(43.3);
+    expect(s.players[0].pos.x).toBeLessThanOrEqual(43.6 + 1e-6);
   });
 });
 
 describe('stepSim', () => {
   it('advances the tick and clears last tick events', () => {
-    const s = createSim(map01, 1);
-    s.events.push({ type: 'waveCleared', wave: 99 });
+    const s = quietSim();
+    s.events.push({ type: 'elevatorOpen' });
     stepSim(s, []);
     expect(s.tick).toBe(1);
-    expect(s.events.find(e => e.type === 'waveCleared' && e.wave === 99)).toBeUndefined();
+    expect(s.events).toEqual([]);
   });
 });
 
 describe('sim purity', () => {
   it('does not use three, DOM, Math.random or Date', () => {
     const files: string[] = [];
-    const walk = (dir: string) => readdirSync(dir).forEach(f => {
+    const walk = (dir: string) => readdirSync(dir).forEach((f: string) => {
       const p = join(dir, f);
       if (statSync(p).isDirectory()) walk(p); else files.push(p);
     });
@@ -56,24 +56,6 @@ describe('sim purity', () => {
     for (const f of files) {
       const src = readFileSync(f, 'utf8');
       expect(src, f).not.toMatch(/from 'three'|Math\.random|Date\.|\bwindow\b|\bdocument\b/);
-    }
-  });
-});
-
-describe('player area', () => {
-  it('reaches every build pad, including the forward ones', () => {
-    for (const pad of map01.pads) {
-      const s = createSim(map01, 1);
-      s.players[0].weapons = [];
-      for (let i = 0; i < 600; i++) {
-        const p = s.players[0].pos;
-        const dx = pad.pos.x - p.x, dz = pad.pos.z - p.z;
-        const d = Math.hypot(dx, dz);
-        if (d < 0.05) break;
-        stepSim(s, [move(dx / Math.max(d, 1), dz / Math.max(d, 1))]);
-      }
-      const p = s.players[0].pos;
-      expect(Math.hypot(pad.pos.x - p.x, pad.pos.z - p.z), `pad ${pad.id}`).toBeLessThan(1.2);
     }
   });
 });

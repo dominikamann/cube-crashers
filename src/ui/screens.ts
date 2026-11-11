@@ -37,8 +37,8 @@ export interface ScreenActions {
 export interface Screens {
   title(): void;
   pause(): void;
-  won(stars: 1 | 2 | 3, coins: number, seconds: number): void;
-  lost(wave: number): void;
+  won(score: number, seconds: number): void;
+  lost(): void;
   hide(): void;
   readonly visible: boolean;
 }
@@ -124,23 +124,19 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(s, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    won(stars, coins, seconds) {
+    won(score, seconds) {
       show('', s => {
         text(s, 'h2', '', t('won.title'));
-        const st = document.createElement('div');
-        st.className = 'stars';
-        st.innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? '' : 'off'}">★</span>`).join('');
-        s.append(st);
         const m = Math.floor(seconds / 60), sec = String(Math.floor(seconds % 60)).padStart(2, '0');
-        text(s, 'p', '', t('won.stats', { coins, time: `${m}:${sec}` }));
+        text(s, 'p', '', t('won.stats', { score, time: `${m}:${sec}` }));
         button(s, t('menu.playAgain'), actions.play, true);
         button(s, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    lost(wave) {
+    lost() {
       show('', s => {
         text(s, 'h2', '', t('lost.title'));
-        text(s, 'p', '', t('lost.subtitle', { wave }));
+        text(s, 'p', '', t('lost.subtitle'));
         button(s, t('menu.playAgain'), actions.play, true);
         button(s, t('menu.mainMenu'), actions.mainMenu);
       });

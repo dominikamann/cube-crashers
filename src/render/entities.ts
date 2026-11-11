@@ -6,12 +6,13 @@ import type { Theme } from './theme';
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
   blob: { w: 0.7, h: 0.7, d: 0.7, day: 0xe85d75, night: 0xff3b6b, eyeY: 0.5, eyeX: 0.15, eye: 0.14 },
-  dasher: { w: 0.55, h: 0.35, d: 0.85, day: 0xf29e4c, night: 0xffb13b, eyeY: 0.25, eyeX: 0.12, eye: 0.1 },
-  tank: { w: 1.25, h: 1.05, d: 1.25, day: 0x8a8fa3, night: 0x9aa6d0, eyeY: 0.7, eyeX: 0.28, eye: 0.18 },
+  hunter: { w: 0.5, h: 0.35, d: 0.85, day: 0xf29e4c, night: 0xffb13b, eyeY: 0.25, eyeX: 0.12, eye: 0.1 },
+  tank: { w: 1.2, h: 1.05, d: 1.2, day: 0x8a8fa3, night: 0x9aa6d0, eyeY: 0.7, eyeX: 0.28, eye: 0.18 },
   splitter: { w: 0.8, h: 0.8, d: 0.8, day: 0x9b6bd6, night: 0xb07cff, eyeY: 0.55, eyeX: 0.18, eye: 0.14 },
   splitling: { w: 0.42, h: 0.42, d: 0.42, day: 0xc9a6f0, night: 0xd8b8ff, eyeY: 0.3, eyeX: 0.09, eye: 0.08 },
-  miniboss: { w: 2.4, h: 2.2, d: 2.2, day: 0x5b4a8a, night: 0x7b5fd1, eyeY: 1.5, eyeX: 0.55, eye: 0.4 },
-  wormSegment: { w: 0.95, h: 0.85, d: 0.95, day: 0x7b4fd1, night: 0x8f63ff, eyeY: 0.6, eyeX: 0.22, eye: 0.16 },
+  shooter: { w: 0.55, h: 1.0, d: 0.55, day: 0x2fb8a6, night: 0x3bffe0, eyeY: 0.75, eyeX: 0, eye: 0.26 },
+  bomber: { w: 0.7, h: 0.6, d: 0.7, day: 0xd93a2f, night: 0xff5a3b, eyeY: 0.4, eyeX: 0.16, eye: 0.12 },
+  rammer: { w: 1.1, h: 0.8, d: 1.3, day: 0x4a6fa5, night: 0x6f9fe0, eyeY: 0.55, eyeX: 0.3, eye: 0.16 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -35,10 +36,6 @@ export function createEntities(scene: THREE.Scene): Entities {
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
   const pupils = new InstancedPool(scene, unit, pupilMat, 1024, false);
-  const hornMat = glowMat(0xff2bd6, 1.5);
-  const horns = new InstancedPool(scene, new THREE.BoxGeometry(0.22, 0.45, 0.22), hornMat, 64);
-  const redEyeMat = glowMat(0xff2b2b, 3);
-  const redEyes = new InstancedPool(scene, new THREE.BoxGeometry(0.26, 0.16, 0.06), redEyeMat, 64, false);
   const plateMat = lambert(0x5f6478);
   const plates = new InstancedPool(scene, new THREE.BoxGeometry(1.35, 0.18, 1.35), plateMat, 128);
 
@@ -84,42 +81,33 @@ export function createEntities(scene: THREE.Scene): Entities {
       eyeMat.color.setHex(night > 0.5 ? 0xffffff : 0xfff27a);
       eyeMat.emissive.copy(eyeMat.color);
       eyeMat.emissiveIntensity = 2.5 * theme.glow;
-      hornMat.emissiveIntensity = 1.5 * theme.glow;
       boomerangMat.emissiveIntensity = 1.5 * theme.glow;
       boltMat.emissiveIntensity = 3 * theme.glow;
       eyes.begin();
       pupils.begin();
-      horns.begin();
-      redEyes.begin();
       plates.begin();
 
-      const heads = new Set(s.boss?.worms.map(w => w.segmentIds[0]) ?? []);
       const slowed = (until: number) => until > s.tick;
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
-        const isSegment = e.kind === 'wormSegment';
-        const y = l.h / 2 + (isSegment || e.kind === 'miniboss' ? 0.05 : bob(e.id, time, e.kind === 'tank' ? 0.08 : 0.22));
-        const wobble = e.kind === 'dasher' ? Math.sin(time * 20 + e.id) * 0.15 : 0;
+        const scale = e.elite ? 1.4 : 1;
+        const y = (l.h / 2) * scale + bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2);
+        const yaw = Math.atan2(e.dir.x, e.dir.z);
         const tint = slowed(e.slowUntil) ? 0x9fe8ff : undefined;
-        bodies.get(e.kind)!.add(e.pos.x, y, e.pos.z, wobble, 1, tint);
-        if (e.kind === 'tank') plates.add(e.pos.x, y + l.h / 2 - 0.05, e.pos.z);
-        if (isSegment && heads.has(e.id)) {
-          horns.add(e.pos.x - 0.3, y + 0.6, e.pos.z);
-          horns.add(e.pos.x + 0.3, y + 0.6, e.pos.z);
-          redEyes.add(e.pos.x - 0.22, y + 0.15, e.pos.z + l.d / 2 + 0.03);
-          redEyes.add(e.pos.x + 0.22, y + 0.15, e.pos.z + l.d / 2 + 0.03);
-          continue;
-        }
-        if (isSegment) continue;
-        const ey = y - l.h / 2 + l.eyeY;
-        const ez = e.pos.z + l.d / 2 + 0.02;
-        for (const side of [-1, 1]) {
-          eyes.add(e.pos.x + side * l.eyeX, ey, ez, 0, l.eye);
-          pupils.add(e.pos.x + side * l.eyeX, ey - l.eye * 0.15, ez + 0.03, 0, l.eye * 0.5);
+        bodies.get(e.kind)!.add(e.pos.x, y, e.pos.z, yaw, scale, tint);
+        if (e.kind === 'tank') plates.add(e.pos.x, y + (l.h / 2) * scale - 0.05, e.pos.z, yaw, scale);
+        const ey = y - (l.h / 2 - l.eyeY) * scale;
+        const fx = Math.sin(yaw), fz = Math.cos(yaw);
+        const front = (l.d / 2 + 0.02) * scale;
+        for (const side of l.eyeX === 0 ? [0] : [-1, 1]) {
+          const ox = side * l.eyeX * scale;
+          const ex = e.pos.x + fx * front + fz * ox, ez = e.pos.z + fz * front - fx * ox;
+          eyes.add(ex, ey, ez, yaw, l.eye * scale);
+          pupils.add(ex + fx * 0.03, ey - l.eye * 0.15 * scale, ez + fz * 0.03, yaw, l.eye * 0.5 * scale);
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
-      for (const p of [eyes, pupils, horns, redEyes, plates]) p.end();
+      for (const p of [eyes, pupils, plates]) p.end();
 
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
       for (const p of s.projectiles) {

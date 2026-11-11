@@ -1,3 +1,4 @@
+import { hasLos } from './map/tilemap';
 import type { Enemy, SimState, Vec2 } from './types';
 
 export function dist(a: Vec2, b: Vec2): number {
@@ -18,7 +19,7 @@ export function nearestEnemy(s: SimState, from: Vec2, range: number): Enemy | nu
   let bestD = range;
   for (const e of targets(s)) {
     const d = dist(from, e.pos);
-    if (d <= bestD) {
+    if (d <= bestD && hasLos(s.map, from, e.pos)) {
       best = e;
       bestD = d;
     }
@@ -30,7 +31,7 @@ export function nearestEnemy(s: SimState, from: Vec2, range: number): Enemy | nu
 export function nearestEnemies(s: SimState, from: Vec2, range: number, n: number): Enemy[] {
   return targets(s)
     .map(e => ({ e, d: dist(from, e.pos) }))
-    .filter(x => x.d <= range)
+    .filter(x => x.d <= range && hasLos(s.map, from, x.e.pos))
     .sort((a, b) => a.d - b.d)
     .slice(0, n)
     .map(x => x.e);

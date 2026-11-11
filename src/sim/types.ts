@@ -1,3 +1,4 @@
+import type { FloorMap } from './map/tilemap';
 import type { Rng } from './rng';
 
 export const TICK_RATE = 60;
@@ -5,7 +6,7 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'dasher' | 'tank' | 'splitter' | 'splitling' | 'miniboss' | 'wormSegment';
+export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -14,19 +15,20 @@ export type WeaponKind =
   | 'joystickBoomerang'
   | 'discoBall';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
+export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
+export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
+export type DamageSource = WeaponKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
+export type KillCategory = 'weapon' | 'tower' | 'kart' | 'stomp' | 'dash' | 'other';
 
 export type Command =
   | { type: 'move'; playerId: number; dir: Vec2 }
+  | { type: 'jump'; playerId: number }
+  | { type: 'dash'; playerId: number }
+  /** tap E: enter or leave a vehicle */
+  | { type: 'use'; playerId: number }
+  /** E is held this tick: plants a charge at a nest */
+  | { type: 'hold'; playerId: number }
   | { type: 'build'; playerId: number; padId: number; tower: TowerKind };
-
-export interface MapDef {
-  id: string;
-  pads: { id: number; pos: Vec2 }[];
-  playerSpawn: Vec2;
-  laneHalfWidth: number;
-  spawnZ: number;
-  baseZ: number;
-}
 
 export interface HeldWeapon {
   kind: WeaponKind;
@@ -37,6 +39,8 @@ export interface HeldWeapon {
 export interface Player {
   id: number;
   pos: Vec2;
+  /** unit vector of the last movement direction */
+  facing: Vec2;
   hp: number;
   maxHp: number;
   coins: number;
@@ -44,7 +48,30 @@ export interface Player {
   weapons: HeldWeapon[];
   coinStreak: number;
   lastCoinTick: number;
+  /** ticks left in the air (0 = on the ground) */
+  air: number;
+  dashTicks: number;
+  dashDir: Vec2;
+  dashCharges: number;
+  /** ticks until the next dash charge is back */
+  dashRecharge: number;
+  /** enemy ids already hit by the current dash */
+  dashHits: number[];
+  invulnUntil: number;
+  combo: number;
+  comboUntil: number;
+  perks: Record<PerkKind, number>;
+  vehicleId: number | null;
+  boostUntil: number;
+  rapidUntil: number;
+  magnetUntil: number;
+  /** where the player gets back up after going down */
+  safePoint: Vec2;
+  /** ticks E has been held next to a nest */
+  plantTicks: number;
 }
+
+export type EnemyState = 'move' | 'windup' | 'charge' | 'stunned' | 'fuse';
 
 export interface Enemy {
   id: number;
@@ -55,9 +82,29 @@ export interface Enemy {
   speed: number;
   slowUntil: number;
   radius: number;
+  hordeId: number | null;
+  elite: boolean;
+  state: EnemyState;
+  stateUntil: number;
+  /** locked direction of a windup/charge */
+  dir: Vec2;
+  /** knockback velocity, decays every tick */
+  knock: Vec2;
+  cooldownUntil: number;
+  /** a kart cannot ram this enemy again before this tick */
+  ramHitUntil: number;
+  /** distance left in a rammer charge */
+  chargeLeft: number;
 }
 
-export type DamageSource = WeaponKind | TowerKind | 'boss';
+export interface Horde {
+  id: number;
+  waypoint: Vec2;
+  aggro: boolean;
+  /** rush hordes hunt the players from the start and never give up */
+  rush: boolean;
+  nextWanderAt: number;
+}
 
 /** What happens where a lobbed projectile lands. */
 export interface LandEffect {
@@ -72,6 +119,8 @@ export interface Projectile {
   id: number;
   kind: DamageSource;
   behavior: 'bolt' | 'lob' | 'boomerang';
+  /** fired by an enemy: hits players instead of enemies */
+  hostile?: boolean;
   pos: Vec2;
   vel: Vec2;
   damage: number;
@@ -81,6 +130,7 @@ export interface Projectile {
   until: number;
   /** enemy ids already hit (pierce/boomerang must not hit the same enemy twice per pass) */
   hitIds: number[];
+  /** player id, or -1 for towers and enemies */
   ownerId: number;
   /** lob: start and target for the arc */
   from?: Vec2;
@@ -96,6 +146,7 @@ export interface Projectile {
 export interface Area {
   id: number;
   kind: DamageSource;
+  ownerId: number;
   pos: Vec2;
   radius: number;
   damage: number;
@@ -108,15 +159,24 @@ export interface Coin {
   id: number;
   pos: Vec2;
   value: number;
-  /** tick the coin dropped; after COIN_VACUUM_SECONDS it flies to the nearest player */
-  spawnedAt?: number;
+  expiresAt: number;
 }
 
 export interface Crate {
   id: number;
   pos: Vec2;
-  weapon: WeaponKind;
-  hp: number;
+}
+
+export type Card = { type: 'weapon'; weapon: WeaponKind } | { type: 'perk'; perk: PerkKind };
+
+export interface Offer {
+  id: number;
+  pos: Vec2;
+  cards: Card[];
+  cardPos: Vec2[];
+  /** cards cannot be taken before this tick */
+  armedAt: number;
+  expiresAt: number;
 }
 
 export interface Tower {
@@ -129,87 +189,124 @@ export interface Tower {
   cooldown: number;
 }
 
-export type SpawnKind = EnemyKind | 'crate';
-
-export interface WaveState {
-  /** 0-based index of the current wave, -1 before the first wave */
-  index: number;
-  spawnQueue: { kind: SpawnKind; at: number }[];
-  /** tick at which the next wave starts, null while a wave is running */
-  pauseUntil: number | null;
-}
-
-export interface Worm {
+export interface Nest {
   id: number;
-  /** enemy ids of the segments, head first */
-  segmentIds: number[];
-  /** tick the worm got its current head (start of its serpentine motion) */
-  t0: number;
-  wiggle: number;
-}
-
-export interface Telegraph {
-  id: number;
+  spotId: number;
   pos: Vec2;
-  radius: number;
-  createdAt: number;
-  impactAt: number;
-  /** damage to players; towers always take TELEGRAPH_TOWER_DAMAGE */
-  damage: number;
+  state: 'idle' | 'planted' | 'destroyed';
+  /** ticks of successful holding, up to HOLD_TICKS */
+  progress: number;
+  nextSpawnAt: number;
+  nextRushAt: number;
 }
 
-export interface BossState {
-  kind: 'miniboss' | 'worm';
-  maxHp: number;
-  phase: 1 | 2 | 3;
-  /** the mini-boss enemy id (null for the worm) */
-  enemyId: number | null;
-  worms: Worm[];
-  telegraphs: Telegraph[];
-  nextAttackAt: number;
-  lastPos: Vec2;
+export interface Vehicle {
+  id: number;
+  kind: 'kart';
+  pos: Vec2;
+  vel: Vec2;
+  /** durability */
+  hp: number;
+  /** ticks of driving left */
+  fuel: number;
+  driverId: number | null;
+  air: number;
+  /** index into map.vehicleSpots */
+  spot: number;
+}
+
+export interface Powerup {
+  id: number;
+  kind: PowerupKind;
+  pos: Vec2;
+  expiresAt: number;
+}
+
+export interface RunSample {
+  /** seconds since the run started */
+  t: number;
+  distance: number;
+  idleTicks: number;
+  kills: number;
+  alarm: number;
+}
+
+export interface RunStats {
+  kills: Record<KillCategory, number>;
+  maxCombo: number;
+  damageTaken: number;
+  downs: number;
+  distance: number;
+  idleTicks: number;
+  samples: RunSample[];
 }
 
 export type SimEvent =
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
   | { type: 'enemyHit'; pos: Vec2 }
-  | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2 }
+  | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
   | { type: 'coinPicked'; playerId: number; streak: number }
-  | { type: 'crateOpened'; playerId: number; weapon: WeaponKind; level: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number }
   | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad' }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
-  | { type: 'baseHit'; hp: number }
   | { type: 'playerHit'; playerId: number; hp: number }
   | { type: 'playerDown'; playerId: number }
   | { type: 'playerRespawn'; playerId: number }
-  | { type: 'waveStart'; wave: number }
-  | { type: 'waveCleared'; wave: number }
-  | { type: 'bossSpawn'; kind: 'miniboss' | 'worm' }
-  | { type: 'bossPhase'; phase: 2 | 3 }
-  | { type: 'bossTelegraph'; pos: Vec2; radius: number; delay: number }
-  | { type: 'bossImpact'; pos: Vec2; radius: number }
-  | { type: 'wormSplit'; pos: Vec2 }
-  | { type: 'bossDead'; pos: Vec2 }
-  | { type: 'gameWon'; stars: 1 | 2 | 3 }
+  | { type: 'creditLost'; credits: number }
+  | { type: 'jump'; playerId: number }
+  | { type: 'stomp'; pos: Vec2; radius: number }
+  | { type: 'dash'; playerId: number }
+  | { type: 'boost'; playerId: number }
+  | { type: 'comboUp'; playerId: number; mult: number }
+  | { type: 'comboLost'; playerId: number }
+  | { type: 'enemyWindup'; id: number; kind: EnemyKind; pos: Vec2; dir: Vec2 }
+  | { type: 'enemyShot'; pos: Vec2 }
+  | { type: 'explosion'; pos: Vec2; radius: number }
+  | { type: 'nestPlanted'; id: number }
+  | { type: 'nestDestroyed'; id: number; pos: Vec2 }
+  | { type: 'alarmChanged'; level: number }
+  | { type: 'elevatorOpen' }
+  | { type: 'offerOpened'; pos: Vec2 }
+  | { type: 'cardPicked'; playerId: number; card: Card; level: number }
+  | { type: 'crateCoins'; playerId: number; coins: number }
+  | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
+  | { type: 'powerupPicked'; kind: PowerupKind; playerId: number }
+  | { type: 'kartEnter'; playerId: number }
+  | { type: 'kartRam'; pos: Vec2 }
+  | { type: 'kartJump'; pos: Vec2 }
+  | { type: 'kartLand'; pos: Vec2 }
+  | { type: 'kartDestroyed'; pos: Vec2 }
+  | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
 
 export interface SimState {
   tick: number;
+  seed: number;
   rng: Rng;
-  map: MapDef;
+  map: FloorMap;
   players: Player[];
   enemies: Enemy[];
+  hordes: Horde[];
   projectiles: Projectile[];
   areas: Area[];
   coins: Coin[];
   crates: Crate[];
+  offers: Offer[];
   towers: Tower[];
-  base: { hp: number; maxHp: number };
-  wave: WaveState;
-  boss: BossState | null;
+  nests: Nest[];
+  vehicles: Vehicle[];
+  vehicleRespawns: { spot: number; at: number }[];
+  powerups: Powerup[];
+  nextPowerupAt: number;
+  credits: number;
+  alarm: { level: number; nextAt: number };
+  elevatorOpen: boolean;
+  score: number;
+  stats: RunStats;
   phase: 'playing' | 'won' | 'lost';
   look: 'day' | 'night';
   nextId: number;
   events: SimEvent[];
+  /** flow field toward the players and the tick it was built; derived data, rebuilt on demand */
+  flow: { field: Int16Array; builtAt: number } | null;
 }

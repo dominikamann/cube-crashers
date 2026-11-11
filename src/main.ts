@@ -7,9 +7,8 @@ import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
 import { createLoop } from './loop';
 import { createRenderer } from './render/renderer';
-import { map01 } from './sim/config/map01';
+import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
-import { startBoss } from './sim/systems/boss';
 import { TICK_RATE, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
@@ -28,11 +27,11 @@ if (params.has('sound')) {
 function startGame() {
   app.innerHTML = '<canvas id="game"></canvas>';
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
-  const renderer = createRenderer(canvas, map01);
+  const renderer = createRenderer(canvas, floor01);
   const keyboard = new Keyboard();
   const settings = loadSettings();
 
-  let sim: SimState = createSim(map01, 1);
+  let sim: SimState = createSim(floor01, 1);
   let mode: 'title' | 'playing' | 'paused' | 'over' = 'title';
   let frameEvents: SimEvent[] = [];
   let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
@@ -82,14 +81,12 @@ function startGame() {
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
-          if (e.type === 'bossSpawn') audio.music.playTrack('boss');
-          if (e.type === 'bossDead') audio.music.playTrack('battle');
           if (e.type === 'gameWon' || e.type === 'gameLost') audio.music.playTrack(null);
         }
       }
       for (const e of frameEvents) {
-        if (e.type === 'gameWon') finish(() => screens.won(e.stars, sim.players[0].coins, sim.tick / TICK_RATE));
-        if (e.type === 'gameLost') finish(() => screens.lost(sim.wave.index + 1));
+        if (e.type === 'gameWon') finish(() => screens.won(e.score, sim.tick / TICK_RATE));
+        if (e.type === 'gameLost') finish(() => screens.lost());
       }
       frameEvents = [];
     },
@@ -105,7 +102,7 @@ function startGame() {
   }
 
   function newGame() {
-    sim = createSim(map01, (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+    sim = createSim(floor01, (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
     if (params.has('demo')) applyDemo(sim);
     frameEvents = [];
     keyboard.releaseAll();
@@ -133,7 +130,7 @@ function startGame() {
 
   function toTitle() {
     mode = 'title';
-    sim = createSim(map01, 1);
+    sim = createSim(floor01, 1);
     hud.setVisible(false);
     screens.title();
     if (audio) audio.music.playTrack('menu');
@@ -166,18 +163,11 @@ function startGame() {
   });
 }
 
-/** Dev helper (?demo=day|night&warp=ticks): armed player, towers, optional worm. */
+/** Dev helper (?demo=1&warp=ticks): armed player with coins. */
 function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 3, cooldown: 0 }));
   sim.players[0].coins = 200;
-  sim.towers.push(
-    { id: 90001, kind: 'laser', padId: 2, pos: { ...map01.pads[2].pos }, hp: 40, maxHp: 40, cooldown: 0 },
-    { id: 90002, kind: 'popcorn', padId: 3, pos: { ...map01.pads[3].pos }, hp: 40, maxHp: 40, cooldown: 0 },
-    { id: 90003, kind: 'frost', padId: 4, pos: { ...map01.pads[4].pos }, hp: 40, maxHp: 40, cooldown: 0 },
-  );
-  sim.wave.index = 2;
-  if (params.get('demo') === 'night') startBoss(sim, 'worm');
   const warp = Number(params.get('warp') ?? 0);
   for (let i = 0; i < warp; i++) stepSim(sim, []);
 }

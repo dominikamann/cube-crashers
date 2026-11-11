@@ -38,11 +38,6 @@ export function createFx(scene: THREE.Scene): Fx {
   const cubeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x222222, roughness: 0.5 });
   const cubes = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), cubeMat, 1024, false);
 
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
-  const fillMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
-  const rings = new InstancedPool(scene, new THREE.RingGeometry(0.92, 1, 40).rotateX(-Math.PI / 2), ringMat, 32, false);
-  const fills = new InstancedPool(scene, new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), fillMat, 32, false);
-
   const beams: Beam[] = [];
   const beamMat = glowMat(0xffffff, 3);
   const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2);
@@ -99,29 +94,10 @@ export function createFx(scene: THREE.Scene): Fx {
         switch (e.type) {
           case 'enemyKilled': {
             const l = ENEMY_LOOK[e.kind];
-            const big = e.kind === 'miniboss' ? 60 : e.kind === 'tank' ? 26 : e.kind === 'wormSegment' ? 22 : 14;
-            burst(e.pos, l.h / 2, big, [l.day, l.night, 0xffffff], e.kind === 'miniboss' ? 6 : 4, e.kind === 'splitling' ? 0.1 : 0.16);
+            const big = e.elite ? 50 : e.kind === 'tank' || e.kind === 'rammer' ? 26 : 14;
+            burst(e.pos, l.h / 2, big, [l.day, l.night, 0xffffff], e.elite ? 6 : 4, e.kind === 'splitling' ? 0.1 : 0.16);
             break;
           }
-          case 'bossDead':
-            burst(e.pos, 1, 300, [0x7b4fd1, 0xff2bd6, 0xffe14a, 0x2bf0ff, 0xffffff], 9, 0.22);
-            addShake(0.5);
-            break;
-          case 'crateOpened': {
-            const p = s.players.find(x => x.id === e.playerId);
-            if (p) burst(p.pos, 1, 30, [0xff9f2e, 0xfff6d0, 0xffe14a], 4, 0.12);
-            break;
-          }
-          case 'bossSpawn':
-            addShake(0.4);
-            break;
-          case 'baseHit':
-            addShake(0.15);
-            break;
-          case 'bossImpact':
-            burst(e.pos, 0.2, 40, [0xff2b4b, 0xffa040, 0x553344], 5, 0.18);
-            addShake(0.4);
-            break;
           case 'playerHit':
             addShake(0.06);
             break;
@@ -170,19 +146,6 @@ export function createFx(scene: THREE.Scene): Fx {
       }
       cubes.end();
       cubeMat.emissiveIntensity = 0.3 * theme.glow;
-
-      rings.begin();
-      fills.begin();
-      for (const t of s.boss?.telegraphs ?? []) {
-        const total = Math.max(1, t.impactAt - t.createdAt);
-        const left = Math.max(0, t.impactAt - s.tick);
-        const k = 1 - Math.min(1, left / total);
-        rings.add(t.pos.x, 0.05, t.pos.z, 0, t.radius);
-        fills.add(t.pos.x, 0.04, t.pos.z, 0, t.radius * Math.max(0.05, k));
-      }
-      rings.end();
-      fills.end();
-      ringMat.opacity = 0.6 + 0.4 * Math.abs(Math.sin(performance.now() / 80));
 
       beamPool.begin();
       for (const p of beamColors.values()) p.begin();
