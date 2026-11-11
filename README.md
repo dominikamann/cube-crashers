@@ -219,6 +219,7 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 | `E` (hold) | Plant a charge · help a teammate up · build, finish, repair or upgrade a tower (menu: `1`–`3`) |
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
+| `Z` | Zoom out / in |
 | `F11` | Fullscreen (desktop app) |
 
 ### Controller (Xbox and other standard pads)
@@ -229,7 +230,8 @@ stick to choose, **A** to confirm, **B** to go back).
 | Button | Action |
 |---|---|
 | Left stick | Move |
-| Right stick | Aim (pushed all the way it also fires) |
+| Right stick | Aim; the view slides ahead the further you push (all the way also fires) |
+| `R3` (press the right stick) | Zoom out / in |
 | `RT` | Fire |
 | `A` | Jump; hold to fly with a jetpack |
 | `B` | Dash · close the build menu |

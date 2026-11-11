@@ -116,4 +116,19 @@ describe('PadControls', () => {
     c.commands(pad(), s, 0, 80);
     expect(c.commands(pad({ down: [A] }), s, 0, 96)).toEqual([{ type: 'ready', playerId: 0 }]);
   });
+
+  it('R3 toggles the zoomed-out view; pushing the right stick further aims further ahead', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0];
+    const c = new PadControls();
+    c.commands(pad({ down: [11] }), s, 0, 0);
+    expect(c.zoomedOut).toBe(true);
+    c.commands(pad(), s, 0, 16);
+    c.commands(pad({ down: [11] }), s, 0, 32);
+    expect(c.zoomedOut).toBe(false);
+    const near = c.commands(pad({ axes: [0, 0, 0.45, 0] }), s, 0, 48).find(x => x.type === 'aim');
+    const far = c.commands(pad({ axes: [0, 0, 1, 0] }), s, 0, 64).find(x => x.type === 'aim');
+    if (near?.type === 'aim' && far?.type === 'aim') expect(far.point.x - p.pos.x).toBeGreaterThan(near.point.x - p.pos.x + 2);
+    else throw new Error('no aim');
+  });
 });

@@ -125,6 +125,8 @@ function startGame() {
   const buildMenu2 = createBuildMenu(hudRoots[1], () => {});
   const padCtl2 = new PadControls();
   let split = false;
+  /** Z zooms player 1's view out (R3 on the controller does the same) */
+  let zoomedOut = false;
   const setSplit = (on: boolean) => {
     split = on;
     document.body.classList.toggle('split', on);
@@ -200,6 +202,8 @@ function startGame() {
       // the crosshair replaces the mouse pointer while playing
       canvas.style.cursor = mode === 'playing' && view().run.stage === 'floor' ? 'none' : '';
       renderer.setViews(split ? [0, 1] : [localId()]);
+      renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
+      if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive);
@@ -500,6 +504,7 @@ function startGame() {
       else if (mode === 'paused') resume();
       return;
     }
+    if (mode === 'playing' && e.code === 'KeyZ' && !e.repeat) zoomedOut = !zoomedOut;
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
   });
   addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));

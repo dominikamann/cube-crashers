@@ -41,6 +41,8 @@ export interface GameRenderer {
   setLocalPlayer(id: number): void;
   /** split screen: one view per player id, side by side (one id = full screen) */
   setViews(ids: number[]): void;
+  /** zoomed out for a wider view (per view) */
+  setZoomedOut(view: number, out: boolean): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
@@ -51,6 +53,11 @@ export interface GameRenderer {
 }
 
 const LOOK_BLEND_SECONDS = 1.5;
+/** share of the aim distance the camera moves ahead, and the most it moves (tiles) */
+const LOOK_AHEAD = 0.45;
+const LOOK_AHEAD_MAX = 3;
+/** camera distance when zoomed out */
+const ZOOM_OUT = 1.5;
 
 /** Soft vignette and a touch of contrast and saturation: makes the colours pop without blurring anything. */
 const GradeShader = {
@@ -122,6 +129,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     bloom: UnrealBloomPass | null;
     camPos: THREE.Vector3;
     camLook: THREE.Vector3;
+    /** 1 = normal, higher = further away */
+    zoom: number;
+    wantZoom: number;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -130,6 +140,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     bloom: null,
     camPos: new THREE.Vector3(at.x, 15, at.z + 11),
     camLook: new THREE.Vector3(at.x, 0, at.z - 2),
+    zoom: 1,
+    wantZoom: 1,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -264,7 +276,19 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
             oz = (dz / d) * lean;
           }
         }
-        wantPos.set(p.x + ox, 15, p.z + oz + 11);
+        // look-ahead: the camera slides toward where the player aims (right stick or mouse)
+        const me = s.players.find(pl => pl.id === v.id);
+        if (me && me.downUntil === null) {
+          const ax = me.aimPoint.x - me.pos.x, az = me.aimPoint.z - me.pos.z;
+          const ad = Math.hypot(ax, az);
+          const ahead = Math.min(ad * LOOK_AHEAD, LOOK_AHEAD_MAX);
+          if (ad > 0.01) {
+            ox += (ax / ad) * ahead;
+            oz += (az / ad) * ahead;
+          }
+        }
+        v.zoom += (v.wantZoom - v.zoom) * k;
+        wantPos.set(p.x + ox, 15 * v.zoom, p.z + oz + 11 * v.zoom);
         wantLook.set(p.x + ox, 0, p.z + oz - 2);
         v.camPos.lerp(wantPos, k);
         v.camLook.lerp(wantLook, k);
@@ -304,6 +328,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setLocalPlayer(id) {
       if (views.length === 1) views[0].id = id;
+    },
+    setZoomedOut(view, out) {
+      if (views[view]) views[view].wantZoom = out ? ZOOM_OUT : 1;
     },
     setViews(ids) {
       if (ids.length === views.length && ids.every((id, i) => views[i].id === id)) return;

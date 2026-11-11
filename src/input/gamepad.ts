@@ -9,15 +9,16 @@ export interface PadSnapshot {
 }
 
 /** Button indices of the standard mapping (Xbox layout). */
-export const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 } as const;
+export const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, L3: 10, R3: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 } as const;
 
 const DEADZONE = 0.2;
 const AIM_DEADZONE = 0.3;
 /** the right stick pushed this far fires on its own (twin-stick style) */
 const STICK_FIRE = 0.75;
 const TRIGGER_FIRE = 0.35;
-/** how far ahead of the player the crosshair sits */
-const AIM_DISTANCE = 6;
+/** how far ahead of the player the crosshair sits: pushing the right stick further looks further ahead */
+const AIM_NEAR = 3;
+const AIM_FAR = 8;
 /** d-pad in the build menu: left, up, right */
 const DPAD_TOWERS: [number, TowerKind][] = [
   [PAD.LEFT, 'laser'],
@@ -47,6 +48,9 @@ export class PadControls {
   private pressed(pad: PadSnapshot, i: number): boolean {
     return !!pad.buttons[i]?.pressed && !this.prev[i];
   }
+
+  /** zoomed out (toggled with R3) */
+  zoomedOut = false;
 
   /** true once when Start goes down (pause) */
   startPressed(pad: PadSnapshot): boolean {
@@ -92,7 +96,8 @@ export class PadControls {
       const l = Math.hypot(move.x, move.z);
       this.aimDir = { x: move.x / l, z: move.z / l };
     }
-    if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + this.aimDir.x * AIM_DISTANCE, z: p.pos.z + this.aimDir.z * AIM_DISTANCE } });
+    const reach = aimLen > 0 ? AIM_NEAR + (AIM_FAR - AIM_NEAR) * Math.min(1, aimLen) : AIM_NEAR + 2;
+    if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + this.aimDir.x * reach, z: p.pos.z + this.aimDir.z * reach } });
     const rawAim = Math.hypot(pad.axes[2] ?? 0, pad.axes[3] ?? 0);
     if ((pad.buttons[PAD.RT]?.value ?? 0) > TRIGGER_FIRE || rawAim > STICK_FIRE) out.push({ type: 'fire', playerId });
 
@@ -119,6 +124,7 @@ export class PadControls {
       if (press(PAD.LB)) out.push({ type: 'select', playerId, slot: (p.selected - 1 + n) % n });
     }
     if (press(PAD.Y)) out.push({ type: 'select', playerId, slot: -1 });
+    if (press(PAD.R3)) this.zoomedOut = !this.zoomedOut;
 
     const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
     const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
