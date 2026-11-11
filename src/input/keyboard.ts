@@ -1,4 +1,5 @@
 import { padAt } from '../sim/systems/towers';
+import { instantUse } from './context';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
 export const BUILD_HOLD_MS = 150;
@@ -22,6 +23,8 @@ export class Keyboard {
   private jump = false;
   private dash = false;
   private use = false;
+  /** E went down since the last commands(): maybe a kart wants it right away */
+  private ePressed = false;
   private firing = false;
   private aim: Vec2 | null = null;
   private slot: number | null = null;
@@ -31,7 +34,10 @@ export class Keyboard {
   private shopKey: number | null = null;
 
   keyDown(code: string, now: number): void {
-    if (code === 'KeyE' && !this.down.has('KeyE')) this.eSince = now;
+    if (code === 'KeyE' && !this.down.has('KeyE')) {
+      this.eSince = now;
+      this.ePressed = true;
+    }
     if (code === 'Space' && !this.down.has('Space')) this.jump = true;
     if (code.startsWith('Shift') && !this.down.has(code)) this.dash = true;
     this.down.add(code);
@@ -91,7 +97,7 @@ export class Keyboard {
     this.down.clear();
     this.eSince = null;
     this.firing = false;
-    this.jump = this.dash = this.use = false;
+    this.jump = this.dash = this.use = this.ePressed = false;
     this.slot = null;
     this.wheelSteps = 0;
     this.closeMenu();
@@ -135,7 +141,7 @@ export class Keyboard {
       this.buys = [];
       this.readyPressed = false;
       this.slot = null;
-      this.jump = this.dash = this.use = false;
+      this.jump = this.dash = this.use = this.ePressed = false;
       return out;
     }
     this.shopKey = null;
@@ -152,6 +158,15 @@ export class Keyboard {
       z = this.forward.z * ahead + this.forward.x * side;
     }
     const cmds: Command[] = [{ type: 'move', playerId, dir: { x, z } }];
+    // getting in or out of a kart happens on the press itself; waiting for the key to come up felt laggy
+    // and a slightly long press used to do nothing
+    if (this.ePressed) {
+      this.ePressed = false;
+      if (p && instantUse(s, p)) {
+        cmds.push({ type: 'use', playerId });
+        this.eSince = null;
+      }
+    }
 
     if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });

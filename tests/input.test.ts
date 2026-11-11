@@ -267,3 +267,25 @@ describe('mouse steering', () => {
     expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
   });
 });
+
+describe('Keyboard and karts', () => {
+  it('pressing E next to a free kart gets in right away, without waiting for the key to come up', () => {
+    const s = createSim(floor01, 1);
+    const kart = s.vehicles[0];
+    s.players[0].pos = { x: kart.pos.x + 1, z: kart.pos.z };
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    expect(k.commands(s, 0, 20)).toContainEqual({ type: 'use', playerId: 0 });
+    // a long press does not turn into a second "use" when the key comes up
+    k.keyUp('KeyE', 400);
+    expect(k.commands(s, 0, 420)).not.toContainEqual({ type: 'use', playerId: 0 });
+  });
+
+  it('pressing E while driving gets out right away', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].vehicleId = s.vehicles[0].id;
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    expect(k.commands(s, 0, 20)).toContainEqual({ type: 'use', playerId: 0 });
+  });
+});

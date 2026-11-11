@@ -1,5 +1,6 @@
 import { padAt } from '../sim/systems/towers';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
+import { instantUse } from './context';
 import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
 
 /** What we read from a browser Gamepad each frame (kept plain so it can be tested without a DOM). */
@@ -148,7 +149,14 @@ export class PadControls {
     }
 
     // X is the E key: a short tap gets in or out of a kart, holding plants, builds, repairs, helps up
-    if (press(PAD.X)) this.xSince = now;
+    if (press(PAD.X)) {
+      this.xSince = now;
+      // getting in or out of a kart happens on the press itself
+      if (p && instantUse(s, p)) {
+        out.push({ type: 'use', playerId });
+        this.xSince = null;
+      }
+    }
     // letting go keeps an open build menu open, so the d-pad can be used without holding X
     let tapPick = false;
     if (!down(PAD.X) && this.prev[PAD.X]) {

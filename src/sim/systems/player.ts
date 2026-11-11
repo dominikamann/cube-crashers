@@ -98,6 +98,24 @@ function stomp(s: SimState, p: Player): void {
   }
 }
 
+/**
+ * The Mega Block is solid: a player walking (or dashing) into it is pushed back to its edge, where its
+ * contact damage still bites. Without this you could stand inside it.
+ */
+function pushOutOfBosses(s: SimState, p: Player): void {
+  for (const e of s.enemies) {
+    if (e.kind !== 'megaBlock' || e.hp <= 0) continue;
+    const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
+    const d = Math.hypot(dx, dz);
+    const edge = e.radius + PLAYER_RADIUS * 0.6;
+    if (d >= edge) continue;
+    // dead centre: push toward the player's facing so they come out somewhere
+    const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
+    const out = { x: e.pos.x + nx * edge, z: e.pos.z + nz * edge };
+    p.pos = isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER) ? out : nearestFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER);
+  }
+}
+
 function updateOne(s: SimState, p: Player, it: Intent): void {
   if (p.downUntil !== null) {
     if (s.tick < p.downUntil) return;
@@ -175,6 +193,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       // in the air you clear barriers (low walls), only real walls stop you
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }
+
+    pushOutOfBosses(s, p);
 
     if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying) {
       p.air = JUMP_TICKS;

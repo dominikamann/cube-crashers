@@ -86,3 +86,15 @@ describe('per-player stats for the result screen', () => {
     expect(p.stats.coins).toBe(3);
   });
 });
+
+describe('solid bosses', () => {
+  it('a player cannot stand inside the Mega Block: it pushes them out to its edge', () => {
+    const s = createSim(floor01, 3, { mode: 'run' });
+    enterFloor(s, 2);
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    const p = s.players[0];
+    p.pos = { x: boss.pos.x + 0.2, z: boss.pos.z };
+    stepSim(s, []);
+    expect(Math.hypot(p.pos.x - boss.pos.x, p.pos.z - boss.pos.z)).toBeGreaterThan(boss.radius);
+  });
+});
