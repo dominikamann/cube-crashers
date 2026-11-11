@@ -72,6 +72,22 @@ export function balanceTeams(players: { id: number; wish?: 0 | 1 | null; bot?: b
   return out;
 }
 
+/** the arenas a discovery rotation goes through */
+export const DISCOVERY_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
+
+/**
+ * Discovery: step `i` of a rotation that walks through every rule (score race, king of the cube, last cube
+ * standing, capture the cube), switches between teams and free for all, changes the map every time and
+ * throws in monsters now and then.
+ */
+export function discovery(i: number): { mode: VersusMode; rule: VersusRule; map: string; chaos: boolean } {
+  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture'];
+  const rule = rules[i % rules.length];
+  // over the rules' cycle the team mode flips every lap, so every rule comes in both flavours
+  const team = rule === 'capture' || (i + Math.floor(i / rules.length)) % 2 === 1;
+  return { mode: team ? 'team' : 'ffa', rule, map: DISCOVERY_MAPS[(i * 5) % DISCOVERY_MAPS.length], chaos: i % 3 === 2 };
+}
+
 /** places to (re)spawn: the start, waypoints and vehicle spots of the map */
 function spawnSpots(s: SimState): Vec2[] {
   return [s.map.spawn, ...s.map.waypoints, ...s.map.vehicleSpots, ...s.map.powerSpots];

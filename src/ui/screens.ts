@@ -32,13 +32,15 @@ export interface Settings {
   versusRule: 'score' | 'rounds' | 'king' | 'capture';
   /** versus: monster hordes join in */
   versusChaos: boolean;
+  /** versus: discovery, a rotation through every mode instead of one fixed match */
+  versusDiscovery: boolean;
   versusMap: string;
   versusBots: number;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true, versusDiscovery: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -156,6 +158,8 @@ export interface LanActions {
   startVote(option?: VersusChoice): void;
   /** host: start this versus match right away */
   startVersus(option: VersusChoice): void;
+  /** host: start a discovery rotation */
+  startDiscovery(): void;
   /** wish for red, blue or no preference (null) */
   chooseTeam(team: 0 | 1 | null): void;
   /** back to the lobby from the versus page */
@@ -408,6 +412,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         choose(t('setup.map'), QUICK_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : ''), value: id })), settings.quickMap, v => (settings.quickMap = v), true);
       }
       if (mode === 'versus') {
+        choose(t('setup.match'), [{ label: t('setup.pick'), value: false }, { label: t('versus.discovery'), value: true }], settings.versusDiscovery, v => (settings.versusDiscovery = v));
+      }
+      if (mode === 'versus' && settings.versusDiscovery) text(body, 'p', 'mode-hint', t('versus.discoveryHint'));
+      if (mode === 'versus' && !settings.versusDiscovery) {
         choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         choose(
           t('setup.rule'),
@@ -424,6 +432,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
         if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
         choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
+      }
+      if (mode === 'versus') {
         if (!lan) {
           const humans = settings.localPlayers;
           choose(t('setup.bots'), [0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: String(n), value: n })), settings.versusBots, v => (settings.versusBots = v));
@@ -437,8 +447,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);
-        button(row, t('setup.start'), () => lan.startVersus(option()), true);
-        button(row, t('lobby.voteThis'), () => lan.startVote(option()), true);
+        button(row, t('setup.start'), () => (settings.versusDiscovery ? lan.startDiscovery() : lan.startVersus(option())), true);
+        if (!settings.versusDiscovery) button(row, t('lobby.voteThis'), () => lan.startVote(option()), true);
         button(s, t('menu.back'), () => lan.backToLobby());
         return;
       }

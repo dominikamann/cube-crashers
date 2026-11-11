@@ -8,7 +8,7 @@ import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
-import { balanceTeams } from './sim/systems/versus';
+import { balanceTeams, discovery } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
@@ -123,8 +123,16 @@ function startGame() {
       host.startVote(option ? [option, b.map === option.map && b.rule === option.rule ? a : b] : [a, b]);
       lastLobby = '';
     },
+    startDiscovery: () => {
+      if (!host) return;
+      lanDiscovery = true;
+      lanBots = [];
+      host.startVersus(discovery(discoveryStep++), Number(params.get('seed')) || randomSeed());
+      enterPlay();
+    },
     startVersus: (option: VersusOption) => {
       if (!host) return;
+      lanDiscovery = false;
       lanBots = [];
       host.startVersus(option, Number(params.get('seed')) || randomSeed());
       enterPlay();
@@ -387,7 +395,9 @@ function startGame() {
     const result = summary(s);
     const again =
       role === 'solo' && s.versus
-        ? { label: t('menu.playAgain'), action: () => newVersusGame() }
+        ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : t('menu.playAgain'), action: () => newVersusGame() }
+        : role === 'host' && s.versus && lanDiscovery
+        ? { label: t('versus.next', { what: describe(discovery(discoveryStep)) }), action: () => lanActions.startDiscovery() }
         : role === 'host'
         ? { label: t('lobby.back'), action: () => backToLobby() }
         : role === 'client'
@@ -417,6 +427,13 @@ function startGame() {
   /** fill LAN versus matches up with bots to this many players */
   let autoFill = 4;
 
+  /** where the discovery rotation is (alone and on the LAN) */
+  let discoveryStep = 0;
+  const describe = (o: { mode: string; rule: string; map: string }) =>
+    `${t(`versus.${o.rule}` as 'versus.score')} · ${t(o.mode === 'team' ? 'versus.team' : 'versus.ffa')} · ${t(FLOORS[o.map].name as 'floor.plaza')}`;
+  /** LAN: the host runs a discovery rotation */
+  let lanDiscovery = false;
+
   /** Versus on this computer: one or two players (split screen) plus bots. */
   function newVersusGame() {
     leaveLan(false);
@@ -427,11 +444,14 @@ function startGame() {
     const bots = Math.max(0, Math.min(8 - humans, settings.versusBots));
     const names = [playerName(), ...(split ? [t('split.player2')] : []), ...Array.from({ length: bots }, () => `Bot ${withDefaults({ name: '', color: null }).name}`)];
     const colors = settings.color !== null ? [settings.color] : undefined;
-    const map = FLOORS[settings.versusMap]?.map ?? floor01;
+    // discovery: the next step of the rotation instead of the chosen match
+    const pickd = settings.versusDiscovery ? discovery(discoveryStep++) : null;
+    const vsMode = pickd?.mode ?? settings.versusMode, vsRule = pickd?.rule ?? settings.versusRule, vsChaos = pickd?.chaos ?? settings.versusChaos;
+    const map = FLOORS[pickd?.map ?? settings.versusMap]?.map ?? floor01;
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule, chaos: settings.versusChaos, teams: humans === 2 ? teams : undefined } });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined } });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
     enterPlay();
   }
