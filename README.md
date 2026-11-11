@@ -210,7 +210,7 @@ the whole team.
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
-- **Your name**, sound and music volume, and whether `W` walks toward the crosshair.
+- **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
 - **Controls** are listed at the bottom of the settings screen.
 - **Credits** (title screen): who made the game.
 
@@ -249,7 +249,7 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 |---|---|
 | Mouse | Aim (crosshair on the ground) |
 | Left mouse button (hold) | Fire the selected weapon |
-| `W` `A` `S` `D` / arrow keys | Move. On foot, `W` walks toward the crosshair (switch off in *Settings*). In the kart the keys steer by the screen. |
+| `W` `A` `S` `D` / arrow keys | Move: `W` is up the screen, the mouse only aims. Prefer it like in Counter-Strike? *Settings → W walks toward the crosshair* (on foot only; karts always steer by the screen). |
 | `1`–`6` / mouse wheel | Select a weapon |
 | `Q` | Select the rare weapon (when you have one) |
 | `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
