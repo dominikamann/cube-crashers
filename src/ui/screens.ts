@@ -177,6 +177,18 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     actions.settingsChanged(settings);
   }
 
+  function creditsScreen() {
+    show('title', s => {
+      text(s, 'div', 'logo', t('title'));
+      text(s, 'p', 'credits-by', t('credits.by'));
+      text(s, 'h2', '', t('credits.author'));
+      text(s, 'p', '', t('credits.helpers'));
+      text(s, 'p', 'credits-small', t('credits.builtWith'));
+      text(s, 'p', 'credits-small', t('credits.license'));
+      button(s, t('menu.back'), () => back(), true);
+    });
+  }
+
   function settingsScreen() {
     show('', s => {
       text(s, 'h2', '', t('settings.title'));
@@ -260,6 +272,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(s, t('menu.host'), actions.host);
         button(s, t('menu.join'), actions.join);
         button(s, t('menu.settings'), settingsScreen);
+        button(s, t('menu.credits'), creditsScreen);
         button(s, t('menu.quit'), actions.quit);
         text(s, 'p', '', t('menu.controls'));
       });

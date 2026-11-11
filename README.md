@@ -341,6 +341,10 @@ Contributions are welcome. Please keep in mind:
 - Game logic belongs in `src/sim/` and must stay pure and deterministic. Write tests first (`npm test`).
 - All player-visible text goes through `t()` in `src/i18n/`.
 
+## Credits
+
+A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help from hard-working AI helpers.
+
 ## License
 
 [MIT](LICENSE) © 2026 Dominik Amann. Third-party assets (the pixel font) are listed in
