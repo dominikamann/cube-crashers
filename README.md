@@ -492,5 +492,5 @@ A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help 
 
 ## License
 
-[MIT](LICENSE) © 2026 Dominik Amann. Third-party assets (the pixel font) are listed in
+[MIT](LICENSE) © 2026 [Dominik Amann](https://amannlabs.eu), [amannlabs.eu](https://amannlabs.eu). Third-party assets (the pixel font) are listed in
 [LICENSE-ASSETS.md](LICENSE-ASSETS.md).

@@ -1,5 +1,6 @@
 appId: io.github.cubecrashers
 productName: Cube Crashers
+copyright: "© 2026 Dominik Amann, amannlabs.eu"
 # no spaces in file names: GitHub would rename them and the auto-updater would not find them
 artifactName: CubeCrashers-${version}-${os}-${arch}.${ext}
 directories:

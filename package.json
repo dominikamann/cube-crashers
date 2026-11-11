@@ -37,5 +37,5 @@
     "wait-on": "^9.5.1"
   },
   "main": "electron/main.cjs",
-  "author": "Dominik Amann"
+  "author": "Dominik Amann (https://amannlabs.eu)"
 }
