@@ -14,7 +14,7 @@ import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
-import { TICK_RATE, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
+import { TICK_RATE, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createScreens, loadSettings, recordScore, saveSettings, type JoinEntry, type RunSummary } from './ui/screens';
@@ -50,6 +50,10 @@ function startGame() {
   let lastLobby = '';
   const mouse = { x: innerWidth / 2, y: innerHeight / 3 };
   let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
+
+  // dev only (?bot=1): the test bot plays, e.g. to record gameplay
+  let bot: ((s: SimState) => Command[]) | null = null;
+  if (import.meta.env.DEV && params.has('bot')) void import('../tests/sim/bot').then(m => (bot = m.createBot()));
 
   const view = (): SimState => (role === 'host' ? host?.sim : role === 'client' ? client?.view : null) ?? solo;
   const localId = () => (role === 'client' ? (client?.playerId ?? 0) : 0);
@@ -112,7 +116,7 @@ function startGame() {
       const s = view();
       if (s.phase !== 'playing') return;
       keyboard.setAim(mode === 'playing' ? renderer.groundPoint(mouse.x, mouse.y) : null);
-      const cmds = mode === 'playing' ? keyboard.commands(s, localId(), performance.now()) : [];
+      const cmds = mode !== 'playing' ? [] : bot && role === 'solo' ? bot(s) : keyboard.commands(s, localId(), performance.now());
       if (role === 'solo') {
         stepSim(s, cmds);
         keyboard.onEvents(s.events);
@@ -385,10 +389,16 @@ function startGame() {
   hud.setVisible(false);
   screens.title();
   if (params.has('demo')) newSoloGame();
-  requestAnimationFrame(function frame(now) {
-    loop.frame(now);
-    requestAnimationFrame(frame);
-  });
+  if (import.meta.env.DEV && params.has('capture')) {
+    // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
+    let clock = 0;
+    (window as unknown as { __advance: (ms: number) => void }).__advance = ms => loop.frame((clock += ms));
+  } else {
+    requestAnimationFrame(function frame(now) {
+      loop.frame(now);
+      requestAnimationFrame(frame);
+    });
+  }
 }
 
 /** Dev helper (?demo=1|rare|nest&warp=ticks): armed player with coins. */

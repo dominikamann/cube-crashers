@@ -1,6 +1,6 @@
 {
   "name": "cube-crashers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Voxel lane/horde shooter with tower defense elements. Crash the retro cubes!",
   "license": "MIT",
   "private": true,
