@@ -1,5 +1,13 @@
 # Cube Crashers
 
+[![Latest release](https://img.shields.io/github/v/release/dominikamann/cube-crashers?label=version&color=ff2bd6)](https://github.com/dominikamann/cube-crashers/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
+![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
+![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
+![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%206%20players-ff7a2f)
+![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
 **A fast voxel action game for one to six players.** Fight your way up a tower, floor by floor. Hordes of
 retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
 the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
@@ -240,6 +248,10 @@ stick to choose, **A** to confirm, **B** to go back).
 | `LB` / `RB` | Previous / next weapon |
 | D-pad | Build menu: ◀ Laser, ▲ Popcorn, ▶ Frost (or the upgrade) · shop: buy offers 1–4 |
 | `Start` | Pause |
+
+PlayStation pads (PS4, PS5) and other standard controllers work the same way; the hints then show □ instead
+of X. On a PlayStation pad: ✕ = A, ○ = B, □ = X, △ = Y, L1/R1 = LB/RB, R2 = RT, Options = Start.
+If a controller acts strangely, open the game with `?paddebug=1` (browser) to see what it reports.
 
 ### Split screen (two players on one computer)
 

@@ -18,8 +18,8 @@ import { floorDef } from '../sim/config/floors';
 export interface Hud {
   update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number, localId: number): void;
   setVisible(v: boolean): void;
-  /** playing with a controller: hints name the X button instead of E */
-  setPadMode(on: boolean): void;
+  /** playing with a controller: hints name its button (X or □) instead of E; null = keyboard */
+  setPadMode(useButton: string | null): void;
 }
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement, text = ''): HTMLElementTagNameMap[K] {
@@ -39,7 +39,7 @@ export interface ShopActions {
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud', root);
-  let padMode = false;
+  let padMode: string | null = null;
   const top = el('div', 'hud-top', layer);
 
   const runBox = el('div', 'hud-box txt', top);
@@ -147,8 +147,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
     setVisible(v) {
       layer.style.display = v ? '' : 'none';
     },
-    setPadMode(on) {
-      padMode = on;
+    setPadMode(useButton) {
+      padMode = useButton;
     },
     update(s, events, buildMenuOpen, time, localId) {
       const p = s.players.find(x => x.id === localId) ?? s.players[0];
@@ -273,7 +273,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
       const planting = p.plantTicks > 0 && hintText === t('hud.plant');
       if (planting) hintText = t('hud.planting');
-      hint.textContent = padMode ? hintText.replace(/\bE\b/g, 'X') : hintText;
+      hint.textContent = padMode ? hintText.replace(/\bE\b/g, padMode) : hintText;
       hint.style.display = hintText ? '' : 'none';
       hint.classList.toggle('steady', planting);
       plantBar.style.display = planting ? '' : 'none';

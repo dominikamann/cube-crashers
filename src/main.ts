@@ -5,7 +5,7 @@ import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
-import { PadControls, PadMenu, type PadSnapshot } from './input/gamepad';
+import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
 import type { LobbyPlayer } from './net/protocol';
@@ -44,7 +44,10 @@ function startGame() {
   const padCtl = new PadControls();
   const padMenus = [new PadMenu(), new PadMenu()];
   let padActive = false;
-  const readPads = (): PadSnapshot[] => (navigator.getGamepads?.() ?? []).filter((g): g is Gamepad => !!g && g.connected);
+  const rawPads = (): Gamepad[] => (navigator.getGamepads?.() ?? []).filter((g): g is Gamepad => !!g && g.connected);
+  const readPads = (): PadSnapshot[] => rawPads().map(normalizePad);
+  /** the button symbol for "E" in hints: X on Xbox pads, □ on PlayStation pads */
+  const useLabel = (i: number) => (padFamily(rawPads()[i]?.id ?? '') === 'playstation' ? '\u25A1' : 'X');
   const padTouched = (g: PadSnapshot) => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.3);
   const settings = loadSettings();
   const profile = loadProfile(window.localStorage);
@@ -208,9 +211,9 @@ function startGame() {
       if (split) renderer.setLookAhead(1, true);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
-      hud.setPadMode(padActive);
+      hud.setPadMode(padActive ? useLabel(0) : null);
       buildMenu.setPadLabels(padActive);
-      hud2.setPadMode(true);
+      hud2.setPadMode(useLabel(rawPads().length >= 2 ? 1 : 0));
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
@@ -478,8 +481,8 @@ function startGame() {
     document.body.append(box);
     const show = () => {
       requestAnimationFrame(show);
-      box.textContent = readPads()
-        .map(g => `${(g as Gamepad).id}\nmapping: ${(g as Gamepad).mapping || '(none)'}\naxes: ${g.axes.map(a => a.toFixed(2)).join(' ')}\npressed: ${g.buttons.map((b, i) => (b.pressed ? i : null)).filter(x => x !== null).join(' ')}`)
+      box.textContent = rawPads()
+        .map(g => `${g.id}\nmapping: ${g.mapping || '(none)'}\naxes: ${g.axes.map(a => a.toFixed(2)).join(' ')}\npressed: ${g.buttons.map((b, i) => (b.pressed ? i : null)).filter(x => x !== null).join(' ')}`)
         .join('\n\n') || 'no controller – press a button';
     };
     show();

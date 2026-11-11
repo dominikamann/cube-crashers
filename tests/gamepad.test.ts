@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PadControls, type PadSnapshot } from '../src/input/gamepad';
+import { normalizePad, PadControls, padFamily, type PadSnapshot } from '../src/input/gamepad';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 import { openShop } from '../src/sim/systems/shop';
@@ -161,5 +161,25 @@ describe('PadControls', () => {
     const far = c.commands(pad({ axes: [0, 0, 1, 0] }), s, 0, 64).find(x => x.type === 'aim');
     if (near?.type === 'aim' && far?.type === 'aim') expect(far.point.x - p.pos.x).toBeGreaterThan(near.point.x - p.pos.x + 2);
     else throw new Error('no aim');
+  });
+});
+
+describe('normalizePad', () => {
+  it('passes standard pads through', () => {
+    const g = { mapping: 'standard', id: 'Xbox Wireless Controller', axes: [0.1, 0.2, 0.3, 0.4], buttons: pad().buttons };
+    expect(normalizePad(g).axes).toEqual([0.1, 0.2, 0.3, 0.4]);
+  });
+
+  it('remaps a pad without standard mapping (sticks on axes 0,1 and 3,4, triggers as axes 2 and 5)', () => {
+    const g = { mapping: '', id: '045e-0b13-Xbox Wireless Controller', axes: [0.1, 0.2, -1, 0.7, -0.3, 1], buttons: pad().buttons };
+    const n = normalizePad(g);
+    expect(n.axes).toEqual([0.1, 0.2, 0.7, -0.3]);
+    expect(n.buttons[7].value).toBe(1);
+    expect(n.buttons[7].pressed).toBe(true);
+  });
+
+  it('tells PlayStation pads apart for the button labels', () => {
+    expect(padFamily('DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)')).toBe('playstation');
+    expect(padFamily('Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e)')).toBe('xbox');
   });
 });

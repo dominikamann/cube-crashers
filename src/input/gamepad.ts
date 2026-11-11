@@ -28,6 +28,31 @@ const DPAD_TOWERS: [number, TowerKind][] = [
 /** d-pad in the elevator shop: offers 1 to 4 */
 const DPAD_SHOP = [PAD.LEFT, PAD.UP, PAD.RIGHT, PAD.DOWN];
 
+/** what a browser Gamepad looks like (only the parts we read) */
+export interface RawPad extends PadSnapshot {
+  id: string;
+  mapping: string;
+}
+
+/**
+ * Pads the browser maps to the standard layout pass through. Others (an Xbox pad in some Mac browsers) report
+ * the sticks on axes 0,1 and 3,4 with the triggers as axes 2 and 5 (-1 released, 1 pulled): bring those into
+ * the standard order and turn the right trigger axis into button 7.
+ */
+export function normalizePad(g: RawPad): PadSnapshot {
+  if (g.mapping === 'standard' || g.axes.length < 6) return g;
+  const buttons = g.buttons.map(b => ({ pressed: b.pressed, value: b.value }));
+  while (buttons.length < 17) buttons.push({ pressed: false, value: 0 });
+  const rt = (g.axes[5] + 1) / 2;
+  if (rt > buttons[7].value) buttons[7] = { pressed: rt > 0.5, value: rt };
+  return { axes: [g.axes[0], g.axes[1], g.axes[3], g.axes[4]], buttons };
+}
+
+/** PlayStation pads get their own button symbols in the hints */
+export function padFamily(id: string): 'playstation' | 'xbox' {
+  return /054c|dualsense|dualshock|playstation|wireless controller \(standard gamepad vendor: 054c/i.test(id) ? 'playstation' : 'xbox';
+}
+
 /** a stick with a radial deadzone, rescaled so it starts at 0 right outside the deadzone */
 function stick(x: number, y: number, dead: number): Vec2 {
   const len = Math.hypot(x, y);
