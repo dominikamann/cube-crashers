@@ -3,6 +3,7 @@ import type { ThemeId } from '../types';
 import { floor01 } from './floor01';
 import { floorCandy } from './floor-candy';
 import { floorNeon } from './floor-neon';
+import { floorShaft } from './floor-shaft';
 
 export interface FloorDef {
   map: FloorMap;
@@ -20,6 +21,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floor01.id]: { map: floor01, theme: 'plaza', kind: 'nests', name: 'floor.plaza', eliteBonus: 0 },
   [floorCandy.id]: { map: floorCandy, theme: 'candy', kind: 'nests', name: 'floor.candy', eliteBonus: 0.05 },
   [floorNeon.id]: { map: floorNeon, theme: 'neon', kind: 'nests', name: 'floor.neon', eliteBonus: 0.15 },
+  [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
 };
 
 /** the floors of a full run, bottom to top */

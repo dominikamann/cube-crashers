@@ -13,6 +13,7 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   shooter: { w: 0.55, h: 1.0, d: 0.55, day: 0x2fb8a6, night: 0x3bffe0, eyeY: 0.75, eyeX: 0, eye: 0.26 },
   bomber: { w: 0.7, h: 0.6, d: 0.7, day: 0xd93a2f, night: 0xff5a3b, eyeY: 0.4, eyeX: 0.16, eye: 0.12 },
   rammer: { w: 1.1, h: 0.8, d: 1.3, day: 0x4a6fa5, night: 0x6f9fe0, eyeY: 0.55, eyeX: 0.3, eye: 0.16 },
+  swarmer: { w: 0.6, h: 0.3, d: 0.45, day: 0xb15cff, night: 0xd08cff, eyeY: 0.2, eyeX: 0.1, eye: 0.09 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -189,7 +190,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
         const scale = e.elite ? 1.4 : 1;
-        const y = (l.h / 2) * scale + bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2);
+        const y = (l.h / 2) * scale + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;

@@ -132,7 +132,16 @@ function makeNest() {
   const fill = new THREE.Mesh(new THREE.CircleGeometry(HOLD_RADIUS, 64).rotateX(-Math.PI / 2), fillMat);
   fill.position.y = 0.04;
   root.add(zone, fill);
-  return { root, cubes, zone, fill, glow };
+  // the objective has to be readable from afar: a pink light column and a floating "!"
+  const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 14, 16, 1, true), beaconMat);
+  beacon.position.y = 7;
+  const mark = new THREE.Group();
+  const markMat = glowMat(0xff2bd6, 2.2);
+  mark.add(box(0.32, 0.9, 0.32, markMat, 0, 0.55, 0), box(0.32, 0.32, 0.32, markMat, 0, -0.2, 0));
+  mark.position.y = 4;
+  root.add(beacon, mark);
+  return { root, cubes, zone, fill, glow, beacon, beaconMat, mark };
 }
 
 export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
@@ -260,6 +269,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       c.rotation.y = Math.sin(time * 2 + i) * 0.3;
     });
     v.glow.emissiveIntensity = (1.2 + Math.sin(time * (planted ? 12 : 3)) * 0.5) * Math.min(theme.glow, 1.5);
+    v.beacon.visible = !planted;
+    v.beaconMat.opacity = 0.16 + 0.08 * Math.sin(time * 3);
+    v.mark.visible = !planted;
+    v.mark.position.y = 4 + Math.sin(time * 2.5) * 0.3;
+    v.mark.rotation.y = time * 1.8;
     v.zone.visible = planted;
     v.fill.visible = planted;
     v.fill.scale.setScalar(Math.max(0.02, n.progress / HOLD_TICKS));

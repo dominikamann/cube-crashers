@@ -17,6 +17,7 @@ import { totalKills } from './sim/systems/stats';
 import { TICK_RATE, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
+import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
 import { createScreens, loadSettings, recordScore, saveSettings, type JoinEntry, type RunSummary } from './ui/screens';
 
@@ -99,6 +100,7 @@ function startGame() {
   };
 
   createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
+  const markers = createMarkers(app);
   const hud = createHud(app, { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
   const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
   const screens = createScreens(
@@ -156,6 +158,8 @@ function startGame() {
       renderer.setLocalPlayer(localId());
       renderer.render(s, alpha, frameEvents, frameDt);
       hud.update(s, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000, localId());
+      markers.setVisible(mode === 'playing' || mode === 'paused');
+      if (mode === 'playing') markers.update(s, renderer.project);
       buildMenu.update(s, keyboard.buildMenuOpen && mode === 'playing', frameEvents, localId());
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);

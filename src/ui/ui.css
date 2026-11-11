@@ -152,6 +152,11 @@ html, body {
 .shop-list { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .shop-card { width: 150px; }
 .shop-card.sold { opacity: 0.4; border-color: #555; }
+.markers { z-index: 1; }
+.marker { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.marker i { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; display: block; clip-path: polygon(100% 50%, 15% 5%, 35% 50%, 15% 95%); background: var(--pink); filter: drop-shadow(2px 2px 0 var(--shadow)); animation: pulse 0.9s ease-in-out infinite; }
+.marker.elevator i { background: var(--cyan); }
+@keyframes pulse { 50% { opacity: 0.55; } }
 .textfield { font-family: inherit; font-size: 12px; padding: 8px; width: 220px; background: #fffdf5; color: var(--shadow); border: 3px solid var(--shadow); }
 .lobby { display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 300px; }
 .lobby-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 3px solid var(--shadow); padding: 10px 12px; }

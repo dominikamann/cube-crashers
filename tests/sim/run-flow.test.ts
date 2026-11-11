@@ -21,9 +21,14 @@ function clearedRun(players = 1): SimState {
   return s;
 }
 
+/** steps into the elevator and, when there is a next floor, rides the shaft to the shop */
 function enterElevator(s: SimState) {
   for (const p of s.players) p.pos = { ...s.map.elevator };
   stepSim(s, []);
+  if (s.run.stage === 'shaft') {
+    s.run.stageUntil = s.tick;
+    stepSim(s, []);
+  }
 }
 
 describe('floor maps', () => {
@@ -59,9 +64,13 @@ describe('a run', () => {
 
   it('opens the shop instead of ending when the elevator is entered before the last floor', () => {
     const s = clearedRun();
-    enterElevator(s);
-    expect(s.phase).toBe('playing');
+    s.players[0].pos = { ...s.map.elevator };
+    stepSim(s, []);
     expect(s.events.some(e => e.type === 'floorCleared')).toBe(true);
+    expect(s.run.stage).toBe('shaft');
+    s.run.stageUntil = s.tick;
+    stepSim(s, []);
+    expect(s.phase).toBe('playing');
     expect(s.run.stage).toBe('shop');
     expect(s.run.shop!.offers[0]).toHaveLength(SHOP.offers);
   });

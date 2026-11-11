@@ -4,7 +4,8 @@ import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type Intent, type RunMode, type SimState } from '../types';
 import { spawnPoint } from './coop';
 import { setupFloor } from './nests';
-import { buy, openShop, shopDone } from './shop';
+import { enterShaft } from './shaft';
+import { buy, shopDone } from './shop';
 
 /** points for every floor cleared in a run */
 export const FLOOR_BONUS = 1000;
@@ -27,7 +28,7 @@ export function floorCleared(s: SimState): void {
   }
   s.score += FLOOR_BONUS;
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
-  openShop(s);
+  enterShaft(s);
 }
 
 /** Sets up floor `index` of the run; players keep their weapons, perks, coins and the team its credits. */

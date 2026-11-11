@@ -41,6 +41,8 @@ export interface GameRenderer {
   setLocalPlayer(id: number): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
+  /** Where a ground point appears on screen, in CSS pixels of the canvas. */
+  project(x: number, z: number): { x: number; y: number };
   /** The point on the ground under a screen position, or null if the ray misses the ground. */
   groundPoint(clientX: number, clientY: number): Vec2 | null;
   dispose(): void;
@@ -253,6 +255,11 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setDamageNumbers(on) {
       entities.setDamageNumbers(on);
+    },
+    project(x, z) {
+      const v = new THREE.Vector3(x, 0.5, z).project(camera);
+      const rect = canvas.getBoundingClientRect();
+      return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
     },
     groundPoint(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();

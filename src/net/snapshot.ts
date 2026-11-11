@@ -1,7 +1,7 @@
 import { FLOORS } from '../sim/config/floors';
 import type { Coin, Enemy, EnemyKind, EnemyState, SimState } from '../sim/types';
 
-const KINDS: EnemyKind[] = ['blob', 'hunter', 'tank', 'splitter', 'splitling', 'shooter', 'bomber', 'rammer'];
+const KINDS: EnemyKind[] = ['blob', 'hunter', 'tank', 'splitter', 'splitling', 'shooter', 'bomber', 'rammer', 'swarmer'];
 const STATES: EnemyState[] = ['move', 'windup', 'charge', 'stunned', 'fuse'];
 
 /** an enemy as a flat array: most of a snapshot is enemies, and objects repeat every key name */

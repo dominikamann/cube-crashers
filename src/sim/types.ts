@@ -6,7 +6,7 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer';
+export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'

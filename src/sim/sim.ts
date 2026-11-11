@@ -6,6 +6,7 @@ import { FLOORS, RUN_FLOORS } from './config/floors';
 import { Rng } from './rng';
 import { initRun, updateRunStage } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
+import { updateShaft } from './systems/shaft';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -189,8 +190,8 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
     }
   }
-  if (s.run.stage !== 'floor') {
-    // between floors only the shop runs
+  if (s.run.stage === 'shop') {
+    // in the shop nothing else moves
     updateRunStage(s, intents);
     s.tick++;
     return;
@@ -198,9 +199,12 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updatePlayers(s, intents);
   updateRevives(s, intents);
   updateVehicles(s, intents);
-  updateNests(s, intents);
+  const onFloor = s.run.stage === 'floor';
+  if (onFloor) {
+    updateNests(s, intents);
+    updateAlarm(s);
+  } else updateShaft(s);
   updateBlasts(s);
-  updateAlarm(s);
   updateHordes(s);
   updateEnemies(s);
   updateConveyors(s);
@@ -211,8 +215,10 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateAreas(s);
   updateCoins(s);
   updateOffers(s);
-  updatePowerups(s);
-  updateJetpacks(s);
+  if (onFloor) {
+    updatePowerups(s);
+    updateJetpacks(s);
+  }
   updateRare(s);
   removeDead(s);
   updateOutcome(s);
