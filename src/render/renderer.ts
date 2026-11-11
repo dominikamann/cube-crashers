@@ -43,7 +43,7 @@ export interface GameRenderer {
   setViews(ids: number[]): void;
   /** zoomed out for a wider view (per view) */
   setZoomedOut(view: number, out: boolean): void;
-  /** the camera slides toward the aim; only for controllers, since with a mouse it would move the point under the pointer */
+  /** the camera slides toward where the player aims */
   setLookAhead(view: number, on: boolean): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;

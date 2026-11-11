@@ -204,7 +204,7 @@ function startGame() {
       renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
-      renderer.setLookAhead(0, padActive);
+      renderer.setLookAhead(0, true);
       if (split) renderer.setLookAhead(1, true);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
@@ -470,6 +470,20 @@ function startGame() {
   /** Controller in menus: d-pad or stick moves the focus, A presses, B goes back, Start pauses and resumes. */
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
+
+  // ?paddebug=1 shows what the browser reports for each controller (name, mapping, sticks, buttons)
+  if (params.has('paddebug')) {
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;background:#000c;color:#0f0;font:12px monospace;padding:8px;pointer-events:none;white-space:pre-wrap;max-width:60vw';
+    document.body.append(box);
+    const show = () => {
+      requestAnimationFrame(show);
+      box.textContent = readPads()
+        .map(g => `${(g as Gamepad).id}\nmapping: ${(g as Gamepad).mapping || '(none)'}\naxes: ${g.axes.map(a => a.toFixed(2)).join(' ')}\npressed: ${g.buttons.map((b, i) => (b.pressed ? i : null)).filter(x => x !== null).join(' ')}`)
+        .join('\n\n') || 'no controller – press a button';
+    };
+    show();
+  }
     const all = readPads();
     if (all.length === 0) return;
     // any controller can pause and steer the menus
