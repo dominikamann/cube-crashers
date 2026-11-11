@@ -300,10 +300,10 @@ function startGame() {
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
-      buildMenu.update(s, menuOpen && mode === 'playing', frameEvents, localId(), padActive ? padCtl.menuPad : keyboard.menuPad);
+      buildMenu.update(s, menuOpen && mode === 'playing', frameEvents, localId(), padActive ? padCtl.menuPad : keyboard.menuPad, padActive ? padCtl.selected : keyboard.selected);
       if (split) {
         hud2.update(s, frameEvents, padCtl2.buildMenuOpen, performance.now() / 1000, 1);
-        buildMenu2.update(s, padCtl2.buildMenuOpen && mode === 'playing', frameEvents, 1, padCtl2.menuPad);
+        buildMenu2.update(s, padCtl2.buildMenuOpen && mode === 'playing', frameEvents, 1, padCtl2.menuPad, padCtl2.selected);
         // the right half starts at the middle of the window (CSS left: 50%): no layout read per marker
         const half = innerWidth / 2;
         if (mode === 'playing') markers2.update(s, (x, z) => {

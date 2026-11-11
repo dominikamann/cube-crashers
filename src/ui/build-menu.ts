@@ -5,7 +5,7 @@ import type { SimEvent, SimState, TowerKind } from '../sim/types';
 const ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 
 export interface BuildMenu {
-  update(s: SimState, open: boolean, events: SimEvent[], localId: number, padId: number | null): void;
+  update(s: SimState, open: boolean, events: SimEvent[], localId: number, padId: number | null, selected: TowerKind): void;
   /** controller: the cards show the d-pad directions instead of 1–3 */
   setPadLabels(on: boolean): void;
 }
@@ -38,24 +38,31 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
     onChoose('laser');
   });
   wrap.append(up);
+  // how to choose: shown under the cards
+  const help = document.createElement('div');
+  help.className = 'build-help txt';
+  layer.append(help);
   let upKey = '';
   let padLabels = false;
-  const PAD_KEYS = ['\u25C0', '\u25B2', '\u25B6'];
 
   return {
     setPadLabels(on) {
       if (on === padLabels) return;
       padLabels = on;
       upKey = '';
-      cards.forEach((c, i) => (c.card.querySelector('.key')!.textContent = on ? PAD_KEYS[i] : String(i + 1)));
+      cards.forEach((c, i) => (c.card.querySelector('.key')!.textContent = on ? '' : String(i + 1)));
+      cards.forEach(c => c.card.querySelector('.key')!.classList.toggle('hidden', on));
     },
-    update(s, open, events, localId, padId) {
+    update(s, open, events, localId, padId, selected) {
       wrap.style.display = open ? '' : 'none';
+      help.style.display = open ? '' : 'none';
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
       const tower = padId === null ? undefined : s.towers.find(tw => tw.padId === padId);
       for (const c of cards) c.card.style.display = tower ? 'none' : '';
-      // the first card is preselected: a tap of E (X) or simply holding on builds it
-      cards.forEach((c, i) => c.card.classList.toggle('selected', i === 0));
+      // the selected card: E (X) builds it, holding on from the opening press builds it too
+      cards.forEach(c => c.card.classList.toggle('selected', c.kind === selected));
+      const helpText = tower ? t(padLabels ? 'build.helpUpgradePad' : 'build.helpUpgrade') : t(padLabels ? 'build.helpPad' : 'build.help');
+      if (help.textContent !== helpText) help.textContent = helpText;
       up.classList.add('selected');
       up.style.display = tower ? '' : 'none';
       if (tower) {
@@ -67,7 +74,7 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
           const now = towerStats(tower.kind, tower.level), next = towerStats(tower.kind, tower.level + 1);
           up.innerHTML = max
             ? `<div class="name">${t(`tower.${tower.kind}`)} · ${t('tower.level', { n: tower.level })}</div><div>${t('tower.maxLevel')}</div>`
-            : `<div class="key">${padLabels ? PAD_KEYS.join(' ') : '1'}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
+            : `<div class="key">${padLabels ? 'X' : 'E'}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
         }
         up.classList.toggle('poor', max || coins < cost);
       } else {

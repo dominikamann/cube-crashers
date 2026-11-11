@@ -123,7 +123,10 @@ html, body {
 .card .key { display: inline-block; background: var(--cyan); color: var(--shadow); padding: 2px 6px; margin-bottom: 6px; }
 .card .name { font-size: 10px; margin-bottom: 4px; }
 .card .cost { color: var(--gold); margin-top: 6px; }
-.card.selected { border-color: var(--gold); transform: translateY(-6px); }
+.card.selected { border-color: var(--gold); transform: translateY(-6px); box-shadow: 0 5px 0 var(--shadow), 0 0 0 3px rgba(255, 210, 60, 0.35); }
+.card .key.hidden { display: none; }
+.build-help { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); font-size: 9px; white-space: nowrap; padding: 4px 10px; background: rgba(0, 0, 0, 0.45); border-radius: 4px; }
+body.split .build-help { bottom: 86px; font-size: 8px; }
 .card.poor { border-color: #555; opacity: 0.55; }
 .card.shake { animation: shake 300ms; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }

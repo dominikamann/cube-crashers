@@ -2,6 +2,9 @@ import { padAt } from '../sim/systems/towers';
 import { instantUse } from './context';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
+/** the build menu's cards from left to right */
+const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
+
 export const BUILD_HOLD_MS = 150;
 /** keep holding E this long on an empty pad and the preselected (first) tower gets built */
 export const AUTO_BUILD_MS = 700;
@@ -17,6 +20,12 @@ export class Keyboard {
   private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
   menuPad: number | null = null;
+  /** the highlighted card in the build menu: E builds it */
+  selected: TowerKind = DEFAULT_TOWER;
+  /** the E press that is still held opened the build menu (so letting go is not "use") */
+  private eOpened = false;
+  /** E went down and up again before commands() saw the press */
+  private eTapPending = false;
   private down = new Set<string>();
   private eSince: number | null = null;
   private chosen: TowerKind | null = null;
@@ -84,11 +93,12 @@ export class Keyboard {
     this.down.delete(code);
     if (code === 'KeyE') {
       // with the build menu open a tap of E builds the preselected tower; otherwise a tap is "use"
-      if (this.eSince !== null && now - this.eSince < BUILD_HOLD_MS) {
-        if (this.buildMenuOpen) this.chosen = DEFAULT_TOWER;
-        else this.use = true;
-      }
+      // a press commands() has not seen yet decides there whether it was "use"
+      if (this.ePressed) this.eTapPending = true;
+      // a short tap away from a build pad is "use"
+      else if (this.eSince !== null && now - this.eSince < BUILD_HOLD_MS && !this.eOpened && !this.buildMenuOpen) this.use = true;
       this.eSince = null;
+      this.eOpened = false;
     }
   }
 
@@ -97,7 +107,7 @@ export class Keyboard {
     this.down.clear();
     this.eSince = null;
     this.firing = false;
-    this.jump = this.dash = this.use = this.ePressed = false;
+    this.jump = this.dash = this.use = this.ePressed = this.eTapPending = false;
     this.slot = null;
     this.wheelSteps = 0;
     this.closeMenu();
@@ -141,7 +151,7 @@ export class Keyboard {
       this.buys = [];
       this.readyPressed = false;
       this.slot = null;
-      this.jump = this.dash = this.use = this.ePressed = false;
+      this.jump = this.dash = this.use = this.ePressed = this.eTapPending = false;
       return out;
     }
     this.shopKey = null;
@@ -158,14 +168,35 @@ export class Keyboard {
       z = this.forward.z * ahead + this.forward.x * side;
     }
     const cmds: Command[] = [{ type: 'move', playerId, dir: { x, z } }];
-    // getting in or out of a kart happens on the press itself; waiting for the key to come up felt laggy
-    // and a slightly long press used to do nothing
+    const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
+    // a tower still being built just gets built while E is held; a finished one offers its upgrade
+    const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
+    const pad = onPad !== null && (!tower || tower.buildLeft === 0) ? onPad : null;
+    if (pad === null) this.closeMenu();
+    // E acts on the press itself: in or out of a kart, open the build menu, or build the selected card
     if (this.ePressed) {
       this.ePressed = false;
       if (p && instantUse(s, p)) {
         cmds.push({ type: 'use', playerId });
         this.eSince = null;
+      } else if (this.buildMenuOpen) {
+        this.chosen = this.selected;
+        this.eSince = null;
+      } else if (pad !== null) {
+        this.buildMenuOpen = true;
+        this.menuPad = pad;
+        this.selected = DEFAULT_TOWER;
+        this.eOpened = !this.eTapPending;
+      } else if (this.eTapPending) {
+        cmds.push({ type: 'use', playerId });
       }
+      this.eTapPending = false;
+    }
+    // in the open menu the wheel moves along the cards instead of switching weapons
+    if (this.buildMenuOpen && !tower && this.wheelSteps !== 0) {
+      const n = TOWER_ORDER.length;
+      this.selected = TOWER_ORDER[(((TOWER_ORDER.indexOf(this.selected) + this.wheelSteps) % n) + n) % n];
+      this.wheelSteps = 0;
     }
 
     if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
@@ -184,20 +215,9 @@ export class Keyboard {
     if (this.slot !== null) cmds.push({ type: 'select', playerId, slot: this.slot });
     this.slot = null;
 
-    const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
-    // a tower still being built just gets built while E is held; a finished one offers its upgrade
-    const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
-    const pad = onPad !== null && (!tower || tower.buildLeft === 0) ? onPad : null;
-    if (this.eSince !== null && pad !== null && now - this.eSince >= BUILD_HOLD_MS) {
-      this.buildMenuOpen = true;
-      this.menuPad = pad;
-    } else if (pad === null) {
-      this.closeMenu();
-    }
-
-    // still holding E on an empty pad: build the preselected tower right away
-    if (this.buildMenuOpen && !tower && this.eSince !== null && now - this.eSince >= AUTO_BUILD_MS) {
-      this.chosen ??= DEFAULT_TOWER;
+    // still holding the E that opened the menu on an empty pad: build the selected tower right away
+    if (this.buildMenuOpen && !tower && this.eOpened && this.eSince !== null && now - this.eSince >= AUTO_BUILD_MS) {
+      this.chosen ??= this.selected;
       // one build per press: the tower shows up only a tick (or a snapshot) later
       this.eSince = null;
     }

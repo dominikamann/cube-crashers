@@ -20,12 +20,8 @@ const TRIGGER_FIRE = 0.35;
 /** how far ahead of the player the crosshair sits: pushing the right stick further looks further ahead */
 const AIM_NEAR = 3;
 const AIM_FAR = 8;
-/** d-pad in the build menu: left, up, right */
-const DPAD_TOWERS: [number, TowerKind][] = [
-  [PAD.LEFT, 'laser'],
-  [PAD.UP, 'popcorn'],
-  [PAD.RIGHT, 'frost'],
-];
+/** the build menu's cards from left to right; left/right moves the selection along them */
+export const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 /** d-pad in the elevator shop: offers 1 to 4 */
 const DPAD_SHOP = [PAD.LEFT, PAD.UP, PAD.RIGHT, PAD.DOWN];
 
@@ -66,6 +62,10 @@ function stick(x: number, y: number, dead: number): Vec2 {
 export class PadControls {
   buildMenuOpen = false;
   menuPad: number | null = null;
+  /** the highlighted card in the build menu: X builds it */
+  selected: TowerKind = DEFAULT_TOWER;
+  /** the X press that is still held opened the build menu (so letting go is not "use") */
+  private xOpened = false;
   private prev: boolean[] = [];
   private xSince: number | null = null;
   private aimDir: Vec2 = { x: 0, z: -1 };
@@ -148,27 +148,44 @@ export class PadControls {
       else out.push({ type: 'dash', playerId });
     }
 
-    // X is the E key: a short tap gets in or out of a kart, holding plants, builds, repairs, helps up
+    const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
+    const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
+    // a tower still being built just gets built while X is held; a finished one offers its upgrade
+    const menuPad = onPad !== null && (!tower || tower.buildLeft === 0) ? onPad : null;
+    if (menuPad === null) this.closeMenu();
+
+    // X is the E key: on a build pad it opens the build menu, and pressed again builds the selected card;
+    // elsewhere a tap is "use" (karts) and holding plants, repairs, helps up
+    let pick = false;
     if (press(PAD.X)) {
       this.xSince = now;
-      // getting in or out of a kart happens on the press itself
       if (p && instantUse(s, p)) {
+        // getting in or out of a kart happens on the press itself
         out.push({ type: 'use', playerId });
         this.xSince = null;
+      } else if (this.buildMenuOpen) {
+        pick = true;
+        this.xSince = null;
+      } else if (menuPad !== null) {
+        this.buildMenuOpen = true;
+        this.menuPad = menuPad;
+        this.selected = DEFAULT_TOWER;
+        this.xOpened = true;
       }
     }
-    // letting go keeps an open build menu open, so the d-pad can be used without holding X
-    let tapPick = false;
     if (!down(PAD.X) && this.prev[PAD.X]) {
-      // with the build menu open a tap of X builds the preselected tower; otherwise a tap is "use"
-      if (this.xSince !== null && now - this.xSince < BUILD_HOLD_MS) {
-        if (this.buildMenuOpen) tapPick = true;
-        else out.push({ type: 'use', playerId });
-      }
+      // a short tap away from a build pad is "use"
+      if (this.xSince !== null && now - this.xSince < BUILD_HOLD_MS && !this.xOpened) out.push({ type: 'use', playerId });
       this.xSince = null;
+      this.xOpened = false;
     }
     if (down(PAD.X)) out.push({ type: 'hold', playerId });
 
+    if (this.buildMenuOpen && !tower) {
+      // left/right (d-pad or bumpers) moves along the cards
+      const step = (press(PAD.RIGHT) || press(PAD.RB) ? 1 : 0) - (press(PAD.LEFT) || press(PAD.LB) ? 1 : 0);
+      if (step) this.selected = TOWER_ORDER[(TOWER_ORDER.indexOf(this.selected) + step + TOWER_ORDER.length) % TOWER_ORDER.length];
+    }
     if (p && p.weapons.length > 0 && !this.buildMenuOpen) {
       const n = p.weapons.length;
       if (press(PAD.RB)) out.push({ type: 'select', playerId, slot: (p.selected + 1) % n });
@@ -177,24 +194,14 @@ export class PadControls {
     if (press(PAD.Y)) out.push({ type: 'select', playerId, slot: -1 });
     if (press(PAD.R3)) this.zoomedOut = !this.zoomedOut;
 
-    const onPad = p && p.downUntil === null ? padAt(s, p.pos) : null;
-    const tower = onPad === null ? undefined : s.towers.find(t => t.padId === onPad);
-    const menuPad = onPad !== null && (!tower || tower.buildLeft === 0) ? onPad : null;
-    if (this.xSince !== null && menuPad !== null && now - this.xSince >= BUILD_HOLD_MS) {
-      this.buildMenuOpen = true;
-      this.menuPad = menuPad;
-    } else if (menuPad === null) {
-      this.closeMenu();
-    }
     if (this.buildMenuOpen && this.menuPad !== null) {
-      let pick: TowerKind | null = null;
-      for (const [b, kind] of DPAD_TOWERS) if (press(b)) pick ??= kind;
-      if (tapPick) pick ??= DEFAULT_TOWER;
-      // still holding X on an empty pad: build the preselected tower right away
-      if (!tower && this.xSince !== null && now - this.xSince >= AUTO_BUILD_MS) pick ??= DEFAULT_TOWER;
-      // one build per press: the tower shows up only a tick (or a snapshot) later
-      if (pick) this.xSince = null;
-      if (pick) out.push(tower ? { type: 'upgrade', playerId, padId: this.menuPad } : { type: 'build', playerId, padId: this.menuPad, tower: pick });
+      // still holding the X that opened the menu on an empty pad: build the selected tower right away
+      if (!tower && this.xOpened && this.xSince !== null && now - this.xSince >= AUTO_BUILD_MS) pick = true;
+      if (pick) {
+        // one build per press: the tower shows up only a tick (or a snapshot) later
+        this.xSince = null;
+        out.push(tower ? { type: 'upgrade', playerId, padId: this.menuPad } : { type: 'build', playerId, padId: this.menuPad, tower: this.selected });
+      }
     }
     this.remember(pad);
     return out;

@@ -21,13 +21,11 @@ describe('Keyboard', () => {
     if (move.type === 'move') expect(Math.hypot(move.dir.x, move.dir.z)).toBeCloseTo(1);
   });
 
-  it('opens the build menu after holding E 150 ms on a pad and builds the chosen tower once', () => {
+  it('E on a pad opens the build menu right away; a number key builds that tower once', () => {
     const s = onPad();
     const k = new Keyboard();
     k.keyDown('KeyE', 0);
-    k.commands(s, 0, 100);
-    expect(k.buildMenuOpen).toBe(false);
-    k.commands(s, 0, 200);
+    k.commands(s, 0, 10);
     expect(k.buildMenuOpen).toBe(true);
     k.keyDown('Digit2', 210);
     const cmds = k.commands(s, 0, 220);
@@ -79,6 +77,8 @@ describe('Keyboard', () => {
     expect(k.commands(s, 0, 300)).toContainEqual({ type: 'hold', playerId: 0 });
     expect(k.buildMenuOpen).toBe(false);
     tower.buildLeft = 0;
+    k.keyUp('KeyE', 350);
+    k.keyDown('KeyE', 380);
     k.commands(s, 0, 400);
     expect(k.buildMenuOpen).toBe(true);
     k.keyDown('Digit1', 450);
@@ -96,14 +96,30 @@ describe('Keyboard', () => {
     const tapped = onPad();
     const k2 = new Keyboard();
     k2.keyDown('KeyE', 0);
-    k2.commands(tapped, 0, 200);
-    k2.keyUp('KeyE', 250);
+    k2.keyUp('KeyE', 50);
+    expect(k2.commands(tapped, 0, 60)).not.toContainEqual({ type: 'use', playerId: 0 });
     expect(k2.buildMenuOpen).toBe(true);
     k2.keyDown('KeyE', 400);
     k2.keyUp('KeyE', 450);
     const cmds = k2.commands(tapped, 0, 460);
     expect(cmds).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
     expect(cmds).not.toContainEqual({ type: 'use', playerId: 0 });
+  });
+
+  it('the mouse wheel moves the selection in the open menu; E builds the selected tower', () => {
+    const s = onPad();
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    k.keyUp('KeyE', 50);
+    k.commands(s, 0, 60);
+    k.wheel(1);
+    expect(k.commands(s, 0, 70).some(c => c.type === 'build' || c.type === 'select')).toBe(false);
+    expect(k.selected).toBe('popcorn');
+    k.wheel(1);
+    k.commands(s, 0, 80);
+    expect(k.selected).toBe('frost');
+    k.keyDown('KeyE', 100);
+    expect(k.commands(s, 0, 110)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'frost' });
   });
 
   it('builds via a clicked card while the menu is open', () => {
