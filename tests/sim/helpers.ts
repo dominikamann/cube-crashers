@@ -8,6 +8,7 @@ export function quietSim(seed = 7): SimState {
   s.enemies = [];
   s.hordes = [];
   s.nests = [];
+  s.blasts = [];
   s.crates = [];
   s.mines = [];
   s.vehicles = [];

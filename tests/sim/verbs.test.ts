@@ -4,6 +4,8 @@ import { comboMult, damageEnemy } from '../../src/sim/systems/combat';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { damagePlayer } from '../../src/sim/systems/player';
 import { dash, jump, move, quietSim, rel, run } from './helpers';
+import { ENEMIES } from '../../src/sim/config/enemies';
+import { DASH_DAMAGE, STOMP_DAMAGE } from '../../src/sim/config/balance';
 
 describe('jump', () => {
   it('avoids contact damage in the air and stomps on landing', () => {
@@ -20,7 +22,7 @@ describe('jump', () => {
     }
     expect(landedAt).toBeGreaterThan(25);
     expect(landedAt).toBeLessThan(35);
-    expect(tank.hp).toBe(45);
+    expect(tank.hp).toBe(ENEMIES.tank.hp - STOMP_DAMAGE);
   });
 
   it('crosses glitch floor without damage, walking through it hurts', () => {
@@ -57,7 +59,7 @@ describe('dash', () => {
     run(s, 8, () => [move(1, 0)]);
     expect(p.pos.x - x0).toBeGreaterThan(3.8);
     expect(p.pos.x - x0).toBeLessThan(4.3);
-    expect(tank.hp).toBe(50);
+    expect(tank.hp).toBe(ENEMIES.tank.hp - DASH_DAMAGE);
     expect(p.hp).toBe(100);
   });
 

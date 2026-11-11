@@ -3,6 +3,12 @@ import { stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Command, HeldWeapon, WeaponKind } from '../../src/sim/types';
 import { aimAt, fire, quietSim, rel, run } from './helpers';
+import { ENEMIES } from '../../src/sim/config/enemies';
+import { WEAPONS } from '../../src/sim/config/weapons';
+
+const TANK = ENEMIES.tank.hp;
+const BLOB = ENEMIES.blob.hp;
+const dmg = (k: keyof typeof WEAPONS) => WEAPONS[k].damage;
 
 const held = (...kinds: WeaponKind[]): HeldWeapon[] => kinds.map(kind => ({ kind, level: 1, cooldown: 0 }));
 const select = (slot: number): Command => ({ type: 'select', playerId: 0, slot });
@@ -13,7 +19,7 @@ describe('manual fire', () => {
     const e = spawnEnemy(s, 'blob', rel(s.players[0].pos, 0, -3));
     const events = run(s, 60);
     expect(events.some(ev => ev.type === 'shot')).toBe(false);
-    expect(e.hp).toBe(10);
+    expect(e.hp).toBe(BLOB);
   });
 
   it('shoots along the aim and misses what is not on the line', () => {
@@ -25,8 +31,8 @@ describe('manual fire', () => {
     stepSim(s, [aimAt(rel(p.pos, 0, -4)), fire]);
     expect(s.events).toContainEqual({ type: 'shot', weapon: 'pixelBlaster', pos: p.pos });
     run(s, 40);
-    expect(onLine.hp).toBe(55);
-    expect(aside.hp).toBe(60);
+    expect(onLine.hp).toBe(TANK - dmg('pixelBlaster'));
+    expect(aside.hp).toBe(TANK);
   });
 
   it('deals 50 % more within 3 tiles', () => {
@@ -35,7 +41,7 @@ describe('manual fire', () => {
     const near = spawnEnemy(s, 'tank', rel(p.pos, 0, -2));
     stepSim(s, [aimAt(near.pos), fire]);
     run(s, 20);
-    expect(near.hp).toBe(52.5);
+    expect(near.hp).toBe(TANK - dmg('pixelBlaster') * 1.5);
   });
 
   it('bolts stop at walls', () => {
@@ -44,7 +50,7 @@ describe('manual fire', () => {
     p.pos = { x: 30.5, z: 62.5 };
     const e = spawnEnemy(s, 'tank', { x: 30.5, z: 55.5 });
     run(s, 90, () => [aimAt(e.pos), fire]);
-    expect(e.hp).toBe(60);
+    expect(e.hp).toBe(TANK);
   });
 
   it('keeps reloading weapons that are not selected', () => {
@@ -86,8 +92,8 @@ describe('weapons', () => {
     const front = spawnEnemy(s, 'tank', rel(p.pos, 0, -1.5));
     const back = spawnEnemy(s, 'tank', rel(p.pos, 0, 1.5));
     stepSim(s, [aimAt(rel(p.pos, 0, -5)), fire]);
-    expect(front.hp).toBe(33);
-    expect(back.hp).toBe(60);
+    expect(front.hp).toBe(TANK - dmg('laserSword') * 1.5);
+    expect(back.hp).toBe(TANK);
   });
 
   it('candy cannon fires a spread of 6 pellets', () => {
@@ -108,8 +114,8 @@ describe('weapons', () => {
     const e = spawnEnemy(s, 'tank', target);
     stepSim(s, [aimAt(target), fire]);
     run(s, 120);
-    expect(e.hp).toBeLessThan(60);
-    expect(e.hp).toBeGreaterThan(20);
+    expect(e.hp).toBeLessThan(TANK);
+    expect(e.hp).toBeGreaterThan(TANK - 40);
   });
 
   it('boomerang pierces and comes back', () => {
@@ -122,8 +128,8 @@ describe('weapons', () => {
     a.speed = b.speed = 0;
     stepSim(s, [aimAt(rel(p.pos, 0, -6)), fire]);
     run(s, 120);
-    expect(a.hp).toBe(40);
-    expect(b.hp).toBe(40);
+    expect(a.hp).toBe(TANK - 2 * dmg('joystickBoomerang'));
+    expect(b.hp).toBe(TANK - 2 * dmg('joystickBoomerang'));
     expect(s.projectiles).toHaveLength(0);
   });
 
@@ -135,7 +141,7 @@ describe('weapons', () => {
     expect(p.weapons[0].cooldown).toBe(0);
     const es = [rel(p.pos, 4, 0), rel(p.pos, -4, 0), rel(p.pos, 0, 4.5)].map(pos => spawnEnemy(s, 'tank', pos));
     stepSim(s, [fire]);
-    expect(es.map(e => e.hp)).toEqual([48, 48, 48]);
+    expect(es.map(e => e.hp)).toEqual(Array(3).fill(TANK - dmg('discoBall')));
     expect(p.weapons[0].cooldown).toBeGreaterThan(3);
   });
 
@@ -155,7 +161,7 @@ describe('weapons', () => {
     expect(events.some(e => e.type === 'explosion')).toBe(true);
     expect(s.mines).toHaveLength(0);
     expect(s.enemies.includes(blob)).toBe(false);
-    expect(tank.hp).toBe(20);
+    expect(tank.hp).toBe(TANK - dmg('bananaMine'));
     expect(p.hp).toBe(100);
   });
 
@@ -184,8 +190,8 @@ describe('weapons', () => {
     stepSim(s, [aimAt(target), fire]);
     const events = run(s, 50);
     expect(events.filter(e => e.type === 'explosion')).toHaveLength(1);
-    expect(inside.hp).toBe(10);
-    expect(outside.hp).toBe(60);
+    expect(inside.hp).toBe(TANK - dmg('bomb'));
+    expect(outside.hp).toBe(TANK);
   });
 
   it('adds 20 % damage per level', () => {
@@ -196,7 +202,7 @@ describe('weapons', () => {
     const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -6));
     stepSim(s, [aimAt(e.pos), fire]);
     run(s, 40);
-    expect(e.hp).toBe(54);
+    expect(e.hp).toBeCloseTo(TANK - dmg('pixelBlaster') * 1.2, 6);
   });
 
   it('splitter leaves two splitlings', () => {

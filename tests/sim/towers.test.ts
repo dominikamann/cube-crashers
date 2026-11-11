@@ -3,6 +3,8 @@ import { stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Command, TowerKind } from '../../src/sim/types';
 import { GATE_PAD, padAtPos, quietSim, rel, run } from './helpers';
+import { ENEMIES } from '../../src/sim/config/enemies';
+import { TOWERS } from '../../src/sim/config/towers';
 
 const PAD = padAtPos(quietSim(), GATE_PAD.x, GATE_PAD.z);
 const build = (padId: number, tower: TowerKind): Command => ({ type: 'build', playerId: 0, padId, tower });
@@ -73,7 +75,7 @@ describe('tower behaviour', () => {
     const e = spawnEnemy(s, 'blob', rel(pad, -2, 4));
     e.speed = 0;
     run(s, 120);
-    expect(e.hp).toBe(10);
+    expect(e.hp).toBe(ENEMIES.blob.hp);
   });
 
   it('frost tower slows enemies in range for 2 seconds', () => {
@@ -93,8 +95,8 @@ describe('tower behaviour', () => {
     const b = spawnEnemy(s, 'tank', rel(pad, -3.2, -3));
     a.speed = b.speed = 0;
     run(s, 60);
-    expect(a.hp).toBe(50);
-    expect(b.hp).toBe(50);
+    expect(a.hp).toBe(ENEMIES.tank.hp - TOWERS.popcorn.damage);
+    expect(b.hp).toBe(ENEMIES.tank.hp - TOWERS.popcorn.damage);
   });
 
   it('frees the pad when a tower is destroyed', () => {

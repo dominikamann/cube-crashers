@@ -7,6 +7,7 @@ import { damagePlayer } from '../../src/sim/systems/player';
 import { addKart, KART } from '../../src/sim/systems/vehicles';
 import type { Command, SimEvent, SimState, Vec2, Vehicle } from '../../src/sim/types';
 import { dash, GATE_PAD, jump, move, padAtPos, quietSim, rel, run } from './helpers';
+import { ENEMIES } from '../../src/sim/config/enemies';
 
 const use: Command = { type: 'use', playerId: 0 };
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -116,7 +117,7 @@ describe('ramming', () => {
     const tank = spawnEnemy(s, 'tank', rel(kart.pos, 5, 0));
     tank.speed = 0;
     driveUntil(s, { x: 1, z: 0 }, 60, 'kartRam');
-    expect(tank.hp).toBe(20);
+    expect(tank.hp).toBe(ENEMIES.tank.hp - KART.ramDamage);
     expect(kart.hp).toBe(90);
   });
 
@@ -155,7 +156,7 @@ describe('ramps and low walls', () => {
     expect(driveUntil(s, { x: 0, z: 1 }, 60, 'kartJump')).toBeGreaterThan(0);
     expect(driveUntil(s, { x: 0, z: 1 }, 60, 'kartLand')).toBeGreaterThan(40);
     expect(kart.pos.z).toBeGreaterThan(35);
-    expect(tank.hp).toBeLessThan(60);
+    expect(tank.hp).toBeLessThan(ENEMIES.tank.hp);
     expect(isFree(s.map, kart.pos, KART.radius - 1e-6, BLOCKS_KART)).toBe(true);
   });
 

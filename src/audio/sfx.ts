@@ -27,6 +27,7 @@ export type SoundId =
   | 'windup_rammer'
   | 'enemyShot'
   | 'explosion'
+  | 'blastWarning'
   | 'nestPlanted'
   | 'nestDestroyed'
   | 'alarm'
@@ -130,6 +131,7 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 600, attack: 0.002, sustain: 0.08, decay: 0.45, volume: 0.45, lowpass: 1000 },
     { wave: 'sine', freq: 90, freqEnd: 30, attack: 0.002, sustain: 0.08, decay: 0.35, volume: 0.4 },
   ],
+  blastWarning: [{ wave: 'sawtooth', freq: 200, freqEnd: 800, attack: 0.03, sustain: 0.7, decay: 0.1, volume: 0.05, lowpass: 2000 }],
   nestPlanted: [
     { wave: 'noise', freq: 400, attack: 0.002, sustain: 0.04, decay: 0.1, volume: 0.3, lowpass: 700 },
     ...notes('square', [330, 440, 660], 0.09, 0.1, 0.1, 0.05),
@@ -235,6 +237,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('enemyShot');
     case 'explosion':
       return one('explosion', e.radius >= 5 ? 0.7 : e.radius >= 3 ? 0.85 : 1);
+    case 'blastWarning':
+      return one('blastWarning');
     case 'nestPlanted':
       return one('nestPlanted');
     case 'nestDestroyed':

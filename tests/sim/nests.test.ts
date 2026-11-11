@@ -7,6 +7,7 @@ import { spawnHorde } from '../../src/sim/systems/hordes';
 import { damagePlayer } from '../../src/sim/systems/player';
 import type { Command, SimEvent, SimState, Vec2 } from '../../src/sim/types';
 import { quietSim, rel, run } from './helpers';
+import { RUSH_BASE_SIZE } from '../../src/sim/config/balance';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 const hold: Command = { type: 'hold', playerId: 0 };
@@ -15,7 +16,7 @@ const hold: Command = { type: 'hold', playerId: 0 };
 function nestSim(state: 'idle' | 'planted' = 'idle', progress = 0): SimState {
   const s = quietSim();
   const spot = s.map.nestSpots.find(n => n.pos.x === 35.5 && n.pos.z === 5.5)!;
-  s.nests = [{ id: 1, spotId: spot.id, pos: { ...spot.pos }, state, progress, nextSpawnAt: 1e9, nextRushAt: 1e9 }];
+  s.nests = [{ id: 1, spotId: spot.id, pos: { ...spot.pos }, state, progress, nextSpawnAt: 1e9, nextRushAt: 1e9, nextBlastAt: state === 'planted' ? 0 : 1e9 }];
   s.players[0].pos = rel(spot.pos, 1.5, 0);
   return s;
 }
@@ -81,7 +82,7 @@ describe('holding', () => {
     stepSim(s, []);
     expect(s.hordes).toHaveLength(1);
     expect(s.hordes[0].rush).toBe(true);
-    expect(s.enemies).toHaveLength(6);
+    expect(s.enemies).toHaveLength(RUSH_BASE_SIZE);
     for (const e of s.enemies) expect(d(e.pos, s.nests[0].pos)).toBeGreaterThanOrEqual(7.5);
     const spot = s.map.nestSpots.find(n => n.id === s.nests[0].spotId)!;
     expect(spot.entries.some(en => d(en, s.hordes[0].waypoint) < 0.01)).toBe(true);
@@ -218,5 +219,37 @@ describe('elevator', () => {
     const events = run(s, 5);
     expect(events.filter(e => e.type === 'gameWon' || e.type === 'gameLost')).toHaveLength(1);
     expect(s.phase).toBe('lost');
+  });
+});
+
+describe('nest defence', () => {
+  it('blasts the spot where a holder stands, after a visible warning', () => {
+    const s = nestSim('planted');
+    const p = s.players[0];
+    const events = run(s, 240);
+    expect(events.some(e => e.type === 'blastWarning')).toBe(true);
+    expect(p.hp).toBeLessThanOrEqual(80);
+  });
+
+  it('misses a holder who keeps moving inside the zone', () => {
+    const s = nestSim('planted');
+    const p = s.players[0];
+    const nest = s.nests[0].pos;
+    let angle = 0;
+    for (let i = 0; i < 600; i++) {
+      // walk in a circle around the nest
+      angle = Math.atan2(p.pos.z - nest.z, p.pos.x - nest.x);
+      stepSim(s, [{ type: 'move', playerId: 0, dir: { x: -Math.sin(angle), z: Math.cos(angle) } }]);
+    }
+    expect(d(p.pos, nest)).toBeLessThan(6);
+    expect(p.hp).toBe(100);
+    expect(s.nests[0].progress).toBe(600);
+  });
+
+  it('stops when nobody is in the zone', () => {
+    const s = nestSim('planted');
+    s.players[0].pos = rel(s.nests[0].pos, 0, 12);
+    const events = run(s, 600);
+    expect(events.some(e => e.type === 'blastWarning')).toBe(false);
   });
 });

@@ -63,9 +63,16 @@ export function createBot(): (s: SimState) => Command[] {
     if (atNest && nest.state === 'idle') {
       cmds.push({ type: 'hold', playerId: 0 });
     } else if (holding) {
-      // stay in the zone, but back away from whatever is closest
+      // keep circling inside the zone (the nest blasts whoever stands still) and lean away from what is close
+      const rx = p.pos.x - nest.pos.x, rz = p.pos.z - nest.pos.z;
+      const r = Math.hypot(rx, rz) || 1;
+      const pull = (3.2 - r) * 0.8;
+      move = { x: -rz / r + (rx / r) * pull, z: rx / r + (rz / r) * pull };
       const threat = near[0];
-      if (threat && threat.d < 3) move = { x: p.pos.x - threat.e.pos.x, z: p.pos.z - threat.e.pos.z };
+      if (threat && threat.d < 2.5) {
+        move.x += ((p.pos.x - threat.e.pos.x) / threat.d) * 0.8;
+        move.z += ((p.pos.z - threat.e.pos.z) / threat.d) * 0.8;
+      }
     } else {
       move = d(goal, p.pos) < 1.2 ? { x: goal.x - p.pos.x, z: goal.z - p.pos.z } : flowDir(s.map, field, p.pos);
     }

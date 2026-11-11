@@ -231,6 +231,17 @@ export interface Nest {
   progress: number;
   nextSpawnAt: number;
   nextRushAt: number;
+  nextBlastAt: number;
+}
+
+/** A delayed ground blast that is shown as a warning ring first. Only hurts players. */
+export interface Blast {
+  id: number;
+  pos: Vec2;
+  radius: number;
+  createdAt: number;
+  at: number;
+  damage: number;
 }
 
 export interface Vehicle {
@@ -296,6 +307,7 @@ export type SimEvent =
   | { type: 'enemyWindup'; id: number; kind: EnemyKind; pos: Vec2; dir: Vec2 }
   | { type: 'enemyShot'; pos: Vec2 }
   | { type: 'explosion'; pos: Vec2; radius: number }
+  | { type: 'blastWarning'; pos: Vec2; radius: number }
   | { type: 'nestPlanted'; id: number }
   | { type: 'nestDestroyed'; id: number; pos: Vec2 }
   | { type: 'alarmChanged'; level: number }
@@ -329,6 +341,7 @@ export interface SimState {
   offers: Offer[];
   towers: Tower[];
   nests: Nest[];
+  blasts: Blast[];
   vehicles: Vehicle[];
   vehicleRespawns: { spot: number; at: number }[];
   powerups: Powerup[];

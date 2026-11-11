@@ -5,7 +5,7 @@ import { removeDead, updateAreas, updateMines, updateProjectiles } from './syste
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
 import { updateHordes } from './systems/hordes';
-import { setupFloor, updateAlarm, updateNests } from './systems/nests';
+import { setupFloor, updateAlarm, updateBlasts, updateNests } from './systems/nests';
 import { updateOffers } from './systems/offers';
 import { updatePowerups } from './systems/powerups';
 import { updateVehicles } from './systems/vehicles';
@@ -67,6 +67,7 @@ export function createSim(map: FloorMap, seed: number): SimState {
     offers: [],
     towers: [],
     nests: [],
+    blasts: [],
     vehicles: [],
     vehicleRespawns: [],
     powerups: [],
@@ -138,6 +139,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updatePlayers(s, intents);
   updateVehicles(s, intents);
   updateNests(s, intents);
+  updateBlasts(s);
   updateAlarm(s);
   updateHordes(s);
   updateEnemies(s);

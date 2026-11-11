@@ -9,7 +9,7 @@ export interface Settings {
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, steerWithMouse: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, steerWithMouse: true };
 
 export function loadSettings(): Settings {
   try {

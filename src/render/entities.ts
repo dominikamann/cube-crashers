@@ -49,6 +49,7 @@ export function createEntities(scene: THREE.Scene): Entities {
   const warnMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
   const lanes = new InstancedPool(scene, new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5), warnMat, 32, false);
   const blastRings = new InstancedPool(scene, new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
+  const blastFills = new InstancedPool(scene, new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
   const hostileMat = glowMat(0xff3b3b, 4);
   const hostile = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.28, 0.28), hostileMat, 128, false);
   const bananaMat = lambert(0xffe135);
@@ -109,6 +110,7 @@ export function createEntities(scene: THREE.Scene): Entities {
       plates.begin();
       const extra = [eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs];
       for (const p of extra) p.begin();
+      blastFills.begin();
       warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
       tmpFrom.y = 0.06;
 
@@ -187,6 +189,11 @@ export function createEntities(scene: THREE.Scene): Entities {
         bananas.add(m.pos.x, 0.18, m.pos.z, m.id + 0.5, 0.8);
         if (s.tick >= m.armedAt && Math.floor(time * 4) % 2 === 0) mineLights.add(m.pos.x, 0.32, m.pos.z);
       }
+      for (const b of s.blasts) {
+        blastRings.add(b.pos.x, 0.06, b.pos.z, 0, b.radius);
+        blastFills.add(b.pos.x, 0.05, b.pos.z, 0, b.radius * Math.max(0.05, (s.tick - b.createdAt) / (b.at - b.createdAt)));
+      }
+      blastFills.end();
       for (const p of extra) p.end();
 
       coins.begin();

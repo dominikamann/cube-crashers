@@ -10,7 +10,7 @@ export interface WeaponDef {
 }
 
 export const WEAPONS: Record<WeaponKind, WeaponDef> = {
-  pixelBlaster: { cooldown: 0.16, damage: 5 },
+  pixelBlaster: { cooldown: 0.2, damage: 4 },
   laserSword: { cooldown: 0.5, damage: 18 },
   candyCannon: { cooldown: 0.8, damage: 4 },
   hotdogSlinger: { cooldown: 3, damage: 4 },

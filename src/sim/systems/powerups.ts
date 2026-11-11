@@ -10,7 +10,7 @@ export const POWERUP = {
   magnetTicks: 480,
   rapidTicks: 480,
   bombRadius: 8,
-  bombDamage: 60,
+  bombDamage: 250,
   frostTicks: 300,
   heart: 50,
 };

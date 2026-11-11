@@ -7,8 +7,8 @@ import { spawnEnemy } from './enemies';
 export type HordeComp = { kind: EnemyKind; count: number }[];
 
 export const HORDE_COMPS: Record<string, HordeComp> = {
-  blobSwarm: [{ kind: 'blob', count: 12 }],
-  hunterPack: [{ kind: 'hunter', count: 7 }],
+  blobSwarm: [{ kind: 'blob', count: 14 }, { kind: 'hunter', count: 3 }],
+  hunterPack: [{ kind: 'hunter', count: 9 }],
   shieldWall: [{ kind: 'tank', count: 2 }, { kind: 'shooter', count: 4 }],
   boomSquad: [{ kind: 'bomber', count: 4 }, { kind: 'blob', count: 6 }],
   ramCrew: [{ kind: 'rammer', count: 2 }, { kind: 'hunter', count: 4 }],

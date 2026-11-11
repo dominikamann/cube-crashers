@@ -2,10 +2,13 @@ import {
   ALARM_MAX,
   ALARM_SIZE_STEP,
   ALARM_TICKS,
+  DOUBLE_RUSH_ALARM,
+  GUARD_FACTOR,
   ENEMY_CAP,
   FIRST_RUSH_TICKS,
   HOLD_RADIUS,
   HOLD_TICKS,
+  NEST_DEFENCE,
   NEST_BLAST,
   NEST_SPAWN_TICKS,
   NESTS_PER_FLOOR,
@@ -36,27 +39,25 @@ function shuffled<T>(s: SimState, list: T[]): T[] {
 }
 
 /** Roaming horde mixes get nastier as the alarm rises. */
-function roamingComp(s: SimState): HordeComp {
-  const names = ['blobSwarm', 'hunterPack', 'mixed'];
-  if (s.alarm.level >= 2) names.push('shieldWall', 'boomSquad');
-  if (s.alarm.level >= 4) names.push('ramCrew');
-  const factor = 1 + ALARM_SIZE_STEP * s.alarm.level;
+function roamingComp(s: SimState, scale = 1): HordeComp {
+  const names = ['blobSwarm', 'hunterPack', 'mixed', 'shieldWall', 'boomSquad', 'ramCrew'];
+  const factor = (1 + ALARM_SIZE_STEP * s.alarm.level) * scale;
   return HORDE_COMPS[s.rng.pick(names)].map(g => ({ kind: g.kind, count: Math.ceil(g.count * factor) }));
 }
 
 /** A rush horde of exactly `size` enemies; higher alarm levels mix in the dangerous kinds. */
 function rushComp(s: SimState, size: number): HordeComp {
   const level = s.alarm.level;
-  const special = level >= 4 ? 'rammer' : level >= 2 ? 'bomber' : null;
-  const specials = special ? Math.min(2, Math.floor(size / 5)) : 0;
-  const shooters = level >= 1 ? Math.floor(size / 5) : 0;
+  const special = level % 2 === 1 ? 'rammer' : 'bomber';
+  const specials = Math.min(3, Math.floor(size / 5));
+  const shooters = Math.floor(size / 4);
   const hunters = Math.floor((size - specials - shooters) / 2);
   const comp: HordeComp = [
     { kind: 'blob', count: size - specials - shooters - hunters },
     { kind: 'hunter', count: hunters },
     { kind: 'shooter', count: shooters },
   ];
-  if (special) comp.push({ kind: special, count: specials });
+  comp.push({ kind: special, count: specials });
   return comp.filter(g => g.count > 0);
 }
 
@@ -78,8 +79,9 @@ export function setupFloor(s: SimState): void {
     progress: 0,
     nextSpawnAt: NEST_SPAWN_TICKS,
     nextRushAt: 0,
+    nextBlastAt: 0,
   }));
-  for (const n of s.nests) spawnHorde(s, besideNest(s, n), roamingComp(s));
+  for (const n of s.nests) spawnHorde(s, besideNest(s, n), roamingComp(s, GUARD_FACTOR));
   const far = shuffled(s, s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS + 3));
   for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 });
   placeStartCrates(s);
@@ -127,6 +129,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       p.plantTicks = 0;
       nest.state = 'planted';
       nest.nextRushAt = s.tick + FIRST_RUSH_TICKS;
+      nest.nextBlastAt = s.tick + NEST_DEFENCE.firstTicks;
       s.events.push({ type: 'nestPlanted', id: nest.id });
     }
   }
@@ -147,11 +150,21 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
         destroyNest(s, n);
         continue;
       }
+      if (s.tick >= n.nextBlastAt) {
+        n.nextBlastAt = s.tick + NEST_DEFENCE.intervalTicks - NEST_DEFENCE.intervalPerAlarm * s.alarm.level;
+        for (const p of alive) {
+          if (dist(p.pos, n.pos) > HOLD_RADIUS) continue;
+          s.blasts.push({ id: s.nextId++, pos: { ...p.pos }, radius: NEST_DEFENCE.radius, createdAt: s.tick, at: s.tick + NEST_DEFENCE.warnTicks, damage: NEST_DEFENCE.damage });
+          s.events.push({ type: 'blastWarning', pos: { ...p.pos }, radius: NEST_DEFENCE.radius });
+        }
+      }
       if (s.tick >= n.nextRushAt) {
         n.nextRushAt = s.tick + RUSH_INTERVAL_TICKS;
         const entries = s.map.nestSpots.find(x => x.id === n.spotId)?.entries ?? [];
         const comp = rushComp(s, RUSH_BASE_SIZE + RUSH_SIZE_PER_ALARM * s.alarm.level);
-        if (entries.length > 0 && canSpawn(s, comp)) spawnHorde(s, s.rng.pick(entries), comp, { rush: true });
+        const waves = s.alarm.level >= DOUBLE_RUSH_ALARM ? 2 : 1;
+        const from = shuffled(s, entries).slice(0, waves);
+        for (const entry of from) if (canSpawn(s, comp)) spawnHorde(s, entry, comp, { rush: true });
       }
     }
   }
@@ -173,6 +186,14 @@ function sendHunters(s: SimState): void {
     best.horde.rush = true;
     best.horde.aggro = true;
   }
+}
+
+export function updateBlasts(s: SimState): void {
+  s.blasts = s.blasts.filter(b => {
+    if (s.tick < b.at) return true;
+    explode(s, b.pos, b.radius, { player: b.damage }, 'explosion');
+    return false;
+  });
 }
 
 export function updateAlarm(s: SimState): void {
