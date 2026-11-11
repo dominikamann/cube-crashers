@@ -16,6 +16,8 @@ export interface LobbyPlayer {
   color: number;
   /** a bot the host runs */
   bot?: boolean;
+  /** red (0) or blue (1) wished for team games; unset = whatever evens the teams out */
+  team?: 0 | 1;
 }
 
 /** one card of a versus vote */
@@ -24,6 +26,8 @@ export interface VersusOption {
   rule: VersusRule;
   /** floor id */
   map: string;
+  /** monster hordes join in */
+  chaos?: boolean;
 }
 
 export interface LobbyVote {
@@ -39,6 +43,7 @@ export type ClientMessage =
   | { type: 'hello'; v: number; name: string; color?: number; unlocked?: string[] }
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'vote'; choice: 0 | 1 }
+  | { type: 'team'; team: 0 | 1 | null }
   | { type: 'leave' };
 
 /** host → client */
@@ -46,7 +51,7 @@ export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean }; mapId?: string }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -63,7 +68,8 @@ const validOption = (o: unknown) =>
   isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && ['score', 'rounds', 'king', 'capture'].includes(o.rule as string) && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
 const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
-const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean'));
+const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
+const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
 export function parseMessage(raw: string): Message | null {
@@ -88,6 +94,8 @@ export function parseMessage(raw: string): Message | null {
     case 'input':
       if (!isNum(m.seq) || !Array.isArray(m.cmds) || m.cmds.length > 32) return null;
       return { type: 'input', seq: m.seq, cmds: m.cmds as Command[] };
+    case 'team':
+      return m.team === 0 || m.team === 1 || m.team === null ? { type: 'team', team: m.team } : null;
     case 'vote':
       return m.choice === 0 || m.choice === 1 ? { type: 'vote', choice: m.choice } : null;
     case 'leave':

@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import type { LobbyPlayer, LobbyVote } from '../net/protocol';
+import type { LobbyPlayer, LobbyVote, VersusOption as VersusChoice } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
@@ -23,6 +23,8 @@ export interface Settings {
   color: number | null;
   /** players on this computer: 2 = split screen */
   localPlayers: 1 | 2;
+  /** split screen in team games: both players in one team, or against each other */
+  splitTogether: boolean;
   /** the map of a "Single floor" game (a floor id) */
   quickMap: string;
   /** versus: free for all or teams, score race or last cube standing, the map and how many bots */
@@ -36,7 +38,7 @@ export interface Settings {
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -150,8 +152,14 @@ export interface LanActions {
   leave(): void;
   setDifficulty(d: Difficulty): void;
   connect(target: string): void;
-  /** host: two versus cards to vote on */
-  startVote(): void;
+  /** host: a versus vote; with an option it is one of the two cards */
+  startVote(option?: VersusChoice): void;
+  /** host: start this versus match right away */
+  startVersus(option: VersusChoice): void;
+  /** wish for red, blue or no preference (null) */
+  chooseTeam(team: 0 | 1 | null): void;
+  /** back to the lobby from the versus page */
+  backToLobby(): void;
   vote(choice: 0 | 1): void;
   /** versus: fill matches up with bots to this many players (0 = off) */
   setAutoFill(n: number): void;
@@ -364,8 +372,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   /** the page behind a title tile: only the options that mode needs, then Start */
-  function setupScreen(mode: 'run' | 'quick' | 'versus' | 'endless') {
-    back = () => setupScreen(mode);
+  function setupScreen(mode: 'run' | 'quick' | 'versus' | 'endless', lan?: LanActions) {
+    back = () => setupScreen(mode, lan);
     show('setup', s => {
       text(s, 'h2', '', t(`mode.${mode}` as 'mode.run'));
       const hint = { run: 'mode.runHint', quick: 'mode.quickHint', versus: 'mode.versusHint', endless: 'mode.endlessHint' }[mode];
@@ -388,7 +396,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             actions.click();
             pick(it.value);
             changed();
-            setupScreen(mode);
+            setupScreen(mode, lan);
           });
           row.append(c);
         }
@@ -416,12 +424,28 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
         if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
         choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
-        const humans = settings.localPlayers;
-        choose(t('setup.bots'), [0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: String(n), value: n })), settings.versusBots, v => (settings.versusBots = v));
+        if (!lan) {
+          const humans = settings.localPlayers;
+          choose(t('setup.bots'), [0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: String(n), value: n })), settings.versusBots, v => (settings.versusBots = v));
+        }
       } else {
         choose(t('settings.difficulty'), DIFFICULTIES.map(d => ({ label: t(`difficulty.${d}` as 'difficulty.medium'), value: d })), settings.difficulty, v => (settings.difficulty = v), true);
       }
+      if (lan) {
+        // on the LAN: start this match now, or put it to the vote next to a surprise card
+        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusMode, rule: settings.versusRule, map: settings.versusMap, chaos: settings.versusChaos });
+        const row = document.createElement('div');
+        row.className = 'row2';
+        s.append(row);
+        button(row, t('setup.start'), () => lan.startVersus(option()), true);
+        button(row, t('lobby.voteThis'), () => lan.startVote(option()), true);
+        button(s, t('menu.back'), () => lan.backToLobby());
+        return;
+      }
       choose(t('setup.players'), [{ label: t('menu.onePlayer'), value: 1 as const }, { label: t('menu.twoPlayers'), value: 2 as const }], settings.localPlayers, v => (settings.localPlayers = v));
+      if (mode === 'versus' && settings.localPlayers === 2 && (settings.versusMode === 'team' || settings.versusRule === 'capture')) {
+        choose(t('setup.split'), [{ label: t('setup.together'), value: true }, { label: t('setup.against'), value: false }], settings.splitTogether, v => (settings.splitTogether = v));
+      }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
       row.className = 'row2';
@@ -533,6 +557,18 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           const swatch = document.createElement('i');
           swatch.style.background = hex(p.color);
           row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}`));
+          // team wish: everyone sets their own, the others see it
+          if (!p.bot) {
+            const wish = document.createElement('button');
+            wish.className = `chip small team-wish${p.team === 0 ? ' red' : p.team === 1 ? ' blue' : ''}`;
+            wish.textContent = p.team === 0 ? t('versus.red') : p.team === 1 ? t('versus.blue') : t('lobby.teamAuto');
+            wish.disabled = p.id !== me;
+            wish.addEventListener('click', () => {
+              actions.click();
+              lan.chooseTeam(p.team === undefined ? 0 : p.team === 0 ? 1 : null);
+            });
+            row.append(wish);
+          }
           list.append(row);
         }
         s.append(list);
@@ -565,7 +601,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           row.className = 'row2';
           s.append(row);
           button(row, t('lobby.start'), lan.start, true);
-          if (!vote) button(row, t('lobby.versus'), lan.startVote, true);
+          if (!vote) button(row, t('lobby.versus'), () => setupScreen('versus', lan), true);
           // one control for the bots: how many players the lobby is topped up to (bots show up right away)
           const bots = document.createElement('div');
           bots.className = 'stepper txt lobby-bots';

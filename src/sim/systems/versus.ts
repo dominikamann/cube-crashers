@@ -54,6 +54,24 @@ export function rivals(s: SimState, ownerId: number): Player[] {
   return s.players.filter(p => p.id !== ownerId && p.downUntil === null && (v.mode === 'ffa' || !owner || p.team !== owner.team));
 }
 
+/**
+ * Red and blue: players who chose a team get it, the others go to the smaller team, and the bots come last
+ * so they even out whatever the humans picked.
+ */
+export function balanceTeams(players: { id: number; wish?: 0 | 1 | null; bot?: boolean }[]): Record<number, 0 | 1> {
+  const out: Record<number, 0 | 1> = {};
+  const size = [0, 0];
+  const put = (id: number, team: 0 | 1) => {
+    out[id] = team;
+    size[team]++;
+  };
+  const smaller = (): 0 | 1 => (size[0] <= size[1] ? 0 : 1);
+  for (const p of players) if (!p.bot && (p.wish === 0 || p.wish === 1)) put(p.id, p.wish);
+  for (const p of players) if (!p.bot && p.wish !== 0 && p.wish !== 1) put(p.id, smaller());
+  for (const p of players) if (p.bot) put(p.id, smaller());
+  return out;
+}
+
 /** places to (re)spawn: the start, waypoints and vehicle spots of the map */
 function spawnSpots(s: SimState): Vec2[] {
   return [s.map.spawn, ...s.map.waypoints, ...s.map.vehicleSpots, ...s.map.powerSpots];
@@ -100,7 +118,7 @@ function equip(p: Player): void {
 }
 
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
-export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false): void {
+export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>): void {
   // capture the cube needs two teams
   if (rule === 'capture') mode = 'team';
   s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
@@ -143,7 +161,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
   s.players.forEach((p, i) => {
     // teams wear their colours: red (suit colour 1) and blue (suit colour 0)
     if (mode === 'team') {
-      p.team = (i % 2) as 0 | 1;
+      p.team = teams?.[p.id] ?? ((i % 2) as 0 | 1);
       p.color = p.team === 0 ? 1 : 0;
     }
     s.versus!.scores[p.id] = 0;

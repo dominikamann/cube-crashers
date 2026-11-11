@@ -3,6 +3,7 @@ import { floor01 } from '../sim/config/floor01';
 import { FLOORS } from '../sim/config/floors';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
+import { balanceTeams } from '../sim/systems/versus';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
 import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type VersusOption } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
@@ -119,6 +120,15 @@ export class HostSession {
     }
   }
 
+  /** a player's wish for red or blue (null = no wish) */
+  setTeamWish(id: number, team: 0 | 1 | null): void {
+    const p = this.lobby.find(x => x.id === id && !x.bot);
+    if (!p || this.sim) return;
+    if (team === null) delete p.team;
+    else p.team = team;
+    this.broadcastLobby();
+  }
+
   /** a bot joins the lobby (versus): it plays on the host */
   addBot(name?: string): void {
     if (this.lobby.length >= MAX_PLAYERS || this.sim) return;
@@ -184,15 +194,16 @@ export class HostSession {
     const def = FLOORS[option.map];
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
+    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
-      versus: { mode: option.mode, rule: option.rule },
+      versus,
       players: this.lobby.length,
       ids: this.lobby.map(p => p.id),
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus: { mode: option.mode, rule: option.rule }, mapId: option.map });
+    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map });
   }
 
   setDifficulty(d: Difficulty): void {
@@ -231,6 +242,8 @@ export class HostSession {
       this.lastInputAt.set(from, this.sim.tick);
     } else if (m.type === 'vote') {
       this.countVote(from, m.choice);
+    } else if (m.type === 'team') {
+      this.setTeamWish(from, m.team);
     } else if (m.type === 'leave') {
       const i = this.lobby.findIndex(p => p.id === from);
       if (i >= 0) {
@@ -386,6 +399,11 @@ export class ClientSession {
 
   castVote(choice: 0 | 1): void {
     this.net.send('all', JSON.stringify({ type: 'vote', choice }));
+  }
+
+  /** wish to play red (0) or blue (1) in team games, or null for whatever evens it out */
+  chooseTeam(team: 0 | 1 | null): void {
+    this.net.send('all', JSON.stringify({ type: 'team', team }));
   }
 
   /** Sends this tick's commands for the own player. */

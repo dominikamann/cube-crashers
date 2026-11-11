@@ -8,6 +8,7 @@ import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
+import { balanceTeams } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
@@ -116,7 +117,27 @@ function startGame() {
       saveSettings(settings);
     },
     connect: (target: string) => void joinGame(target),
-    startVote: () => host?.startVote(voteOptions()),
+    startVote: (option?: VersusOption) => {
+      if (!host) return;
+      const [a, b] = voteOptions();
+      host.startVote(option ? [option, b.map === option.map && b.rule === option.rule ? a : b] : [a, b]);
+      lastLobby = '';
+    },
+    startVersus: (option: VersusOption) => {
+      if (!host) return;
+      lanBots = [];
+      host.startVersus(option, Number(params.get('seed')) || randomSeed());
+      enterPlay();
+    },
+    chooseTeam: (team: 0 | 1 | null) => {
+      if (host) host.setTeamWish(0, team);
+      else client?.chooseTeam(team);
+      lastLobby = '';
+    },
+    backToLobby: () => {
+      lastLobby = '';
+      mode = 'lobby';
+    },
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
     setAutoFill: (n: number) => {
       autoFill = n;
@@ -408,7 +429,9 @@ function startGame() {
     const colors = settings.color !== null ? [settings.color] : undefined;
     const map = FLOORS[settings.versusMap]?.map ?? floor01;
     const fixed = Number(params.get('seed'));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule, chaos: settings.versusChaos } });
+    // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
+    const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule, chaos: settings.versusChaos, teams: humans === 2 ? teams : undefined } });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
     enterPlay();
   }
@@ -504,6 +527,8 @@ function startGame() {
   function watchHostLobby() {
     if (!host) return;
     announce();
+    // the host is on the versus page: keep the lobby from redrawing over it
+    if (document.querySelector('.screen.setup')) return;
     const key = JSON.stringify([host.lobby, host.difficulty, host.voteInfo()]);
     if (key === lastLobby) return;
     lastLobby = key;

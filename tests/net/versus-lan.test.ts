@@ -107,3 +107,20 @@ describe('auto-fill with bots', () => {
     expect(host.lobby.filter(p => p.bot)).toHaveLength(5);
   });
 });
+
+describe('team wishes on the LAN', () => {
+  it('two humans who both choose red play together; bots fill blue', () => {
+    const { hub, host, cs } = lobby(1);
+    host.setAutoFill(4);
+    host.setTeamWish(0, 0);
+    cs[0].chooseTeam(0);
+    hub.flush();
+    host.startVersus({ mode: 'team', rule: 'score', map: 'neon' }, 5);
+    hub.flush();
+    const team = (id: number) => host.sim!.players.find(p => p.id === id)!.team;
+    expect(team(0)).toBe(0);
+    expect(team(cs[0].playerId)).toBe(0);
+    expect(host.sim!.players.filter(p => p.team === 1)).toHaveLength(2);
+    expect(cs[0].view!.players.find(p => p.id === cs[0].playerId)!.team).toBe(0);
+  });
+});
