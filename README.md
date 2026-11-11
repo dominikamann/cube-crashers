@@ -69,10 +69,8 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 1. Download the `.dmg` that matches your Mac:
    - Apple Silicon (M1, M2, M3, M4 …): `CubeCrashers-<version>-mac-arm64.dmg`
    - Intel Mac: `CubeCrashers-<version>-mac-x64.dmg`
-2. Open the `.dmg` and drag **Cube Crashers** into **Applications**.
-3. The app is not signed yet, so macOS blocks it the first time. In **Applications**, **right-click Cube Crashers
-   → Open → Open**. After that it starts normally.
-   - If macOS still refuses: *System Settings → Privacy & Security*, scroll down, click **Open Anyway**.
+2. Open the `.dmg` and drag **Cube Crashers** into **Applications**. Start it from there.
+   The Mac app is signed and notarized by Apple, so it opens without warnings.
 
 ### Windows
 
@@ -88,8 +86,8 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 The app checks GitHub for a new release when it starts (and every few hours).
 - **Windows:** the update downloads in the background; a banner offers **Restart now**, otherwise it is
   installed the next time you quit.
-- **macOS:** as long as the app is not signed, macOS does not let it replace itself; the banner then shows a
-  **Download** button that opens the release page. Signed builds update like on Windows.
+- **macOS:** the same: the update downloads in the background and installs on restart. (Versions up to 0.3.4
+  were not signed; if you have one of those, download 0.3.5 once by hand.)
 
 ### From the source code
 
