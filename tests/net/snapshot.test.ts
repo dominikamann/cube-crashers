@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySnapshot, encodeSnapshot } from '../../src/net/snapshot';
+import { applySnapshot, encodeSnapshot, serializeSnapshot } from '../../src/net/snapshot';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
 
@@ -35,7 +35,7 @@ describe('snapshots', () => {
     const host = createSim(floor01, 3, { players: 6 });
     host.alarm.level = 5;
     for (let i = 0; i < 3000; i++) stepSim(host, []);
-    const bytes = JSON.stringify(encodeSnapshot(host)).length;
+    const bytes = serializeSnapshot(host, []).length;
     expect(bytes).toBeLessThan(60_000);
   });
 });

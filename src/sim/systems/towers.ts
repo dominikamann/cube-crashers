@@ -18,21 +18,21 @@ export function tryBuild(s: SimState, playerId: number, padId: number, kind: Tow
   const p = s.players.find(x => x.id === playerId);
   const pad = s.map.pads.find(x => x.id === padId);
   if (!p || !pad || p.downUntil !== null || p.vehicleId !== null || padAt(s, p.pos) !== padId) {
-    s.events.push({ type: 'buildDenied', padId, reason: 'notOnPad' });
+    s.events.push({ type: 'buildDenied', padId, reason: 'notOnPad', playerId });
     return;
   }
   if (s.towers.some(t => t.padId === padId)) {
-    s.events.push({ type: 'buildDenied', padId, reason: 'occupied' });
+    s.events.push({ type: 'buildDenied', padId, reason: 'occupied', playerId });
     return;
   }
   const def = TOWERS[kind];
   if (p.coins < def.cost) {
-    s.events.push({ type: 'buildDenied', padId, reason: 'coins' });
+    s.events.push({ type: 'buildDenied', padId, reason: 'coins', playerId });
     return;
   }
   p.coins -= def.cost;
   s.towers.push({ id: s.nextId++, kind, padId, pos: { ...pad.pos }, hp: def.hp, maxHp: def.hp, cooldown: 0 });
-  s.events.push({ type: 'towerBuilt', kind, padId });
+  s.events.push({ type: 'towerBuilt', kind, padId, playerId });
 }
 
 /** Fires `t` if something is in range. Returns true when it fired. */

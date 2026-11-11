@@ -11,6 +11,8 @@ export interface Transport {
   onPeer(cb: (peer: number, joined: boolean) => void): void;
   /** client only: the host is gone */
   onClose(cb: () => void): void;
+  /** host only: drop a peer's connection (rejected or misbehaving) */
+  kick(peer: number): void;
   close(): void;
 }
 
@@ -30,6 +32,8 @@ export function createMemoryHub() {
   let nextPeer = 1;
   let hostOpen = true;
   const open = new Set<number>([0]);
+  const kicked: number[] = [];
+  const late: (() => void)[] = [];
 
   function hostTransport(): Transport {
     return {
@@ -40,6 +44,11 @@ export function createMemoryHub() {
       onMessage: cb => void handlers.set(0, cb),
       onPeer: cb => void peerHandlers.push(cb),
       onClose: () => {},
+      kick(peer) {
+        // like a socket: what was already sent still arrives, then the line goes dead
+        kicked.push(peer);
+        late.push(() => open.delete(peer));
+      },
       close() {
         hostOpen = false;
         for (const p of open) if (p !== 0) events.push(() => closeHandlers.get(p)?.());
@@ -58,6 +67,7 @@ export function createMemoryHub() {
       onMessage: cb => void handlers.set(id, cb),
       onPeer: () => {},
       onClose: cb => void closeHandlers.set(id, cb),
+      kick: () => {},
       close() {
         open.delete(id);
         events.push(() => peerHandlers.forEach(h => h(id, false)));
@@ -66,17 +76,19 @@ export function createMemoryHub() {
   }
 
   return {
+    kicked,
     host: hostTransport,
     client: clientTransport,
     /** delivers everything that was sent, including messages sent while delivering */
     flush() {
-      for (let guard = 0; guard < 1000 && (events.length > 0 || queue.length > 0); guard++) {
+      for (let guard = 0; guard < 1000 && (events.length > 0 || queue.length > 0 || late.length > 0); guard++) {
         while (events.length > 0) events.shift()!();
         while (queue.length > 0) {
           const m = queue.shift()!;
           if (m.to !== 0 && !open.has(m.to)) continue;
           handlers.get(m.to)?.(m.from, m.data);
         }
+        while (late.length > 0) late.shift()!();
       }
     },
   };

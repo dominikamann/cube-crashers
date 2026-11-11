@@ -4,8 +4,13 @@ import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
 import type { Command, Difficulty, SimEvent, SimState } from '../sim/types';
 import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer } from './protocol';
-import { applySnapshot, encodeSnapshot } from './snapshot';
+import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
+
+/** after this many ticks without input a client's last held keys are dropped */
+const SILENT_INPUT_TICKS = 15;
+/** a client gives up on a host that sent nothing for this long while playing */
+export const HOST_TIMEOUT_MS = 5000;
 
 const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build']);
 const HELD = new Set(['hold', 'fire', 'fly']);
@@ -32,6 +37,7 @@ export class HostSession {
   events: SimEvent[] = [];
   private pending = new Map<number, Command[][]>();
   private lastInput = new Map<number, Command[]>();
+  private lastInputAt = new Map<number, number>();
   private outEvents: SimEvent[] = [];
   private leftDuringRun: number[] = [];
 
@@ -51,7 +57,13 @@ export class HostSession {
   }
 
   private send(to: number | 'all', msg: HostMessage): void {
-    this.net.send(to, JSON.stringify(msg));
+    this.sendRaw(to, JSON.stringify(msg));
+  }
+
+  /** 'all' means everyone in the lobby, not every connection (half-open or rejected peers get nothing) */
+  private sendRaw(to: number | 'all', data: string): void {
+    if (to !== 'all') this.net.send(to, data);
+    else for (const p of this.lobby) if (p.id !== 0) this.net.send(p.id, data);
   }
 
   private broadcastLobby(): void {
@@ -67,9 +79,13 @@ export class HostSession {
     const m = parseMessage(data);
     if (!m) return;
     if (m.type === 'hello') {
-      if (m.v !== PROTOCOL_VERSION) return this.send(from, { type: 'reject', reason: 'version' });
-      if (this.sim) return this.send(from, { type: 'reject', reason: 'started' });
-      if (this.lobby.length >= MAX_PLAYERS) return this.send(from, { type: 'reject', reason: 'full' });
+      const reject = (reason: 'version' | 'started' | 'full') => {
+        this.send(from, { type: 'reject', reason });
+        this.net.kick(from);
+      };
+      if (m.v !== PROTOCOL_VERSION) return reject('version');
+      if (this.sim) return reject('started');
+      if (this.lobby.length >= MAX_PLAYERS) return reject('full');
       if (this.lobby.some(p => p.id === from)) return;
       const used = new Set(this.lobby.map(p => p.color));
       const color = [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;
@@ -81,6 +97,7 @@ export class HostSession {
       const list = this.pending.get(from) ?? [];
       if (list.length < 30) list.push(sanitizeCommands(m.cmds, from));
       this.pending.set(from, list);
+      this.lastInputAt.set(from, this.sim.tick);
     } else if (m.type === 'leave') {
       const i = this.lobby.findIndex(p => p.id === from);
       if (i >= 0) {
@@ -112,16 +129,24 @@ export class HostSession {
     const cmds = [...localCommands];
     for (const p of s.players) {
       if (p.id === 0) continue;
-      const merged = mergeInputs(this.pending.get(p.id) ?? [], this.lastInput.get(p.id) ?? []);
+      // a client that went quiet (lost Wi-Fi) must not keep running and firing on its last input
+      const silent = s.tick - (this.lastInputAt.get(p.id) ?? s.tick) > SILENT_INPUT_TICKS;
+      const merged = mergeInputs(this.pending.get(p.id) ?? [], silent ? [] : (this.lastInput.get(p.id) ?? []));
       this.pending.set(p.id, []);
       this.lastInput.set(p.id, merged.last);
       cmds.push(...merged.cmds);
     }
-    stepSim(s, cmds);
+    try {
+      stepSim(s, cmds);
+    } catch (err) {
+      // never let one bad tick stop the game for everyone
+      console.error('host tick failed', err);
+      return;
+    }
     this.events.push(...s.events);
     this.outEvents.push(...s.events);
     if (s.tick % SNAPSHOT_EVERY_TICKS === 0 || s.phase !== 'playing') {
-      this.send('all', { type: 'snap', state: encodeSnapshot(s), events: this.outEvents });
+      this.sendRaw('all', serializeSnapshot(s, this.outEvents));
       this.outEvents = [];
     }
   }
@@ -158,6 +183,9 @@ export class ClientSession {
   view: SimState | null = null;
   private events: SimEvent[] = [];
   private seq = 0;
+  private lastHeard = 0;
+  private clock = 0;
+  private now = () => this.clock;
 
   constructor(private net: Transport, opts: { name: string; version?: number }) {
     net.onMessage((_from, data) => this.receive(data));
@@ -182,10 +210,8 @@ export class ClientSession {
       case 'lobby':
         this.lobby = m.players;
         this.difficulty = m.difficulty;
-        if (this.status === 'playing' && this.view?.phase !== 'playing') {
-          this.status = 'lobby';
-          this.view = null;
-        }
+        // the host only sends the lobby while nobody plays: a finished run goes back to it
+        if (this.status === 'playing' && this.view?.phase !== 'playing') this.status = 'lobby';
         break;
       case 'start':
         this.difficulty = m.difficulty;
@@ -198,8 +224,10 @@ export class ClientSession {
           colors: m.players.map(p => p.color),
         });
         this.status = 'playing';
+        this.lastHeard = this.now();
         break;
       case 'snap':
+        this.lastHeard = this.now();
         if (this.view && applySnapshot(this.view, m.state)) this.events.push(...m.events);
         break;
       case 'bye':
@@ -212,6 +240,13 @@ export class ClientSession {
   sendInput(cmds: Command[]): void {
     if (this.status !== 'playing') return;
     this.net.send('all', JSON.stringify({ type: 'input', seq: this.seq++, cmds }));
+  }
+
+  /** Call regularly with the current time: a host that stays silent while playing is treated as gone. */
+  checkTimeout(nowMs: number): void {
+    this.clock = nowMs;
+    if (this.lastHeard === 0) this.lastHeard = nowMs;
+    if (this.status === 'playing' && this.view?.phase === 'playing' && nowMs - this.lastHeard > HOST_TIMEOUT_MS) this.status = 'hostLeft';
   }
 
   /** Events from the snapshots that arrived since the last call. */

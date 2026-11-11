@@ -26,7 +26,7 @@ describe('building', () => {
     expect(s.towers).toHaveLength(1);
     expect(s.towers[0]).toMatchObject({ kind: 'laser', padId: PAD });
     expect(p.coins).toBe(0);
-    expect(s.events).toContainEqual({ type: 'towerBuilt', kind: 'laser', padId: PAD });
+    expect(s.events).toContainEqual({ type: 'towerBuilt', kind: 'laser', padId: PAD, playerId: 0 });
   });
 
   it('denies building without enough coins and changes nothing', () => {
@@ -34,7 +34,7 @@ describe('building', () => {
     stepSim(s, [build(PAD, 'laser')]);
     expect(s.towers).toHaveLength(0);
     expect(p.coins).toBe(11);
-    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'coins' });
+    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'coins', playerId: 0 });
   });
 
   it('denies building on an occupied pad', () => {
@@ -43,7 +43,7 @@ describe('building', () => {
     stepSim(s, [build(PAD, 'frost')]);
     expect(s.towers).toHaveLength(1);
     expect(p.coins).toBe(88);
-    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'occupied' });
+    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'occupied', playerId: 0 });
   });
 
   it('denies building when the player is not on the pad', () => {
@@ -51,7 +51,7 @@ describe('building', () => {
     p.pos.x += 3;
     stepSim(s, [build(PAD, 'laser')]);
     expect(s.towers).toHaveLength(0);
-    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'notOnPad' });
+    expect(s.events).toContainEqual({ type: 'buildDenied', padId: PAD, reason: 'notOnPad', playerId: 0 });
   });
 });
 

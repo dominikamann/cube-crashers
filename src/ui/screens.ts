@@ -40,7 +40,9 @@ export function recordScore(score: number, difficulty: Difficulty): number[] {
   let all: Partial<Record<Difficulty, number[]>> = {};
   try {
     const raw = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '{}');
-    if (raw && !Array.isArray(raw)) all = raw;
+    // version 0.1 kept a single list: it becomes the Medium list
+    if (Array.isArray(raw)) all = { medium: raw.filter(x => typeof x === 'number') };
+    else if (raw) all = raw;
   } catch {
     // storage unavailable
   }

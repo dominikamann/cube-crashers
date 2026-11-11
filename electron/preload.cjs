@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('cubeCrashers', {
     discover: () => ipcRenderer.invoke('lan:discover'),
     stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
     send: (to, data) => ipcRenderer.send('lan:send', to, data),
+    kick: peer => ipcRenderer.send('lan:kick', peer),
+    setInfo: info => ipcRenderer.send('lan:info', info),
     close: () => ipcRenderer.invoke('lan:close'),
     on: cb => {
       const listener = (_event, e) => cb(e);

@@ -7,39 +7,91 @@ const { WebSocket, WebSocketServer } = require('ws');
 const GAME_PORT = 47800;
 const BEACON_PORT = 47801;
 const MAX_BYTES = 256 * 1024;
+/** clients only send inputs: small and at most a little over 60 per second */
+const MAX_CLIENT_BYTES = 16 * 1024;
+const MAX_MESSAGES_PER_SECOND = 120;
+const MAX_PEERS = 8;
+const ADMIT_MS = 5000;
+const HEARTBEAT_MS = 2000;
+const MAX_GAMES = 20;
 const BEACON_TAG = 'cube-crashers';
 
 /** Starts the game server. `send(to, data)`: to a peer number or 'all'. */
-function startHost({ port = GAME_PORT, onMessage, onPeer }) {
+function startHost({
+  port = GAME_PORT,
+  onMessage,
+  onPeer,
+  maxPeers = MAX_PEERS,
+  admitMs = ADMIT_MS,
+  heartbeatMs = HEARTBEAT_MS,
+  maxPerSecond = MAX_MESSAGES_PER_SECOND,
+}) {
   return new Promise((resolve, reject) => {
-    const wss = new WebSocketServer({ port, maxPayload: MAX_BYTES });
     const peers = new Map();
+    const wss = new WebSocketServer({
+      port,
+      maxPayload: MAX_CLIENT_BYTES,
+      // the game's own client sends no Origin header; browsers always do, so web pages are kept out
+      verifyClient: info => !info.origin && peers.size < maxPeers,
+    });
     let nextPeer = 1;
     wss.on('error', reject);
     wss.on('connection', ws => {
       const peer = nextPeer++;
-      peers.set(peer, ws);
+      const info = { ws, admitted: false, alive: true, windowStart: Date.now(), count: 0 };
+      peers.set(peer, info);
       onPeer(peer, true);
+      // a connection the host never welcomes (or a client that never says hello) does not stay open
+      info.admitTimer = setTimeout(() => {
+        if (!info.admitted) ws.terminate();
+      }, admitMs);
+      ws.on('pong', () => (info.alive = true));
       ws.on('message', raw => {
-        const data = String(raw);
-        if (data.length <= MAX_BYTES) onMessage(peer, data);
+        const now = Date.now();
+        if (now - info.windowStart >= 1000) {
+          info.windowStart = now;
+          info.count = 0;
+        }
+        if (++info.count > maxPerSecond) return ws.terminate();
+        onMessage(peer, String(raw));
       });
       ws.on('close', () => {
+        clearTimeout(info.admitTimer);
         peers.delete(peer);
         onPeer(peer, false);
       });
-      ws.on('error', () => ws.close());
+      ws.on('error', () => ws.terminate());
     });
+    // dead connections (pulled cable, lost Wi-Fi) stop answering pings and are closed
+    const heartbeat = setInterval(() => {
+      for (const info of peers.values()) {
+        if (!info.admitted) continue;
+        if (!info.alive) {
+          info.ws.terminate();
+          continue;
+        }
+        info.alive = false;
+        info.ws.ping();
+      }
+    }, heartbeatMs);
     wss.on('listening', () =>
       resolve({
         port: wss.address().port,
-        players: () => peers.size + 1,
+        players: () => [...peers.values()].filter(p => p.admitted).length + 1,
         send(to, data) {
           const targets = to === 'all' ? [...peers.values()] : [peers.get(Number(to))].filter(Boolean);
-          for (const ws of targets) if (ws.readyState === WebSocket.OPEN) ws.send(data);
+          for (const p of targets) {
+            // the host talking to a peer directly means it was taken in
+            if (to !== 'all') p.admitted = true;
+            if (p.ws.readyState === WebSocket.OPEN) p.ws.send(data);
+          }
+        },
+        kick(peer) {
+          peers.get(Number(peer))?.ws.close();
         },
         stop() {
-          for (const ws of peers.values()) ws.close();
+          clearInterval(heartbeat);
+          for (const p of peers.values()) p.ws.close();
           wss.close();
         },
       }),
@@ -111,9 +163,11 @@ function startDiscovery({ port = BEACON_PORT, expireMs = 3000, onGames }) {
     } catch {
       return;
     }
-    if (m.tag !== BEACON_TAG || typeof m.name !== 'string' || typeof m.gamePort !== 'number') return;
+    if (m.tag !== BEACON_TAG || typeof m.name !== 'string' || !Number.isInteger(m.gamePort) || m.gamePort < 1 || m.gamePort > 65535) return;
+    if (m.open === false) return;
     const address = `${rinfo.address}:${m.gamePort}`;
-    games.set(address, { address, name: m.name.slice(0, 16), players: Number(m.players) || 1, seen: Date.now() });
+    if (!games.has(address) && games.size >= MAX_GAMES) return;
+    games.set(address, { address, name: m.name.slice(0, 16), players: Math.min(6, Math.max(1, Number(m.players) || 1)), seen: Date.now() });
     report();
   });
   sock.bind(port);

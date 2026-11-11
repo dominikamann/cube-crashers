@@ -57,7 +57,7 @@ function teamWipe(s: SimState): void {
 }
 
 export function checkTeamWipe(s: SimState): void {
-  if (s.phase !== 'playing' || s.players.length < 2) return;
+  if (s.phase !== 'playing' || s.players.length === 0) return;
   if (!s.players.every(p => p.downUntil !== null)) return;
   if (!s.players.some(p => p.reviveUntil !== null)) return;
   teamWipe(s);
@@ -103,6 +103,8 @@ export function removePlayer(s: SimState, id: number): void {
   s.mines = s.mines.filter(m => m.ownerId !== id);
   s.players = s.players.filter(x => x.id !== id);
   s.flow = null;
+  // the one who left may have been the last who could help the others up
+  checkTeamWipe(s);
 }
 
 let makePlayer: (id: number, pos: Vec2, name: string, color: number) => Player = () => {

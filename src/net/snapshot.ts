@@ -104,7 +104,12 @@ export function encodeSnapshot(s: SimState): SnapState {
     look: s.look,
     stats: { ...s.stats, samples: [] },
   };
-  return JSON.parse(JSON.stringify(snap, round));
+  return snap;
+}
+
+/** The whole snap message as one string, numbers rounded on the way (one pass, sent to every client). */
+export function serializeSnapshot(s: SimState, events: unknown[]): string {
+  return JSON.stringify({ type: 'snap', state: encodeSnapshot(s), events }, round);
 }
 
 /** Puts a snapshot into the client's view of the game. Older snapshots than the one shown are ignored. */

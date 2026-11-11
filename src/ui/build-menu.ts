@@ -33,7 +33,7 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
       wrap.style.display = open ? '' : 'none';
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
       for (const c of cards) c.card.classList.toggle('poor', coins < TOWERS[c.kind].cost);
-      if (events.some(e => e.type === 'buildDenied' && e.reason === 'coins')) {
+      if (events.some(e => e.type === 'buildDenied' && e.reason === 'coins' && e.playerId === localId)) {
         for (const c of cards) {
           if (!c.card.classList.contains('poor')) continue;
           c.card.classList.remove('shake');

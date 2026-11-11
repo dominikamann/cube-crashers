@@ -106,6 +106,21 @@ describe('reviving', () => {
   });
 });
 
+describe('teammates leaving', () => {
+  it('costs one credit, not one per downed player, when the last helper leaves', () => {
+    const s = team(3);
+    const [a, b] = s.players;
+    damagePlayer(s, a, 1000);
+    damagePlayer(s, b, 1000);
+    expect(s.credits).toBe(3);
+    removePlayer(s, 2);
+    expect(s.credits).toBe(2);
+    run(s, RESPAWN_TICKS + 1);
+    expect(s.players.every(p => p.downUntil === null)).toBe(true);
+    expect(s.credits).toBe(2);
+  });
+});
+
 describe('scaling with the team size', () => {
   it('makes hordes bigger and monsters tougher', () => {
     const s = team(4);

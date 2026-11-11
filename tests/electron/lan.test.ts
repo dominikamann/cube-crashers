@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const lan = require('../../electron/lan.cjs');
+const { WebSocket } = require('ws');
 
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const cleanup: (() => void)[] = [];
@@ -58,5 +59,90 @@ describe('desktop LAN server', () => {
     a.send('x'.repeat(300 * 1024));
     await wait(150);
     expect(got).toHaveLength(0);
+  });
+
+  async function quietHost(opts: Record<string, unknown> = {}) {
+    const got: string[] = [];
+    const host = await lan.startHost({ port: 0, onMessage: (_f: number, d: string) => got.push(d), onPeer: () => {}, ...opts });
+    cleanup.push(() => host.stop());
+    return { host, got };
+  }
+
+  function raw(port: number, opts: Record<string, unknown> = {}) {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`, opts);
+    const state = { open: false, closed: false };
+    ws.on('open', () => (state.open = true));
+    ws.on('close', () => (state.closed = true));
+    ws.on('error', () => {});
+    cleanup.push(() => ws.terminate());
+    return { ws, state };
+  }
+
+  it('turns away web pages (connections with an Origin header)', async () => {
+    const { host } = await quietHost();
+    const page = raw(host.port, { origin: 'http://evil.example' });
+    await wait(150);
+    expect(page.state.open).toBe(false);
+  });
+
+  it('accepts at most 8 connections', async () => {
+    const { host } = await quietHost();
+    const conns = Array.from({ length: 10 }, () => raw(host.port));
+    await wait(250);
+    expect(conns.filter(c => c.state.open && !c.state.closed)).toHaveLength(8);
+  });
+
+  it('drops a peer that sends too much too fast', async () => {
+    const { host, got } = await quietHost();
+    const c = raw(host.port);
+    await wait(100);
+    for (let i = 0; i < 400; i++) c.ws.send('x');
+    await wait(200);
+    expect(got.length).toBeLessThanOrEqual(130);
+    expect(c.state.closed).toBe(true);
+  });
+
+  it('closes peers the host never took in', async () => {
+    const { host } = await quietHost({ admitMs: 200 });
+    const lurker = raw(host.port);
+    const guest = raw(host.port);
+    await wait(80);
+    host.send(2, 'welcome');
+    await wait(300);
+    expect(lurker.state.closed).toBe(true);
+    expect(guest.state.closed).toBe(false);
+  });
+
+  it('closes a peer that stops answering pings', async () => {
+    const { host } = await quietHost({ heartbeatMs: 100 });
+    const dead = raw(host.port, { autoPong: false });
+    await wait(80);
+    host.send(1, 'welcome');
+    await wait(400);
+    expect(dead.state.closed).toBe(true);
+  });
+
+  it('can kick a peer', async () => {
+    const { host } = await quietHost();
+    const c = raw(host.port);
+    await wait(100);
+    host.kick(1);
+    await wait(100);
+    expect(c.state.closed).toBe(true);
+  });
+
+  it('ignores beacons with a bad port and lists at most 20 games', async () => {
+    const port = 47950 + Math.floor(Math.random() * 40);
+    let last: unknown[] = [];
+    const disco = lan.startDiscovery({ port, onGames: (g: unknown[]) => (last = g) });
+    cleanup.push(() => disco.stop());
+    const dgram = require('node:dgram');
+    const sock = dgram.createSocket('udp4');
+    const send = (m: object) => sock.send(Buffer.from(JSON.stringify({ tag: 'cube-crashers', v: 1, name: 'x', players: 1, open: true, ...m })), port, '127.0.0.1');
+    send({ gamePort: 99999 });
+    for (let i = 0; i < 30; i++) send({ gamePort: 40000 + i });
+    await wait(300);
+    sock.close();
+    expect(last.length).toBe(20);
   });
 });

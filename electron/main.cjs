@@ -19,6 +19,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // a LAN host keeps the game running for everyone even when its window is minimised
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
@@ -64,6 +66,7 @@ let hosting = null;
 let beacon = null;
 let client = null;
 let discovery = null;
+let info = { players: 1, open: true };
 
 const emit = event => win?.webContents.send('lan:event', event);
 
@@ -77,25 +80,32 @@ function stopLan() {
 ipcMain.handle('lan:host', async (event, name) => {
   if (!fromGame(event)) return;
   stopLan();
-  hosting = await lan.startHost({
+  info = { players: 1, open: true };
+  // callbacks of an older server must not reach a newer session
+  let self = null;
+  self = await lan.startHost({
     port: lan.GAME_PORT,
-    onMessage: (from, data) => emit({ type: 'message', from, data }),
-    onPeer: (peer, joined) => emit({ type: 'peer', peer, joined }),
+    onMessage: (from, data) => hosting === self && emit({ type: 'message', from, data }),
+    onPeer: (peer, joined) => hosting === self && emit({ type: 'peer', peer, joined }),
   });
+  hosting = self;
   const shown = String(name || 'Cube Crashers').slice(0, 16);
-  beacon = lan.startBeacon({ info: () => ({ name: shown, players: hosting ? hosting.players() : 1, gamePort: hosting ? hosting.port : lan.GAME_PORT }) });
+  beacon = lan.startBeacon({ info: () => ({ name: shown, players: info.players, open: info.open, gamePort: self.port }) });
 });
 
 ipcMain.handle('lan:join', async (event, address) => {
   if (!fromGame(event) || typeof address !== 'string' || address.length > 64) return;
   stopLan();
-  client = await lan.connect(address, {
-    onMessage: (from, data) => emit({ type: 'message', from, data }),
+  let self = null;
+  self = await lan.connect(address, {
+    onMessage: (from, data) => client === self && emit({ type: 'message', from, data }),
     onClose: () => {
+      if (client !== self) return;
       client = null;
       emit({ type: 'closed' });
     },
   });
+  client = self;
 });
 
 ipcMain.on('lan:send', (event, to, data) => {
@@ -104,18 +114,30 @@ ipcMain.on('lan:send', (event, to, data) => {
   else client?.send(data);
 });
 
+ipcMain.on('lan:kick', (event, peer) => {
+  if (fromGame(event) && Number.isInteger(peer)) hosting?.kick(peer);
+});
+
+ipcMain.on('lan:info', (event, next) => {
+  if (!fromGame(event) || typeof next !== 'object' || next === null) return;
+  info = { players: Math.min(6, Math.max(1, Number(next.players) || 1)), open: next.open !== false };
+});
+
 ipcMain.handle('lan:discover', event => {
   if (!fromGame(event)) return;
   discovery?.stop();
   discovery = lan.startDiscovery({ onGames: games => emit({ type: 'games', games }) });
 });
 
-ipcMain.handle('lan:stopDiscovery', () => {
+ipcMain.handle('lan:stopDiscovery', event => {
+  if (!fromGame(event)) return;
   discovery?.stop();
   discovery = null;
 });
 
-ipcMain.handle('lan:close', () => stopLan());
+ipcMain.handle('lan:close', event => {
+  if (fromGame(event)) stopLan();
+});
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {

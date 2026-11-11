@@ -128,8 +128,14 @@ function startGame() {
       }
     },
     (alpha, frameDt) => {
-      if (role === 'host' && host) frameEvents.push(...host.takeEvents());
+      if (role === 'host' && host) {
+        const evs = host.takeEvents();
+        keyboard.onEvents(evs);
+        frameEvents.push(...evs);
+        announce();
+      }
       if (role === 'client' && client) {
+        client.checkTimeout(performance.now());
         const evs = client.takeEvents();
         keyboard.onEvents(evs);
         frameEvents.push(...evs);
@@ -271,8 +277,20 @@ function startGame() {
     if (role === 'host') watchHostLobby();
   }
 
+  /** tells the network announcement how many are in and whether new players can still join */
+  let lastAnnounce = '';
+  function announce() {
+    if (!host || !window.cubeCrashers?.lan) return;
+    const next = { players: host.lobby.length, open: !host.sim && host.lobby.length < 6 };
+    const key = JSON.stringify(next);
+    if (key === lastAnnounce) return;
+    lastAnnounce = key;
+    window.cubeCrashers.lan.setInfo(next);
+  }
+
   function watchHostLobby() {
     if (!host) return;
+    announce();
     const key = JSON.stringify([host.lobby, host.difficulty]);
     if (key === lastLobby) return;
     lastLobby = key;
@@ -296,12 +314,14 @@ function startGame() {
       screens.notice(t('net.hostLeft'));
       return;
     }
-    if (client.status === 'playing' && mode === 'lobby') {
+    const running = client.status === 'playing' && client.view?.phase === 'playing';
+    // a new run started: join it from the lobby or straight from the result screen
+    if (running && (mode === 'lobby' || mode === 'over')) {
       enterPlay();
       return;
     }
-    if (mode === 'lobby' && client.status === 'lobby') {
-      const key = JSON.stringify([client.lobby, client.difficulty]);
+    if (mode === 'lobby' && !running) {
+      const key = JSON.stringify([client.lobby, client.difficulty, client.status]);
       if (key === lastLobby) return;
       lastLobby = key;
       screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions);
@@ -400,6 +420,10 @@ function startGame() {
       loop.frame(now);
       requestAnimationFrame(frame);
     });
+    // browsers stop animation frames for hidden windows; a LAN game must go on for the others
+    setInterval(() => {
+      if (document.hidden && role !== 'solo') loop.frame(performance.now());
+    }, 1000 / 60);
   }
 }
 

@@ -33,7 +33,7 @@ describe('Keyboard', () => {
     const cmds = k.commands(s, 0, 220);
     expect(cmds.filter(c => c.type === 'build')).toEqual([{ type: 'build', playerId: 0, padId: PAD, tower: 'popcorn' }]);
     expect(k.commands(s, 0, 240).filter(c => c.type === 'build')).toHaveLength(0);
-    k.onEvents([{ type: 'towerBuilt', kind: 'popcorn', padId: PAD }]);
+    k.onEvents([{ type: 'towerBuilt', kind: 'popcorn', padId: PAD, playerId: 0 }]);
     expect(k.buildMenuOpen).toBe(false);
   });
 
@@ -44,7 +44,7 @@ describe('Keyboard', () => {
     k.commands(s, 0, 200);
     k.keyDown('Digit1', 210);
     k.commands(s, 0, 220);
-    k.onEvents([{ type: 'buildDenied', padId: PAD, reason: 'coins' }]);
+    k.onEvents([{ type: 'buildDenied', padId: PAD, reason: 'coins', playerId: 0 }]);
     expect(k.buildMenuOpen).toBe(true);
     expect(k.commands(s, 0, 240).filter(c => c.type === 'build')).toHaveLength(0);
   });

@@ -15,6 +15,7 @@ export function connectRelay(room: string, role: 'host' | 'client'): Promise<Tra
     onMessage: cb => void (onMessage = cb),
     onPeer: cb => void (onPeer = cb),
     onClose: cb => void (onClose = cb),
+    kick: peer => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ kick: peer })),
     close: () => ws.close(),
   };
   return new Promise((resolve, reject) => {

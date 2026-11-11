@@ -30,6 +30,9 @@ export function lanRelayPlugin(): Plugin {
       server.httpServer?.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
         const url = new URL(req.url ?? '', 'http://localhost');
         if (url.pathname !== '/__lan') return;
+        // only the game's own pages (same dev server) may use the relay
+        const origin = req.headers.origin ?? '';
+        if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return socket.destroy();
         wss.handleUpgrade(req, socket, head, ws => {
           const room = (url.searchParams.get('room') ?? '').slice(0, 32);
           const role = url.searchParams.get('role');
@@ -45,12 +48,13 @@ export function lanRelayPlugin(): Plugin {
             rooms.set(room, r);
             send(ws, { sys: 'ready' });
             ws.on('message', raw => {
-              let m: { to?: number | 'all'; data?: string };
+              let m: { to?: number | 'all'; data?: string; kick?: number };
               try {
                 m = JSON.parse(String(raw));
               } catch {
                 return;
               }
+              if (typeof m.kick === 'number') return r.clients.get(m.kick)?.close();
               if (typeof m.data !== 'string') return;
               const targets = m.to === 'all' ? [...r.clients.values()] : [r.clients.get(Number(m.to))].filter(Boolean);
               for (const t of targets) send(t as WebSocket, { from: 0, data: m.data });

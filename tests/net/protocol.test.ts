@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_MESSAGE_BYTES, parseMessage, PROTOCOL_VERSION } from '../../src/net/protocol';
+import { MAX_MESSAGE_BYTES, parseMessage, PROTOCOL_VERSION, sanitizeCommands } from '../../src/net/protocol';
 
 describe('parseMessage', () => {
   it('accepts a valid hello', () => {
@@ -17,5 +17,33 @@ describe('parseMessage', () => {
   it('cuts overlong names', () => {
     const m = parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'x'.repeat(100) }));
     expect(m?.type === 'hello' && m.name.length).toBe(16);
+  });
+});
+
+describe('sanitizeCommands', () => {
+  const clean = (cmds: unknown[]) => sanitizeCommands(cmds as never, 3);
+
+  it('drops commands with missing or broken fields', () => {
+    expect(clean([{ type: 'move' }])).toEqual([]);
+    expect(clean([{ type: 'move', dir: { x: NaN, z: 0 } }])).toEqual([]);
+    expect(clean([{ type: 'move', dir: { x: 'a', z: 0 } }])).toEqual([]);
+    expect(clean([{ type: 'aim', point: 5 }])).toEqual([]);
+    expect(clean([{ type: 'aim', point: { x: Infinity, z: 1 } }])).toEqual([]);
+    expect(clean([{ type: 'select', slot: 0.5 }])).toEqual([]);
+    expect(clean([{ type: 'select', slot: 6 }])).toEqual([]);
+    expect(clean([{ type: 'build', padId: 1, tower: 'constructor' }])).toEqual([]);
+    expect(clean([{ type: 'build', padId: 1, tower: 'x' }])).toEqual([]);
+    expect(clean([{ type: 'build', padId: 1.5, tower: 'laser' }])).toEqual([]);
+    expect(clean([{ type: 'teleport' }])).toEqual([]);
+  });
+
+  it('keeps good commands, clamps them and sets the sender as player', () => {
+    const [m] = clean([{ type: 'move', playerId: 0, dir: { x: 3, z: 4 } }]);
+    expect(m).toMatchObject({ type: 'move', playerId: 3 });
+    if (m.type === 'move') expect(Math.hypot(m.dir.x, m.dir.z)).toBeCloseTo(1);
+    expect(clean([{ type: 'aim', point: { x: -50, z: 999 } }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 0, z: 70 } }]);
+    expect(clean([{ type: 'select', slot: -1 }])).toEqual([{ type: 'select', playerId: 3, slot: -1 }]);
+    expect(clean([{ type: 'build', padId: 2, tower: 'frost' }])).toEqual([{ type: 'build', playerId: 3, padId: 2, tower: 'frost' }]);
+    expect(clean([{ type: 'jump' }, { type: 'fire', extra: 1 }])).toEqual([{ type: 'jump', playerId: 3 }, { type: 'fire', playerId: 3 }]);
   });
 });

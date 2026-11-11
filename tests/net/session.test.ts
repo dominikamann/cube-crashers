@@ -83,4 +83,63 @@ describe('LAN session', () => {
     expect(a.status).toBe('hostLeft');
     expect(b.status).toBe('hostLeft');
   });
+
+  it('survives a client that sends broken commands', () => {
+    const { hub, host, a } = setup();
+    host.start(1, 'medium');
+    hub.flush();
+    a.sendInput([{ type: 'move' } as never, { type: 'build', playerId: 1, padId: 3, tower: 'constructor' } as never]);
+    hub.flush();
+    expect(() => host.step([])).not.toThrow();
+    expect(host.sim!.players.every(p => Number.isFinite(p.coins))).toBe(true);
+  });
+
+  it('stops repeating the input of a client that went silent', () => {
+    const { hub, host, a } = setup();
+    host.start(1, 'medium');
+    hub.flush();
+    a.sendInput([{ type: 'move', playerId: 1, dir: { x: 1, z: 0 } }]);
+    hub.flush();
+    for (let i = 0; i < 20; i++) host.step([]);
+    const x = host.sim!.players[1].pos.x;
+    for (let i = 0; i < 20; i++) host.step([]);
+    expect(host.sim!.players[1].pos.x).toBe(x);
+  });
+
+  it('sends the game only to players in the lobby and closes rejected peers', () => {
+    const hub = createMemoryHub();
+    const host = new HostSession(hub.host(), { name: 'H' });
+    const ok = new ClientSession(hub.client(), { name: 'A' });
+    const odd = new ClientSession(hub.client(), { name: 'Old', version: PROTOCOL_VERSION + 1 });
+    hub.flush();
+    expect(hub.kicked).toContain(2);
+    host.start(1, 'medium');
+    hub.flush();
+    expect(ok.status).toBe('playing');
+    expect(odd.view).toBeNull();
+  });
+
+  it('notices a host that went silent', () => {
+    const { hub, host, a } = setup();
+    host.start(1, 'medium');
+    hub.flush();
+    host.step([]);
+    host.step([]);
+    hub.flush();
+    a.checkTimeout(1000);
+    expect(a.status).toBe('playing');
+    a.checkTimeout(1000 + 6000);
+    expect(a.status).toBe('hostLeft');
+  });
+
+  it('goes back to the lobby when the host does', () => {
+    const { hub, host, a } = setup();
+    host.start(1, 'medium');
+    hub.flush();
+    host.sim!.phase = 'won';
+    host.step([]);
+    host.endRun();
+    hub.flush();
+    expect(a.status).toBe('lobby');
+  });
 });

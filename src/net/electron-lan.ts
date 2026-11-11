@@ -8,6 +8,9 @@ export interface LanBridge {
   discover(): Promise<void>;
   stopDiscovery(): Promise<void>;
   send(to: number | 'all', data: string): void;
+  kick(peer: number): void;
+  /** what the network announcement says about this game */
+  setInfo(info: { players: number; open: boolean }): void;
   close(): Promise<void>;
   on(cb: (event: LanBridgeEvent) => void): () => void;
 }
@@ -32,6 +35,7 @@ function bridgeTransport(bridge: LanBridge): Transport {
     onMessage: cb => void (onMessage = cb),
     onPeer: cb => void (onPeer = cb),
     onClose: cb => void (onClose = cb),
+    kick: peer => bridge.kick(peer),
     close: () => {
       off();
       void bridge.close();
@@ -44,7 +48,12 @@ export function electronLan(bridge: LanBridge): Lan {
     canEnterAddress: true,
     async host(name) {
       const t = bridgeTransport(bridge);
-      await bridge.host(name);
+      try {
+        await bridge.host(name);
+      } catch (err) {
+        t.close();
+        throw err;
+      }
       return t;
     },
     discover(cb) {
@@ -59,7 +68,12 @@ export function electronLan(bridge: LanBridge): Lan {
     },
     async join(address) {
       const t = bridgeTransport(bridge);
-      await bridge.join(address);
+      try {
+        await bridge.join(address);
+      } catch (err) {
+        t.close();
+        throw err;
+      }
       return t;
     },
   };

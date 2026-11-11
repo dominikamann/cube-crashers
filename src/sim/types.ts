@@ -340,8 +340,8 @@ export type SimEvent =
   | { type: 'enemyHit'; pos: Vec2 }
   | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
   | { type: 'coinPicked'; playerId: number; streak: number }
-  | { type: 'towerBuilt'; kind: TowerKind; padId: number }
-  | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad' }
+  | { type: 'towerBuilt'; kind: TowerKind; padId: number; playerId: number }
+  | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad'; playerId: number }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }
