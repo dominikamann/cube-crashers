@@ -5,6 +5,7 @@ import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
 import { Keyboard } from './input/keyboard';
+import { PadControls, PadMenu, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
 import type { LobbyPlayer } from './net/protocol';
@@ -39,6 +40,12 @@ function startGame() {
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
   const renderer = createRenderer(canvas, floor01);
   const keyboard = new Keyboard();
+  // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
+  const padCtl = new PadControls();
+  const padMenu = new PadMenu();
+  let padActive = false;
+  const readPads = (): PadSnapshot[] => (navigator.getGamepads?.() ?? []).filter((g): g is Gamepad => !!g && g.connected);
+  const padTouched = (g: PadSnapshot) => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.3);
   const settings = loadSettings();
   const profile = loadProfile(window.localStorage);
   const storeProfile = () => saveProfile(window.localStorage, profile);
@@ -131,10 +138,16 @@ function startGame() {
       const s = view();
       if (s.phase !== 'playing') return;
       keyboard.setAim(mode === 'playing' ? renderer.groundPoint(mouse.x, mouse.y) : null);
-      const cmds = mode !== 'playing' ? [] : bot && role === 'solo' ? bot(s) : keyboard.commands(s, localId(), performance.now());
+      const now = performance.now();
+      const pad = readPads()[0];
+      if (pad && padTouched(pad)) padActive = true;
+      let cmds = mode !== 'playing' ? [] : bot && role === 'solo' ? bot(s) : keyboard.commands(s, localId(), now);
+      // the controller's commands come last, so its move and aim win while it is in use
+      if (mode === 'playing' && pad && padActive && !bot) cmds = [...cmds, ...padCtl.commands(pad, s, localId(), now)];
       if (role === 'solo') {
         stepSim(s, cmds);
         keyboard.onEvents(s.events);
+        padCtl.onEvents(s.events);
         frameEvents.push(...s.events);
       } else if (role === 'host') {
         host!.step(cmds);
@@ -163,10 +176,11 @@ function startGame() {
       canvas.style.cursor = mode === 'playing' && view().run.stage === 'floor' ? 'none' : '';
       renderer.setLocalPlayer(localId());
       renderer.render(s, alpha, frameEvents, frameDt);
-      hud.update(s, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000, localId());
+      const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
+      hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
-      buildMenu.update(s, keyboard.buildMenuOpen && mode === 'playing', frameEvents, localId(), keyboard.menuPad);
+      buildMenu.update(s, menuOpen && mode === 'playing', frameEvents, localId(), padActive ? padCtl.menuPad : keyboard.menuPad);
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
@@ -387,6 +401,7 @@ function startGame() {
     if (mode !== 'playing') return;
     mode = 'paused';
     keyboard.releaseAll();
+    padCtl.releaseAll();
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
     screens.pause();
@@ -401,7 +416,33 @@ function startGame() {
     if (audio) audio.music.playTrack('menu');
   }
 
+  /** Controller in menus: d-pad or stick moves the focus, A presses, B goes back, Start pauses and resumes. */
+  function pollPadMenus() {
+    requestAnimationFrame(pollPadMenus);
+    const pad = readPads()[0];
+    if (!pad) return;
+    const e = padMenu.read(pad);
+    if (e.start) {
+      if (mode === 'playing') pause();
+      else if (mode === 'paused') resume();
+      return;
+    }
+    if (mode === 'playing') return;
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.screen button:not(:disabled)')].filter(b => b.offsetParent !== null);
+    if (buttons.length === 0) return;
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.up || e.left) buttons[at <= 0 ? buttons.length - 1 : at - 1].focus();
+    if (e.down || e.right) buttons[at < 0 || at >= buttons.length - 1 ? 0 : at + 1].focus();
+    if (e.a) (at >= 0 ? buttons[at] : buttons[0]).click();
+    if (e.b) {
+      if (mode === 'paused') resume();
+      else buttons.find(b => b.textContent === t('menu.back'))?.click();
+    }
+  }
+  requestAnimationFrame(pollPadMenus);
+
   addEventListener('keydown', e => {
+    padActive = false;
     if (e.code === 'Space') e.preventDefault();
     // repeats of a held key are let through, so keys still held after a pause work again;
     // the keyboard only counts the first press for one-off actions
@@ -415,6 +456,7 @@ function startGame() {
   });
   addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));
   addEventListener('mousemove', e => {
+    if (Math.abs(e.movementX) + Math.abs(e.movementY) > 3) padActive = false;
     mouse.x = e.clientX;
     mouse.y = e.clientY;
   });
