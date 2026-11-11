@@ -16,7 +16,7 @@ describe('desktop LAN server', () => {
     const host = await lan.startHost({ port: 0, onMessage: (from: number, data: string) => got.push(`host<${from}:${data}`), onPeer: (peer: number, joined: boolean) => got.push(`peer ${peer} ${joined}`) });
     cleanup.push(() => host.stop());
     const a = await lan.connect(`127.0.0.1:${host.port}`, { onMessage: (_f: number, d: string) => got.push(`a<${d}`), onClose: () => got.push('a closed') });
-    const b = await lan.connect(`127.0.0.1:${host.port}`, { onMessage: (_f: number, d: string) => got.push(`b<${d}`), onClose: () => got.push('b closed') });
+    await lan.connect(`127.0.0.1:${host.port}`, { onMessage: (_f: number, d: string) => got.push(`b<${d}`), onClose: () => got.push('b closed') });
     await wait(100);
     a.send('ping');
     host.send(2, 'just-b');
