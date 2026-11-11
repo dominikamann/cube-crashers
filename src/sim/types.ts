@@ -150,6 +150,7 @@ export interface Telegraph {
   id: number;
   pos: Vec2;
   radius: number;
+  createdAt: number;
   impactAt: number;
   /** damage to players; towers always take TELEGRAPH_TOWER_DAMAGE */
   damage: number;

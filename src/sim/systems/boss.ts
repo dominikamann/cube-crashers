@@ -55,7 +55,7 @@ export function computeStars(s: SimState): 1 | 2 | 3 {
 }
 
 export function addTelegraph(s: SimState, pos: Vec2, radius: number, delayTicks: number, damage: number): void {
-  s.boss!.telegraphs.push({ id: s.nextId++, pos: { ...pos }, radius, impactAt: s.tick + delayTicks, damage });
+  s.boss!.telegraphs.push({ id: s.nextId++, pos: { ...pos }, radius, createdAt: s.tick, impactAt: s.tick + delayTicks, damage });
   s.events.push({ type: 'bossTelegraph', pos: { ...pos }, radius, delay: delayTicks / TICK_RATE });
 }
 
