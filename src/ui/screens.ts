@@ -34,14 +34,22 @@ export interface Settings {
   versusChaos: boolean;
   /** versus: discovery, a rotation through every mode instead of one fixed match */
   versusDiscovery: boolean;
+  /** set once discovery became the versus default */
+  discoveryDefault?: boolean;
   versusMap: string;
   versusBots: number;
 }
 
 const TIP_COUNT = 15;
+const svg = (body: string) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const ICONS = {
+  settings: svg('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
+  credits: svg('<path d="M12 3l2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>'),
+  quit: svg('<path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'),
+};
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true, versusDiscovery: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true, versusDiscovery: true };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -64,6 +72,10 @@ export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
+    // a fresh start is always one player: split screen is chosen again each time
+    loaded.localPlayers = 1;
+    // settings saved before discovery was the versus default get it once
+    if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
   } catch {
     // storage unavailable: use defaults
   }
@@ -232,24 +244,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   };
   const hex = (c: number) => `#${PLAYER_COLORS[c % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`;
 
-  function nameField(parent: HTMLElement) {
-    const row = document.createElement('label');
-    row.className = 'setting txt';
-    row.textContent = t('settings.name');
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 16;
-    input.className = 'textfield';
-    input.value = settings.name;
-    input.addEventListener('input', () => {
-      settings.name = input.value.trim();
-      changed();
-    });
-    input.addEventListener('keydown', e => e.stopPropagation());
-    row.append(input);
-    parent.append(row);
-  }
-
   function changed() {
     saveSettings(settings);
     actions.settingsChanged(settings);
@@ -336,12 +330,44 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   function settingsScreen() {
-    show('', s => {
+    show('settings', s => {
       text(s, 'h2', '', t('settings.title'));
+      // one card: a label on the left, its control on the right
+      const card = document.createElement('div');
+      card.className = 'settings-card';
+      s.append(card);
+      const row = (label: string) => {
+        text(card, 'div', 'settings-label', label);
+        const cell = document.createElement('div');
+        cell.className = 'settings-cell';
+        card.append(cell);
+        return cell;
+      };
+      const section = (label: string) => text(card, 'div', 'settings-section', label);
+      const chips = <V,>(label: string, items: { label: string; value: V }[], get: () => V, set: (v: V) => void) => {
+        const cell = row(label);
+        cell.classList.add('chips');
+        const draw = () => {
+          cell.replaceChildren();
+          for (const it of items) {
+            const c = document.createElement('button');
+            c.className = `chip small${it.value === get() ? ' on' : ''}`;
+            c.textContent = it.label;
+            c.addEventListener('click', () => {
+              actions.click();
+              set(it.value);
+              changed();
+              draw();
+            });
+            cell.append(c);
+          }
+        };
+        draw();
+      };
+      const onOff = [{ label: t('settings.on'), value: true }, { label: t('settings.off'), value: false }];
+
+      section(t('settings.sound'));
       for (const key of ['music', 'sfx'] as const) {
-        const row = document.createElement('label');
-        row.className = 'setting txt';
-        row.textContent = t(key === 'music' ? 'settings.music' : 'settings.sfx');
         const input = document.createElement('input');
         input.type = 'range';
         input.min = '0';
@@ -352,36 +378,30 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           settings[key] = Number(input.value);
           changed();
         });
-        row.append(input);
-        s.append(row);
+        row(t(key === 'music' ? 'settings.music' : 'settings.sfx')).append(input);
       }
-      const label = () => `${t('settings.steer')}: ${t(settings.steerWithMouse ? 'settings.on' : 'settings.off')}`;
-      const steer = button(s, label(), () => {
-        settings.steerWithMouse = !settings.steerWithMouse;
-        steer.textContent = label();
+
+      section(t('settings.gameplay'));
+      chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
+      chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
+      chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
+
+      section(t('settings.player'));
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 16;
+      input.className = 'textfield';
+      input.value = settings.name;
+      input.addEventListener('input', () => {
+        settings.name = input.value.trim();
         changed();
       });
-      const toggle = (label: () => string, flip: () => void) => {
-        const b = button(s, label(), () => {
-          flip();
-          b.textContent = label();
-          changed();
-        });
-      };
-      toggle(
-        () => `${t('settings.graphics')}: ${t(`graphics.${settings.graphics}`)}`,
-        () => (settings.graphics = GRAPHICS_QUALITIES[(GRAPHICS_QUALITIES.indexOf(settings.graphics) + 1) % GRAPHICS_QUALITIES.length]),
-      );
-      toggle(
-        () => `${t('settings.damageNumbers')}: ${t(settings.damageNumbers ? 'settings.on' : 'settings.off')}`,
-        () => (settings.damageNumbers = !settings.damageNumbers),
-      );
-      nameField(s);
-      const colors = document.createElement('div');
-      colors.className = 'setting txt colors';
-      colors.textContent = t('settings.color');
+      input.addEventListener('keydown', e => e.stopPropagation());
+      row(t('settings.name')).append(input);
+      const colors = row(t('settings.color'));
+      colors.classList.add('colors');
       const drawColors = () => {
-        colors.querySelectorAll('button').forEach(b => b.remove());
+        colors.replaceChildren();
         [null, 0, 1, 2, 3, 4, 5, 6, 7].forEach(c => {
           const b = document.createElement('button');
           b.className = `swatch${settings.color === c ? ' on' : ''}`;
@@ -398,9 +418,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         });
       };
       drawColors();
-      s.append(colors);
       text(s, 'p', 'controls-help', t('menu.controls'));
-      button(s, t('menu.back'), () => back());
+      button(s, t('menu.back'), () => back(), true);
     });
   }
 
@@ -544,13 +563,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const foot = document.createElement('div');
         foot.className = 'foot';
         s.append(foot);
-        for (const [label_, icon, fn, cls] of [[t('menu.settings'), '\u2699', settingsScreen, ''], [t('menu.credits'), '\u2605', creditsScreen, ''], [t('menu.quit'), '\u23FB', actions.quit, 'quit']] as [string, string, () => void, string][]) {
+        for (const [label_, icon, fn, cls] of [[t('menu.settings'), ICONS.settings, settingsScreen, ''], [t('menu.credits'), ICONS.credits, creditsScreen, ''], [t('menu.quit'), ICONS.quit, actions.quit, 'quit']] as [string, string, () => void, string][]) {
           const b = button(foot, label_, fn);
           b.classList.add('small');
           if (cls) b.classList.add(cls);
           const ico = document.createElement('span');
           ico.className = 'ico';
-          ico.textContent = icon;
+          ico.innerHTML = icon;
           b.prepend(ico);
         }
       });
