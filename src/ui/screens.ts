@@ -153,6 +153,9 @@ export interface LanActions {
   /** host: two versus cards to vote on */
   startVote(): void;
   vote(choice: 0 | 1): void;
+  /** versus: fill matches up with bots to this many players (0 = off) */
+  setAutoFill(n: number): void;
+  autoFill(): number;
 }
 
 export interface Screens {
@@ -616,6 +619,22 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           s.append(bots);
           if (players.length < 8) button(bots, t('lobby.addBot'), lan.addBot).classList.add('small');
           if (players.some(p => p.bot)) button(bots, t('lobby.removeBot'), lan.removeBot).classList.add('small');
+          // fill versus matches up with bots
+          const fill = document.createElement('div');
+          fill.className = 'chips';
+          for (const n of [0, 4, 6, 8]) {
+            const c = document.createElement('button');
+            c.className = `chip small${lan.autoFill() === n ? ' on' : ''}`;
+            c.textContent = n === 0 ? t('lobby.fillOff') : t('lobby.fill', { n });
+            c.addEventListener('click', () => {
+              actions.click();
+              lan.setAutoFill(n);
+              fill.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+              c.classList.add('on');
+            });
+            fill.append(c);
+          }
+          s.append(fill);
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));

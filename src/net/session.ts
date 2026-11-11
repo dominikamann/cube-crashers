@@ -17,6 +17,8 @@ export const HOST_TIMEOUT_MS = 5000;
 export const BOT_IDS = 1000;
 /** how long a versus vote stays open */
 export const VOTE_SECONDS = 30;
+/** names for bots that fill a match up */
+const BOT_NAMES = ['Bot Turbo', 'Bot Pixel', 'Bot Crispy', 'Bot Wobbly', 'Bot Sneaky', 'Bot Cosmic', 'Bot Funky', 'Bot Lucky'];
 
 const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready']);
 const HELD = new Set(['hold', 'fire', 'fly']);
@@ -91,6 +93,14 @@ export class HostSession {
     return { options: this.vote.options, votes: { ...this.vote.votes }, endsIn: Math.max(0, Math.ceil((this.vote.until - this.now()) / 1000)) };
   }
 
+  /** versus matches start with at least this many players: bots fill the gaps (0 = off) */
+  private autoFill = 0;
+
+  setAutoFill(n: number): void {
+    this.autoFill = Math.max(0, Math.min(MAX_PLAYERS, Math.floor(n)));
+    this.broadcastLobby();
+  }
+
   /** a bot joins the lobby (versus): it plays on the host */
   addBot(name?: string): void {
     if (this.lobby.length >= MAX_PLAYERS || this.sim) return;
@@ -155,6 +165,7 @@ export class HostSession {
   startVersus(option: VersusOption, seed: number): void {
     const def = FLOORS[option.map];
     if (!def) return;
+    while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
       versus: { mode: option.mode, rule: option.rule },
@@ -181,6 +192,8 @@ export class HostSession {
       };
       if (m.v !== PROTOCOL_VERSION) return reject('version');
       if (this.sim) return reject('started');
+      // a full lobby with bots: a bot makes room for the human
+      if (this.lobby.length >= MAX_PLAYERS && this.lobby.some(p => p.bot)) this.lobby.splice(this.lobby.map(p => !!p.bot).lastIndexOf(true), 1);
       if (this.lobby.length >= MAX_PLAYERS) return reject('full');
       if (this.lobby.some(p => p.id === from)) return;
       const used = new Set(this.lobby.map(p => p.color));

@@ -120,6 +120,11 @@ function startGame() {
     removeBot: () => host?.removeBot(),
     startVote: () => host?.startVote(voteOptions()),
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
+    setAutoFill: (n: number) => {
+      autoFill = n;
+      host?.setAutoFill(n);
+    },
+    autoFill: () => autoFill,
   };
 
   /** two different versus cards for a vote: mode, rule and map at random */
@@ -388,6 +393,8 @@ function startGame() {
   let versusBots: ((s: SimState) => Command[])[] = [];
   /** bots of a LAN versus match (they run on the host) */
   let lanBots: ((s: SimState) => Command[])[] = [];
+  /** fill LAN versus matches up with bots to this many players */
+  let autoFill = 4;
 
   /** Versus on this computer: one or two players (split screen) plus bots. */
   function newVersusGame() {
@@ -438,6 +445,7 @@ function startGame() {
       role = 'host';
       setSplit(false);
       host = new HostSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
+      host.setAutoFill(autoFill);
       host.setDifficulty(settings.difficulty);
       showLobby();
     } catch {

@@ -26,6 +26,8 @@ export const en = {
   'mode.versusHint': 'Players against players, with bots to fill up. Jetpacks, karts and every weapon from crates.',
   'lobby.versus': 'Versus vote',
   'lobby.addBot': '+ Bot',
+  'lobby.fill': 'Fill to {n}',
+  'lobby.fillOff': 'No auto-fill',
   'lobby.removeBot': '− Bot',
   'lobby.voteEnds': 'Vote with a click or 1 / 2 · {s} s left',
   'versus.ffa': 'Free for all',

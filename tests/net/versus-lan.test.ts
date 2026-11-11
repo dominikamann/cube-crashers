@@ -70,3 +70,32 @@ describe('versus on the LAN', () => {
     expect(parseMessage(JSON.stringify({ type: 'lobby', players, difficulty: 'medium', vote: badVote }))).toBeNull();
   });
 });
+
+describe('auto-fill with bots', () => {
+  it('a versus match is filled up with bots to the minimum, and a human joining takes a bot\'s place', () => {
+    const { hub, host, cs } = lobby(1);
+    host.setAutoFill(4);
+    host.startVote([
+      { mode: 'ffa', rule: 'score', map: 'neon' },
+      { mode: 'ffa', rule: 'score', map: 'candy' },
+    ]);
+    host.castVote(0);
+    cs[0].castVote(0);
+    hub.flush();
+    expect(host.sim?.players).toHaveLength(4);
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(2);
+    expect(cs[0].view?.players).toHaveLength(4);
+  });
+
+  it('a full lobby with bots still lets a human in: a bot makes room', () => {
+    const { hub, host } = lobby(1);
+    for (let i = 0; i < 6; i++) host.addBot();
+    hub.flush();
+    expect(host.lobby).toHaveLength(8);
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    expect(late.status).not.toBe('rejected');
+    expect(host.lobby).toHaveLength(8);
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(5);
+  });
+});
