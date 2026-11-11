@@ -3,6 +3,10 @@ import type { RareKind } from '../types';
 export const JETPACK = {
   /** 5 seconds of flight */
   fuelTicks: 300,
+  /** an empty tank fills up again in 6 seconds on the ground */
+  rechargeTicks: 360,
+  /** Space has to be held this long before you take off; a shorter tap is a jump */
+  takeoffTicks: 12,
   respawnTicks: 5400,
   pickupRadius: 0.9,
   speedFactor: 1.2,

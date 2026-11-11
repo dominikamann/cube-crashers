@@ -45,6 +45,9 @@ export function enterShaft(s: SimState): void {
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;
+    // the jetpack stays behind on the floor
+    p.jetpack = false;
+    p.jetFuel = 0;
     p.air = 0;
     p.plantTicks = 0;
     // the ride starts fresh: whoever was down gets back up

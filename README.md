@@ -5,7 +5,26 @@ retro arcade monsters roam a big voxel map and hunt you down. Blow up their glit
 the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
 Crash Kart and plough through the pixels. Play alone or with up to five friends on your LAN.
 
-![Gameplay](docs/design/gameplay.gif)
+![Gameplay: holding a nest zone on the Arcade Plaza](docs/design/gameplay.gif)
+
+<table>
+  <tr>
+    <td><img src="docs/design/candy.gif" alt="Candy Factory with conveyor belts" /></td>
+    <td><img src="docs/design/arena.gif" alt="Boss fight against the Mega Block" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Candy Factory: conveyor belts push everyone around</sub></td>
+    <td align="center"><sub>Mega Block Arena: the first boss</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/neon.gif" alt="Neon City at night" /></td>
+    <td><img src="docs/design/rooftop.gif" alt="Boss fight against the Segment Worm on the rooftop" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Neon City: always night, more elites</sub></td>
+    <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
+  </tr>
+</table>
 
 Runs on **Windows and macOS**. Free and open source (MIT).
 
@@ -71,15 +90,20 @@ See [Development](#development). You need Node.js 20 or newer.
 
 ## How to play
 
-1. Start the game and click **Play** for a full run over five floors (or **Quick floor** for a single floor).
-   Pick a **difficulty** first if you like (button under *Play*).
+1. Start the game, pick a mode under **Play** and click it:
+   - **Tower Run**: the full game over five floors.
+   - **Single floor**: just the Arcade Plaza, a short game.
+   - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
+
+   Set the **difficulty** with the arrows below.
 2. You start next to the elevator at the bottom of the map. The **minimap** (bottom right) shows the
    **glitch nests** (big pulsing pink squares), karts (yellow), power-ups (white), crates (purple) and the
    elevator. Arrows at the screen edge point to the nearest nests, and each nest has a pink light beam.
 3. **Destroy every nest:**
-   - Walk up to a nest and **hold E for one second** to plant a charge.
-   - Now **hold the zone** (the ring around the nest) for 25 seconds. Hordes storm in from the approaches,
-     so build **towers** on the glowing pads nearby (hold **E** on a pad, then **1–3**).
+   - Walk up to a nest and **hold E for one second** to plant a charge (a bar shows the progress). The nest
+     turns red and starts shaking.
+   - Now **hold the zone** for 25 seconds: the floor tiles around the nest, framed in pink. They light up
+     one by one as you hold it. Hordes storm in from the approaches, so build **towers** on the pads nearby.
    - The nest fights back: a red ring marks where it will blast next, right under your feet. **Keep moving.**
    - If you leave the zone, the counter slowly runs back, but the charge stays.
 4. When all nests are gone the **elevator opens**. Step in to clear the floor and ride up to the next one.
@@ -89,7 +113,11 @@ See [Development](#development). You need Node.js 20 or newer.
   spot. Out of credits = game over.
 - The **alarm** (top centre) rises every 40 seconds and sends hordes after you. At alarm 5 the lights go out.
   Destroying a nest lowers it.
-- **Coins** drop from monsters and vanish after 8 seconds. Spend them on towers.
+- **Coins** drop from monsters and vanish after 8 seconds. Spend them on towers, upgrades and in the shop.
+- **Yellow-black barriers** stop you on foot: **jump** over them (Space). The orange **ramps** in front of them
+  launch a kart over.
+- **Glitch floor** (purple, with a crossed-out monster) stops monsters but hurts you. Jump over it.
+- **Boost pads** (blue with a lightning bolt) make karts faster.
 - **Combo:** keep killing without a 3-second break. The multiplier (up to ×10) boosts coins and score.
 - **Crates** open into three cards: pick a new weapon, a weapon level-up or a perk by walking into it. Very
   rarely a **golden card** gives you a rare weapon for 60 seconds.
@@ -144,6 +172,7 @@ the whole team.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair.
+- **Controls** are listed at the bottom of the settings screen.
 - **Credits** (title screen): who made the game.
 
 ---
@@ -154,12 +183,12 @@ Up to **6 players** on the same network (Wi-Fi or cable), all with the desktop a
 
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
-2. Click **Host LAN game**. Your game shows up on the network automatically.
+2. Click **LAN game → Host LAN game**. Your game shows up on the network automatically.
 3. Pick the **difficulty** in the lobby, wait for your friends, click **Start**.
 
 **Everyone else joins:**
 1. Enter a name in *Settings* as well.
-2. Click **Join LAN game**. Games on your network appear in a list after a moment; click one.
+2. Click **LAN game → Join LAN game**. Games on your network appear in a list after a moment; click one.
 3. If no game shows up (some routers block it), type the host's address into the field, e.g. `192.168.1.20`.
    The host finds it in the system network settings.
 
@@ -184,10 +213,10 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 | `W` `A` `S` `D` / arrow keys | Move. On foot, `W` walks toward the crosshair (switch off in *Settings*). In the kart the keys steer by the screen. |
 | `1`–`6` / mouse wheel | Select a weapon |
 | `Q` | Select the rare weapon (when you have one) |
-| `Space` | Jump; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
+| `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
 | `E` (tap) | Get in / out of a kart |
-| `E` (hold) | Plant a charge · help a teammate up · build on a pad (then `1`–`3`) |
+| `E` (hold) | Plant a charge · help a teammate up · build, finish, repair or upgrade a tower (menu: `1`–`3`) |
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `F11` | Fullscreen (desktop app) |
@@ -234,11 +263,20 @@ monsters. The tank lasts about 5 seconds of flight, then it is gone.
 
 ### Towers
 
-| Tower | Cost | What it does |
-|---|---|---|
-| **Laser Tower** | 12 | Fast single-target laser. |
-| **Popcorn Mortar** | 20 | Lobs shells that hit everything in an area. |
-| **Frost Machine** | 15 | Slows monsters to half speed. |
+Stand on a pad, **hold E**, pick a tower with **1–3**. You pay right away, then a scaffold goes up: keep
+**holding E** for about 2.5 seconds until the tower stands. If you let go, it stays half-built and you can
+finish it later. A tower only fires once it is finished.
+
+| Tower | Cost | Upgrade to level 2 / 3 | What it does |
+|---|---|---|---|
+| **Laser Tower** | 40 | 40 / 60 | Fast single-target laser. |
+| **Frost Machine** | 50 | 50 / 75 | Slows monsters to half speed. |
+| **Popcorn Mortar** | 60 | 60 / 90 | Lobs shells that hit everything in an area. |
+
+- **Upgrade:** hold E on a finished tower and press **1**. Each level gives +50 % damage and health, +1 range
+  and fires faster. The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
+  meanwhile. Gold marks on the base show the level.
+- **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
 
 ### Crash Kart, Steamroller, Hoverboard
 

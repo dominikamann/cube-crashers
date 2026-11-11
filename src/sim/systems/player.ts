@@ -171,7 +171,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }
 
-    if (it.jump && p.air === 0 && p.dashTicks === 0 && p.jetFuel === 0) {
+    if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying) {
       p.air = JUMP_TICKS;
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {

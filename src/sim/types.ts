@@ -121,6 +121,10 @@ export interface Player {
   /** ticks E has been held next to a nest */
   plantTicks: number;
   /** jetpack fuel in ticks, 0 = no jetpack */
+  /** carries a jetpack: kept for the rest of the floor */
+  jetpack: boolean;
+  /** ticks Space has been held in a row */
+  flyHold: number;
   jetFuel: number;
   flying: boolean;
   rare: { kind: RareKind; until: number; cooldown: number } | null;

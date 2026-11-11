@@ -219,7 +219,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         kartFill.style.width = `${Math.max(0, kart.hp / KART.hp) * 100}%`;
       }
 
-      jetBox.style.display = p.jetFuel > 0 ? '' : 'none';
+      jetBox.style.display = p.jetpack ? '' : 'none';
       jetFill.style.width = `${(p.jetFuel / JETPACK.fuelTicks) * 100}%`;
       rareSlot.style.display = p.rare ? '' : 'none';
       if (p.rare) {

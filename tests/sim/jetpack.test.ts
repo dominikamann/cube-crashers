@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { enterFloor } from '../../src/sim/systems/run';
 import { floor01 } from '../../src/sim/config/floor01';
 import { JETPACK } from '../../src/sim/config/rare';
 import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
@@ -12,6 +13,7 @@ const use: Command = { type: 'use', playerId: 0 };
 
 function withJetpack(fuel = JETPACK.fuelTicks) {
   const s = quietSim();
+  s.players[0].jetpack = true;
   s.players[0].jetFuel = fuel;
   return s;
 }
@@ -32,12 +34,14 @@ describe('jetpack', () => {
     p.pos = { x: 42.5, z: 60.5 };
     run(s, 60, () => [move(1, 0), fly]);
     expect(p.pos.x).toBeGreaterThan(46.5);
-    expect(p.jetFuel).toBe(JETPACK.fuelTicks - 60);
+    // takes off after holding Space for takeoffTicks
+    expect(p.jetFuel).toBe(JETPACK.fuelTicks - (60 - JETPACK.takeoffTicks + 1));
   });
 
   it('does not take contact or glitch damage while flying', () => {
     const s = withJetpack();
     const p = s.players[0];
+    run(s, JETPACK.takeoffTicks, () => [fly]);
     p.pos = { x: 34.5, z: 34.5 };
     run(s, 60, () => [fly]);
     expect(p.hp).toBe(100);
@@ -59,15 +63,35 @@ describe('jetpack', () => {
     const events = run(s, 20, () => [move(1, 0), fly]);
     expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
     expect(p.flying).toBe(false);
-    expect(p.jetFuel).toBe(0);
+    expect(p.jetFuel).toBeLessThan(JETPACK.fuelTicks / 10);
     expect(isFree(s.map, p.pos, 0.4, BLOCKS_WALKER), `${p.pos.x},${p.pos.z}`).toBe(true);
   });
 
-  it('turns Space back into a jump once the fuel is gone', () => {
-    const s = withJetpack(1);
-    run(s, 3, () => [fly]);
+  it('a tap of Space still jumps; holding it takes off', () => {
+    const s = withJetpack();
+    const p = s.players[0];
     stepSim(s, [{ type: 'jump', playerId: 0 }, fly]);
     expect(s.events.some(e => e.type === 'jump')).toBe(true);
+    expect(p.flying).toBe(false);
+    run(s, 15, () => [fly]);
+    expect(p.flying).toBe(true);
+  });
+
+  it('stays on the back when the fuel runs out and refuels on the ground', () => {
+    const s = withJetpack(20);
+    const p = s.players[0];
+    const events = run(s, 40, () => [fly]);
+    expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
+    expect(p.jetpack).toBe(true);
+    run(s, JETPACK.rechargeTicks + 10);
+    expect(p.jetFuel).toBe(JETPACK.fuelTicks);
+  });
+
+  it('is gone on the next floor', () => {
+    const s = withJetpack();
+    enterFloor(s, 0);
+    expect(s.players[0].jetpack).toBe(false);
+    expect(s.players[0].jetFuel).toBe(0);
   });
 
   it('cannot be used in a kart', () => {

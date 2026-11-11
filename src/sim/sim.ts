@@ -59,6 +59,8 @@ export function createPlayer(id: number, pos: Vec2, name = defaultName(id), colo
     magnetUntil: 0,
     safePoint: { ...pos },
     plantTicks: 0,
+    jetpack: false,
+    flyHold: 0,
     jetFuel: 0,
     flying: false,
     rare: null,

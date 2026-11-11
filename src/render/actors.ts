@@ -266,7 +266,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const jump = p.air > 0 ? Math.sin(Math.PI * (1 - p.air / JUMP_TICKS)) * 1.3 : 0;
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
     v.root.position.set(p.pos.x, jump + fly + (driving ? 0.35 : 0), p.pos.z);
-    v.pack.visible = p.jetFuel > 0 || p.flying;
+    v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
     v.glint.visible = p.rare !== null && !down;

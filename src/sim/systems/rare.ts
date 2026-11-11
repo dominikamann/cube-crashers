@@ -38,6 +38,7 @@ export function updateJetpacks(s: SimState): void {
   s.jetpacks = s.jetpacks.filter(j => {
     const p = alive.find(x => dist(x.pos, j.pos) <= JETPACK.pickupRadius);
     if (!p) return true;
+    p.jetpack = true;
     p.jetFuel = JETPACK.fuelTicks;
     s.events.push({ type: 'jetpackPicked', playerId: p.id });
     return false;
@@ -149,15 +150,20 @@ export function fireRare(s: SimState, p: Player): boolean {
 
 /** Flight on the jetpack; returns true while the player is flying this tick. */
 export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boolean {
-  const canFly = wantsToFly && p.jetFuel > 0 && p.vehicleId === null && p.downUntil === null;
+  p.flyHold = wantsToFly ? p.flyHold + 1 : 0;
+  const canFly = wantsToFly && p.jetpack && p.jetFuel > 0 && (p.flying || p.flyHold >= JETPACK.takeoffTicks) && p.vehicleId === null && p.downUntil === null;
   if (canFly) {
     p.flying = true;
     p.air = 0;
-    p.jetFuel--;
+    p.jetFuel = Math.max(0, p.jetFuel - 1);
     if (p.jetFuel === 0) s.events.push({ type: 'jetpackEmpty', playerId: p.id });
     if (p.jetFuel > 0) return true;
   }
-  if (!p.flying) return false;
+  if (!p.flying) {
+    // the tank refills on the ground
+    if (p.jetpack && p.air === 0 && !wantsToFly) p.jetFuel = Math.min(JETPACK.fuelTicks, p.jetFuel + JETPACK.fuelTicks / JETPACK.rechargeTicks);
+    return false;
+  }
   p.flying = false;
   if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = landingSpot(s, p.pos);
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
