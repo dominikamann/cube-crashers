@@ -321,7 +321,12 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'kartLand':
       return one('kartLand');
     case 'kartDestroyed':
+    case 'raceWreck':
       return one('kartDestroyed');
+    case 'raceLap':
+      return one('comboUp', 1 + 0.1 * Math.min(e.lap, 6));
+    case 'raceEnd':
+      return one('gameWon');
     case 'towerDestroyed':
       return one('kartDestroyed', 0.8);
     case 'jetpackPicked':

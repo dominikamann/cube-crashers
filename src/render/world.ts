@@ -4,6 +4,7 @@ import { padAt } from '../sim/systems/towers';
 import type { SimState } from '../sim/types';
 import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
+import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -552,6 +553,45 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     props.add(g);
   }
   addToScene(props);
+
+  // Kart Rally: a chequered start/finish line with an arch, glowing gates at the other checkpoints
+  if (map.id === 'race') {
+    const race = new THREE.Group();
+    const checker = canvasTexture(16, 16, g => {
+      for (let y = 0; y < 16; y += 4) for (let x = 0; x < 16; x += 4) {
+        g.fillStyle = (x + y) % 8 === 0 ? '#ffffff' : '#111118';
+        g.fillRect(x, y, 4, 4);
+      }
+    }, true);
+    disposables.push(checker);
+    const gateMat = glowMat(0x2bf0ff, 1.4);
+    const archMat = glowMat(0xff2bd6, 0.7);
+    const postMat = lambert(0x2a2d3a);
+    RACE_CHECKPOINTS.forEach((c, i) => {
+      const w = c.x1 - c.x0 + 1, d = c.z1 - c.z0 + 1;
+      const cx = c.x0 + w / 2, cz = c.z0 + d / 2;
+      if (i === 0) {
+        const tex = checker.clone();
+        tex.repeat.set(w, d);
+        tex.needsUpdate = true;
+        disposables.push(tex);
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: tex }));
+        line.position.set(cx, 0.02, cz);
+        line.receiveShadow = true;
+        race.add(line);
+        // an arch over the line: two posts and a glowing banner
+        const across = w < d;
+        const span = across ? d : w;
+        for (const sgn of [-1, 1]) race.add(box(0.4, 3.2, 0.4, postMat, cx + (across ? 0 : (sgn * span) / 2), 1.6, cz + (across ? (sgn * span) / 2 : 0)));
+        race.add(box(across ? 0.4 : span, 0.5, across ? span : 0.4, archMat, cx, 3.2, cz));
+      } else {
+        const gate = box(w, 0.04, d, gateMat, cx, 0.03, cz);
+        gate.castShadow = false;
+        race.add(gate);
+      }
+    });
+    addToScene(race);
+  }
 
   const color = new THREE.Color();
   const white = new THREE.Color(0xffffff);

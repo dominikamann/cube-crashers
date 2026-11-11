@@ -7,6 +7,7 @@ import { Rng } from './rng';
 import { initRun, updateRunStage } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
 import { updateShaft } from './systems/shaft';
+import { updateRace } from './systems/race';
 import { moveBoss, updateBoss } from './systems/boss';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
@@ -227,7 +228,10 @@ export function stepSim(s: SimState, commands: Command[]): void {
   if (onFloor) {
     updateNests(s, intents);
     updateAlarm(s);
-  } else updateShaft(s);
+  } else {
+    updateShaft(s);
+    updateRace(s);
+  }
   updateBlasts(s);
   updateHordes(s);
   updateEnemies(s);

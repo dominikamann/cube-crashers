@@ -63,6 +63,7 @@ html, body {
 .combo .bar { width: 140px; height: 8px; margin-left: auto; }
 .combo .bar > i { background: var(--gold); transition: none; }
 
+.race { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 14px; }
 .hold { position: absolute; bottom: 116px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 12px; }
 .hold .bar { width: 340px; height: 14px; margin-top: 4px; }
 .hold .bar > i { background: var(--cyan); }
@@ -73,7 +74,7 @@ html, body {
 .toast { font-size: clamp(14px, 2.2vw, 24px); text-align: center; white-space: nowrap; animation: toast 1.8s ease-out forwards; }
 .toast.warn { color: var(--red); }
 .toast.good { color: var(--green); }
-.toast.final { font-size: clamp(22px, 4vw, 44px); color: var(--gold); text-shadow: 4px 4px 0 var(--pink), 7px 7px 0 var(--shadow); animation: toast 3.8s ease-out forwards; }
+.toast.final { white-space: normal; max-width: 90%;  font-size: clamp(22px, 4vw, 44px); color: var(--gold); text-shadow: 4px 4px 0 var(--pink), 7px 7px 0 var(--shadow); animation: toast 3.8s ease-out forwards; }
 .boss.final { color: var(--gold); }
 .boss.final .bar > i { background: linear-gradient(90deg, var(--gold), var(--pink)); }
 @keyframes toast { 0% { opacity: 0; transform: scale(0.7); } 12% { opacity: 1; transform: scale(1.08); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }

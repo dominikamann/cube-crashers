@@ -28,6 +28,7 @@ import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
 import { spawnBoss } from './boss';
+import { enterRace } from './race';
 import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
@@ -87,6 +88,12 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   const def = floorDef(s.map.id);
+  if (def?.kind === 'race') {
+    // the Kart Rally played on its own
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    enterRace(s);
+    return;
+  }
   if (def?.kind === 'boss') {
     // a boss floor: no nests, no rising alarm, just the boss and a few helpers
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;

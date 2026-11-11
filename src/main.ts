@@ -586,6 +586,8 @@ function startGame() {
   screens.title();
   // dev: ?split=1 starts the demo in split screen
   if (params.has('split')) settings.localPlayers = 2;
+  // dev: ?map=race starts a Single floor demo on that map
+  if (params.get('map')) settings.quickMap = params.get('map')!;
   if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth

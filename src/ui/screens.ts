@@ -312,7 +312,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
 
   let titleMode: 'run' | 'quick' | 'endless' = 'run';
   /** maps for "Single floor": the floors of the tower in their order */
-  const QUICK_MAPS = RUN_FLOORS.filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
+  const QUICK_MAPS = [...RUN_FLOORS, 'race'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
   function lanScreen() {
     show('', s => {

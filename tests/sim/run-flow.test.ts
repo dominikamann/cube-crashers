@@ -25,7 +25,8 @@ function clearedRun(players = 1): SimState {
 function enterElevator(s: SimState) {
   for (const p of s.players) p.pos = { ...s.map.elevator };
   stepSim(s, []);
-  if (s.run.stage === 'shaft') {
+  // the stage between floors (shaft ride or Kart Rally) is skipped straight to its end
+  if (s.run.stage === 'shaft' || s.run.stage === 'race') {
     s.run.stageUntil = s.tick;
     stepSim(s, []);
   }
@@ -67,7 +68,8 @@ describe('a run', () => {
     s.players[0].pos = { ...s.map.elevator };
     stepSim(s, []);
     expect(s.events.some(e => e.type === 'floorCleared')).toBe(true);
-    expect(s.run.stage).toBe('shaft');
+    // after the first floor comes the Kart Rally
+    expect(s.run.stage).toBe('race');
     s.run.stageUntil = s.tick;
     stepSim(s, []);
     expect(s.phase).toBe('playing');
@@ -118,6 +120,9 @@ describe('a run', () => {
     c.flying = true;
     for (const p of s.players) p.pos = { ...s.map.elevator };
     c.pos = { ...s.map.elevator };
+    stepSim(s, []);
+    // through the Kart Rally to the shop
+    s.run.stageUntil = s.tick;
     stepSim(s, []);
     for (const id of [0, 1, 2]) stepSim(s, [{ type: 'ready', playerId: id }]);
     run(s, 2);

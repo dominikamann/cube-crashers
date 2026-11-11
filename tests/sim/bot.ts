@@ -1,6 +1,7 @@
 import { buildFlowField, flowDir } from '../../src/sim/map/flowfield';
-import { BLOCKS_ENEMY, hasLos } from '../../src/sim/map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos } from '../../src/sim/map/tilemap';
 import { padAt } from '../../src/sim/systems/towers';
+import { RACE_CHECKPOINTS } from '../../src/sim/config/floor-race';
 import { TOWERS } from '../../src/sim/config/towers';
 import { maxDashCharges } from '../../src/sim/systems/player';
 import type { Command, SimState, Vec2, WeaponKind } from '../../src/sim/types';
@@ -37,6 +38,17 @@ export function createBot(): (s: SimState) => Command[] {
       return i >= 0 ? [{ type: 'buy', playerId: 0, offer: i }] : [{ type: 'ready', playerId: 0 }];
     }
     if (p.downUntil !== null) return [];
+    if (s.run.stage === 'race' && s.run.race) {
+      // Kart Rally: drive round the checkpoints (flow field to the next one, the kart avoids the walls)
+      const c = RACE_CHECKPOINTS[s.run.race.next[p.id] ?? 1];
+      const target = { x: (c.x0 + c.x1 + 1) / 2, z: (c.z0 + c.z1 + 1) / 2 };
+      const key = `race:${target.x},${target.z}`;
+      if (key !== fieldKey || !field) {
+        fieldKey = key;
+        field = buildFlowField(s.map, [target], BLOCKS_WALKER);
+      }
+      return [{ type: 'move', playerId: 0, dir: flowDir(s.map, field, p.pos) }];
+    }
     const cmds: Command[] = [];
     const enemies = s.enemies.filter(e => e.hp > 0);
     const near = enemies.map(e => ({ e, d: d(e.pos, p.pos) })).sort((a, b) => a.d - b.d);

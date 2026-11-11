@@ -18,7 +18,7 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
-export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
@@ -353,6 +353,8 @@ export interface Vehicle {
   air: number;
   /** index into map.vehicleSpots */
   spot: number;
+  /** a race kart: its driver cannot get out and it never runs out of fuel */
+  locked?: boolean;
 }
 
 export interface Powerup {
@@ -382,10 +384,23 @@ export interface RunState {
   /** map ids of the floors of this run, in order */
   floors: string[];
   floor: number;
-  stage: 'floor' | 'shaft' | 'shop';
+  stage: 'floor' | 'shaft' | 'shop' | 'race';
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;
+  /** the Kart Rally, while it runs */
+  race?: RaceState | null;
+}
+
+export interface RaceState {
+  /** laps per player id */
+  laps: Record<number, number>;
+  /** index of the checkpoint each player has to reach next */
+  next: Record<number, number>;
+  /** last checkpoint each player passed (where a wrecked kart comes back) */
+  last: Record<number, number>;
+  /** a wrecked kart is back at this tick */
+  wreckedUntil: Record<number, number>;
 }
 
 export interface RunSample {
@@ -418,6 +433,9 @@ export type SimEvent =
   | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad'; playerId: number }
   | { type: 'upgradeDenied'; padId: number; reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad'; playerId: number }
   | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
+  | { type: 'raceLap'; playerId: number; lap: number }
+  | { type: 'raceEnd'; laps: Record<number, number>; medal: 'gold' | 'silver' | 'bronze' | null; winners: number[] }
+  | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }

@@ -164,6 +164,22 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         day: { ...THEMES.day, background: 0xffb48a, skyTop: 0x5a3a9a, roadA: 0x8f95a8, roadB: 0x858b9e, wallA: 0x4a5070, wallB: 0x424866, sunColor: 0xffc890, sunIntensity: 1.5 },
         night: THEMES.night,
       };
+    case 'race': {
+      // asphalt at dusk: dark road, neon-blue barriers, warm sky on the horizon
+      const raceLook: Theme = {
+        ...THEMES.night,
+        background: 0x2a1f4a,
+        skyTop: 0x0a0820,
+        roadA: 0x3c3f4f,
+        roadB: 0x373a49,
+        wallA: 0x1f6fb8,
+        wallB: 0x1b62a3,
+        fillColor: 0x2bf0ff,
+        fillIntensity: 0.55,
+        glow: 2,
+      };
+      return { day: raceLook, night: raceLook };
+    }
     case 'shaft':
       return {
         day: { ...THEMES.night, background: 0x2a1f4a, skyTop: 0x0b0820, roadA: 0x6a7088, roadB: 0x626880, wallA: 0x3a3f5c, wallB: 0x333852 },

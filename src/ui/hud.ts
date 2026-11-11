@@ -1,4 +1,5 @@
 import { inZone } from '../sim/systems/nests';
+import { RACE } from '../sim/systems/race';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t } from '../i18n';
@@ -69,6 +70,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const comboCount = el('div', 'count', combo);
   const comboFill = el('i', '', el('div', 'bar', combo));
 
+  // Kart Rally: lap, time left and (alone) the next medal, top centre
+  const raceBox = el('div', 'hud-box race txt', layer);
+  const raceMain = el('div', '', raceBox);
+  const raceSub = el('div', 'sub', raceBox);
+  let wasRace = false;
   const holdBox = el('div', 'hold txt', layer);
   const holdText = el('div', '', holdBox);
   const holdFill = el('i', '', el('div', 'bar', holdBox));
@@ -190,6 +196,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));
       alarmExtra.textContent = s.alarm.level > ALARM_MAX ? `+${s.alarm.level - ALARM_MAX}` : '';
       alarmBox.classList.toggle('overload', s.alarm.level >= ALARM_MAX);
+      // only floors with nests have an alarm
+      alarmBox.style.display = s.run.stage === 'floor' && s.nests.length > 0 ? '' : 'none';
       scoreText.textContent = t('hud.score', { score: s.score });
       if (p.coins !== lastCoins) {
         coinText.textContent = String(p.coins);
@@ -226,6 +234,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       kartBox.style.display = kart ? '' : 'none';
       if (kart) {
         fuelFill.style.width = `${(kart.fuel / KART.fuelTicks) * 100}%`;
+        // race karts never run dry
+        (fuelFill.parentElement!.previousElementSibling as HTMLElement).style.display = kart.locked ? 'none' : '';
+        fuelFill.parentElement!.style.display = kart.locked ? 'none' : '';
         kartFill.style.width = `${Math.max(0, kart.hp / KART.hp) * 100}%`;
       }
 
@@ -263,7 +274,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       if (p.downUntil === null && !buildMenuOpen) {
         const pad = padAt(s, p.pos);
         const padTower = pad === null ? undefined : s.towers.find(tw => tw.padId === pad);
-        if (p.vehicleId !== null) hintText = t('hud.leave');
+        if (p.vehicleId !== null) hintText = kart?.locked ? '' : t('hud.leave');
         else if (s.nests.some(n => n.state === 'idle' && dist(n.pos, p.pos) <= PLANT_RANGE)) hintText = t('hud.plant');
         else if (s.vehicles.some(v => v.driverId === null && dist(v.pos, p.pos) <= KART.enterRange)) hintText = t('hud.drive');
         else if (padTower && padTower.buildLeft > 0) hintText = t('hud.building', { pct: Math.floor((1 - padTower.buildLeft / (padTower.upgrading ? UPGRADE_TICKS : BUILD_TICKS)) * 100) });
@@ -302,6 +313,14 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'bossSpawn':
             if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'final');
             else toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
+            break;
+          case 'raceLap':
+            if (e.playerId === p.id) toast(t('race.lap', { lap: e.lap }), 'good');
+            break;
+          case 'raceEnd':
+            if (e.medal) toast(t(`race.medal.${e.medal}` as 'race.medal.gold'), 'final');
+            else if (e.winners.length === 1) toast(t('race.winner', { name: s.players.find(x => x.id === e.winners[0])?.name ?? '' }), 'final');
+            else toast(t('race.end'), 'good');
             break;
           case 'floorStart':
             toast(t('toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
@@ -346,6 +365,18 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (e.playerId === p.id) toast(t('toast.jetpackEmpty'));
             break;
         }
+      }
+
+      const race = s.run.stage === 'race' ? s.run.race : null;
+      raceBox.style.display = race ? '' : 'none';
+      if (race && !wasRace) toast(t('race.start'), 'final');
+      wasRace = !!race;
+      if (race) {
+        const left = Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE));
+        const done = race.laps[p.id] ?? 0;
+        raceMain.textContent = t('race.hud', { lap: done + 1, time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` });
+        const medal = s.players.length === 1 ? (['bronze', 'silver', 'gold'] as const).find(m => done < RACE.medals[m].laps) : undefined;
+        raceSub.textContent = medal ? t('race.next', { medal: t(`medal.${medal}` as 'medal.gold'), laps: RACE.medals[medal].laps }) : '';
       }
 
       // the boss bar and the zone bar sit above the weapon bar; hints move up to make room

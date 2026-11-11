@@ -82,6 +82,8 @@ function leave(s: SimState, p: Player, v: Vehicle): void {
 function toggle(s: SimState, p: Player): void {
   if (p.vehicleId !== null) {
     const v = s.vehicles.find(x => x.id === p.vehicleId);
+    // race karts keep their driver until the race is over
+    if (v?.locked) return;
     if (v) {
       v.vel = { x: 0, z: 0 };
       leave(s, p, v);
@@ -128,7 +130,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   if (hit.hitX) v.vel.x = 0;
   if (hit.hitZ) v.vel.z = 0;
   const speed = Math.hypot(v.vel.x, v.vel.z);
-  if (driver && speed > 1) v.fuel--;
+  if (driver && speed > 1 && !v.locked) v.fuel--;
 
   if (v.air > 0) {
     v.air--;
@@ -184,6 +186,8 @@ export function updateVehicles(s: SimState, intents: Map<number, Intent>): void 
     drive(s, v, driver, driver ? intents.get(driver.id) : undefined);
     if (driver) driver.pos = { ...v.pos };
     if (v.hp > 0 && v.fuel > 0) return true;
+    // a wrecked race kart is the race's business (it comes back at the last checkpoint)
+    if (v.locked) return true;
     s.events.push({ type: 'kartDestroyed', pos: { ...v.pos } });
     if (driver) {
       leave(s, driver, v);
