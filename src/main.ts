@@ -1,24 +1,172 @@
+import '@fontsource/press-start-2p/400.css';
+import './ui/ui.css';
+import { createMixer, type Mixer } from './audio/mixer';
+import { createMusic, type MusicPlayer } from './audio/music';
+import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
+import { Keyboard } from './input/keyboard';
+import { createLoop } from './loop';
 import { createRenderer } from './render/renderer';
 import { map01 } from './sim/config/map01';
 import { createSim, stepSim } from './sim/sim';
 import { startBoss } from './sim/systems/boss';
-import { DT, type Command, type SimEvent, type WeaponKind } from './sim/types';
+import { TICK_RATE, type SimEvent, type SimState, type WeaponKind } from './sim/types';
+import { createBuildMenu } from './ui/build-menu';
+import { createHud } from './ui/hud';
+import { createScreens, loadSettings } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
-if (new URLSearchParams(location.search).has('sound')) {
-  void import('./audio/soundboard').then(m => m.showSoundboard(app));
-  throw new Error('soundboard mode');
-}
-app.innerHTML = '<canvas id="game"></canvas>';
-const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
-Object.assign(document.body.style, { margin: '0', overflow: 'hidden', background: '#000' });
-Object.assign(canvas.style, { width: '100vw', height: '100vh', display: 'block' });
-
 const params = new URLSearchParams(location.search);
-const sim = createSim(map01, Date.now() & 0xffffffff);
-if (params.has('demo')) {
+
+if (params.has('sound')) {
+  void import('./audio/soundboard').then(m => m.showSoundboard(app));
+} else {
+  startGame();
+}
+
+function startGame() {
+  app.innerHTML = '<canvas id="game"></canvas>';
+  const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
+  const renderer = createRenderer(canvas, map01);
+  const keyboard = new Keyboard();
+  const settings = loadSettings();
+
+  let sim: SimState = createSim(map01, 1);
+  let mode: 'title' | 'playing' | 'paused' | 'over' = 'title';
+  let frameEvents: SimEvent[] = [];
+  let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
+
+  function ensureAudio() {
+    if (!audio) {
+      const ctx = new AudioContext();
+      const mixer = createMixer(ctx);
+      audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus) };
+      applySettings();
+    }
+    void audio.ctx.resume();
+    return audio;
+  }
+
+  function applySettings() {
+    audio?.mixer.setMusicVolume(settings.music);
+    audio?.mixer.setSfxVolume(settings.sfx);
+  }
+
+  const hud = createHud(app);
+  const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
+  const screens = createScreens(
+    app,
+    {
+      play: newGame,
+      resume,
+      mainMenu: toTitle,
+      quit: () => window.close(),
+      settingsChanged: applySettings,
+      click: () => ensureAudio().mixer.play('uiClick'),
+    },
+    settings,
+  );
+
+  const loop = createLoop(
+    () => {
+      if (mode !== 'playing') return;
+      stepSim(sim, keyboard.commands(sim, 0, performance.now()));
+      frameEvents.push(...sim.events);
+    },
+    (alpha, frameDt) => {
+      renderer.render(sim, alpha, frameEvents, frameDt);
+      hud.update(sim, frameEvents, keyboard.buildMenuOpen);
+      buildMenu.update(sim, keyboard.buildMenuOpen && mode === 'playing', frameEvents);
+      if (audio) {
+        for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
+        for (const e of frameEvents) {
+          if (e.type === 'bossSpawn') audio.music.playTrack('boss');
+          if (e.type === 'bossDead') audio.music.playTrack('battle');
+          if (e.type === 'gameWon' || e.type === 'gameLost') audio.music.playTrack(null);
+        }
+      }
+      for (const e of frameEvents) {
+        if (e.type === 'gameWon') finish(() => screens.won(e.stars, sim.players[0].coins, sim.tick / TICK_RATE));
+        if (e.type === 'gameLost') finish(() => screens.lost(sim.wave.index + 1));
+      }
+      frameEvents = [];
+    },
+  );
+
+  function finish(show: () => void) {
+    mode = 'over';
+    keyboard.releaseAll();
+    setTimeout(() => {
+      hud.setVisible(false);
+      show();
+    }, 1800);
+  }
+
+  function newGame() {
+    sim = createSim(map01, (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+    if (params.has('demo')) applyDemo(sim);
+    frameEvents = [];
+    keyboard.releaseAll();
+    screens.hide();
+    hud.setVisible(true);
+    mode = 'playing';
+    loop.resume();
+    ensureAudio().music.playTrack('battle');
+  }
+
+  function resume() {
+    if (mode !== 'paused') return;
+    screens.hide();
+    mode = 'playing';
+    loop.resume();
+  }
+
+  function pause() {
+    if (mode !== 'playing') return;
+    mode = 'paused';
+    keyboard.releaseAll();
+    loop.pause();
+    screens.pause();
+  }
+
+  function toTitle() {
+    mode = 'title';
+    sim = createSim(map01, 1);
+    hud.setVisible(false);
+    screens.title();
+    if (audio) audio.music.playTrack('menu');
+  }
+
+  addEventListener('keydown', e => {
+    if (e.repeat) return;
+    if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (mode === 'playing') pause();
+      else if (mode === 'paused') resume();
+      return;
+    }
+    if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
+  });
+  addEventListener('keyup', e => keyboard.keyUp(e.code));
+  addEventListener('blur', pause);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pause();
+  });
+  addEventListener('pointerdown', () => {
+    if (mode === 'title' && audio === null) ensureAudio().music.playTrack('menu');
+  }, { once: true });
+
+  hud.setVisible(false);
+  screens.title();
+  if (params.has('demo')) newGame();
+  requestAnimationFrame(function frame(now) {
+    loop.frame(now);
+    requestAnimationFrame(frame);
+  });
+}
+
+/** Dev helper (?demo=day|night&warp=ticks): armed player, towers, optional worm. */
+function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 3, cooldown: 0 }));
   sim.players[0].coins = 200;
@@ -32,32 +180,3 @@ if (params.has('demo')) {
   const warp = Number(params.get('warp') ?? 0);
   for (let i = 0; i < warp; i++) stepSim(sim, []);
 }
-
-const keys = new Set<string>();
-addEventListener('keydown', e => keys.add(e.code));
-addEventListener('keyup', e => keys.delete(e.code));
-
-const renderer = createRenderer(canvas, map01);
-let last = performance.now();
-let acc = 0;
-function frame(now: number) {
-  const dt = Math.min(0.25, (now - last) / 1000);
-  last = now;
-  acc += dt;
-  const events: SimEvent[] = [];
-  let steps = 0;
-  while (acc >= DT && steps < 5) {
-    const dir = {
-      x: (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0),
-      z: (keys.has('KeyS') ? 1 : 0) - (keys.has('KeyW') ? 1 : 0),
-    };
-    const cmds: Command[] = [{ type: 'move', playerId: 0, dir }];
-    stepSim(sim, cmds);
-    events.push(...sim.events);
-    acc -= DT;
-    steps++;
-  }
-  renderer.render(sim, acc / DT, events, dt);
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
