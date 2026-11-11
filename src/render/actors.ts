@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { HOLD_RADIUS, HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
+import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import type { FloorMap } from '../sim/map/tilemap';
+import { zoneTiles } from '../sim/systems/nests';
 import { KART } from '../sim/systems/vehicles';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
@@ -62,7 +63,7 @@ function makePlayer(color: number) {
   return { root, body, gun, sword, light, pack, flame, glint, swordT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
-function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; light: THREE.PointLight } {
+function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; lightColor: number } {
   const root = new THREE.Group();
   let head: THREE.Object3D;
   let lightColor: number;
@@ -90,10 +91,7 @@ function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; 
     lightColor = 0x7fdcff;
   }
   root.add(head);
-  const light = new THREE.PointLight(lightColor, 0, 6);
-  light.position.y = 2.4;
-  root.add(light);
-  return { root, head, light };
+  return { root, head, lightColor };
 }
 
 function makeKart(kind: VehicleKind = 'kart') {
@@ -125,7 +123,11 @@ function makeKart(kind: VehicleKind = 'kart') {
   return { root, body, yaw: 0 };
 }
 
-function makeNest() {
+const tileQuad = new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2);
+const ZONE_IDLE = new THREE.Color(0xff2bd6).multiplyScalar(0.55);
+const ZONE_LIT = new THREE.Color(0x2bf0ff).multiplyScalar(1.6);
+
+function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   const root = new THREE.Group();
   const dark = lambert(0x2a1040);
   const glow = glowMat(0xff2bd6, 1.6);
@@ -140,13 +142,45 @@ function makeNest() {
     cubes.push(m);
     root.add(m);
   });
-  const zoneMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
-  const zone = new THREE.Mesh(new THREE.RingGeometry(HOLD_RADIUS - 0.12, HOLD_RADIUS, 64).rotateX(-Math.PI / 2), zoneMat);
-  zone.position.y = 0.05;
-  const fillMat = new THREE.MeshBasicMaterial({ color: 0x2bf0ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
-  const fill = new THREE.Mesh(new THREE.CircleGeometry(HOLD_RADIUS, 64).rotateX(-Math.PI / 2), fillMat);
-  fill.position.y = 0.04;
+  // the hold zone: the floor tiles themselves light up, nearest to the nest first
+  const tiles = zoneTiles(map, pos)
+    .map(t => ({ x: t.tx + 0.5 - pos.x, z: t.tz + 0.5 - pos.z }))
+    .sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+  const fillMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.4, depthWrite: false });
+  const fill = new THREE.InstancedMesh(tileQuad, fillMat, Math.max(1, tiles.length));
+  fill.count = tiles.length;
+  const o = new THREE.Object3D();
+  tiles.forEach((t, i) => {
+    o.position.set(t.x, 0.03, t.z);
+    o.updateMatrix();
+    fill.setMatrixAt(i, o.matrix);
+    fill.setColorAt(i, ZONE_IDLE);
+  });
+  // a glowing outline along the outer edge of the zone
+  const key = new Set(tiles.map(t => `${t.x},${t.z}`));
+  const edges: { x: number; z: number; sx: number; sz: number }[] = [];
+  for (const t of tiles) {
+    if (!key.has(`${t.x + 1},${t.z}`)) edges.push({ x: t.x + 0.5, z: t.z, sx: 0.1, sz: 1.1 });
+    if (!key.has(`${t.x - 1},${t.z}`)) edges.push({ x: t.x - 0.5, z: t.z, sx: 0.1, sz: 1.1 });
+    if (!key.has(`${t.x},${t.z + 1}`)) edges.push({ x: t.x, z: t.z + 0.5, sx: 1.1, sz: 0.1 });
+    if (!key.has(`${t.x},${t.z - 1}`)) edges.push({ x: t.x, z: t.z - 0.5, sx: 1.1, sz: 0.1 });
+  }
+  const zoneMat = glowMat(0xff2bd6, 1.5);
+  const zone = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.06, 1), zoneMat, Math.max(1, edges.length));
+  zone.count = edges.length;
+  edges.forEach((e, i) => {
+    o.position.set(e.x, 0.04, e.z);
+    o.scale.set(e.sx, 1, e.sz);
+    o.updateMatrix();
+    zone.setMatrixAt(i, o.matrix);
+  });
   root.add(zone, fill);
+  // the planted charge: a yellow block with a blinking light, only after planting
+  const charge = new THREE.Group();
+  const chargeLight = glowMat(0xff3030, 2);
+  charge.add(box(0.5, 0.35, 0.35, lambert(0xffcf3a), 0, 0.18, 0), box(0.14, 0.12, 0.14, chargeLight, 0, 0.42, 0));
+  charge.position.set(0.9, 0, 0.9);
+  root.add(charge);
   // the objective has to be readable from afar: a pink light column and a floating "!"
   const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
   const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 14, 16, 1, true), beaconMat);
@@ -156,7 +190,7 @@ function makeNest() {
   mark.add(box(0.32, 0.9, 0.32, markMat, 0, 0.55, 0), box(0.32, 0.32, 0.32, markMat, 0, -0.2, 0));
   mark.position.y = 4;
   root.add(beacon, mark);
-  return { root, cubes, zone, fill, glow, beacon, beaconMat, mark };
+  return { root, cubes, zone, zoneMat, fill, tiles: tiles.length, lit: -1, dark, glow, charge, chargeLight, beacon, beaconMat, mark, plantedAt: -1 };
 }
 
 export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
@@ -165,6 +199,13 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const karts = new Map<number, ReturnType<typeof makeKart>>();
   const nests = new Map<number, ReturnType<typeof makeNest>>();
   const focus = new THREE.Vector3(map.spawn.x, 0, map.spawn.z);
+  // a fixed set of tower lights, moved to the towers nearest the camera: adding a light to the scene
+  // would recompile every shader and freeze the game for a moment
+  const towerLights = Array.from({ length: 6 }, () => {
+    const l = new THREE.PointLight(0xffffff, 0, 6);
+    scene.add(l);
+    return l;
+  });
 
   // crosshair on the ground at the aim point
   const reticle = new THREE.Group();
@@ -239,11 +280,10 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   function updateTower(t: Tower, v: ReturnType<typeof makeTower> & { built: number }, theme: Theme, time: number) {
     const age = time - v.built;
     const pop = age < 0.3 ? 0.4 + 0.6 * (age / 0.3) + Math.sin((age / 0.3) * Math.PI) * 0.25 : 1;
-    v.root.scale.setScalar(pop);
     if (t.kind === 'laser') v.head.rotation.y = time * 2;
     if (t.kind === 'frost') v.head.position.y = 1.85 + Math.sin(time * 2) * 0.1;
+    v.root.scale.setScalar(pop);
     v.root.rotation.z = t.hp < t.maxHp * 0.5 ? Math.sin(time * 30) * 0.02 : 0;
-    v.light.intensity = 5 * theme.pointLights;
     setGlow(v.root, theme.glow);
   }
 
@@ -267,14 +307,35 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   function updateNest(n: Nest, s: SimState, theme: Theme, time: number) {
     let v = nests.get(n.id);
+    // endless mode moves a nest to a new spot: rebuild its zone there
+    if (v && (v.root.position.x !== n.pos.x || v.root.position.z !== n.pos.z)) {
+      scene.remove(v.root);
+      v = undefined;
+    }
     if (!v) {
-      v = makeNest();
+      v = makeNest(s.map, n.pos);
       v.root.position.set(n.pos.x, 0, n.pos.z);
       scene.add(v.root);
       nests.set(n.id, v);
     }
     const planted = n.state === 'planted';
-    const jitter = planted ? 0.12 : 0.04;
+    const frac = planted ? n.progress / HOLD_TICKS : 0;
+    // planting turns the nest from purple to an angry red-orange, with a short pop
+    if (planted && v.plantedAt < 0) {
+      v.plantedAt = time;
+      v.dark.color.setHex(0x5a0d1e);
+      v.glow.color.setHex(0xff6a1f);
+      v.glow.emissive.setHex(0xff6a1f);
+    } else if (!planted && v.plantedAt >= 0) {
+      v.plantedAt = -1;
+      v.dark.color.setHex(0x2a1040);
+      v.glow.color.setHex(0xff2bd6);
+      v.glow.emissive.setHex(0xff2bd6);
+    }
+    const sincePlant = planted ? time - v.plantedAt : 99;
+    const pop = sincePlant < 0.5 ? 1 + Math.sin((sincePlant / 0.5) * Math.PI) * 0.35 : 1;
+    // shakes harder the closer it gets to blowing up
+    const jitter = planted ? 0.08 + frac * 0.18 : 0.04;
     v.cubes.forEach((c, i) => {
       const home = c.userData.home as THREE.Vector3;
       c.position.set(
@@ -283,8 +344,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         home.z + Math.cos(time * 7 + i * 2.3) * jitter,
       );
       c.rotation.y = Math.sin(time * 2 + i) * 0.3;
+      c.scale.setScalar(pop);
     });
-    v.glow.emissiveIntensity = (1.2 + Math.sin(time * (planted ? 12 : 3)) * 0.5) * Math.min(theme.glow, 1.5);
+    v.glow.emissiveIntensity = (1.2 + Math.sin(time * (planted ? 8 + frac * 14 : 3)) * 0.5) * Math.min(theme.glow, 1.5);
+    v.charge.visible = planted;
+    v.chargeLight.emissiveIntensity = Math.sin(time * (6 + frac * 18)) > 0 ? 3 : 0.2;
     v.beacon.visible = !planted;
     v.beaconMat.opacity = 0.16 + 0.08 * Math.sin(time * 3);
     v.mark.visible = !planted;
@@ -292,9 +356,15 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.mark.rotation.y = time * 1.8;
     v.zone.visible = planted;
     v.fill.visible = planted;
-    v.fill.scale.setScalar(Math.max(0.02, n.progress / HOLD_TICKS));
-    (v.zone.material as THREE.MeshBasicMaterial).opacity = 0.4 + 0.2 * Math.sin(time * 6);
-    void s;
+    v.zoneMat.emissiveIntensity = (1.2 + 0.6 * Math.sin(time * 6)) * Math.min(theme.glow, 1.4);
+    const lit = Math.floor(frac * v.tiles);
+    if (lit !== v.lit) {
+      for (let i = Math.min(lit, Math.max(0, v.lit)); i < Math.max(lit, v.lit); i++) v.fill.setColorAt(i, i < lit ? ZONE_LIT : ZONE_IDLE);
+      if (v.lit < 0) for (let i = 0; i < v.tiles; i++) v.fill.setColorAt(i, i < lit ? ZONE_LIT : ZONE_IDLE);
+      v.lit = lit;
+      v.fill.instanceColor!.needsUpdate = true;
+    }
+    (v.fill.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.1 * Math.sin(time * 4);
   }
 
   function sweep<T extends { root: THREE.Object3D }>(map_: Map<number, T>, alive: Set<number>) {
@@ -341,6 +411,15 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         updateTower(t, v, theme, time);
       }
       sweep(towers, aliveTowers);
+      const nearest = s.towers.slice().sort((a, b) => Math.hypot(a.pos.x - focus.x, a.pos.z - focus.z) - Math.hypot(b.pos.x - focus.x, b.pos.z - focus.z));
+      towerLights.forEach((l, i) => {
+        const t = nearest[i];
+        l.intensity = t ? 5 * theme.pointLights : 0;
+        if (t) {
+          l.position.set(t.pos.x, 2.5, t.pos.z);
+          l.color.setHex(towers.get(t.id)!.lightColor);
+        }
+      });
 
       for (const k of s.vehicles) updateKart(k, theme, time);
       sweep(karts, new Set(s.vehicles.map(k => k.id)));

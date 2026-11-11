@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
-import { ENEMY_CAP, HOLD_TICKS } from '../../src/sim/config/balance';
+import { ENEMY_CAP, HOLD_RADIUS, HOLD_TICKS } from '../../src/sim/config/balance';
+import { BLOCKS_WALKER } from '../../src/sim/map/tilemap';
+import { zoneTiles } from '../../src/sim/systems/nests';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnHorde } from '../../src/sim/systems/hordes';
@@ -64,6 +66,38 @@ describe('planting', () => {
 });
 
 describe('holding', () => {
+  it('the zone is the walkable tiles whose centre is within 6 tiles of the nest', () => {
+    const s = nestSim('planted');
+    const tiles = zoneTiles(s.map, s.nests[0].pos);
+    expect(tiles.length).toBeGreaterThan(20);
+    for (const t of tiles) {
+      expect(d({ x: t.tx + 0.5, z: t.tz + 0.5 }, s.nests[0].pos)).toBeLessThanOrEqual(HOLD_RADIUS);
+      expect(BLOCKS_WALKER(s.map.tiles[t.tz * s.map.w + t.tx])).toBe(false);
+    }
+  });
+
+  it('counts on a zone tile even past the circle, and not on a tile outside the zone even inside the circle', () => {
+    const s = nestSim('planted', 100);
+    const nest = s.nests[0].pos;
+    const inside = new Set(zoneTiles(s.map, nest).map(t => `${t.tx},${t.tz}`));
+    let edgeIn: Vec2 | null = null, edgeOut: Vec2 | null = null;
+    for (let tz = 0; tz < s.map.h && !(edgeIn && edgeOut); tz++) {
+      for (let tx = 0; tx < s.map.w; tx++) {
+        if (BLOCKS_WALKER(s.map.tiles[tz * s.map.w + tx])) continue;
+        for (const c of [{ x: tx + 0.05, z: tz + 0.05 }, { x: tx + 0.95, z: tz + 0.05 }, { x: tx + 0.05, z: tz + 0.95 }, { x: tx + 0.95, z: tz + 0.95 }]) {
+          if (inside.has(`${tx},${tz}`) && d(c, nest) > HOLD_RADIUS) edgeIn ??= c;
+          if (!inside.has(`${tx},${tz}`) && d(c, nest) < HOLD_RADIUS) edgeOut ??= c;
+        }
+      }
+    }
+    s.players[0].pos = edgeIn!;
+    run(s, 10);
+    expect(s.nests[0].progress).toBe(110);
+    s.players[0].pos = edgeOut!;
+    run(s, 10);
+    expect(s.nests[0].progress).toBe(105);
+  });
+
   it('counts up while a player is within 6 tiles and back at half speed otherwise, never below 0', () => {
     const s = nestSim('planted', 100);
     run(s, 10);

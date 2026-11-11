@@ -119,18 +119,37 @@ function boostTexture(): THREE.CanvasTexture {
   }, true);
 }
 
-/** glitch floor: random magenta pixels; the offset jumps around in update() */
+/** glitch floor: flickering magenta pixels with a crossed-out monster on every tile – monsters cannot cross it */
 function glitchTexture(): THREE.CanvasTexture {
-  return canvasTexture(16, 16, g => {
-    const shades = ['#3a0a46', '#7a1388', '#d81fb8', '#ff4fe0', '#5a1270'];
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
+  return canvasTexture(32, 32, g => {
+    const shades = ['#2a0636', '#4a0c5a', '#7a1388', '#5a1270', '#3a0a46'];
+    for (let y = 0; y < 32; y += 2) {
+      for (let x = 0; x < 32; x += 2) {
         g.fillStyle = shades[Math.floor(hash(x * 5 + 1, y * 3 + 2) * shades.length)];
-        g.fillRect(x, y, 1, 1);
+        g.fillRect(x, y, 2, 2);
       }
     }
-    g.fillStyle = '#ffffff';
-    for (let i = 0; i < 6; i++) g.fillRect(Math.floor(hash(i, 9) * 16), Math.floor(hash(9, i) * 16), 2, 1);
+    g.fillStyle = '#ff4fe0';
+    for (let i = 0; i < 8; i++) g.fillRect(Math.floor(hash(i, 9) * 30), Math.floor(hash(9, i) * 30), 3, 1);
+    // a little pixel monster: body, two eyes, feet
+    g.fillStyle = '#ffd6f6';
+    g.fillRect(11, 10, 10, 9);
+    g.fillRect(12, 9, 8, 1);
+    g.fillRect(11, 19, 3, 2);
+    g.fillRect(18, 19, 3, 2);
+    g.fillStyle = '#2a0636';
+    g.fillRect(13, 12, 2, 3);
+    g.fillRect(17, 12, 2, 3);
+    // red "no" sign over it
+    g.strokeStyle = '#ff2a4a';
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.arc(16, 15, 10, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(9, 8);
+    g.lineTo(23, 22);
+    g.stroke();
   }, true);
 }
 
@@ -566,11 +585,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
       const glow = Math.min(theme.glow, 1.4);
       glitchMat.emissiveIntensity = (0.55 + 0.25 * Math.sin(time * 5)) * glow;
-      const step = Math.floor(time * 8);
-      if (step !== glitchStep) {
-        glitchStep = step;
-        glitchTex.offset.set(hash(step, 3), hash(7, step));
-      }
+      // glitchy flicker: now and then a short bright burst
+      const step = Math.floor(time * 10);
+      if (step !== glitchStep) glitchStep = step;
+      if (hash(glitchStep, 3) > 0.85) glitchMat.emissiveIntensity *= 1.8;
       boostMat.emissiveIntensity = (0.45 + 0.25 * Math.abs(Math.sin(time * 3))) * glow;
       // 2.5 tiles per second, like the sim
       beltTex.offset.y = (time * 2.5) % 1;

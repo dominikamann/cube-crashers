@@ -283,7 +283,20 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       };
       drawColors();
       s.append(colors);
+      text(s, 'p', 'controls-help', t('menu.controls'));
       button(s, t('menu.back'), () => back());
+    });
+  }
+
+  let titleMode: 'run' | 'quick' | 'endless' = 'run';
+
+  function lanScreen() {
+    show('', s => {
+      text(s, 'h2', '', t('menu.lan'));
+      text(s, 'p', '', t('lan.intro'));
+      button(s, t('menu.host'), actions.host, true);
+      button(s, t('menu.join'), actions.join);
+      button(s, t('menu.back'), () => api.title());
     });
   }
 
@@ -292,22 +305,70 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       back = api.title;
       show('title', s => {
         text(s, 'div', 'logo', t('title'));
-        text(s, 'p', '', t('menu.goal'));
-        button(s, t('menu.play'), actions.play, true);
-        const diff = button(s, diffLabel(settings.difficulty), () => {
-          settings.difficulty = nextDiff(settings.difficulty);
-          diff.textContent = diffLabel(settings.difficulty);
+        const main = document.createElement('div');
+        main.className = 'title-main';
+        s.append(main);
+        const modes: { id: 'run' | 'quick' | 'endless'; label: string; hint: string; locked: boolean }[] = [
+          { id: 'run', label: t('mode.run'), hint: t('mode.runHint'), locked: false },
+          { id: 'quick', label: t('mode.quick'), hint: t('mode.quickHint'), locked: false },
+          { id: 'endless', label: t('mode.endless'), hint: t('mode.endlessHint'), locked: !profile.unlocked.includes('endless') },
+        ];
+        if (modes.find(m => m.id === titleMode)?.locked) titleMode = 'run';
+        const play = button(main, t('menu.play'), () => (titleMode === 'quick' ? actions.quick : titleMode === 'endless' ? actions.endless : actions.play)(), true);
+        play.classList.add('play');
+        const chips = document.createElement('div');
+        chips.className = 'chips';
+        const hint = text(main, 'p', 'mode-hint', '');
+        main.insertBefore(chips, hint);
+        const drawChips = () => {
+          chips.innerHTML = '';
+          for (const m of modes) {
+            const c = document.createElement('button');
+            c.className = `chip${m.id === titleMode ? ' on' : ''}`;
+            c.textContent = m.locked ? `${m.label} \u{1F512}` : m.label;
+            c.disabled = m.locked;
+            if (m.locked) c.title = t('mode.locked');
+            c.addEventListener('click', () => {
+              actions.click();
+              titleMode = m.id;
+              drawChips();
+            });
+            chips.append(c);
+          }
+          hint.textContent = modes.find(m => m.id === titleMode)!.hint;
+        };
+        drawChips();
+        const diff = document.createElement('div');
+        diff.className = 'stepper txt';
+        const prev = document.createElement('button');
+        prev.className = 'chip';
+        prev.textContent = '\u25C0';
+        const label = document.createElement('span');
+        const next = document.createElement('button');
+        next.className = 'chip';
+        next.textContent = '\u25B6';
+        const step = (dir: number) => {
+          actions.click();
+          settings.difficulty = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + dir + DIFFICULTIES.length) % DIFFICULTIES.length];
+          label.textContent = diffLabel(settings.difficulty);
           changed();
-        });
-        button(s, t('menu.quick'), actions.quick);
-        if (profile.unlocked.includes('endless')) button(s, t('menu.endless'), actions.endless);
-        button(s, t('menu.unlocks'), unlocksScreen);
-        button(s, t('menu.host'), actions.host);
-        button(s, t('menu.join'), actions.join);
-        button(s, t('menu.settings'), settingsScreen);
-        button(s, t('menu.credits'), creditsScreen);
-        button(s, t('menu.quit'), actions.quit);
-        text(s, 'p', '', t('menu.controls'));
+        };
+        prev.addEventListener('click', () => step(-1));
+        next.addEventListener('click', () => step(1));
+        label.textContent = diffLabel(settings.difficulty);
+        diff.append(prev, label, next);
+        main.append(diff);
+        const row = document.createElement('div');
+        row.className = 'row2';
+        main.append(row);
+        button(row, t('menu.lan'), lanScreen);
+        button(row, t('menu.unlocks'), unlocksScreen);
+        const foot = document.createElement('div');
+        foot.className = 'foot';
+        s.append(foot);
+        for (const [label_, fn] of [[t('menu.settings'), settingsScreen], [t('menu.credits'), creditsScreen], [t('menu.quit'), actions.quit]] as [string, () => void][]) {
+          button(foot, label_, fn).classList.add('small');
+        }
       });
     },
     pause() {

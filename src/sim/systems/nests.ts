@@ -23,6 +23,7 @@ import {
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
 import { floorDef } from '../config/floors';
+import { BLOCKS_WALKER, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -146,6 +147,44 @@ function destroyNest(s: SimState, n: Nest): void {
   }
 }
 
+const zoneCache = new Map<string, Set<number>>();
+
+/** tile indices of a nest's hold zone: walkable tiles connected to the nest whose centre is within HOLD_RADIUS */
+function zoneSet(map: FloorMap, pos: Vec2): Set<number> {
+  const key = `${map.id}:${pos.x},${pos.z}`;
+  let set = zoneCache.get(key);
+  if (set) return set;
+  set = new Set<number>();
+  const start = Math.floor(pos.z) * map.w + Math.floor(pos.x);
+  const queue = [start];
+  set.add(start);
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const tx = i % map.w, tz = Math.floor(i / map.w);
+    for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = tx + ox, nz = tz + oz;
+      if (nx < 0 || nz < 0 || nx >= map.w || nz >= map.h) continue;
+      const j = nz * map.w + nx;
+      if (set.has(j) || BLOCKS_WALKER(map.tiles[j]) || dist({ x: nx + 0.5, z: nz + 0.5 }, pos) > HOLD_RADIUS) continue;
+      set.add(j);
+      queue.push(j);
+    }
+  }
+  zoneCache.set(key, set);
+  return set;
+}
+
+export function zoneTiles(map: FloorMap, pos: Vec2): { tx: number; tz: number }[] {
+  return [...zoneSet(map, pos)].map(i => ({ tx: i % map.w, tz: Math.floor(i / map.w) }));
+}
+
+/** whether a position stands in a nest's hold zone */
+export function inZone(map: FloorMap, nestPos: Vec2, at: Vec2): boolean {
+  const tx = Math.floor(at.x), tz = Math.floor(at.z);
+  if (tx < 0 || tz < 0 || tx >= map.w || tz >= map.h) return false;
+  return zoneSet(map, nestPos).has(tz * map.w + tx);
+}
+
 export function updateNests(s: SimState, intents: Map<number, Intent>): void {
   const alive = s.players.filter(p => p.downUntil === null);
 
@@ -174,7 +213,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       const comp = roamingComp(s);
       if (canSpawn(s, comp)) spawnHorde(s, besideNest(s, n), comp, { eliteChance: 0.15 + 0.05 * s.alarm.level + eliteBonus(s) });
     } else if (n.state === 'planted') {
-      if (!alive.some(p => dist(p.pos, n.pos) <= HOLD_RADIUS)) {
+      if (!alive.some(p => inZone(s.map, n.pos, p.pos))) {
         n.progress = Math.max(0, n.progress - 0.5);
         continue;
       }
@@ -186,7 +225,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       if (s.tick >= n.nextBlastAt) {
         n.nextBlastAt = s.tick + NEST_DEFENCE.intervalTicks - NEST_DEFENCE.intervalPerAlarm * s.alarm.level;
         for (const p of alive) {
-          if (dist(p.pos, n.pos) > HOLD_RADIUS) continue;
+          if (!inZone(s.map, n.pos, p.pos)) continue;
           s.blasts.push({ id: s.nextId++, pos: { ...p.pos }, radius: NEST_DEFENCE.radius, createdAt: s.tick, at: s.tick + NEST_DEFENCE.warnTicks, damage: NEST_DEFENCE.damage });
           s.events.push({ type: 'blastWarning', pos: { ...p.pos }, radius: NEST_DEFENCE.radius });
         }
