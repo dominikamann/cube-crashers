@@ -2,6 +2,10 @@ import { padAt } from '../sim/systems/towers';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
 export const BUILD_HOLD_MS = 150;
+/** keep holding E this long on an empty pad and the preselected (first) tower gets built */
+export const AUTO_BUILD_MS = 700;
+/** the card that is preselected when the build menu opens */
+export const DEFAULT_TOWER: TowerKind = 'laser';
 const TOWER_KEYS: Record<string, TowerKind> = { Digit1: 'laser', Digit2: 'popcorn', Digit3: 'frost', Numpad1: 'laser', Numpad2: 'popcorn', Numpad3: 'frost' };
 
 /** Turns key state into sim commands. Times are passed in so it can be tested without a DOM. */
@@ -73,9 +77,12 @@ export class Keyboard {
   keyUp(code: string, now = Infinity): void {
     this.down.delete(code);
     if (code === 'KeyE') {
-      if (this.eSince !== null && now - this.eSince < BUILD_HOLD_MS) this.use = true;
+      // with the build menu open a tap of E builds the preselected tower; otherwise a tap is "use"
+      if (this.eSince !== null && now - this.eSince < BUILD_HOLD_MS) {
+        if (this.buildMenuOpen) this.chosen = DEFAULT_TOWER;
+        else this.use = true;
+      }
       this.eSince = null;
-      this.closeMenu();
     }
   }
 
@@ -173,6 +180,8 @@ export class Keyboard {
       this.closeMenu();
     }
 
+    // still holding E on an empty pad: build the preselected tower right away
+    if (this.buildMenuOpen && !tower && this.eSince !== null && now - this.eSince >= AUTO_BUILD_MS) this.chosen ??= DEFAULT_TOWER;
     if (this.buildMenuOpen && this.chosen && this.menuPad !== null) {
       // on a pad with a tower any of the menu keys picks the single card: the upgrade
       if (tower) cmds.push({ type: 'upgrade', playerId, padId: this.menuPad });

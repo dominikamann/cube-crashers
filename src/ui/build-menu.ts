@@ -54,6 +54,9 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
       const tower = padId === null ? undefined : s.towers.find(tw => tw.padId === padId);
       for (const c of cards) c.card.style.display = tower ? 'none' : '';
+      // the first card is preselected: a tap of E (X) or simply holding on builds it
+      cards.forEach((c, i) => c.card.classList.toggle('selected', i === 0));
+      up.classList.add('selected');
       up.style.display = tower ? '' : 'none';
       if (tower) {
         const max = tower.level >= MAX_TOWER_LEVEL;

@@ -1,6 +1,6 @@
 import { padAt } from '../sim/systems/towers';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
-import { BUILD_HOLD_MS } from './keyboard';
+import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
 
 /** What we read from a browser Gamepad each frame (kept plain so it can be tested without a DOM). */
 export interface PadSnapshot {
@@ -58,7 +58,11 @@ export class PadControls {
   }
 
   onEvents(events: SimEvent[]): void {
-    if (events.some(e => (e.type === 'towerBuilt' || e.type === 'towerUpgrade') && e.padId === this.menuPad)) this.closeMenu();
+    if (events.some(e => (e.type === 'towerBuilt' || e.type === 'towerUpgrade') && e.padId === this.menuPad)) {
+      this.closeMenu();
+      // holding on builds the tower, without opening the menu again
+      this.xSince = null;
+    }
   }
 
   releaseAll(): void {
@@ -112,8 +116,13 @@ export class PadControls {
     // X is the E key: a short tap gets in or out of a kart, holding plants, builds, repairs, helps up
     if (press(PAD.X)) this.xSince = now;
     // letting go keeps an open build menu open, so the d-pad can be used without holding X
+    let tapPick = false;
     if (!down(PAD.X) && this.prev[PAD.X]) {
-      if (this.xSince !== null && now - this.xSince < BUILD_HOLD_MS) out.push({ type: 'use', playerId });
+      // with the build menu open a tap of X builds the preselected tower; otherwise a tap is "use"
+      if (this.xSince !== null && now - this.xSince < BUILD_HOLD_MS) {
+        if (this.buildMenuOpen) tapPick = true;
+        else out.push({ type: 'use', playerId });
+      }
       this.xSince = null;
     }
     if (down(PAD.X)) out.push({ type: 'hold', playerId });
@@ -136,11 +145,12 @@ export class PadControls {
       this.closeMenu();
     }
     if (this.buildMenuOpen && this.menuPad !== null) {
-      for (const [b, kind] of DPAD_TOWERS) {
-        if (!press(b)) continue;
-        out.push(tower ? { type: 'upgrade', playerId, padId: this.menuPad } : { type: 'build', playerId, padId: this.menuPad, tower: kind });
-        break;
-      }
+      let pick: TowerKind | null = null;
+      for (const [b, kind] of DPAD_TOWERS) if (press(b)) pick ??= kind;
+      if (tapPick) pick ??= DEFAULT_TOWER;
+      // still holding X on an empty pad: build the preselected tower right away
+      if (!tower && this.xSince !== null && now - this.xSince >= AUTO_BUILD_MS) pick ??= DEFAULT_TOWER;
+      if (pick) out.push(tower ? { type: 'upgrade', playerId, padId: this.menuPad } : { type: 'build', playerId, padId: this.menuPad, tower: pick });
     }
     this.remember(pad);
     return out;

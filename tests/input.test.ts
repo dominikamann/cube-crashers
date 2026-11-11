@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Keyboard } from '../src/input/keyboard';
+import { AUTO_BUILD_MS, Keyboard } from '../src/input/keyboard';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 
@@ -57,13 +57,16 @@ describe('Keyboard', () => {
     expect(k.buildMenuOpen).toBe(false);
   });
 
-  it('closes the menu when E is released', () => {
+  it('keeps the menu open when E is released and closes it when leaving the pad', () => {
     const s = onPad();
     const k = new Keyboard();
     k.keyDown('KeyE', 0);
     k.commands(s, 0, 200);
-    k.keyUp('KeyE');
-    k.commands(s, 0, 210);
+    k.keyUp('KeyE', 250);
+    k.commands(s, 0, 260);
+    expect(k.buildMenuOpen).toBe(true);
+    s.players[0].pos.x += 4;
+    k.commands(s, 0, 300);
     expect(k.buildMenuOpen).toBe(false);
   });
 
@@ -80,6 +83,27 @@ describe('Keyboard', () => {
     expect(k.buildMenuOpen).toBe(true);
     k.keyDown('Digit1', 450);
     expect(k.commands(s, 0, 500)).toContainEqual({ type: 'upgrade', playerId: 0, padId: PAD });
+  });
+
+  it('the first tower is preselected: keep holding E to build it, or tap E again', () => {
+    const held = onPad();
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    k.commands(held, 0, 200);
+    expect(k.buildMenuOpen).toBe(true);
+    expect(k.commands(held, 0, AUTO_BUILD_MS + 10)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
+
+    const tapped = onPad();
+    const k2 = new Keyboard();
+    k2.keyDown('KeyE', 0);
+    k2.commands(tapped, 0, 200);
+    k2.keyUp('KeyE', 250);
+    expect(k2.buildMenuOpen).toBe(true);
+    k2.keyDown('KeyE', 400);
+    k2.keyUp('KeyE', 450);
+    const cmds = k2.commands(tapped, 0, 460);
+    expect(cmds).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
+    expect(cmds).not.toContainEqual({ type: 'use', playerId: 0 });
   });
 
   it('builds via a clicked card while the menu is open', () => {

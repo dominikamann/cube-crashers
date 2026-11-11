@@ -90,6 +90,24 @@ describe('PadControls', () => {
     expect(c.commands(pad({ down: [X, UP] }), s, 0, 250)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'popcorn' });
   });
 
+  it('the first tower is preselected: keep holding X to build it, or tap X again', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].pos = { ...floor01.pads[PAD].pos };
+    const c = new PadControls();
+    c.commands(pad({ down: [X] }), s, 0, 0);
+    c.commands(pad({ down: [X] }), s, 0, 200);
+    expect(c.commands(pad({ down: [X] }), s, 0, 710)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
+
+    const c2 = new PadControls();
+    c2.commands(pad({ down: [X] }), s, 0, 0);
+    c2.commands(pad({ down: [X] }), s, 0, 200);
+    c2.commands(pad(), s, 0, 250);
+    c2.commands(pad({ down: [X] }), s, 0, 300);
+    const tap = c2.commands(pad(), s, 0, 350);
+    expect(tap).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
+    expect(tap).not.toContainEqual({ type: 'use', playerId: 0 });
+  });
+
   it('the build menu stays open after letting go of X; B closes it without dashing', () => {
     const s = createSim(floor01, 1);
     s.players[0].pos = { ...floor01.pads[PAD].pos };
