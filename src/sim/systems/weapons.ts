@@ -1,3 +1,6 @@
+import { PLAYER_RADIUS } from '../config/balance';
+import { rivals, VERSUS } from './versus';
+import { damagePlayer } from './player';
 import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWORD, WEAPONS, levelMul } from '../config/weapons';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
@@ -55,6 +58,13 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         if (d > radius + e.radius) continue;
         if (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot) continue;
         hitEnemy(s, e, damage, w.kind, p.id);
+      }
+      // versus: the blade cuts rivals in the arc too
+      for (const r of rivals(s, p.id)) {
+        const dx = r.pos.x - p.pos.x, dz = r.pos.z - p.pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d > radius + PLAYER_RADIUS || (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot)) continue;
+        damagePlayer(s, r, damage * VERSUS.damageScale, 'other', p.id);
       }
       return true;
     }

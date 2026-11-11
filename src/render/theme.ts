@@ -208,7 +208,10 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         wallB: 0x1b62a3,
         fillColor: 0x2bf0ff,
         fillIntensity: 0.55,
-        glow: 2,
+        // calmer than the city at night: headlights and neon would flood the track
+        glow: 1.1,
+        bloomStrength: 0.25,
+        bloomThreshold: 0.8,
       };
       return { day: raceLook, night: raceLook };
     }

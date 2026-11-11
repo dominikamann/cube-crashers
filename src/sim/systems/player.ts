@@ -27,12 +27,14 @@ import { dist } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
-import { updateFlight } from './rare';
+import { airborne, updateFlight } from './rare';
+import { rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
 
-export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other'): void {
+export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
-  amount *= DIFFICULTY[s.difficulty].enemyDamage;
+  // the difficulty is about monsters; between players every hit counts the same
+  if (!s.versus) amount *= DIFFICULTY[s.difficulty].enemyDamage;
   if (p.vehicleId !== null) {
     damageVehicle(s, p.vehicleId, amount);
     return;
@@ -47,6 +49,13 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
     s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp });
   }
   if (p.hp > 0) return;
+
+  if (s.versus) {
+    p.stats.downs++;
+    s.events.push({ type: 'playerDown', playerId: p.id });
+    versusDeath(s, p, attackerId);
+    return;
+  }
 
   s.stats.downs++;
   p.stats.downs++;
@@ -95,6 +104,9 @@ function stomp(s: SimState, p: Player): void {
     const k = STOMP_KNOCKBACK / Math.max(d, 0.2);
     e.knock.x += (e.pos.x - p.pos.x) * k;
     e.knock.z += (e.pos.z - p.pos.z) * k;
+  }  // versus: a stomp lands on rivals too
+  for (const r of rivals(s, p.id)) {
+    if (!airborne(r) && dist(p.pos, r.pos) <= radius + PLAYER_RADIUS) damagePlayer(s, r, damage * VERSUS.damageScale, 'other', p.id);
   }
 }
 

@@ -326,7 +326,12 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'raceLap':
       return one('comboUp', 1 + 0.1 * Math.min(e.lap, 6));
     case 'raceEnd':
+    case 'versusEnd':
       return one('gameWon');
+    case 'pvpKill':
+      return one('enemyKilled', 0.7);
+    case 'versusRound':
+      return one('elevatorOpen');
     case 'mazePower':
       return one('powerupPicked');
     case 'mazeGhost':

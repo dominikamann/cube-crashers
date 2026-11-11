@@ -4,6 +4,7 @@ import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
 import { HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
+import { rivals, VERSUS } from './versus';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
 import { spawnEnemy } from './enemies';
@@ -94,6 +95,12 @@ export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSour
 export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number): void {
   for (const e of targets(s)) {
     if (dist(pos, e.pos) <= radius + e.radius) damageEnemy(s, e, amount, source, byPlayerId);
+  }
+  // versus: blasts, puddles and areas of a player hurt their rivals as well
+  if (s.versus && byPlayerId !== undefined) {
+    for (const r of rivals(s, byPlayerId)) {
+      if (!airborne(r) && dist(pos, r.pos) <= radius + PLAYER_RADIUS) damagePlayer(s, r, amount * VERSUS.damageScale, 'explosion', byPlayerId);
+    }
   }
 }
 
@@ -228,6 +235,21 @@ export function updateProjectiles(s: SimState): void {
         break;
       }
       p.pierce--;
+    }
+    // versus: shots hit rivals (each player once per shot; player marks are negative so they never clash with enemy ids)
+    if (alive && s.versus && p.ownerId >= 0) {
+      for (const r of rivals(s, p.ownerId)) {
+        const mark = -1 - r.id;
+        // spawn-protected players let shots pass
+        if (p.hitIds.includes(mark) || airborne(r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        damagePlayer(s, r, p.damage * VERSUS.damageScale, 'shot', p.ownerId);
+        p.hitIds.push(mark);
+        if (p.pierce <= 0) {
+          alive = false;
+          break;
+        }
+        p.pierce--;
+      }
     }
     if (alive) keep.push(p);
   }

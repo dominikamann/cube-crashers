@@ -20,7 +20,9 @@ export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
-export type RunMode = 'run' | 'quick' | 'endless';
+export type RunMode = 'run' | 'quick' | 'endless' | 'versus';
+export type VersusMode = 'ffa' | 'team';
+export type VersusRule = 'score' | 'rounds';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -85,6 +87,8 @@ export interface PlayerStats {
 export interface Player {
   id: number;
   name: string;
+  /** versus with teams: 0 or 1 */
+  team?: 0 | 1;
   /** index into PLAYER_COLORS */
   color: number;
   pos: Vec2;
@@ -396,6 +400,24 @@ export interface RunState {
   maze?: MazeState | null;
 }
 
+export interface VersusState {
+  mode: VersusMode;
+  rule: VersusRule;
+  /** score race: kills to win (per player, or per team) */
+  limit: number;
+  /** score race: the match ends at this tick */
+  endsAt: number;
+  /** kills per player id */
+  scores: Record<number, number>;
+  teamScores: [number, number];
+  /** last cube standing: rounds won per player id (free for all) or team index */
+  roundWins: Record<number, number>;
+  /** between two rounds: the next one starts at this tick (0 while a round runs) */
+  roundBreakUntil: number;
+  round: number;
+  nextCrateAt: number;
+}
+
 export interface MazeState {
   /** tile indices that still hold a pixel */
   pixels: number[];
@@ -452,6 +474,9 @@ export type SimEvent =
   | { type: 'upgradeDenied'; padId: number; reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad'; playerId: number }
   | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
   | { type: 'raceLap'; playerId: number; lap: number }
+  | { type: 'pvpKill'; killerId: number | null; victimId: number }
+  | { type: 'versusRound'; winner: number | null; round: number }
+  | { type: 'versusEnd'; winners: number[] }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
   | { type: 'mazePower'; playerId: number }
@@ -546,6 +571,8 @@ export interface SimState {
   elevatorOpen: boolean;
   score: number;
   stats: RunStats;
+  /** a versus match (PvP), or null in the co-op modes */
+  versus?: VersusState | null;
   phase: 'playing' | 'won' | 'lost';
   look: 'day' | 'night';
   nextId: number;

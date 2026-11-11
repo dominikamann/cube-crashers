@@ -10,6 +10,7 @@ import { updateShaft } from './systems/shaft';
 import { updateRace } from './systems/race';
 import { updateLane } from './systems/lane';
 import { updateMaze } from './systems/maze';
+import { setupVersus, updateVersus } from './systems/versus';
 import { moveBoss, updateBoss } from './systems/boss';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
@@ -26,7 +27,7 @@ import { sampleStats } from './systems/stats';
 import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
-import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, WeaponKind } from './types';
+import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, VersusMode, VersusRule, WeaponKind } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % 6): Player {
   return {
@@ -93,6 +94,8 @@ export interface SimOptions {
   difficulty?: Difficulty;
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
+  /** versus (PvP): free for all or teams, score race or last cube standing */
+  versus?: { mode: VersusMode; rule: VersusRule };
   /** unlocked items (profile ids); leave out to allow everything */
   unlocked?: string[];
   /** LAN: the player ids and lobby colours, in lobby order */
@@ -160,7 +163,8 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
   }
-  setupFloor(s);
+  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score');
+  else setupFloor(s);
   return s;
 }
 
@@ -257,6 +261,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateRare(s);
   removeDead(s);
   updateOutcome(s);
+  updateVersus(s);
   sampleStats(s);
   s.tick++;
 }
