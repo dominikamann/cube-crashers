@@ -38,6 +38,7 @@ export interface Settings {
   versusBots: number;
 }
 
+const TIP_COUNT = 15;
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
 const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true, versusDiscovery: false };
@@ -295,6 +296,31 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     parent.append(a);
   }
 
+  /** A rotating tip on the title screen; it stops once the screen is gone. */
+  let tipAt = Math.floor(Math.random() * TIP_COUNT);
+  function tipBox(parent: HTMLElement) {
+    const box = document.createElement('div');
+    box.className = 'tip-box';
+    const line = document.createElement('span');
+    box.innerHTML = `<b>${t('tip.label')}</b>`;
+    box.append(line);
+    parent.append(box);
+    const next = () => {
+      line.textContent = t(`tip.${tipAt}` as 'tip.0');
+      tipAt = (tipAt + 1) % TIP_COUNT;
+    };
+    next();
+    const timer = window.setInterval(() => {
+      if (!box.isConnected) return window.clearInterval(timer);
+      box.classList.add('fade');
+      window.setTimeout(() => {
+        next();
+        box.classList.remove('fade');
+      }, 300);
+    }, 7000);
+    box.addEventListener('click', () => next());
+  }
+
   function creditsScreen() {
     show('title', s => {
       text(s, 'div', 'logo', t('title'));
@@ -514,6 +540,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         s.append(row);
         button(row, t('menu.lan'), lanScreen);
         button(row, t('menu.unlocks'), unlocksScreen);
+        tipBox(s);
         const foot = document.createElement('div');
         foot.className = 'foot';
         s.append(foot);
