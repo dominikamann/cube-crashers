@@ -3,4 +3,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('cubeCrashers', {
   saveRunLog: json => ipcRenderer.invoke('save-run-log', json),
+  lan: {
+    host: name => ipcRenderer.invoke('lan:host', name),
+    join: address => ipcRenderer.invoke('lan:join', address),
+    discover: () => ipcRenderer.invoke('lan:discover'),
+    stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
+    send: (to, data) => ipcRenderer.send('lan:send', to, data),
+    close: () => ipcRenderer.invoke('lan:close'),
+    on: cb => {
+      const listener = (_event, e) => cb(e);
+      ipcRenderer.on('lan:event', listener);
+      return () => ipcRenderer.removeListener('lan:event', listener);
+    },
+  },
 });
