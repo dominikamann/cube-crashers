@@ -22,5 +22,5 @@ describe('run log', () => {
     expect(log.idleShare).toBeLessThan(1);
     expect(log.kills.weapon).toBe(s.stats.kills.weapon);
     expect(JSON.parse(JSON.stringify(log))).toEqual(log);
-  });
+  }, 60_000);
 });

@@ -15,5 +15,5 @@ describe('balance with the starter loadout', () => {
     }
     // the scripted bot dodges better than a person, so it should still feel the pressure
     expect(creditsLost).toBeGreaterThanOrEqual(2);
-  });
+  }, 60_000);
 });

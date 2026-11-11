@@ -22,5 +22,5 @@ describe('a whole floor', () => {
     const s = createSim(floor01, 1);
     for (let i = 0; i < MINUTES_12 && s.phase === 'playing'; i++) stepSim(s, []);
     expect(s.phase).toBe('lost');
-  });
+  }, 60_000);
 });

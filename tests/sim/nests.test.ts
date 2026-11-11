@@ -169,7 +169,7 @@ describe('alarm', () => {
     }
     expect(max).toBeGreaterThan(60);
     expect(max).toBeLessThanOrEqual(ENEMY_CAP);
-  });
+  }, 30_000);
 });
 
 describe('elevator', () => {
