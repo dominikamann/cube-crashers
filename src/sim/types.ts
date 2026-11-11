@@ -119,7 +119,12 @@ export interface Crate {
 
 export interface Tower {
   id: number;
+  kind: TowerKind;
+  padId: number;
   pos: Vec2;
+  hp: number;
+  maxHp: number;
+  cooldown: number;
 }
 
 export type SpawnKind = EnemyKind | 'crate';

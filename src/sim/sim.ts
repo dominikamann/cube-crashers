@@ -5,6 +5,7 @@ import { updateCrates } from './systems/crates';
 import { updateEnemies } from './systems/enemies';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
+import { tryBuild, updateTowers } from './systems/towers';
 import { updateWaves } from './systems/waves';
 import { updateWeapons } from './systems/weapons';
 import type { Command, MapDef, SimState, Vec2 } from './types';
@@ -52,12 +53,14 @@ export function stepSim(s: SimState, commands: Command[]): void {
   const moves = new Map<number, Vec2>();
   for (const c of commands) {
     if (c.type === 'move') moves.set(c.playerId, c.dir);
+    else if (c.type === 'build') tryBuild(s, c.playerId, c.padId, c.tower);
   }
   updatePlayers(s, moves);
   updateWaves(s);
   updateEnemies(s);
   updateWeapons(s);
   updateProjectiles(s);
+  updateTowers(s);
   updateAreas(s);
   updateCrates(s);
   removeDead(s);
