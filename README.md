@@ -14,7 +14,7 @@ retro arcade monsters roam a big voxel map and hunt you down. Blow up their glit
 the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
 Crash Kart and plough through the pixels. Play alone or with up to five friends on your LAN.
 
-![Gameplay: holding a nest zone on the Arcade Plaza](docs/design/gameplay.gif)
+![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
 <table>
   <tr>
@@ -26,11 +26,11 @@ Crash Kart and plough through the pixels. Play alone or with up to five friends 
     <td align="center"><sub>Mega Block Arena: the first boss</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/neon.gif" alt="Neon City at night" /></td>
+    <td><img src="docs/design/gameplay.gif" alt="Holding a nest zone on the Arcade Plaza" /></td>
     <td><img src="docs/design/rooftop.gif" alt="Boss fight against the Segment Worm on the rooftop" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Neon City: always night, more elites</sub></td>
+    <td align="center"><sub>Arcade Plaza: hold the zone while the hordes storm in</sub></td>
     <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
   </tr>
   <tr>
