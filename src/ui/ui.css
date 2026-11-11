@@ -149,6 +149,18 @@ html, body {
 .vote-card .name { font-size: 13px; color: var(--gold); }
 .vote-card .map { color: var(--cyan); }
 .vote-card .count { color: var(--pink); letter-spacing: 3px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(150px, 220px)); gap: 14px; margin-top: clamp(8px, 3vh, 28px); }
+@media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, minmax(150px, 220px)); } }
+.tile { font-family: inherit; color: var(--shadow); background: var(--cyan); border: 3px solid var(--shadow); box-shadow: 0 6px 0 var(--shadow); padding: 18px 12px; cursor: pointer; text-align: center; min-height: 110px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.tile.main { background: var(--gold); }
+.tile .name { font-size: clamp(13px, 1.5vw, 17px); }
+.tile .sub { font-size: 9px; line-height: 1.6; opacity: 0.8; }
+.tile:hover:not(:disabled), .tile:focus-visible { background: #fff; outline: none; transform: translateY(-3px); }
+.tile:disabled { opacity: 0.5; cursor: default; }
+.screen.setup { gap: 14px; background: rgba(20, 16, 50, 0.78); }
+.setup-body { display: flex; flex-direction: column; gap: 14px; align-items: center; max-width: 760px; }
+.setup-row { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.setup-label { font-size: 10px; color: var(--cyan); }
 .title-main .maps { margin-top: 2px; max-width: 640px; }
 .chip.small { font-size: 9px; padding: 6px 9px; }
 .title-main .players { margin-bottom: clamp(14px, 2.5vh, 22px); }

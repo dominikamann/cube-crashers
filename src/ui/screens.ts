@@ -326,7 +326,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       colors.textContent = t('settings.color');
       const drawColors = () => {
         colors.querySelectorAll('button').forEach(b => b.remove());
-        [null, 0, 1, 2, 3, 4, 5].forEach(c => {
+        [null, 0, 1, 2, 3, 4, 5, 6, 7].forEach(c => {
           const b = document.createElement('button');
           b.className = `swatch${settings.color === c ? ' on' : ''}`;
           if (c === null) b.textContent = 'A';
@@ -348,7 +348,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
-  let titleMode: 'run' | 'quick' | 'endless' | 'versus' = 'run';
   /** arenas for versus: the floors with room to fight */
   const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
   /** maps for "Single floor": the floors of the tower in their order */
@@ -364,150 +363,92 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
+  /** the page behind a title tile: only the options that mode needs, then Start */
+  function setupScreen(mode: 'run' | 'quick' | 'versus' | 'endless') {
+    back = () => setupScreen(mode);
+    show('setup', s => {
+      text(s, 'h2', '', t(`mode.${mode}` as 'mode.run'));
+      const hint = { run: 'mode.runHint', quick: 'mode.quickHint', versus: 'mode.versusHint', endless: 'mode.endlessHint' }[mode];
+      text(s, 'p', 'mode-hint', t(hint as 'mode.runHint'));
+      const body = document.createElement('div');
+      body.className = 'setup-body';
+      s.append(body);
+      /** a labelled row of choices */
+      const choose = <V,>(title: string, items: { label: string; value: V }[], current: V, pick: (v: V) => void, small = false) => {
+        const group = document.createElement('div');
+        group.className = 'setup-row';
+        text(group, 'div', 'setup-label', title);
+        const row = document.createElement('div');
+        row.className = 'chips';
+        for (const it of items) {
+          const c = document.createElement('button');
+          c.className = `chip${small ? ' small' : ''}${it.value === current ? ' on' : ''}`;
+          c.textContent = it.label;
+          c.addEventListener('click', () => {
+            actions.click();
+            pick(it.value);
+            changed();
+            setupScreen(mode);
+          });
+          row.append(c);
+        }
+        group.append(row);
+        body.append(group);
+      };
+      if (mode === 'quick') {
+        if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
+        choose(t('setup.map'), QUICK_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : ''), value: id })), settings.quickMap, v => (settings.quickMap = v), true);
+      }
+      if (mode === 'versus') {
+        choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
+        choose(t('setup.rule'), [{ label: t('versus.score'), value: 'score' as const }, { label: t('versus.rounds'), value: 'rounds' as const }], settings.versusRule, v => (settings.versusRule = v));
+        text(body, 'p', 'mode-hint', t(settings.versusRule === 'score' ? 'versus.scoreHint' : 'versus.roundsHint'));
+        if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
+        choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
+        const humans = settings.localPlayers;
+        choose(t('setup.bots'), [0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: String(n), value: n })), settings.versusBots, v => (settings.versusBots = v));
+      } else {
+        choose(t('settings.difficulty'), DIFFICULTIES.map(d => ({ label: t(`difficulty.${d}` as 'difficulty.medium'), value: d })), settings.difficulty, v => (settings.difficulty = v), true);
+      }
+      choose(t('setup.players'), [{ label: t('menu.onePlayer'), value: 1 as const }, { label: t('menu.twoPlayers'), value: 2 as const }], settings.localPlayers, v => (settings.localPlayers = v));
+      const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
+      const row = document.createElement('div');
+      row.className = 'row2';
+      s.append(row);
+      button(row, t('setup.start'), start, true);
+      button(row, t('menu.back'), () => api.title());
+    });
+  }
+
   const api: Screens = {
     title() {
       back = api.title;
       show('title', s => {
         text(s, 'div', 'logo', t('title'));
-        const main = document.createElement('div');
-        main.className = 'title-main';
-        s.append(main);
-        const modes: { id: 'run' | 'quick' | 'endless' | 'versus'; label: string; hint: string; locked: boolean }[] = [
-          { id: 'run', label: t('mode.run'), hint: t('mode.runHint'), locked: false },
-          { id: 'quick', label: t('mode.quick'), hint: t('mode.quickHint'), locked: false },
-          { id: 'endless', label: t('mode.endless'), hint: t('mode.endlessHint'), locked: !profile.unlocked.includes('endless') },
-          { id: 'versus', label: t('mode.versus'), hint: t('mode.versusHint'), locked: false },
+        // four big tiles; each opens its own page with just the options it needs
+        const tiles = document.createElement('div');
+        tiles.className = 'tiles';
+        s.append(tiles);
+        const modes: { id: 'run' | 'quick' | 'versus' | 'endless'; label: string; sub: string; locked: boolean }[] = [
+          { id: 'run', label: t('mode.run'), sub: t('tile.run'), locked: false },
+          { id: 'quick', label: t('mode.quick'), sub: t('tile.quick'), locked: false },
+          { id: 'versus', label: t('mode.versus'), sub: t('tile.versus'), locked: false },
+          { id: 'endless', label: t('mode.endless'), sub: t('tile.endless'), locked: !profile.unlocked.includes('endless') },
         ];
-        if (modes.find(m => m.id === titleMode)?.locked) titleMode = 'run';
-        const play = button(main, t('menu.play'), () => (titleMode === 'quick' ? actions.quick : titleMode === 'endless' ? actions.endless : titleMode === 'versus' ? actions.versus : actions.play)(), true);
-        play.classList.add('play');
-        const chips = document.createElement('div');
-        chips.className = 'chips';
-        const hint = text(main, 'p', 'mode-hint', '');
-        main.insertBefore(chips, hint);
-        const drawChips = () => {
-          chips.innerHTML = '';
-          for (const m of modes) {
-            const c = document.createElement('button');
-            c.className = `chip${m.id === titleMode ? ' on' : ''}`;
-            c.textContent = m.locked ? `${m.label} \u{1F512}` : m.label;
-            c.disabled = m.locked;
-            if (m.locked) c.title = t('mode.locked');
-            c.addEventListener('click', () => {
-              actions.click();
-              titleMode = m.id;
-              drawChips();
-            });
-            chips.append(c);
-          }
-          hint.textContent = modes.find(m => m.id === titleMode)!.hint;
-          drawVersus();
-          diffRow.style.display = titleMode === 'versus' ? 'none' : '';
-          // "Single floor": pick any floor of the tower, bosses included
-          maps.innerHTML = '';
-          maps.style.display = titleMode === 'quick' ? '' : 'none';
-          if (titleMode !== 'quick') return;
-          if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
-          for (const id of QUICK_MAPS) {
-            const c = document.createElement('button');
-            c.className = `chip small${id === settings.quickMap ? ' on' : ''}`;
-            c.textContent = t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : '');
-            c.addEventListener('click', () => {
-              actions.click();
-              settings.quickMap = id;
-              changed();
-              drawChips();
-            });
-            maps.append(c);
-          }
-        };
-        const maps = document.createElement('div');
-        maps.className = 'chips maps';
-        main.insertBefore(maps, hint.nextSibling);
-        // Versus: mode, rule, map and bots
-        const vs = document.createElement('div');
-        vs.className = 'versus-opts';
-        main.insertBefore(vs, maps.nextSibling);
-        const chipRow = (items: { label: string; on: boolean; pick: () => void }[], small = false) => {
-          const row = document.createElement('div');
-          row.className = 'chips';
-          for (const it of items) {
-            const c = document.createElement('button');
-            c.className = `chip${small ? ' small' : ''}${it.on ? ' on' : ''}`;
-            c.textContent = it.label;
-            c.addEventListener('click', () => {
-              actions.click();
-              it.pick();
-              changed();
-              drawVersus();
-            });
-            row.append(c);
-          }
-          vs.append(row);
-        };
-        function drawVersus() {
-          vs.innerHTML = '';
-          vs.style.display = titleMode === 'versus' ? '' : 'none';
-          if (titleMode !== 'versus') return;
-          chipRow([
-            { label: t('versus.ffa'), on: settings.versusMode === 'ffa', pick: () => (settings.versusMode = 'ffa') },
-            { label: t('versus.team'), on: settings.versusMode === 'team', pick: () => (settings.versusMode = 'team') },
-          ]);
-          chipRow([
-            { label: t('versus.score'), on: settings.versusRule === 'score', pick: () => (settings.versusRule = 'score') },
-            { label: t('versus.rounds'), on: settings.versusRule === 'rounds', pick: () => (settings.versusRule = 'rounds') },
-          ]);
-          text(vs, 'p', 'mode-hint', t(settings.versusRule === 'score' ? 'versus.scoreHint' : 'versus.roundsHint'));
-          if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
-          chipRow(VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), on: settings.versusMap === id, pick: () => (settings.versusMap = id) })), true);
-          const humans = settings.localPlayers;
-          chipRow([0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: t('versus.bots', { n }), on: settings.versusBots === n, pick: () => (settings.versusBots = n) })), true);
+        for (const m of modes) {
+          const tile = document.createElement('button');
+          tile.className = `tile${m.id === 'run' ? ' main' : ''}`;
+          tile.disabled = m.locked;
+          tile.innerHTML = `<div class="name">${m.label}${m.locked ? ' \u{1F512}' : ''}</div><div class="sub">${m.locked ? t('mode.locked') : m.sub}</div>`;
+          tile.addEventListener('click', () => {
+            actions.click();
+            setupScreen(m.id);
+          });
+          tiles.append(tile);
         }
-        const diff = document.createElement('div');
-        diff.className = 'stepper txt';
-        const diffRow = diff;
-        const prev = document.createElement('button');
-        prev.className = 'chip';
-        prev.textContent = '\u25C0';
-        const label = document.createElement('span');
-        const next = document.createElement('button');
-        next.className = 'chip';
-        next.textContent = '\u25B6';
-        const step = (dir: number) => {
-          actions.click();
-          settings.difficulty = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + dir + DIFFICULTIES.length) % DIFFICULTIES.length];
-          label.textContent = diffLabel(settings.difficulty);
-          changed();
-        };
-        prev.addEventListener('click', () => step(-1));
-        next.addEventListener('click', () => step(1));
-        label.textContent = diffLabel(settings.difficulty);
-        diff.append(prev, label, next);
-        main.append(diff);
-        drawChips();
-        // one or two players on this computer (two = split screen, player 2 needs a controller)
-        const who = document.createElement('div');
-        who.className = 'chips players';
-        const drawWho = () => {
-          who.innerHTML = '';
-          for (const n of [1, 2] as const) {
-            const c = document.createElement('button');
-            c.className = `chip${settings.localPlayers === n ? ' on' : ''}`;
-            c.textContent = t(n === 1 ? 'menu.onePlayer' : 'menu.twoPlayers');
-            c.addEventListener('click', () => {
-              actions.click();
-              settings.localPlayers = n;
-              changed();
-              drawWho();
-            });
-            who.append(c);
-          }
-        };
-        drawWho();
-        main.append(who);
         const row = document.createElement('div');
         row.className = 'row2';
-        main.append(row);
+        s.append(row);
         button(row, t('menu.lan'), lanScreen);
         button(row, t('menu.unlocks'), unlocksScreen);
         const foot = document.createElement('div');
