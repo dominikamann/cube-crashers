@@ -1,3 +1,4 @@
+import { carryingCube } from './versus';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
@@ -90,7 +91,8 @@ function toggle(s: SimState, p: Player): void {
     } else p.vehicleId = null;
     return;
   }
-  if (p.air > 0 || p.dashTicks > 0) return;
+  // a cube carrier walks
+  if (p.air > 0 || p.dashTicks > 0 || carryingCube(s, p)) return;
   const v = s.vehicles
     .filter(x => x.driverId === null && dist(x.pos, p.pos) <= KART.enterRange)
     .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))[0];

@@ -5,6 +5,7 @@ import { dist } from '../util';
 import { placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
+import { spawnHorde } from './hordes';
 
 export const VERSUS = {
   /** score race: back in the game this long after going down */
@@ -26,6 +27,18 @@ export const VERSUS = {
   /** a new crate shows up this often while there are fewer than `maxCrates` */
   crateEveryTicks: 12 * TICK_RATE,
   maxCrates: 4,
+  /** king of the cube */
+  kingRadius: 3,
+  kingMoveTicks: 45 * TICK_RATE,
+  kingLimit: { ffa: 60, team: 100 },
+  /** capture the cube */
+  captureLimit: 3,
+  captureMinutes: 8,
+  /** carrying a cube slows you down */
+  carrySpeed: 0.8,
+  touch: 1.1,
+  /** chaos: a horde every so often */
+  chaosEveryTicks: 20 * TICK_RATE,
 };
 
 /** what a weapon hit worth `amount` against monsters does to a player */
@@ -44,6 +57,23 @@ export function rivals(s: SimState, ownerId: number): Player[] {
 /** places to (re)spawn: the start, waypoints and vehicle spots of the map */
 function spawnSpots(s: SimState): Vec2[] {
   return [s.map.spawn, ...s.map.waypoints, ...s.map.vehicleSpots, ...s.map.powerSpots];
+}
+
+/** a free spot close to a team's base, apart from players already placed there */
+function nearBase(s: SimState, base: Vec2, placed: Player[]): Vec2 {
+  for (let r = 1.5; r < 6; r += 0.5) {
+    for (let a = 0; a < 8; a++) {
+      const at = { x: base.x + Math.cos((a * Math.PI) / 4) * r, z: base.z + Math.sin((a * Math.PI) / 4) * r };
+      if (isFree(s.map, at, PLAYER_RADIUS, BLOCKS_WALKER) && placed.every(o => dist(o.pos, at) > 1)) return at;
+    }
+  }
+  return nearestFree(s.map, base, PLAYER_RADIUS, BLOCKS_WALKER);
+}
+
+/** where the king zone can be: nest spots, plazas and power spots of the map */
+function kingSpots(s: SimState): Vec2[] {
+  const list = [...s.map.nestSpots.map(n => n.pos), ...s.map.powerSpots];
+  return list.length > 0 ? list : [s.map.spawn];
 }
 
 /** the spot furthest from every player who could hurt `p` */
@@ -70,7 +100,9 @@ function equip(p: Player): void {
 }
 
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
-export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule): void {
+export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false): void {
+  // capture the cube needs two teams
+  if (rule === 'capture') mode = 'team';
   s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
   s.nests = [];
   s.boss = null;
@@ -85,7 +117,29 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule): vo
     roundBreakUntil: 0,
     round: 1,
     nextCrateAt: s.tick + VERSUS.crateEveryTicks,
+    chaos,
+    nextHordeAt: s.tick + VERSUS.chaosEveryTicks,
+    king: null,
+    flags: null,
   };
+  const v = s.versus;
+  if (rule === 'king') {
+    v.limit = VERSUS.kingLimit[mode];
+    v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: 0 };
+  }
+  if (rule === 'capture') {
+    v.limit = VERSUS.captureLimit;
+    v.endsAt = s.tick + VERSUS.captureMinutes * 60 * TICK_RATE;
+    // the two bases: the pair of places furthest apart
+    const spots = spawnSpots(s);
+    let a = spots[0], b = spots[1], best = -1;
+    for (const x of spots) for (const y of spots) if (dist(x, y) > best) {
+      best = dist(x, y);
+      a = x;
+      b = y;
+    }
+    v.flags = [a, b].map(base => ({ base: { ...base }, pos: { ...base }, carrier: null }));
+  }
   s.players.forEach((p, i) => {
     // teams wear their colours: red (suit colour 1) and blue (suit colour 0)
     if (mode === 'team') {
@@ -111,7 +165,9 @@ function startRound(s: SimState): void {
     p.downUntil = null;
     p.reviveUntil = null;
     p.hp = p.maxHp;
-    p.pos = safeSpawn(s, p, placed);
+    // capture the cube: each team starts at its own base
+    const base = s.versus?.flags?.[p.team ?? 0]?.base;
+    p.pos = base && s.versus?.rule === 'capture' ? nearBase(s, base, placed) : safeSpawn(s, p, placed);
     p.safePoint = { ...p.pos };
     p.invulnUntil = s.tick + VERSUS.spawnInvulnTicks;
     placed.push(p);
@@ -134,6 +190,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     if (car) car.driverId = null;
     p.vehicleId = null;
   }
+  dropCube(s, p);
   equip(p);
   p.air = 0;
   p.dashTicks = 0;
@@ -144,7 +201,74 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   }
   p.downUntil = s.tick + VERSUS.respawnTicks;
   p.invulnUntil = p.downUntil + VERSUS.spawnInvulnTicks;
-  p.safePoint = safeSpawn(s, p, s.players.filter(o => o !== p && o.downUntil === null));
+  const base = v.rule === 'capture' ? v.flags?.[p.team ?? 0]?.base : undefined;
+  p.safePoint = base ? nearBase(s, base, []) : safeSpawn(s, p, s.players.filter(o => o !== p && o.downUntil === null));
+}
+
+/** the cube `p` carries falls where they stand */
+function dropCube(s: SimState, p: Player): void {
+  const flags = s.versus?.flags;
+  if (!flags) return;
+  flags.forEach((f, team) => {
+    if (f.carrier !== p.id) return;
+    f.carrier = null;
+    f.pos = { ...p.pos };
+    s.events.push({ type: 'cubeDropped', team: team as 0 | 1, pos: { ...p.pos } });
+  });
+}
+
+/** whether `p` is carrying a cube (slower, no flying, no karts) */
+export function carryingCube(s: SimState, p: Player): boolean {
+  return !!s.versus?.flags?.some(f => f.carrier === p.id);
+}
+
+function updateKing(s: SimState): void {
+  const v = s.versus!;
+  const k = v.king!;
+  if (s.tick >= k.nextMoveAt) {
+    const spots = kingSpots(s);
+    k.spot = (k.spot + 1 + Math.floor(s.rng.next() * Math.max(1, spots.length - 1))) % spots.length;
+    k.pos = { ...spots[k.spot] };
+    k.nextMoveAt = s.tick + VERSUS.kingMoveTicks;
+    s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
+  }
+  // one point per full second in the zone
+  if ((s.tick + 1) % TICK_RATE !== 0) return;
+  const inside = s.players.filter(p => p.downUntil === null && dist(p.pos, k.pos) <= k.radius);
+  const sides = new Set(inside.map(p => side(s, p)));
+  if (sides.size !== 1) return;
+  for (const p of inside) v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
+  if (v.mode === 'team') v.teamScores[inside[0].team ?? 0]++;
+}
+
+function updateFlags(s: SimState): void {
+  const v = s.versus!;
+  const flags = v.flags!;
+  for (const p of s.players) {
+    if (p.downUntil !== null || p.team === undefined) continue;
+    const own = flags[p.team];
+    const enemy = flags[1 - p.team];
+    // carried cubes move with their carrier
+    if (enemy.carrier === p.id) enemy.pos = { ...p.pos };
+    // touch the enemy cube: take it (not from a kart)
+    if (enemy.carrier === null && p.vehicleId === null && dist(enemy.pos, p.pos) <= VERSUS.touch) {
+      enemy.carrier = p.id;
+      s.events.push({ type: 'cubeTaken', team: (1 - p.team) as 0 | 1, playerId: p.id });
+    }
+    // touch the own cube lying out in the field: it goes home
+    if (own.carrier === null && dist(own.pos, own.base) > 0.01 && dist(own.pos, p.pos) <= VERSUS.touch) {
+      own.pos = { ...own.base };
+      s.events.push({ type: 'cubeReturned', team: p.team });
+    }
+    // home with the enemy cube while the own one is at home: a capture
+    if (enemy.carrier === p.id && dist(p.pos, own.base) <= VERSUS.touch * 1.5 && own.carrier === null && dist(own.pos, own.base) < 0.01) {
+      enemy.carrier = null;
+      enemy.pos = { ...enemy.base };
+      v.teamScores[p.team]++;
+      v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
+      s.events.push({ type: 'cubeCaptured', team: p.team, playerId: p.id });
+    }
+  }
 }
 
 /** who is ahead: player ids (free for all) or the members of the leading team */
@@ -177,7 +301,14 @@ export function updateVersus(s: SimState): void {
     if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) } });
   }
 
-  if (v.rule === 'score') {
+  // chaos: monster hordes join the fight
+  if (v.chaos && s.tick >= (v.nextHordeAt ?? 0) && s.map.waypoints.length > 0) {
+    v.nextHordeAt = s.tick + VERSUS.chaosEveryTicks;
+    if (s.enemies.length < 40) spawnHorde(s, s.rng.pick(s.map.waypoints), [{ kind: 'blob', count: 4 }, { kind: 'hunter', count: 2 }], { rush: true });
+  }
+  if (v.rule === 'king') updateKing(s);
+  if (v.rule === 'capture') updateFlags(s);
+  if (v.rule !== 'rounds') {
     const reached = v.mode === 'team' ? v.teamScores.some(x => x >= v.limit) : Object.values(v.scores).some(x => x >= v.limit);
     if (reached || s.tick >= v.endsAt) end(s, leaders(s));
     return;

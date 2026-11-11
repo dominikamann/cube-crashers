@@ -262,6 +262,21 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     return { group, mat };
   });
 
+  // versus: the king of the cube zone (a glowing disc with a rim) and the teams' cubes with their bases
+  const kingRing = new THREE.Group();
+  const kingFillMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+  kingRing.add(new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), kingFillMat));
+  kingRing.add(new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), glowMat(0xffcf3a, 2)));
+  kingRing.visible = false;
+  scene.add(kingRing);
+  const cubes = [0xff5a5f, 0x3d8bfd].map(color => {
+    const cube = box(0.8, 0.8, 0.8, glowMat(color, 1.6), 0, 0, 0);
+    const base = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.4, 32).rotateX(-Math.PI / 2), glowMat(color, 1.2));
+    cube.visible = base.visible = false;
+    scene.add(cube, base);
+    return { cube, base };
+  });
+
   // elevator: platform, and a light column once it is open
   const elevator = new THREE.Group();
   const plate = box(2.6, 0.12, 2.6, lambert(0x6a7088), 0, 0.06, 0);
@@ -490,6 +505,24 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       beaconMat.opacity = 0.22 + 0.1 * Math.sin(time * 4);
       plateGlow.emissiveIntensity = (s.elevatorOpen ? 2.5 : 0.3) * Math.min(theme.glow, 1.4);
 
+      // versus: the king zone and the two cubes with their bases
+      const vs = s.versus;
+      kingRing.visible = !!vs?.king;
+      if (vs?.king) {
+        kingRing.position.set(vs.king.pos.x, 0.06, vs.king.pos.z);
+        kingRing.scale.setScalar(vs.king.radius);
+        kingRing.rotation.y = time * 0.6;
+        kingFillMat.opacity = 0.22 + 0.08 * Math.sin(time * 4);
+      }
+      cubes.forEach((c, team) => {
+        const f = vs?.flags?.[team];
+        c.cube.visible = c.base.visible = !!f;
+        if (!f) return;
+        const carried = f.carrier !== null;
+        c.cube.position.set(f.pos.x, carried ? 2.2 : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
+        c.cube.rotation.set(time * 0.8, time * 1.3, 0);
+        c.base.position.set(f.base.x, 0.05, f.base.z);
+      });
       reticles.forEach((r, i) => {
         const p0 = i < localIds.length ? (s.players.find(p => p.id === localIds[i]) ?? (i === 0 ? s.players[0] : undefined)) : undefined;
         r.group.visible = !!p0 && p0.downUntil === null;

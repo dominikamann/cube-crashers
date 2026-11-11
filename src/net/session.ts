@@ -69,6 +69,7 @@ export class HostSession {
       this.pending.delete(peer);
       this.lastInput.delete(peer);
       if (this.sim) this.leftDuringRun.push(peer);
+      this.syncBots();
       this.broadcastLobby();
     });
   }
@@ -98,7 +99,24 @@ export class HostSession {
 
   setAutoFill(n: number): void {
     this.autoFill = Math.max(0, Math.min(MAX_PLAYERS, Math.floor(n)));
+    this.syncBots();
     this.broadcastLobby();
+  }
+
+  /** keeps the lobby at the auto-fill size: bots come in for missing humans and make way for new ones */
+  private syncBots(): void {
+    if (this.sim) return;
+    const humans = this.lobby.filter(p => !p.bot).length;
+    const want = this.autoFill === 0 ? 0 : Math.max(0, this.autoFill - humans);
+    let bots = this.lobby.filter(p => p.bot).length;
+    while (bots > want) {
+      this.lobby.splice(this.lobby.map(p => !!p.bot).lastIndexOf(true), 1);
+      bots--;
+    }
+    while (bots < want && this.lobby.length < MAX_PLAYERS) {
+      this.addBot(BOT_NAMES[(this.lobby.length + bots) % BOT_NAMES.length]);
+      bots++;
+    }
   }
 
   /** a bot joins the lobby (versus): it plays on the host */
@@ -203,6 +221,7 @@ export class HostSession {
       // what anyone in the lobby has unlocked is available to everyone
       for (const u of m.unlocked ?? []) this.unlocked.add(u);
       this.send(from, { type: 'welcome', playerId: from });
+      this.syncBots();
       this.broadcastLobby();
     } else if (m.type === 'input') {
       if (!this.sim || !this.lobby.some(p => p.id === from)) return;
@@ -217,6 +236,7 @@ export class HostSession {
       if (i >= 0) {
         this.lobby.splice(i, 1);
         if (this.sim) this.leftDuringRun.push(from);
+        this.syncBots();
         this.broadcastLobby();
       }
     }

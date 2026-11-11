@@ -116,13 +116,12 @@ function startGame() {
       saveSettings(settings);
     },
     connect: (target: string) => void joinGame(target),
-    addBot: () => host?.addBot(`Bot ${withDefaults({ name: '', color: null }).name}`),
-    removeBot: () => host?.removeBot(),
     startVote: () => host?.startVote(voteOptions()),
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
     setAutoFill: (n: number) => {
       autoFill = n;
       host?.setAutoFill(n);
+      lastLobby = '';
     },
     autoFill: () => autoFill,
   };
@@ -132,12 +131,13 @@ function startGame() {
     const maps = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
     const pick = (): VersusOption => ({
       mode: Math.random() < 0.5 ? 'ffa' : 'team',
-      rule: Math.random() < 0.6 ? 'score' : 'rounds',
+      rule: (['score', 'score', 'rounds', 'king', 'capture'] as const)[Math.floor(Math.random() * 5)],
       map: maps[Math.floor(Math.random() * maps.length)],
     });
-    const a = pick();
-    let b = pick();
-    while (b.map === a.map && b.mode === a.mode && b.rule === a.rule) b = pick();
+    const fix = (o: VersusOption): VersusOption => (o.rule === 'capture' ? { ...o, mode: 'team' } : o);
+    const a = fix(pick());
+    let b = fix(pick());
+    while (b.map === a.map && b.mode === a.mode && b.rule === a.rule) b = fix(pick());
     return [a, b];
   }
 
@@ -408,7 +408,7 @@ function startGame() {
     const colors = settings.color !== null ? [settings.color] : undefined;
     const map = FLOORS[settings.versusMap]?.map ?? floor01;
     const fixed = Number(params.get('seed'));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule } });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: settings.versusMode, rule: settings.versusRule, chaos: settings.versusChaos } });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
     enterPlay();
   }

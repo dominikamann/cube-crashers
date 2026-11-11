@@ -96,7 +96,7 @@ export interface SimOptions {
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
   /** versus (PvP): free for all or teams, score race or last cube standing */
-  versus?: { mode: VersusMode; rule: VersusRule };
+  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean };
   /** unlocked items (profile ids); leave out to allow everything */
   unlocked?: string[];
   /** LAN: the player ids and lobby colours, in lobby order */
@@ -164,7 +164,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
   }
-  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score');
+  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false);
   else setupFloor(s);
   return s;
 }

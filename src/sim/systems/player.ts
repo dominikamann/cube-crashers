@@ -28,7 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
-import { pvpDamage, rivals, versusDeath } from './versus';
+import { carryingCube, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
@@ -201,7 +201,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       }
     } else if (moveDir) {
       const boost = s.tick < p.boostUntil ? BOOST_FACTOR : 1;
-      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * Math.min(len, 1);
+      const carry = carryingCube(s, p) ? VERSUS.carrySpeed : 1;
+      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * carry * Math.min(len, 1);
       // in the air you clear barriers (low walls), only real walls stop you
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }

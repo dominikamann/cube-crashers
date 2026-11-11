@@ -1,3 +1,4 @@
+import { carryingCube } from './versus';
 import { PLAYER_RADIUS } from '../config/balance';
 import { JETPACK, RARE } from '../config/rare';
 import { BLOCKS_WALKER, hasLos, isFree, Tile, tileAt } from '../map/tilemap';
@@ -151,7 +152,8 @@ export function fireRare(s: SimState, p: Player): boolean {
 /** Flight on the jetpack; returns true while the player is flying this tick. */
 export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boolean {
   p.flyHold = wantsToFly ? p.flyHold + 1 : 0;
-  const canFly = wantsToFly && p.jetpack && p.jetFuel > 0 && (p.flying || p.flyHold >= JETPACK.takeoffTicks) && p.vehicleId === null && p.downUntil === null;
+  // a cube carrier cannot fly
+  const canFly = wantsToFly && !carryingCube(s, p) && p.jetpack && p.jetFuel > 0 && (p.flying || p.flyHold >= JETPACK.takeoffTicks) && p.vehicleId === null && p.downUntil === null;
   if (canFly) {
     p.flying = true;
     p.air = 0;

@@ -27,14 +27,16 @@ export interface Settings {
   quickMap: string;
   /** versus: free for all or teams, score race or last cube standing, the map and how many bots */
   versusMode: 'ffa' | 'team';
-  versusRule: 'score' | 'rounds';
+  versusRule: 'score' | 'rounds' | 'king' | 'capture';
+  /** versus: monster hordes join in */
+  versusChaos: boolean;
   versusMap: string;
   versusBots: number;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3 };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -148,8 +150,6 @@ export interface LanActions {
   leave(): void;
   setDifficulty(d: Difficulty): void;
   connect(target: string): void;
-  addBot(): void;
-  removeBot(): void;
   /** host: two versus cards to vote on */
   startVote(): void;
   vote(choice: 0 | 1): void;
@@ -401,8 +401,19 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (mode === 'versus') {
         choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
-        choose(t('setup.rule'), [{ label: t('versus.score'), value: 'score' as const }, { label: t('versus.rounds'), value: 'rounds' as const }], settings.versusRule, v => (settings.versusRule = v));
-        text(body, 'p', 'mode-hint', t(settings.versusRule === 'score' ? 'versus.scoreHint' : 'versus.roundsHint'));
+        choose(
+          t('setup.rule'),
+          (['score', 'rounds', 'king', 'capture'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
+          settings.versusRule,
+          v => {
+            settings.versusRule = v;
+            // capture the cube is a team game
+            if (v === 'capture') settings.versusMode = 'team';
+          },
+          true,
+        );
+        text(body, 'p', 'mode-hint', t(`versus.${settings.versusRule}Hint` as 'versus.scoreHint'));
+        choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
         if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
         choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
         const humans = settings.localPlayers;
@@ -555,27 +566,29 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           s.append(row);
           button(row, t('lobby.start'), lan.start, true);
           if (!vote) button(row, t('lobby.versus'), lan.startVote, true);
+          // one control for the bots: how many players the lobby is topped up to (bots show up right away)
           const bots = document.createElement('div');
-          bots.className = 'row2';
+          bots.className = 'stepper txt lobby-bots';
+          const sizes = [0, 2, 3, 4, 5, 6, 7, 8];
+          const at = Math.max(0, sizes.indexOf(lan.autoFill()));
+          const stepTo = (i: number) => {
+            actions.click();
+            lan.setAutoFill(sizes[Math.max(0, Math.min(sizes.length - 1, i))]);
+          };
+          const minus = document.createElement('button');
+          minus.className = 'chip';
+          minus.textContent = '\u2212';
+          minus.disabled = at === 0;
+          minus.addEventListener('click', () => stepTo(at - 1));
+          const count = document.createElement('span');
+          count.textContent = lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() });
+          const plus = document.createElement('button');
+          plus.className = 'chip';
+          plus.textContent = '+';
+          plus.disabled = at === sizes.length - 1;
+          plus.addEventListener('click', () => stepTo(at + 1));
+          bots.append(minus, count, plus);
           s.append(bots);
-          if (players.length < 8) button(bots, t('lobby.addBot'), lan.addBot).classList.add('small');
-          if (players.some(p => p.bot)) button(bots, t('lobby.removeBot'), lan.removeBot).classList.add('small');
-          // fill versus matches up with bots
-          const fill = document.createElement('div');
-          fill.className = 'chips';
-          for (const n of [0, 4, 6, 8]) {
-            const c = document.createElement('button');
-            c.className = `chip small${lan.autoFill() === n ? ' on' : ''}`;
-            c.textContent = n === 0 ? t('lobby.fillOff') : t('lobby.fill', { n });
-            c.addEventListener('click', () => {
-              actions.click();
-              lan.setAutoFill(n);
-              fill.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
-              c.classList.add('on');
-            });
-            fill.append(c);
-          }
-          s.append(fill);
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));

@@ -355,6 +355,21 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(winner === null ? t('versus.roundDraw', { round: e.round }) : t('versus.roundWon', { name: winner, round: e.round }), 'final');
             break;
           }
+          case 'cubeTaken':
+            toast(t('versus.cubeTaken', { name: s.players.find(x => x.id === e.playerId)?.name ?? '', team: t(e.team === 0 ? 'versus.redCube' : 'versus.blueCube') }), e.team === p.team ? 'warn' : 'good');
+            break;
+          case 'cubeDropped':
+            toast(t('versus.cubeDropped', { team: t(e.team === 0 ? 'versus.redCube' : 'versus.blueCube') }));
+            break;
+          case 'cubeReturned':
+            toast(t('versus.cubeReturned', { team: t(e.team === 0 ? 'versus.redCube' : 'versus.blueCube') }));
+            break;
+          case 'cubeCaptured':
+            toast(t('versus.cubeCaptured', { team: t(e.team === 0 ? 'versus.red' : 'versus.blue') }), 'final');
+            break;
+          case 'kingMoved':
+            toast(t('versus.kingMoved'), 'warn');
+            break;
           case 'versusEnd': {
             const team = s.versus?.mode === 'team' ? s.players.find(x => x.id === e.winners[0])?.team : undefined;
             const names = e.winners.map(id => s.players.find(x => x.id === id)?.name ?? '').join(' & ');

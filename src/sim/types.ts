@@ -22,7 +22,7 @@ export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft'
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus';
 export type VersusMode = 'ffa' | 'team';
-export type VersusRule = 'score' | 'rounds';
+export type VersusRule = 'score' | 'rounds' | 'king' | 'capture';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -418,6 +418,13 @@ export interface VersusState {
   roundBreakUntil: number;
   round: number;
   nextCrateAt: number;
+  /** monster hordes roam the arena too */
+  chaos?: boolean;
+  nextHordeAt?: number;
+  /** king of the cube: the zone, its radius and when it moves on */
+  king?: { pos: Vec2; radius: number; nextMoveAt: number; spot: number } | null;
+  /** capture the cube: each team's cube, its base, and who carries it */
+  flags?: { base: Vec2; pos: Vec2; carrier: number | null }[] | null;
 }
 
 export interface MazeState {
@@ -479,6 +486,11 @@ export type SimEvent =
   | { type: 'pvpKill'; killerId: number | null; victimId: number }
   | { type: 'versusRound'; winner: number | null; round: number }
   | { type: 'versusEnd'; winners: number[] }
+  | { type: 'cubeTaken'; team: 0 | 1; playerId: number }
+  | { type: 'cubeDropped'; team: 0 | 1; pos: Vec2 }
+  | { type: 'cubeReturned'; team: 0 | 1 }
+  | { type: 'cubeCaptured'; team: 0 | 1; playerId: number }
+  | { type: 'kingMoved'; pos: Vec2 }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
   | { type: 'mazePower'; playerId: number }

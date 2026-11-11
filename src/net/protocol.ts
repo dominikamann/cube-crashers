@@ -46,7 +46,7 @@ export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule }; mapId?: string }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean }; mapId?: string }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -60,10 +60,10 @@ const validPlayers = (x: unknown) =>
   Array.isArray(x) && x.length >= 1 && x.length <= MAX_PLAYERS && x.every(p => isObj(p) && isNum(p.id) && typeof p.name === 'string' && isNum(p.color));
 
 const validOption = (o: unknown) =>
-  isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && (o.rule === 'score' || o.rule === 'rounds') && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
+  isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && ['score', 'rounds', 'king', 'capture'].includes(o.rule as string) && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
 const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
-const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && (v.rule === 'score' || v.rule === 'rounds'));
+const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean'));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
 export function parseMessage(raw: string): Message | null {

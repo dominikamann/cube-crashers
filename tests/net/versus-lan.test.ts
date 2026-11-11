@@ -72,26 +72,34 @@ describe('versus on the LAN', () => {
 });
 
 describe('auto-fill with bots', () => {
-  it('a versus match is filled up with bots to the minimum, and a human joining takes a bot\'s place', () => {
+  it('the lobby is topped up with bots to the chosen size right away', () => {
     const { hub, host, cs } = lobby(1);
     host.setAutoFill(4);
-    host.startVote([
-      { mode: 'ffa', rule: 'score', map: 'neon' },
-      { mode: 'ffa', rule: 'score', map: 'candy' },
-    ]);
-    host.castVote(0);
-    cs[0].castVote(0);
     hub.flush();
-    expect(host.sim?.players).toHaveLength(4);
+    expect(host.lobby).toHaveLength(4);
     expect(host.lobby.filter(p => p.bot)).toHaveLength(2);
-    expect(cs[0].view?.players).toHaveLength(4);
+    expect(cs[0].lobby).toHaveLength(4);
+    host.setAutoFill(0);
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(0);
   });
 
-  it('a full lobby with bots still lets a human in: a bot makes room', () => {
+  it('a human joining takes a bot\'s place, a human leaving gets one back', () => {
     const { hub, host } = lobby(1);
-    for (let i = 0; i < 6; i++) host.addBot();
+    host.setAutoFill(4);
+    const late = new ClientSession(hub.client(), { name: 'Late' });
     hub.flush();
-    expect(host.lobby).toHaveLength(8);
+    expect(late.status).not.toBe('rejected');
+    expect(host.lobby).toHaveLength(4);
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(1);
+    late.leave();
+    hub.flush();
+    expect(host.lobby).toHaveLength(4);
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(2);
+  });
+
+  it('a full lobby with bots still lets a human in', () => {
+    const { hub, host } = lobby(1);
+    host.setAutoFill(8);
     const late = new ClientSession(hub.client(), { name: 'Late' });
     hub.flush();
     expect(late.status).not.toBe('rejected');
