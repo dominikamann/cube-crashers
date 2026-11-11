@@ -5,6 +5,7 @@ import { removeDead, updateAreas, updateMines, updateProjectiles } from './syste
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
 import { updateHordes } from './systems/hordes';
+import { setupFloor, updateAlarm, updateNests } from './systems/nests';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
@@ -47,7 +48,7 @@ export function createPlayer(id: number, pos: Vec2): Player {
 }
 
 export function createSim(map: FloorMap, seed: number): SimState {
-  return {
+  const s: SimState = {
     tick: 0,
     seed,
     rng: new Rng(seed),
@@ -86,6 +87,8 @@ export function createSim(map: FloorMap, seed: number): SimState {
     events: [],
     flow: null,
   };
+  setupFloor(s);
+  return s;
 }
 
 function emptyIntent(): Intent {
@@ -130,6 +133,8 @@ export function stepSim(s: SimState, commands: Command[]): void {
     }
   }
   updatePlayers(s, intents);
+  updateNests(s, intents);
+  updateAlarm(s);
   updateHordes(s);
   updateEnemies(s);
   updateWeapons(s, intents);
