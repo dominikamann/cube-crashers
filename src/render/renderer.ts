@@ -225,8 +225,20 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       fx.update(s, events, theme, frameDt, time);
 
       const p = actors.playerPos();
-      wantPos.set(p.x, 15, p.z + 11);
-      wantLook.set(p.x, 0, p.z - 2);
+      // in a boss fight the camera leans toward the boss so both stay in the picture
+      let ox = 0, oz = 0;
+      const boss = s.boss ? (s.boss.enemyId !== null ? s.enemies.find(e => e.id === s.boss!.enemyId)?.pos : s.enemies.find(e => e.id === s.boss!.worms[0]?.[0])?.pos) ?? s.boss.lastPos : null;
+      if (boss) {
+        const dx = boss.x - p.x, dz = boss.z - p.z;
+        const d = Math.hypot(dx, dz);
+        const lean = Math.min(d * 0.3, 3.5);
+        if (d > 0.01) {
+          ox = (dx / d) * lean;
+          oz = (dz / d) * lean;
+        }
+      }
+      wantPos.set(p.x + ox, 15, p.z + oz + 11);
+      wantLook.set(p.x + ox, 0, p.z + oz - 2);
       const k = 1 - Math.exp(-frameDt * 5);
       camPos.lerp(wantPos, k);
       camLook.lerp(wantLook, k);

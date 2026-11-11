@@ -45,8 +45,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const nestText = el('div', 'sub', runBox);
   const floorText = el('div', 'sub floor', runBox);
 
-  const alarmBox = el('div', 'hud-box hud-center txt', top);
-  el('div', '', alarmBox, t('hud.alarm'));
+  // the alarm sits in the left panel under the nests, so the top centre stays free for the view
+  const alarmBox = el('div', 'alarm-in', runBox);
+  el('div', 'sub', alarmBox, t('hud.alarm'));
   const alarmRow = el('div', 'alarm', alarmBox);
   const alarmEls = Array.from({ length: ALARM_MAX }, () => el('i', '', alarmRow));
   const alarmExtra = el('span', 'alarm-extra', alarmRow);
@@ -337,6 +338,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         }
       }
 
+      // the boss bar and the zone bar sit above the weapon bar; hints move up to make room
+      layer.classList.toggle('has-bar', !!s.boss || holdBox.style.display === '');
       if (s.boss) {
         bossBox.style.display = '';
         bossName.textContent = t(s.boss.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock');
