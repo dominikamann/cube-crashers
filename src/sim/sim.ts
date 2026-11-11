@@ -1,5 +1,8 @@
 import { Rng } from './rng';
+import { updateEnemies } from './systems/enemies';
+import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
+import { updateWaves } from './systems/waves';
 import type { Command, MapDef, SimState, Vec2 } from './types';
 
 export function createSim(map: MapDef, seed: number): SimState {
@@ -26,7 +29,7 @@ export function createSim(map: MapDef, seed: number): SimState {
     crates: [],
     towers: [],
     base: { hp: 20, maxHp: 20 },
-    wave: { index: 0 },
+    wave: { index: -1, spawnQueue: [], pauseUntil: 0 },
     boss: null,
     phase: 'playing',
     look: 'day',
@@ -36,11 +39,18 @@ export function createSim(map: MapDef, seed: number): SimState {
 }
 
 export function stepSim(s: SimState, commands: Command[]): void {
+  if (s.phase !== 'playing') {
+    s.events = [];
+    return;
+  }
   s.events = [];
   const moves = new Map<number, Vec2>();
   for (const c of commands) {
     if (c.type === 'move') moves.set(c.playerId, c.dir);
   }
   updatePlayers(s, moves);
+  updateWaves(s);
+  updateEnemies(s);
+  updateOutcome(s);
   s.tick++;
 }

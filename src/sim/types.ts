@@ -48,7 +48,13 @@ export interface Player {
 
 export interface Enemy {
   id: number;
+  kind: EnemyKind;
   pos: Vec2;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  slowUntil: number;
+  radius: number;
 }
 
 export interface Projectile {
@@ -71,8 +77,14 @@ export interface Tower {
   pos: Vec2;
 }
 
+export type SpawnKind = EnemyKind | 'crate';
+
 export interface WaveState {
+  /** 0-based index of the current wave, -1 before the first wave */
   index: number;
+  spawnQueue: { kind: SpawnKind; at: number }[];
+  /** tick at which the next wave starts, null while a wave is running */
+  pauseUntil: number | null;
 }
 
 export interface BossState {
