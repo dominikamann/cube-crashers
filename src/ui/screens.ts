@@ -21,7 +21,7 @@ export interface Settings {
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'medium', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null };
 
 export function loadSettings(): Settings {
   try {
