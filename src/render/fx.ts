@@ -39,6 +39,8 @@ export interface Fx {
   update(s: SimState, events: SimEvent[], theme: Theme, frameDt: number, time: number): void;
   /** camera offset for screen shake */
   shake(): THREE.Vector3;
+  /** fewer particles on low graphics settings */
+  setParticleScale(k: number): void;
 }
 
 export function createFx(scene: THREE.Scene): Fx {
@@ -64,7 +66,10 @@ export function createFx(scene: THREE.Scene): Fx {
   let rnd = 12345;
   const rand = () => ((rnd = (rnd * 16807) % 2147483647) / 2147483647);
 
+  let particleScale = 1;
+
   function burst(pos: Vec2, y: number, count: number, colors: number[], speed: number, size: number, up = 1) {
+    count = Math.ceil(count * particleScale);
     for (let i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
       const a = rand() * Math.PI * 2;
       const sp = speed * (0.4 + rand() * 0.8);
@@ -302,5 +307,8 @@ export function createFx(scene: THREE.Scene): Fx {
       }
     },
     shake: () => shakeOffset,
+    setParticleScale(k) {
+      particleScale = k;
+    },
   };
 }

@@ -142,4 +142,18 @@ describe('LAN session', () => {
     hub.flush();
     expect(a.status).toBe('lobby');
   });
+
+  it('gives a joining player the colour they asked for, if it is free', () => {
+    const hub = createMemoryHub();
+    const host = new HostSession(hub.host(), { name: 'H', color: 4 });
+    const a = new ClientSession(hub.client(), { name: 'A', color: 2 });
+    const b = new ClientSession(hub.client(), { name: 'B', color: 2 });
+    const c = new ClientSession(hub.client(), { name: 'C', color: 4 });
+    hub.flush();
+    expect(host.lobby.map(p => p.color)).toEqual([4, 2, expect.any(Number), expect.any(Number)]);
+    expect(new Set(host.lobby.map(p => p.color)).size).toBe(4);
+    void a;
+    void b;
+    void c;
+  });
 });

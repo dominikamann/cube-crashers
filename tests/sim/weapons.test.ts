@@ -84,6 +84,23 @@ describe('manual fire', () => {
   });
 });
 
+describe('hit events', () => {
+  it('name the monster that was hit, so it can flash', () => {
+    const s = quietSim();
+    const e = spawnEnemy(s, 'tank', rel(s.players[0].pos, 0, -2));
+    stepSim(s, [aimAt(e.pos), fire]);
+    run(s, 10);
+    const all = run(s, 1);
+    void all;
+    s.events = [];
+    const e2 = spawnEnemy(s, 'tank', rel(s.players[0].pos, 3, 0));
+    s.players[0].weapons[0].cooldown = 0;
+    stepSim(s, [aimAt(e2.pos), fire]);
+    const hits = run(s, 15).filter(ev => ev.type === 'enemyHit');
+    expect(hits.some(h => h.type === 'enemyHit' && h.id === e2.id)).toBe(true);
+  });
+});
+
 describe('weapons', () => {
   it('laser sword hits what is in front, not what is behind', () => {
     const s = quietSim();

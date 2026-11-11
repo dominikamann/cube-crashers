@@ -37,6 +37,8 @@ function startGame() {
   const renderer = createRenderer(canvas, floor01);
   const keyboard = new Keyboard();
   const settings = loadSettings();
+  const forced = params.get('graphics');
+  if (forced === 'low' || forced === 'medium' || forced === 'high' || forced === 'ultra') settings.graphics = forced;
 
   /** solo: this sim; LAN: whatever the host or the snapshots show */
   let solo: SimState = createSim(floor01, 1);
@@ -73,6 +75,8 @@ function startGame() {
     audio?.mixer.setMusicVolume(settings.music);
     audio?.mixer.setSfxVolume(settings.sfx);
     keyboard.steerWithMouse = settings.steerWithMouse;
+    renderer.setQuality(settings.graphics);
+    renderer.setDamageNumbers(settings.damageNumbers);
   }
   applySettings();
 
@@ -214,7 +218,7 @@ function startGame() {
     leaveLan(false);
     role = 'solo';
     const fixed = Number(params.get('seed'));
-    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { difficulty: settings.difficulty, names: [playerName()] });
+    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }
@@ -233,7 +237,7 @@ function startGame() {
       const transport = await lan!.host(playerName());
       leaveLan(false);
       role = 'host';
-      host = new HostSession(transport, { name: playerName() });
+      host = new HostSession(transport, { name: playerName(), color: settings.color });
       host.setDifficulty(settings.difficulty);
       showLobby();
     } catch {
@@ -262,7 +266,7 @@ function startGame() {
       const transport = await lan!.join(target);
       leaveLan(false);
       role = 'client';
-      client = new ClientSession(transport, { name: playerName() });
+      client = new ClientSession(transport, { name: playerName(), color: settings.color });
       mode = 'lobby';
       lastLobby = '';
     } catch {

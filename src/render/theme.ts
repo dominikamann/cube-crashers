@@ -1,6 +1,12 @@
 /** Look A1 (day with neon accents) and A2 (night voxel), see docs/design/style-reference.html. */
 export interface Theme {
+  /** horizon colour (also the fog) */
   background: number;
+  /** colour at the top of the sky */
+  skyTop: number;
+  /** cool light from the side opposite the sun */
+  fillColor: number;
+  fillIntensity: number;
   fogNear: number;
   fogFar: number;
   hemiSky: number;
@@ -27,14 +33,17 @@ export interface Theme {
 
 export const THEMES: { day: Theme; night: Theme } = {
   day: {
-    background: 0x9fd8ef,
+    background: 0xbfe6f5,
+    skyTop: 0x4aa3e0,
+    fillColor: 0x9fc4ff,
+    fillIntensity: 0.45,
     fogNear: 22,
     fogFar: 48,
     hemiSky: 0xffffff,
     hemiGround: 0x88aa66,
     hemiIntensity: 1.1,
-    sunColor: 0xffffff,
-    sunIntensity: 1.6,
+    sunColor: 0xfff1d6,
+    sunIntensity: 1.7,
     roadA: 0xeadcb4,
     roadB: 0xe0d1a5,
     grassA: 0x7cc56a,
@@ -51,6 +60,9 @@ export const THEMES: { day: Theme; night: Theme } = {
   },
   night: {
     background: 0x1a1840,
+    skyTop: 0x07061a,
+    fillColor: 0x6a5cff,
+    fillIntensity: 0.5,
     fogNear: 24,
     fogFar: 50,
     hemiSky: 0x8890e0,
@@ -76,6 +88,8 @@ export const THEMES: { day: Theme; night: Theme } = {
 
 const COLOR_KEYS = new Set<keyof Theme>([
   'background',
+  'skyTop',
+  'fillColor',
   'hemiSky',
   'hemiGround',
   'sunColor',

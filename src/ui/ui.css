@@ -139,6 +139,9 @@ html, body {
 .slot.rare .timer { font-size: 9px; color: var(--gold); margin-bottom: 4px; }
 .slot.rare.ending .timer { color: var(--red); animation: blink 0.5s steps(2) infinite; }
 
+.colors { flex-wrap: wrap; }
+.swatch { width: 30px; height: 30px; border: 3px solid var(--shadow); cursor: pointer; font-family: inherit; font-size: 10px; background: #fffdf5; color: var(--shadow); }
+.swatch.on { outline: 3px solid var(--gold); transform: translateY(-3px); }
 .textfield { font-family: inherit; font-size: 12px; padding: 8px; width: 220px; background: #fffdf5; color: var(--shadow); border: 3px solid var(--shadow); }
 .lobby { display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 300px; }
 .lobby-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 3px solid var(--shadow); padding: 10px 12px; }

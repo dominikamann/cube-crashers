@@ -16,7 +16,7 @@ export interface LobbyPlayer {
 
 /** client → host */
 export type ClientMessage =
-  | { type: 'hello'; v: number; name: string }
+  | { type: 'hello'; v: number; name: string; color?: number }
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'leave' };
 
@@ -51,7 +51,7 @@ export function parseMessage(raw: string): Message | null {
   switch (m.type) {
     case 'hello':
       if (!isNum(m.v) || typeof m.name !== 'string') return null;
-      return { type: 'hello', v: m.v, name: m.name.slice(0, MAX_NAME) };
+      return { type: 'hello', v: m.v, name: m.name.slice(0, MAX_NAME), color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < 6 ? (m.color as number) : undefined };
     case 'input':
       if (!isNum(m.seq) || !Array.isArray(m.cmds) || m.cmds.length > 32) return null;
       return { type: 'input', seq: m.seq, cmds: m.cmds as Command[] };

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { EnemyKind, SimState } from '../sim/types';
-import { glowMat, InstancedPool, lambert } from './pool';
+import type { EnemyKind, SimEvent, SimState } from '../sim/types';
+import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -19,10 +19,12 @@ const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43
 const KINDS = Object.keys(ENEMY_LOOK) as EnemyKind[];
 
 export interface Entities {
-  update(s: SimState, theme: Theme, time: number): void;
+  update(s: SimState, theme: Theme, time: number, events: SimEvent[], frameDt: number): void;
+  setDamageNumbers(on: boolean): void;
 }
 
-export function createEntities(scene: THREE.Scene): Entities {
+/** `overlay` is drawn on top of the finished image (no post-processing), for text like damage numbers */
+export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entities {
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const bodyMats = new Map<EnemyKind, THREE.MeshLambertMaterial>();
   const bodies = new Map<EnemyKind, InstancedPool>();
@@ -104,8 +106,65 @@ export function createEntities(scene: THREE.Scene): Entities {
 
   const tmpFrom = new THREE.Vector3();
 
+  // white flash for a moment after a hit
+  const flashUntil = new Map<number, number>();
+  const FLASH_SECONDS = 0.08;
+
+  // floating damage numbers: a small pool of sprites with their own canvas each
+  let showNumbers = true;
+  const numbers = Array.from({ length: 48 }, () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 32;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    sprite.scale.set(0.9, 0.45, 1);
+    sprite.visible = false;
+    overlay.add(sprite);
+    return { sprite, canvas, tex, life: 0, vx: 0 };
+  });
+  let nextNumber = 0;
+  function popNumber(x: number, y: number, z: number, amount: number) {
+    const n = numbers[nextNumber++ % numbers.length];
+    const ctx = n.canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 64, 32);
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#1b1440';
+    const text = String(Math.round(amount));
+    ctx.strokeText(text, 32, 16);
+    ctx.fillStyle = amount >= 30 ? '#ffc928' : '#fffdf5';
+    ctx.fillText(text, 32, 16);
+    n.tex.needsUpdate = true;
+    n.sprite.position.set(x, y, z);
+    n.sprite.visible = true;
+    n.life = 0.7;
+    n.vx = (Math.random() - 0.5) * 0.8;
+  }
+
   return {
-    update(s, theme, time) {
+    setDamageNumbers(on) {
+      showNumbers = on;
+      if (!on) for (const n of numbers) n.sprite.visible = false;
+    },
+    update(s, theme, time, events, frameDt) {
+      for (const e of events) {
+        if (e.type !== 'enemyHit') continue;
+        flashUntil.set(e.id, time + FLASH_SECONDS);
+        if (showNumbers && e.amount >= 1) popNumber(e.pos.x, 1.4, e.pos.z, e.amount);
+      }
+      for (const n of numbers) {
+        if (!n.sprite.visible) continue;
+        n.life -= frameDt;
+        n.sprite.position.y += frameDt * 1.6;
+        n.sprite.position.x += n.vx * frameDt;
+        (n.sprite.material as THREE.SpriteMaterial).opacity = Math.min(1, n.life / 0.3);
+        if (n.life <= 0) n.sprite.visible = false;
+      }
+      if (flashUntil.size > 300) for (const [id, until] of flashUntil) if (until < time) flashUntil.delete(id);
       const night = theme.pointLights;
       for (const k of KINDS) {
         const l = ENEMY_LOOK[k];
@@ -133,7 +192,8 @@ export function createEntities(scene: THREE.Scene): Entities {
         const y = (l.h / 2) * scale + bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2);
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
-        const tint = e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) ? 0x9fe8ff : undefined;
+        const flashing = (flashUntil.get(e.id) ?? 0) > time;
+        const tint = flashing ? FLASH : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);

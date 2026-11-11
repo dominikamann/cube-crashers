@@ -41,8 +41,8 @@ export class HostSession {
   private outEvents: SimEvent[] = [];
   private leftDuringRun: number[] = [];
 
-  constructor(private net: Transport, opts: { name: string }) {
-    this.lobby = [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: 0 }];
+  constructor(private net: Transport, opts: { name: string; color?: number | null }) {
+    this.lobby = [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
       if (joined) return;
@@ -88,7 +88,8 @@ export class HostSession {
       if (this.lobby.length >= MAX_PLAYERS) return reject('full');
       if (this.lobby.some(p => p.id === from)) return;
       const used = new Set(this.lobby.map(p => p.color));
-      const color = [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;
+      const wish = m.color !== undefined && !used.has(m.color) ? m.color : undefined;
+      const color = wish ?? [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;
       this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color });
       this.send(from, { type: 'welcome', playerId: from });
       this.broadcastLobby();
@@ -187,12 +188,12 @@ export class ClientSession {
   private clock = 0;
   private now = () => this.clock;
 
-  constructor(private net: Transport, opts: { name: string; version?: number }) {
+  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null }) {
     net.onMessage((_from, data) => this.receive(data));
     net.onClose(() => {
       if (this.status !== 'rejected') this.status = 'hostLeft';
     });
-    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME) }));
+    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined }));
   }
 
   private receive(data: string): void {

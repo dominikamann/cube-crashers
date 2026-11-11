@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import type { LobbyPlayer } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
+import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
 import type { Difficulty } from '../sim/types';
 
@@ -11,11 +12,15 @@ export interface Settings {
   difficulty: Difficulty;
   /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
+  graphics: GraphicsQuality;
+  damageNumbers: boolean;
+  /** suit colour 0–5, or null for automatic */
+  color: number | null;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'medium', steerWithMouse: true };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'medium', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null };
 
 export function loadSettings(): Settings {
   try {
@@ -198,7 +203,44 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         steer.textContent = label();
         changed();
       });
+      const toggle = (label: () => string, flip: () => void) => {
+        const b = button(s, label(), () => {
+          flip();
+          b.textContent = label();
+          changed();
+        });
+      };
+      toggle(
+        () => `${t('settings.graphics')}: ${t(`graphics.${settings.graphics}`)}`,
+        () => (settings.graphics = GRAPHICS_QUALITIES[(GRAPHICS_QUALITIES.indexOf(settings.graphics) + 1) % GRAPHICS_QUALITIES.length]),
+      );
+      toggle(
+        () => `${t('settings.damageNumbers')}: ${t(settings.damageNumbers ? 'settings.on' : 'settings.off')}`,
+        () => (settings.damageNumbers = !settings.damageNumbers),
+      );
       nameField(s);
+      const colors = document.createElement('div');
+      colors.className = 'setting txt colors';
+      colors.textContent = t('settings.color');
+      const drawColors = () => {
+        colors.querySelectorAll('button').forEach(b => b.remove());
+        [null, 0, 1, 2, 3, 4, 5].forEach(c => {
+          const b = document.createElement('button');
+          b.className = `swatch${settings.color === c ? ' on' : ''}`;
+          if (c === null) b.textContent = 'A';
+          else b.style.background = hex(c);
+          b.title = c === null ? t('settings.colorAuto') : '';
+          b.addEventListener('click', () => {
+            actions.click();
+            settings.color = c;
+            changed();
+            drawColors();
+          });
+          colors.append(b);
+        });
+      };
+      drawColors();
+      s.append(colors);
       button(s, t('menu.back'), () => back());
     });
   }

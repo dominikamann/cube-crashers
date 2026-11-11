@@ -337,7 +337,7 @@ export interface RunStats {
 export type SimEvent =
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
   | { type: 'weaponSelected'; playerId: number; slot: number }
-  | { type: 'enemyHit'; pos: Vec2 }
+  | { type: 'enemyHit'; id: number; pos: Vec2; amount: number }
   | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
   | { type: 'coinPicked'; playerId: number; streak: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number; playerId: number }

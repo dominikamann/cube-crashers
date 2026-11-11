@@ -34,8 +34,9 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  */
 export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
   if (e.hp <= 0) return;
-  e.hp -= e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
-  s.events.push({ type: 'enemyHit', pos: { ...e.pos } });
+  const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
+  e.hp -= dealt;
+  s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt });
   const horde = e.hordeId !== null ? s.hordes.find(h => h.id === e.hordeId) : undefined;
   if (horde) horde.aggro = true;
   if (e.hp > 0) return;

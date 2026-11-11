@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+/** pass as colour to make an instance flash bright white (instance colours above 1 brighten the material) */
+export const FLASH = -1;
+
 const tmp = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
@@ -56,7 +59,9 @@ export class InstancedPool {
     tmp.scale.setScalar(scale);
     tmp.updateMatrix();
     this.mesh.setMatrixAt(this.count, tmp.matrix);
-    this.mesh.setColorAt(this.count, tmpColor.setHex(color ?? 0xffffff));
+    if (color === FLASH) tmpColor.setRGB(3.5, 3.5, 3.5);
+    else tmpColor.setHex(color ?? 0xffffff);
+    this.mesh.setColorAt(this.count, tmpColor);
     this.count++;
   }
 

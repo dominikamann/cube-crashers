@@ -9,7 +9,7 @@ const p = { x: 0, z: 0 };
 const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   shot: { type: 'shot', weapon: 'pixelBlaster', pos: p },
   weaponSelected: { type: 'weaponSelected', playerId: 0, slot: 1 },
-  enemyHit: { type: 'enemyHit', pos: p },
+  enemyHit: { type: 'enemyHit', id: 1, pos: p, amount: 5 },
   enemyKilled: { type: 'enemyKilled', kind: 'blob', pos: p, elite: false },
   coinPicked: { type: 'coinPicked', playerId: 0, streak: 1 },
   towerBuilt: { type: 'towerBuilt', kind: 'laser', padId: 0, playerId: 0 },
