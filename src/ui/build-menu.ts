@@ -6,6 +6,8 @@ const ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 
 export interface BuildMenu {
   update(s: SimState, open: boolean, events: SimEvent[], localId: number, padId: number | null): void;
+  /** controller: the cards show the d-pad directions instead of 1–3 */
+  setPadLabels(on: boolean): void;
 }
 
 export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) => void): BuildMenu {
@@ -37,8 +39,16 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
   });
   wrap.append(up);
   let upKey = '';
+  let padLabels = false;
+  const PAD_KEYS = ['\u25C0', '\u25B2', '\u25B6'];
 
   return {
+    setPadLabels(on) {
+      if (on === padLabels) return;
+      padLabels = on;
+      upKey = '';
+      cards.forEach((c, i) => (c.card.querySelector('.key')!.textContent = on ? PAD_KEYS[i] : String(i + 1)));
+    },
     update(s, open, events, localId, padId) {
       wrap.style.display = open ? '' : 'none';
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
@@ -54,7 +64,7 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
           const now = towerStats(tower.kind, tower.level), next = towerStats(tower.kind, tower.level + 1);
           up.innerHTML = max
             ? `<div class="name">${t(`tower.${tower.kind}`)} · ${t('tower.level', { n: tower.level })}</div><div>${t('tower.maxLevel')}</div>`
-            : `<div class="key">1</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
+            : `<div class="key">${padLabels ? PAD_KEYS.join(' ') : '1'}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
         }
         up.classList.toggle('poor', max || coins < cost);
       } else {

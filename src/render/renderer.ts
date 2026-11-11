@@ -39,10 +39,12 @@ export interface GameRenderer {
   render(s: SimState, alpha: number, events: SimEvent[], frameDt: number): void;
   /** whose eyes we look through (the camera follows this player) */
   setLocalPlayer(id: number): void;
+  /** split screen: one view per player id, side by side (one id = full screen) */
+  setViews(ids: number[]): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
-  /** Where a ground point appears on screen, in CSS pixels of the canvas. */
-  project(x: number, z: number): { x: number; y: number };
+  /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
+  project(x: number, z: number, view?: number): { x: number; y: number };
   /** The point on the ground under a screen position, or null if the ray misses the ground. */
   groundPoint(clientX: number, clientY: number): Vec2 | null;
   dispose(): void;
@@ -101,7 +103,6 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const sky = makeSky();
   scene.add(sky.mesh);
 
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 220);
   const hemi = new THREE.HemisphereLight(THEMES.day.hemiSky, THEMES.day.hemiGround, THEMES.day.hemiIntensity);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(THEMES.day.sunColor, THEMES.day.sunIntensity);
@@ -114,8 +115,23 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   scene.add(fill, fill.target);
 
   let quality: GraphicsQuality = 'high';
-  let composer: EffectComposer;
-  let bloom: UnrealBloomPass | null = null;
+  interface View {
+    id: number;
+    camera: THREE.PerspectiveCamera;
+    composer: EffectComposer | null;
+    bloom: UnrealBloomPass | null;
+    camPos: THREE.Vector3;
+    camLook: THREE.Vector3;
+  }
+  const makeView = (id: number, at: { x: number; z: number }): View => ({
+    id,
+    camera: new THREE.PerspectiveCamera(45, 1, 0.1, 220),
+    composer: null,
+    bloom: null,
+    camPos: new THREE.Vector3(at.x, 15, at.z + 11),
+    camLook: new THREE.Vector3(at.x, 0, at.z - 2),
+  });
+  let views: View[] = [makeView(0, map.spawn)];
 
   function buildComposer() {
     const q = QUALITY[quality];
@@ -132,19 +148,22 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       const m = (o as THREE.Mesh).material;
       if (m) (Array.isArray(m) ? m : [m]).forEach(x => (x.needsUpdate = true));
     });
-    const target = new THREE.WebGLRenderTarget(1, 1, { samples: q.msaa, type: THREE.HalfFloatType });
-    composer?.dispose();
-    composer = new EffectComposer(renderer, target);
-    composer.addPass(new RenderPass(scene, camera));
-    if (q.ao) {
-      const ao = new GTAOPass(scene, camera, 1, 1);
-      ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1.2 });
-      composer.addPass(ao);
+    for (const v of views) {
+      const target = new THREE.WebGLRenderTarget(1, 1, { samples: q.msaa, type: THREE.HalfFloatType });
+      v.composer?.dispose();
+      const composer = new EffectComposer(renderer, target);
+      composer.addPass(new RenderPass(scene, v.camera));
+      if (q.ao) {
+        const ao = new GTAOPass(scene, v.camera, 1, 1);
+        ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1.2 });
+        composer.addPass(ao);
+      }
+      v.bloom = q.bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
+      if (v.bloom) composer.addPass(v.bloom);
+      composer.addPass(new OutputPass());
+      if (q.grade) composer.addPass(new ShaderPass(GradeShader));
+      v.composer = composer;
     }
-    bloom = q.bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
-    if (bloom) composer.addPass(bloom);
-    composer.addPass(new OutputPass());
-    if (q.grade) composer.addPass(new ShaderPass(GradeShader));
     resize();
   }
 
@@ -158,17 +177,19 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (w === 0 || h === 0 || !composer) return;
+    if (w === 0 || h === 0 || views.some(v => !v.composer)) return;
     renderer.setSize(w, h, false);
-    composer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    const vw = Math.floor(w / views.length);
+    for (const v of views) {
+      v.composer!.setSize(vw, h);
+      v.camera.aspect = vw / h;
+      v.camera.updateProjectionMatrix();
+    }
   }
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   buildComposer();
 
-  let localId = 0;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -176,8 +197,6 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   let night = 0;
   let time = 0;
-  const camPos = new THREE.Vector3(map.spawn.x, 15, map.spawn.z + 11);
-  const camLook = new THREE.Vector3(map.spawn.x, 0, map.spawn.z - 2);
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
@@ -193,8 +212,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         world = createWorld(scene, s.map);
         actors.setMap(s.map);
         mapId = s.map.id;
-        camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
-        camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
+        for (const v of views) {
+          v.camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
+          v.camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
+        }
       }
       const palette = themeFor(s.theme);
       const theme = blendTheme(palette.day, palette.night, night);
@@ -212,52 +233,84 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       sun.intensity = theme.sunIntensity;
       fill.color.setHex(theme.fillColor);
       fill.intensity = theme.fillIntensity;
-      if (bloom) {
-        bloom.strength = theme.bloomStrength;
-        bloom.radius = theme.bloomRadius;
-        bloom.threshold = theme.bloomThreshold;
+      for (const v of views) {
+        if (!v.bloom) continue;
+        v.bloom.strength = theme.bloomStrength;
+        v.bloom.radius = theme.bloomRadius;
+        v.bloom.threshold = theme.bloomThreshold;
       }
 
       world.update(s, theme, time);
       entities.update(s, theme, time, events, frameDt);
-      actors.update(s, events, theme, time, frameDt, localId);
+      actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);
       fx.update(s, events, theme, frameDt, time);
 
-      const p = actors.playerPos();
-      // in a boss fight the camera leans toward the boss so both stay in the picture
-      let ox = 0, oz = 0;
-      const boss = s.boss ? (s.boss.enemyId !== null ? s.enemies.find(e => e.id === s.boss!.enemyId)?.pos : s.enemies.find(e => e.id === s.boss!.worms[0]?.[0])?.pos) ?? s.boss.lastPos : null;
-      if (boss) {
-        const dx = boss.x - p.x, dz = boss.z - p.z;
-        const d = Math.hypot(dx, dz);
-        const lean = Math.min(d * 0.3, 3.5);
-        if (d > 0.01) {
-          ox = (dx / d) * lean;
-          oz = (dz / d) * lean;
-        }
-      }
-      wantPos.set(p.x + ox, 15, p.z + oz + 11);
-      wantLook.set(p.x + ox, 0, p.z + oz - 2);
+      const shake = fx.shake();
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const vw = Math.floor(w / views.length);
       const k = 1 - Math.exp(-frameDt * 5);
-      camPos.lerp(wantPos, k);
-      camLook.lerp(wantLook, k);
-      camera.position.copy(camPos).add(fx.shake());
-      camera.lookAt(camLook);
-      sky.mesh.position.copy(camera.position);
-      sun.position.set(camLook.x + 9, 22, camLook.z + 8);
-      sun.target.position.copy(camLook);
-      fill.position.set(camLook.x - 10, 12, camLook.z - 6);
-      fill.target.position.copy(camLook);
+      views.forEach((v, i) => {
+        const p = actors.playerPos(i);
+        // in a boss fight the camera leans toward the boss so both stay in the picture
+        let ox = 0, oz = 0;
+        const boss = s.boss ? (s.boss.enemyId !== null ? s.enemies.find(e => e.id === s.boss!.enemyId)?.pos : s.enemies.find(e => e.id === s.boss!.worms[0]?.[0])?.pos) ?? s.boss.lastPos : null;
+        if (boss) {
+          const dx = boss.x - p.x, dz = boss.z - p.z;
+          const d = Math.hypot(dx, dz);
+          const lean = Math.min(d * 0.3, 3.5);
+          if (d > 0.01) {
+            ox = (dx / d) * lean;
+            oz = (dz / d) * lean;
+          }
+        }
+        wantPos.set(p.x + ox, 15, p.z + oz + 11);
+        wantLook.set(p.x + ox, 0, p.z + oz - 2);
+        v.camPos.lerp(wantPos, k);
+        v.camLook.lerp(wantLook, k);
+        v.camera.position.copy(v.camPos).add(shake);
+        v.camera.lookAt(v.camLook);
+      });
+      // one sun for all views: centred between them, with a shadow area wide enough for both
+      const mid = views.reduce((acc, v) => acc.add(v.camLook), new THREE.Vector3()).multiplyScalar(1 / views.length);
+      const spread = views.length > 1 ? views[0].camLook.distanceTo(views[1].camLook) / 2 : 0;
+      const sc = sun.shadow.camera;
+      if (sc.right !== 20 + spread) {
+        Object.assign(sc, { left: -20 - spread, right: 20 + spread, top: 24 + spread, bottom: -24 - spread });
+        sc.updateProjectionMatrix();
+      }
+      sun.position.set(mid.x + 9, 22, mid.z + 8);
+      sun.target.position.copy(mid);
+      fill.position.set(mid.x - 10, 12, mid.z - 6);
+      fill.target.position.copy(mid);
 
-      composer.render();
-      // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
-      renderer.autoClear = false;
-      renderer.render(overlay, camera);
-      renderer.autoClear = true;
+      views.forEach((v, i) => {
+        if (views.length > 1) {
+          renderer.setViewport(i * vw, 0, vw, h);
+          renderer.setScissor(i * vw, 0, vw, h);
+          renderer.setScissorTest(true);
+        }
+        sky.mesh.position.copy(v.camera.position);
+        v.composer!.render();
+        // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
+        renderer.autoClear = false;
+        renderer.render(overlay, v.camera);
+        renderer.autoClear = true;
+      });
+      if (views.length > 1) {
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, w, h);
+      }
     },
     setLocalPlayer(id) {
-      localId = id;
+      if (views.length === 1) views[0].id = id;
+    },
+    setViews(ids) {
+      if (ids.length === views.length && ids.every((id, i) => views[i].id === id)) return;
+      const at = views[0].camLook;
+      for (const v of views.slice(ids.length)) v.composer?.dispose();
+      views = ids.map((id, i) => views[i] ? Object.assign(views[i], { id }) : makeView(id, { x: at.x, z: at.z + 2 }));
+      buildComposer();
     },
     setQuality(q) {
       if (q === quality) return;
@@ -268,15 +321,18 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     setDamageNumbers(on) {
       entities.setDamageNumbers(on);
     },
-    project(x, z) {
-      const v = new THREE.Vector3(x, 0.5, z).project(camera);
+    project(x, z, view = 0) {
+      const v = new THREE.Vector3(x, 0.5, z).project(views[view].camera);
       const rect = canvas.getBoundingClientRect();
-      return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
+      const vw = rect.width / views.length;
+      return { x: rect.left + view * vw + ((v.x + 1) / 2) * vw, y: rect.top + ((1 - v.y) / 2) * rect.height };
     },
     groundPoint(clientX, clientY) {
+      // the mouse belongs to the first view (player 1 on the left)
       const rect = canvas.getBoundingClientRect();
-      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
-      raycaster.setFromCamera(ndc, camera);
+      const vw = rect.width / views.length;
+      ndc.set(((clientX - rect.left) / vw) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, views[0].camera);
       const hit = raycaster.ray.intersectPlane(ground, hitPoint);
       return hit ? { x: hit.x, z: hit.z } : null;
     },

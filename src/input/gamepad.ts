@@ -98,14 +98,18 @@ export class PadControls {
 
     if (press(PAD.A)) out.push({ type: 'jump', playerId });
     if (down(PAD.A)) out.push({ type: 'fly', playerId });
-    if (press(PAD.B)) out.push({ type: 'dash', playerId });
+    // B closes an open build menu instead of dashing
+    if (press(PAD.B)) {
+      if (this.buildMenuOpen) this.closeMenu();
+      else out.push({ type: 'dash', playerId });
+    }
 
     // X is the E key: a short tap gets in or out of a kart, holding plants, builds, repairs, helps up
     if (press(PAD.X)) this.xSince = now;
+    // letting go keeps an open build menu open, so the d-pad can be used without holding X
     if (!down(PAD.X) && this.prev[PAD.X]) {
       if (this.xSince !== null && now - this.xSince < BUILD_HOLD_MS) out.push({ type: 'use', playerId });
       this.xSince = null;
-      this.closeMenu();
     }
     if (down(PAD.X)) out.push({ type: 'hold', playerId });
 

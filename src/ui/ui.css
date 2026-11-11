@@ -135,6 +135,25 @@ html, body {
 .screen.title .logo { margin-bottom: clamp(16px, 5vh, 48px); }
 .title-main { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .title-main .chips { margin-top: clamp(18px, 3.5vh, 30px); }
+.title-main .players { margin-bottom: clamp(14px, 2.5vh, 22px); }
+.hud-root { position: fixed; inset: 0; transform: translateZ(0); pointer-events: none; }
+.hud-root.right { display: none; }
+body.split .hud-root.left { right: 50%; }
+body.split .hud-root.right { display: block; left: 50%; }
+body.split .hud-root.right { border-left: 3px solid var(--shadow); }
+body.split .hud-root { overflow: hidden; }
+body.split .hud-bottom { left: 8px; right: 8px; bottom: 8px; gap: 6px; }
+body.split .player-hp { min-width: 0; width: 120px; padding: 8px; }
+body.split .player-hp .bar { width: 100% !important; }
+body.split .weapons { gap: 4px; }
+body.split .slot { width: 44px; height: 56px; }
+body.split .slot .glyph { font-size: 16px; margin-top: 6px; }
+body.split .minimap { width: 110px; height: 110px; }
+body.split .hud-top .hud-box { padding: 6px 8px; font-size: 9px; }
+body.split .hud .combo { transform: scale(0.75); transform-origin: top right; }
+body.split .hold .bar, body.split .boss { width: min(300px, 80%); }
+body.split .build { bottom: 110px; gap: 6px; }
+body.split .card { width: 110px; }
 .title-main .stepper { margin: clamp(14px, 2.5vh, 22px) 0 clamp(18px, 3.5vh, 30px); }
 .btn.play { font-size: clamp(18px, 2.6vw, 26px); padding: clamp(14px, 2.4vh, 22px) 64px; min-width: 300px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }

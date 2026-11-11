@@ -12,8 +12,10 @@ import type { Theme } from './theme';
 export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4];
 
 export interface Actors {
-  update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number, localId: number): void;
-  playerPos(): THREE.Vector3;
+  /** `localIds`: the players on this screen (two in split screen) */
+  update(s: SimState, events: SimEvent[], theme: Theme, time: number, frameDt: number, localIds: number[]): void;
+  /** where the camera of view `i` should look */
+  playerPos(i?: number): THREE.Vector3;
   /** a new floor: move the elevator */
   setMap(map: FloorMap): void;
 }
@@ -220,7 +222,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const towers = new Map<number, ReturnType<typeof makeTower> & { built: number }>();
   const karts = new Map<number, ReturnType<typeof makeKart>>();
   const nests = new Map<number, ReturnType<typeof makeNest>>();
-  const focus = new THREE.Vector3(map.spawn.x, 0, map.spawn.z);
+  const foci = [new THREE.Vector3(map.spawn.x, 0, map.spawn.z), new THREE.Vector3(map.spawn.x, 0, map.spawn.z)];
+  const focus = foci[0];
   // a fixed set of tower lights, moved to the towers nearest the camera: adding a light to the scene
   // would recompile every shader and freeze the game for a moment
   const towerLights = Array.from({ length: 6 }, () => {
@@ -229,16 +232,20 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     return l;
   });
 
-  // crosshair on the ground at the aim point
-  const reticle = new THREE.Group();
-  const reticleMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthTest: false });
-  const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 24).rotateX(-Math.PI / 2), reticleMat);
-  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12).rotateX(-Math.PI / 2), reticleMat);
-  reticle.add(ringMesh, dot);
-  reticle.renderOrder = 10;
-  ringMesh.renderOrder = 10;
-  dot.renderOrder = 10;
-  scene.add(reticle);
+  // crosshair on the ground at the aim point, one per player on this screen
+  const ringGeo = new THREE.RingGeometry(0.32, 0.42, 24).rotateX(-Math.PI / 2);
+  const dotGeo = new THREE.CircleGeometry(0.07, 12).rotateX(-Math.PI / 2);
+  const reticles = [0, 1].map(() => {
+    const group = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthTest: false });
+    const ringMesh = new THREE.Mesh(ringGeo, mat);
+    const dot = new THREE.Mesh(dotGeo, mat);
+    group.add(ringMesh, dot);
+    group.renderOrder = ringMesh.renderOrder = dot.renderOrder = 10;
+    group.visible = false;
+    scene.add(group);
+    return { group, mat };
+  });
 
   // elevator: platform, and a light column once it is open
   const elevator = new THREE.Group();
@@ -418,7 +425,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   }
 
   return {
-    update(s, events, theme, time, frameDt, localId) {
+    update(s, events, theme, time, frameDt, localIds) {
       for (const p of s.players) updatePlayer(s, p, theme, time, frameDt);
       const here = new Set(s.players.map(p => p.id));
       for (const [id, v] of players) {
@@ -468,18 +475,20 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       beaconMat.opacity = 0.22 + 0.1 * Math.sin(time * 4);
       plateGlow.emissiveIntensity = (s.elevatorOpen ? 2.5 : 0.3) * Math.min(theme.glow, 1.4);
 
-      const p0 = s.players.find(p => p.id === localId) ?? s.players[0];
-      if (p0) {
-        focus.set(p0.pos.x, 0, p0.pos.z);
-        reticle.visible = p0.downUntil === null;
-        reticle.position.set(p0.aimPoint.x, 0.08, p0.aimPoint.z);
-        reticle.rotation.y = time * 1.5;
+      reticles.forEach((r, i) => {
+        const p0 = i < localIds.length ? (s.players.find(p => p.id === localIds[i]) ?? (i === 0 ? s.players[0] : undefined)) : undefined;
+        r.group.visible = !!p0 && p0.downUntil === null;
+        if (!p0) return;
+        foci[i].set(p0.pos.x, 0, p0.pos.z);
+        r.group.position.set(p0.aimPoint.x, 0.08, p0.aimPoint.z);
+        r.group.rotation.y = time * 1.5;
         const ready = (p0.weapons[p0.selected]?.cooldown ?? 0) === 0;
-        reticleMat.color.setHex(ready ? 0xffffff : 0xff6b6b);
-        reticle.scale.setScalar(ready ? 1 : 0.8);
-      }
+        // in split screen the crosshairs wear the suit colours, so nobody aims with the other's
+        r.mat.color.setHex(!ready ? 0xff6b6b : localIds.length > 1 ? PLAYER_COLORS[p0.color % PLAYER_COLORS.length] : 0xffffff);
+        r.group.scale.setScalar(ready ? 1 : 0.8);
+      });
     },
-    playerPos: () => focus,
+    playerPos: (i = 0) => foci[i],
     setMap(m) {
       elevator.position.set(m.elevator.x, 0, m.elevator.z);
       // towers, karts and nests of the old floor go; the next update builds the new ones

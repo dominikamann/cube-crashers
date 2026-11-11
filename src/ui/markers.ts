@@ -32,7 +32,8 @@ export function createMarkers(root: HTMLElement) {
         for (const n of s.nests) if (n.state !== 'destroyed') targets.push({ pos: n.pos, kind: 'nest' });
         if (s.elevatorOpen) targets.push({ pos: s.map.elevator, kind: 'elevator' });
       }
-      const w = innerWidth, h = innerHeight, cx = w / 2, cy = h / 2;
+      // the layer fills its screen half in split screen, the whole window otherwise
+      const w = layer.clientWidth || innerWidth, h = layer.clientHeight || innerHeight, cx = w / 2, cy = h / 2;
       let used = 0;
       for (const t of targets) {
         const p = project(t.pos.x, t.pos.z);

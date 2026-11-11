@@ -18,6 +18,8 @@ import { floorDef } from '../sim/config/floors';
 export interface Hud {
   update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number, localId: number): void;
   setVisible(v: boolean): void;
+  /** playing with a controller: hints name the X button instead of E */
+  setPadMode(on: boolean): void;
 }
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement, text = ''): HTMLElementTagNameMap[K] {
@@ -37,6 +39,7 @@ export interface ShopActions {
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud', root);
+  let padMode = false;
   const top = el('div', 'hud-top', layer);
 
   const runBox = el('div', 'hud-box txt', top);
@@ -143,6 +146,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   return {
     setVisible(v) {
       layer.style.display = v ? '' : 'none';
+    },
+    setPadMode(on) {
+      padMode = on;
     },
     update(s, events, buildMenuOpen, time, localId) {
       const p = s.players.find(x => x.id === localId) ?? s.players[0];
@@ -267,7 +273,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
       const planting = p.plantTicks > 0 && hintText === t('hud.plant');
       if (planting) hintText = t('hud.planting');
-      hint.textContent = hintText;
+      hint.textContent = padMode ? hintText.replace(/\bE\b/g, 'X') : hintText;
       hint.style.display = hintText ? '' : 'none';
       hint.classList.toggle('steady', planting);
       plantBar.style.display = planting ? '' : 'none';

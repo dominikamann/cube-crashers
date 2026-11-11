@@ -42,7 +42,7 @@ function startGame() {
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
   const padCtl = new PadControls();
-  const padMenu = new PadMenu();
+  const padMenus = [new PadMenu(), new PadMenu()];
   let padActive = false;
   const readPads = (): PadSnapshot[] => (navigator.getGamepads?.() ?? []).filter((g): g is Gamepad => !!g && g.connected);
   const padTouched = (g: PadSnapshot) => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.3);
@@ -110,9 +110,29 @@ function startGame() {
   };
 
   createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
-  const markers = createMarkers(app);
-  const hud = createHud(app, { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
-  const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
+  // HUD layers: the left one fills the window, in split screen each player gets a half
+  const hudRoots = (['left', 'right'] as const).map(side => {
+    const d = document.createElement('div');
+    d.className = `hud-root ${side}`;
+    app.append(d);
+    return d;
+  });
+  const markers = createMarkers(hudRoots[0]);
+  const hud = createHud(hudRoots[0], { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
+  const buildMenu = createBuildMenu(hudRoots[0], kind => keyboard.chooseTower(kind));
+  const markers2 = createMarkers(hudRoots[1]);
+  const hud2 = createHud(hudRoots[1], { buy: () => {}, ready: () => {} });
+  const buildMenu2 = createBuildMenu(hudRoots[1], () => {});
+  const padCtl2 = new PadControls();
+  let split = false;
+  const setSplit = (on: boolean) => {
+    split = on;
+    document.body.classList.toggle('split', on);
+  };
+  const setHudVisible = (v: boolean) => {
+    hud.setVisible(v);
+    hud2.setVisible(v && split);
+  };
   const screens = createScreens(
     app,
     {
@@ -139,15 +159,20 @@ function startGame() {
       if (s.phase !== 'playing') return;
       keyboard.setAim(mode === 'playing' ? renderer.groundPoint(mouse.x, mouse.y) : null);
       const now = performance.now();
-      const pad = readPads()[0];
+      const pads = readPads();
+      // split screen: with two controllers each player has one, with one controller it belongs to player 2
+      const pad = split ? (pads.length >= 2 ? pads[0] : undefined) : pads[0];
+      const pad2 = split ? (pads.length >= 2 ? pads[1] : pads[0]) : undefined;
       if (pad && padTouched(pad)) padActive = true;
       let cmds = mode !== 'playing' ? [] : bot && role === 'solo' ? bot(s) : keyboard.commands(s, localId(), now);
       // the controller's commands come last, so its move and aim win while it is in use
       if (mode === 'playing' && pad && padActive && !bot) cmds = [...cmds, ...padCtl.commands(pad, s, localId(), now)];
+      if (mode === 'playing' && split && pad2) cmds = [...cmds, ...padCtl2.commands(pad2, s, 1, now)];
       if (role === 'solo') {
         stepSim(s, cmds);
         keyboard.onEvents(s.events);
         padCtl.onEvents(s.events);
+        padCtl2.onEvents(s.events);
         frameEvents.push(...s.events);
       } else if (role === 'host') {
         host!.step(cmds);
@@ -174,13 +199,26 @@ function startGame() {
       const s = view();
       // the crosshair replaces the mouse pointer while playing
       canvas.style.cursor = mode === 'playing' && view().run.stage === 'floor' ? 'none' : '';
-      renderer.setLocalPlayer(localId());
+      renderer.setViews(split ? [0, 1] : [localId()]);
       renderer.render(s, alpha, frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
+      hud.setPadMode(padActive);
+      buildMenu.setPadLabels(padActive);
+      hud2.setPadMode(true);
+      buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
       buildMenu.update(s, menuOpen && mode === 'playing', frameEvents, localId(), padActive ? padCtl.menuPad : keyboard.menuPad);
+      if (split) {
+        hud2.update(s, frameEvents, padCtl2.buildMenuOpen, performance.now() / 1000, 1);
+        buildMenu2.update(s, padCtl2.buildMenuOpen && mode === 'playing', frameEvents, 1, padCtl2.menuPad);
+        if (mode === 'playing') markers2.update(s, (x, z) => {
+          const r = renderer.project(x, z, 1);
+          return { x: r.x - hudRoots[1].getBoundingClientRect().left, y: r.y };
+        });
+      }
+      markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
@@ -236,7 +274,7 @@ function startGame() {
           : undefined;
     setTimeout(() => {
       if (mode !== 'over') return;
-      hud.setVisible(false);
+      setHudVisible(false);
       screens.result(won, result, again);
     }, 1800);
   }
@@ -245,7 +283,7 @@ function startGame() {
     frameEvents = [];
     keyboard.releaseAll();
     screens.hide();
-    hud.setVisible(true);
+    setHudVisible(true);
     mode = 'playing';
     loop.resume();
     ensureAudio().music.playTrack('battle');
@@ -256,8 +294,11 @@ function startGame() {
     lastSoloMode = mode;
     leaveLan(false);
     role = 'solo';
+    setSplit(settings.localPlayers === 2);
     const fixed = Number(params.get('seed'));
-    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, unlocked: profile.unlocked, difficulty: settings.difficulty, names: [playerName()], colors: settings.color !== null ? [settings.color] : undefined });
+    const names = split ? [playerName(), t('split.player2')] : [playerName()];
+    const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
+    solo = createSim(floor01, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }
@@ -276,6 +317,7 @@ function startGame() {
       const transport = await lan!.host(playerName());
       leaveLan(false);
       role = 'host';
+      setSplit(false);
       host = new HostSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
       host.setDifficulty(settings.difficulty);
       showLobby();
@@ -305,6 +347,7 @@ function startGame() {
       const transport = await lan!.join(target);
       leaveLan(false);
       role = 'client';
+      setSplit(false);
       client = new ClientSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
       mode = 'lobby';
       lastLobby = '';
@@ -316,7 +359,7 @@ function startGame() {
   function showLobby() {
     mode = 'lobby';
     lastLobby = '';
-    hud.setVisible(false);
+    setHudVisible(false);
     if (role === 'host') watchHostLobby();
   }
 
@@ -352,7 +395,7 @@ function startGame() {
     }
     if (client.status === 'hostLeft') {
       leaveLan(false);
-      hud.setVisible(false);
+      setHudVisible(false);
       mode = 'title';
       screens.notice(t('net.hostLeft'));
       return;
@@ -402,6 +445,7 @@ function startGame() {
     mode = 'paused';
     keyboard.releaseAll();
     padCtl.releaseAll();
+    padCtl2.releaseAll();
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
     screens.pause();
@@ -410,8 +454,9 @@ function startGame() {
   function toTitle() {
     if (role !== 'solo') leaveLan(false);
     mode = 'title';
+    setSplit(false);
     solo = createSim(floor01, 1);
-    hud.setVisible(false);
+    setHudVisible(false);
     screens.title();
     if (audio) audio.music.playTrack('menu');
   }
@@ -419,9 +464,12 @@ function startGame() {
   /** Controller in menus: d-pad or stick moves the focus, A presses, B goes back, Start pauses and resumes. */
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
-    const pad = readPads()[0];
-    if (!pad) return;
-    const e = padMenu.read(pad);
+    const all = readPads();
+    if (all.length === 0) return;
+    // any controller can pause and steer the menus
+    const reads = all.slice(0, 2).map((g, i) => padMenus[i].read(g));
+    const e = { up: false, down: false, left: false, right: false, a: false, b: false, start: false };
+    for (const r of reads) for (const k of Object.keys(e) as (keyof typeof e)[]) e[k] ||= r[k];
     if (e.start) {
       if (mode === 'playing') pause();
       else if (mode === 'paused') resume();
@@ -479,8 +527,10 @@ function startGame() {
   }, { once: true });
   addEventListener('beforeunload', () => leaveLan(false));
 
-  hud.setVisible(false);
+  setHudVisible(false);
   screens.title();
+  // dev: ?split=1 starts the demo in split screen
+  if (params.has('split')) settings.localPlayers = 2;
   if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth

@@ -17,11 +17,13 @@ export interface Settings {
   damageNumbers: boolean;
   /** suit colour 0–5, or null for automatic */
   color: number | null;
+  /** players on this computer: 2 = split screen */
+  localPlayers: 1 | 2;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: true, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1 };
 
 export function loadSettings(): Settings {
   try {
@@ -358,6 +360,26 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         label.textContent = diffLabel(settings.difficulty);
         diff.append(prev, label, next);
         main.append(diff);
+        // one or two players on this computer (two = split screen, player 2 needs a controller)
+        const who = document.createElement('div');
+        who.className = 'chips players';
+        const drawWho = () => {
+          who.innerHTML = '';
+          for (const n of [1, 2] as const) {
+            const c = document.createElement('button');
+            c.className = `chip${settings.localPlayers === n ? ' on' : ''}`;
+            c.textContent = t(n === 1 ? 'menu.onePlayer' : 'menu.twoPlayers');
+            c.addEventListener('click', () => {
+              actions.click();
+              settings.localPlayers = n;
+              changed();
+              drawWho();
+            });
+            who.append(c);
+          }
+        };
+        drawWho();
+        main.append(who);
         const row = document.createElement('div');
         row.className = 'row2';
         main.append(row);

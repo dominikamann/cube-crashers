@@ -90,6 +90,20 @@ describe('PadControls', () => {
     expect(c.commands(pad({ down: [X, UP] }), s, 0, 250)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'popcorn' });
   });
 
+  it('the build menu stays open after letting go of X; B closes it without dashing', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].pos = { ...floor01.pads[PAD].pos };
+    const c = new PadControls();
+    c.commands(pad({ down: [X] }), s, 0, 0);
+    c.commands(pad({ down: [X] }), s, 0, 200);
+    c.commands(pad(), s, 0, 250);
+    expect(c.buildMenuOpen).toBe(true);
+    expect(c.commands(pad({ down: [LEFT] }), s, 0, 300)).toContainEqual({ type: 'build', playerId: 0, padId: PAD, tower: 'laser' });
+    c.commands(pad(), s, 0, 320);
+    expect(c.commands(pad({ down: [B] }), s, 0, 340)).not.toContainEqual({ type: 'dash', playerId: 0 });
+    expect(c.buildMenuOpen).toBe(false);
+  });
+
   it('in the shop the d-pad buys and A says ready', () => {
     const s = createSim(floor01, 1, { mode: 'run' });
     openShop(s);
