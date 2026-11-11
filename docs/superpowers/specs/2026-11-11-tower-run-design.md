@@ -95,14 +95,25 @@ vorbei. Ein steigender **Alarm-Pegel** bestraft Trödeln. **[Vorschlag, angenomm
 | Leertaste | Springen; Landung ist ein **Stampfer** |
 | Shift | **Dash** |
 | E | Interagieren: bauen (halten), Ladung legen (halten), Fahrzeug ein-/aussteigen (tippen) |
-| 1–3 / Maus | Turm im Baumenü wählen |
+| Maus | Zielen (Fadenkreuz am Boden) |
+| Linke Maustaste (halten) | Gewählte Waffe abfeuern |
+| 1–6 / Mausrad | Waffe wählen. Bei offenem Baumenü wählen 1–3 den Turm |
 | Esc / P | Pause |
 
 - **Dash:** 4 Felder in 0,15 s, dabei unverwundbar, 10 Schaden an allem auf dem Weg, 1,2 s Abklingzeit.
 - **Sprung:** ca. 0,5 s in der Luft, fliegt über Gegner und Bodengefahren (nicht über Wände). Landung:
   15 Flächenschaden im Radius 1,2 und kurzer Rückstoß. In der Luft trifft Kontaktschaden nicht.
-- **Waffen** feuern weiter automatisch **[Dominik, Phase 1]**, aber: Reichweiten ca. −35 %, und Treffer
-  innerhalb von 3 Feldern machen +50 % Schaden. Nähe lohnt sich.
+- **Selbst schießen [Dominik, nach dem ersten Spielen – ersetzt das automatische Feuern aus Phase 1]:**
+  Der Spieler zielt mit der Maus und feuert selbst. Er trägt bis zu 6 Waffen und wechselt mit 1–6.
+  **Jede Waffe lädt für sich nach, auch wenn sie gerade nicht gewählt ist.** Das HUD zeigt pro Waffe einen
+  Ladebalken und leuchtet, wenn sie bereit ist – so wechselt man schnell durch und feuert, was geladen ist.
+  Treffer innerhalb von 3 Feldern machen +50 % Schaden. Nähe lohnt sich.
+- **Waffen (Stufe 1) [Werte = Builder-Entscheidung]:** Pixel Blaster (schnelle Schüsse, Startwaffe),
+  Laser Sword (breiter Schwung in Zielrichtung), Candy Cannon (Schrot), Hotdog Slinger (Wurf zum
+  Fadenkreuz, Senfpfütze), Joystick Boomerang (durchschlägt, kommt zurück), Disco Ball (Blitz auf die
+  nächsten Gegner ringsum), **Banana Mine** (legt eine Mine, die bei Berührung explodiert) und **Bomb**
+  (Wurf zum Fadenkreuz, große Explosion). **[Dominik: Bananen-Mine oder Bombe]** Schwere Waffen laden
+  lange, der Blaster kurz.
 - **Combo:** Jeder Kill erhöht die Combo; sie verfällt 3 s nach dem letzten Kill oder Münz-Pickup.
   Multiplikator = 1 + ⌊Combo/10⌋, höchstens ×10. Er gilt für Münzwert und Punkte. Groß und laut im HUD.
 - **Münzen** verfallen nach 8 s (blinken die letzten 3 s). Kein automatisches Heranfliegen mehr; der
