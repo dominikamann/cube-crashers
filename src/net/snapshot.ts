@@ -125,7 +125,7 @@ export function applySnapshot(view: SimState, snap: SnapState): boolean {
   if (snap.tick <= view.tick && view.tick > 0) return false;
   const { mapId, ...rest } = snap;
   // a new floor: clients know every map by its id
-  if (mapId !== view.map.id && FLOORS[mapId]) view.map = FLOORS[mapId].map;
+  if (mapId !== view.map.id && typeof mapId === 'string' && Object.hasOwn(FLOORS, mapId)) view.map = FLOORS[mapId].map;
   Object.assign(view, rest, { enemies: snap.enemies.map(unpackEnemy), coins: snap.coins.map(unpackCoin) });
   return true;
 }

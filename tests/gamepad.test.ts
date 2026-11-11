@@ -183,3 +183,22 @@ describe('normalizePad', () => {
     expect(padFamily('Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e)')).toBe('xbox');
   });
 });
+
+describe('PadControls after a pause', () => {
+  it('a button still held after resuming is not a new press (no jump from resuming with A)', () => {
+    const s = createSim(floor01, 1);
+    const c = new PadControls();
+    c.commands(pad({ down: [0] }), s, 0, 0);
+    c.releaseAll(pad({ down: [0] }));
+    expect(c.commands(pad({ down: [0] }), s, 0, 16)).not.toContainEqual({ type: 'jump', playerId: 0 });
+  });
+
+  it('auto-build sends one build command, not one per frame', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].pos = { ...floor01.pads[PAD].pos };
+    const c = new PadControls();
+    let builds = 0;
+    for (let t = 0; t <= 1000; t += 16) builds += c.commands(pad({ down: [2] }), s, 0, t).filter(x => x.type === 'build').length;
+    expect(builds).toBe(1);
+  });
+});

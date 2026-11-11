@@ -78,7 +78,7 @@ function openCrate(s: SimState, crate: Crate, p: Player): void {
   s.events.push({ type: 'offerOpened', pos: { ...crate.pos } });
 }
 
-function take(s: SimState, p: Player, card: Card): void {
+export function takeCard(s: SimState, p: Player, card: Card): void {
   let level: number;
   if (card.type === 'weapon') {
     level = grantWeapon(p, card.weapon);
@@ -87,8 +87,12 @@ function take(s: SimState, p: Player, card: Card): void {
     p.rareSelected = true;
     level = 1;
   } else {
-    level = ++p.perks[card.perk];
-    if (card.perk === 'dash') p.dashCharges++;
+    // any player can pick a card another one opened: never past the maximum
+    if (p.perks[card.perk] < PERK_MAX[card.perk]) {
+      p.perks[card.perk]++;
+      if (card.perk === 'dash') p.dashCharges++;
+    }
+    level = p.perks[card.perk];
   }
   s.events.push({ type: 'cardPicked', playerId: p.id, card, level });
 }
@@ -115,7 +119,7 @@ export function updateOffers(s: SimState): void {
     for (const p of alive) {
       const i = o.cardPos.findIndex(c => dist(c, p.pos) <= CARD_PICKUP_RADIUS);
       if (i < 0) continue;
-      take(s, p, o.cards[i]);
+      takeCard(s, p, o.cards[i]);
       return false;
     }
     return true;

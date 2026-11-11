@@ -83,7 +83,8 @@ function canSpawn(s: SimState, comp: HordeComp): boolean {
 
 /** Fills a fresh floor: which nest spots are used, their first hordes, and a few roaming hordes. */
 export function setupFloor(s: SimState): void {
-  s.alarm = { level: 0, nextAt: alarmTicks(s) };
+  // all timers count from now: later floors start long after tick 0
+  s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   const def = floorDef(s.map.id);
   if (def?.kind === 'boss') {
@@ -104,7 +105,7 @@ export function setupFloor(s: SimState): void {
     pos: { ...spot.pos },
     state: 'idle' as const,
     progress: 0,
-    nextSpawnAt: NEST_SPAWN_TICKS,
+    nextSpawnAt: s.tick + NEST_SPAWN_TICKS,
     nextRushAt: 0,
     nextBlastAt: 0,
   }));
@@ -115,7 +116,7 @@ export function setupFloor(s: SimState): void {
   placeStartCrates(s);
   placeStartKarts(s);
   placeStartJetpack(s);
-  s.nextPowerupAt = POWERUP.firstTicks;
+  s.nextPowerupAt = s.tick + POWERUP.firstTicks;
 }
 
 function besideNest(s: SimState, n: Nest): Vec2 {

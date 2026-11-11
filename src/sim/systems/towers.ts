@@ -89,7 +89,8 @@ function fire(s: SimState, t: Tower): boolean {
     case 'popcorn': {
       const e = nearestEnemy(s, t.pos, def.range);
       if (!e) return false;
-      const target = { x: e.pos.x, z: e.pos.z + e.speed * POPCORN_FLIGHT };
+      // lead the target along the way it walks
+      const target = { x: e.pos.x + e.dir.x * e.speed * POPCORN_FLIGHT, z: e.pos.z + e.dir.z * e.speed * POPCORN_FLIGHT };
       s.projectiles.push({
         id: s.nextId++,
         kind: t.kind,

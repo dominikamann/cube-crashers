@@ -45,9 +45,9 @@ function makePlayer(color: number) {
   (sword.material as THREE.Material).side = THREE.DoubleSide;
   sword.visible = false;
   root.add(sword);
+  // the light is not part of `root`: root blinks while invulnerable, and a light switching on and off
+  // changes the scene's light count, which recompiles every shader
   const light = new THREE.PointLight(0x2bf0ff, 0, 5);
-  light.position.y = 1.6;
-  root.add(light);
   // jetpack on the back, flame below while flying
   const pack = new THREE.Group();
   pack.add(box(0.45, 0.5, 0.22, lambert(0xd0d4e0), 0, 0.8, 0.32));
@@ -80,6 +80,19 @@ const scaffoldGeo = (() => {
   }
   return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
 })();
+
+/** geometries and materials shared by many actors: never disposed with one of them */
+const SHARED = new Set<object>();
+
+/** frees the GPU resources of an actor that left the scene (shared ones stay) */
+function disposeTree(root: THREE.Object3D): void {
+  root.traverse(o => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.geometry && !SHARED.has(mesh.geometry)) mesh.geometry.dispose();
+    const mats = mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : [];
+    for (const m of mats) if (!SHARED.has(m)) m.dispose();
+  });
+}
 
 function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; head: THREE.Object3D; lightColor: number; scaffold: THREE.LineSegments; pips: THREE.Group; level: number } {
   const outer = new THREE.Group();
@@ -150,6 +163,8 @@ function makeKart(kind: VehicleKind = 'kart') {
 const tileQuad = new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2);
 const ZONE_IDLE = new THREE.Color(0xff2bd6).multiplyScalar(0.55);
 const ZONE_LIT = new THREE.Color(0x2bf0ff).multiplyScalar(1.6);
+
+SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad);
 
 function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   const root = new THREE.Group();
@@ -265,7 +280,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     let v = players.get(p.id);
     if (!v) {
       v = makePlayer(p.color);
-      scene.add(v.root);
+      scene.add(v.root, v.light);
       players.set(p.id, v);
     }
     const driving = p.vehicleId !== null;
@@ -303,6 +318,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.sword.position.y = 0.7;
     }
     v.light.intensity = 4 * theme.pointLights;
+    v.light.position.set(v.root.position.x, 1.6, v.root.position.z);
     setGlow(v.root, theme.glow);
   }
 
@@ -319,6 +335,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.scaffold.scale.y = t.upgrading ? 1 + 0.15 * (1 - t.buildLeft / UPGRADE_TICKS) : 1;
     if (v.level !== t.level) {
       v.level = t.level;
+      disposeTree(v.pips);
       v.pips.clear();
       for (let i = 1; i < t.level; i++) v.pips.add(box(0.22, 0.22, 0.08, glowMat(0xffcf3a, 1.5), (i - t.level / 2) * 0.3, 0, 0));
       if (t.level > 1) v.built = time;
@@ -353,6 +370,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     // endless mode moves a nest to a new spot: rebuild its zone there
     if (v && (v.root.position.x !== n.pos.x || v.root.position.z !== n.pos.z)) {
       scene.remove(v.root);
+      disposeTree(v.root);
       v = undefined;
     }
     if (!v) {
@@ -414,12 +432,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     for (const [id, v] of map_) {
       if (alive.has(id)) continue;
       scene.remove(v.root);
-      v.root.traverse(o => {
-        const mesh = o as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
-        const mats = mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : [];
-        for (const m of mats) m.dispose();
-      });
+      disposeTree(v.root);
       map_.delete(id);
     }
   }
@@ -430,7 +443,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       const here = new Set(s.players.map(p => p.id));
       for (const [id, v] of players) {
         if (here.has(id)) continue;
-        scene.remove(v.root);
+        scene.remove(v.root, v.light);
+        disposeTree(v.root);
         players.delete(id);
       }
       for (const e of events) {

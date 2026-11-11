@@ -92,8 +92,9 @@ export class PadControls {
     }
   }
 
-  releaseAll(): void {
-    this.prev = [];
+  /** After a pause: buttons still held (`pad`) do not count as new presses when play resumes. */
+  releaseAll(pad?: PadSnapshot): void {
+    this.prev = pad ? pad.buttons.map(b => b.pressed) : [];
     this.xSince = null;
     this.closeMenu();
   }
@@ -183,6 +184,8 @@ export class PadControls {
       if (tapPick) pick ??= DEFAULT_TOWER;
       // still holding X on an empty pad: build the preselected tower right away
       if (!tower && this.xSince !== null && now - this.xSince >= AUTO_BUILD_MS) pick ??= DEFAULT_TOWER;
+      // one build per press: the tower shows up only a tick (or a snapshot) later
+      if (pick) this.xSince = null;
       if (pick) out.push(tower ? { type: 'upgrade', playerId, padId: this.menuPad } : { type: 'build', playerId, padId: this.menuPad, tower: pick });
     }
     this.remember(pad);

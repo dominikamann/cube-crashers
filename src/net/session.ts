@@ -12,14 +12,14 @@ const SILENT_INPUT_TICKS = 15;
 /** a client gives up on a host that sent nothing for this long while playing */
 export const HOST_TIMEOUT_MS = 5000;
 
-const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'buy', 'ready']);
+const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready']);
 const HELD = new Set(['hold', 'fire', 'fly']);
 
 /**
  * Inputs that arrived from one client since the last host tick, merged into one tick's worth:
  * the newest move/aim/held keys, plus every one-off action (jump, dash, …) exactly once.
  */
-function mergeInputs(batches: Command[][], last: Command[]): { cmds: Command[]; last: Command[] } {
+export function mergeInputs(batches: Command[][], last: Command[]): { cmds: Command[]; last: Command[] } {
   if (batches.length === 0) return { cmds: last, last };
   const edges: Command[] = [];
   for (const b of batches) for (const c of b) if (EDGE.has(c.type)) edges.push(c);

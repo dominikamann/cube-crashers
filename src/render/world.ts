@@ -612,8 +612,12 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         obj.traverse(x => {
           const m = x as THREE.Mesh;
           if (m.geometry && m.geometry !== unit) m.geometry.dispose();
+          // every material here belongs to this world (disposing one twice is harmless)
+          const mats = m.material ? (Array.isArray(m.material) ? m.material : [m.material]) : [];
+          for (const mat of mats) mat.dispose();
         });
       }
+      unit.dispose();
       for (const d of disposables) d.dispose();
     },
   };

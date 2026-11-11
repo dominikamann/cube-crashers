@@ -149,9 +149,17 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   });
   let views: View[] = [makeView(0, map.spawn)];
 
+  /** frees a composer with all its passes (EffectComposer.dispose alone keeps the bloom and AO targets) */
+  function disposeComposer(c: EffectComposer | null) {
+    if (!c) return;
+    for (const pass of c.passes) (pass as { dispose?: () => void }).dispose?.();
+    c.dispose();
+  }
+
   function buildComposer() {
     const q = QUALITY[quality];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.pixelRatio));
+    const shadowsToggled = renderer.shadowMap.enabled !== q.shadows > 0;
     renderer.shadowMap.enabled = q.shadows > 0;
     sun.castShadow = q.shadows > 0;
     if (q.shadows > 0 && sun.shadow.mapSize.x !== q.shadows) {
@@ -159,14 +167,17 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       sun.shadow.map?.dispose();
       sun.shadow.map = null;
     }
-    // shadows of every mesh need a material update after switching shadows on or off
-    scene.traverse(o => {
-      const m = (o as THREE.Mesh).material;
-      if (m) (Array.isArray(m) ? m : [m]).forEach(x => (x.needsUpdate = true));
-    });
+    // shadows of every mesh need a material update after switching shadows on or off (and only then:
+    // it recompiles every shader)
+    if (shadowsToggled) {
+      scene.traverse(o => {
+        const m = (o as THREE.Mesh).material;
+        if (m) (Array.isArray(m) ? m : [m]).forEach(x => (x.needsUpdate = true));
+      });
+    }
     for (const v of views) {
       const target = new THREE.WebGLRenderTarget(1, 1, { samples: q.msaa, type: THREE.HalfFloatType });
-      v.composer?.dispose();
+      disposeComposer(v.composer);
       const composer = new EffectComposer(renderer, target);
       composer.addPass(new RenderPass(scene, v.camera));
       if (q.ao) {
@@ -341,8 +352,13 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setViews(ids) {
       if (ids.length === views.length && ids.every((id, i) => views[i].id === id)) return;
+      // only whose eyes changed: keep the composers
+      if (ids.length === views.length) {
+        ids.forEach((id, i) => (views[i].id = id));
+        return;
+      }
       const at = views[0].camLook;
-      for (const v of views.slice(ids.length)) v.composer?.dispose();
+      for (const v of views.slice(ids.length)) disposeComposer(v.composer);
       views = ids.map((id, i) => views[i] ? Object.assign(views[i], { id }) : makeView(id, { x: at.x, z: at.z + 2 }));
       buildComposer();
     },

@@ -189,6 +189,7 @@ function startGame() {
       if (role === 'host' && host) {
         const evs = host.takeEvents();
         keyboard.onEvents(evs);
+        padCtl.onEvents(evs);
         frameEvents.push(...evs);
         announce();
       }
@@ -196,6 +197,7 @@ function startGame() {
         client.checkTimeout(performance.now());
         const evs = client.takeEvents();
         keyboard.onEvents(evs);
+        padCtl.onEvents(evs);
         frameEvents.push(...evs);
         watchClient();
       }
@@ -222,9 +224,11 @@ function startGame() {
       if (split) {
         hud2.update(s, frameEvents, padCtl2.buildMenuOpen, performance.now() / 1000, 1);
         buildMenu2.update(s, padCtl2.buildMenuOpen && mode === 'playing', frameEvents, 1, padCtl2.menuPad);
+        // the right half starts at the middle of the window (CSS left: 50%): no layout read per marker
+        const half = innerWidth / 2;
         if (mode === 'playing') markers2.update(s, (x, z) => {
           const r = renderer.project(x, z, 1);
-          return { x: r.x - hudRoots[1].getBoundingClientRect().left, y: r.y };
+          return { x: r.x - half, y: r.y };
         });
       }
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
@@ -446,6 +450,10 @@ function startGame() {
     if (mode !== 'paused') return;
     screens.hide();
     mode = 'playing';
+    // buttons still held from the pause menu (A on "Resume") must not jump or dash
+    const pads = readPads();
+    padCtl.releaseAll(split ? (pads.length >= 2 ? pads[0] : undefined) : pads[0]);
+    padCtl2.releaseAll(split ? (pads.length >= 2 ? pads[1] : pads[0]) : undefined);
     if (role === 'solo') loop.resume();
   }
 
@@ -474,19 +482,7 @@ function startGame() {
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
 
-  // ?paddebug=1 shows what the browser reports for each controller (name, mapping, sticks, buttons)
-  if (params.has('paddebug')) {
-    const box = document.createElement('pre');
-    box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;background:#000c;color:#0f0;font:12px monospace;padding:8px;pointer-events:none;white-space:pre-wrap;max-width:60vw';
-    document.body.append(box);
-    const show = () => {
-      requestAnimationFrame(show);
-      box.textContent = rawPads()
-        .map(g => `${g.id}\nmapping: ${g.mapping || '(none)'}\naxes: ${g.axes.map(a => a.toFixed(2)).join(' ')}\npressed: ${g.buttons.map((b, i) => (b.pressed ? i : null)).filter(x => x !== null).join(' ')}`)
-        .join('\n\n') || 'no controller – press a button';
-    };
-    show();
-  }
+
     const all = readPads();
     if (all.length === 0) return;
     // any controller can pause and steer the menus
@@ -511,6 +507,20 @@ function startGame() {
     }
   }
   requestAnimationFrame(pollPadMenus);
+
+  // ?paddebug=1 shows what the browser reports for each controller (name, mapping, sticks, buttons)
+  if (params.has('paddebug')) {
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:99;background:#000c;color:#0f0;font:12px monospace;padding:8px;pointer-events:none;white-space:pre-wrap;max-width:60vw';
+    document.body.append(box);
+    const show = () => {
+      requestAnimationFrame(show);
+      box.textContent = rawPads()
+        .map(g => `${g.id}\nmapping: ${g.mapping || '(none)'}\naxes: ${g.axes.map(a => a.toFixed(2)).join(' ')}\npressed: ${g.buttons.map((b, i) => (b.pressed ? i : null)).filter(x => x !== null).join(' ')}`)
+        .join('\n\n') || 'no controller – press a button';
+    };
+    show();
+  }
 
   addEventListener('keydown', e => {
     padActive = false;

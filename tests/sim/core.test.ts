@@ -55,7 +55,7 @@ describe('sim purity', () => {
     walk('src/sim');
     for (const f of files) {
       const src = readFileSync(f, 'utf8');
-      expect(src, f).not.toMatch(/from 'three'|Math\.random|Date\.|\bwindow\b|\bdocument\b/);
+      expect(src, f).not.toMatch(/from 'three'|Math\.random|Date\.|new Date|performance\.now|\bwindow\b|\bdocument\b/);
     }
   });
 });

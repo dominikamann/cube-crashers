@@ -26,7 +26,7 @@ function placeJetpack(s: SimState, spots: Vec2[]): void {
 
 export function placeStartJetpack(s: SimState): void {
   placeJetpack(s, s.map.crateSpots);
-  s.nextJetpackAt = JETPACK.respawnTicks;
+  s.nextJetpackAt = s.tick + JETPACK.respawnTicks;
 }
 
 export function updateJetpacks(s: SimState): void {

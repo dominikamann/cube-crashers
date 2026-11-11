@@ -181,7 +181,11 @@ export class Keyboard {
     }
 
     // still holding E on an empty pad: build the preselected tower right away
-    if (this.buildMenuOpen && !tower && this.eSince !== null && now - this.eSince >= AUTO_BUILD_MS) this.chosen ??= DEFAULT_TOWER;
+    if (this.buildMenuOpen && !tower && this.eSince !== null && now - this.eSince >= AUTO_BUILD_MS) {
+      this.chosen ??= DEFAULT_TOWER;
+      // one build per press: the tower shows up only a tick (or a snapshot) later
+      this.eSince = null;
+    }
     if (this.buildMenuOpen && this.chosen && this.menuPad !== null) {
       // on a pad with a tower any of the menu keys picks the single card: the upgrade
       if (tower) cmds.push({ type: 'upgrade', playerId, padId: this.menuPad });
