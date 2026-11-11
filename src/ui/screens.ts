@@ -544,8 +544,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const foot = document.createElement('div');
         foot.className = 'foot';
         s.append(foot);
-        for (const [label_, fn] of [[t('menu.settings'), settingsScreen], [t('menu.credits'), creditsScreen], [t('menu.quit'), actions.quit]] as [string, () => void][]) {
-          button(foot, label_, fn).classList.add('small');
+        for (const [label_, icon, fn, cls] of [[t('menu.settings'), '\u2699', settingsScreen, ''], [t('menu.credits'), '\u2605', creditsScreen, ''], [t('menu.quit'), '\u23FB', actions.quit, 'quit']] as [string, string, () => void, string][]) {
+          const b = button(foot, label_, fn);
+          b.classList.add('small');
+          if (cls) b.classList.add(cls);
+          const ico = document.createElement('span');
+          ico.className = 'ico';
+          ico.textContent = icon;
+          b.prepend(ico);
         }
       });
     },
