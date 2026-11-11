@@ -1,5 +1,6 @@
 import { WAVE_PAUSE_SECONDS, WAVES } from '../config/waves';
 import { TICK_RATE, type SimState } from '../types';
+import { spawnCrate } from './crates';
 import { spawnEnemy } from './enemies';
 
 function startWave(s: SimState): void {
@@ -30,7 +31,8 @@ export function updateWaves(s: SimState): void {
   while (w.spawnQueue.length > 0 && w.spawnQueue[0].at <= s.tick) {
     const item = w.spawnQueue.shift()!;
     const x = s.rng.range(-s.map.laneHalfWidth + 0.5, s.map.laneHalfWidth - 0.5);
-    if (item.kind !== 'crate') spawnEnemy(s, item.kind, { x, z: s.map.spawnZ });
+    if (item.kind === 'crate') spawnCrate(s, { x, z: s.map.spawnZ });
+    else spawnEnemy(s, item.kind, { x, z: s.map.spawnZ });
   }
   if (w.spawnQueue.length === 0 && s.enemies.length === 0 && s.boss === null) {
     s.events.push({ type: 'waveCleared', wave: w.index + 1 });

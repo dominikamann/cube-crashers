@@ -1,8 +1,12 @@
 import { Rng } from './rng';
+import { removeDead, updateAreas, updateProjectiles } from './systems/combat';
+import { updateCoins } from './systems/coins';
+import { updateCrates } from './systems/crates';
 import { updateEnemies } from './systems/enemies';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { updateWaves } from './systems/waves';
+import { updateWeapons } from './systems/weapons';
 import type { Command, MapDef, SimState, Vec2 } from './types';
 
 export function createSim(map: MapDef, seed: number): SimState {
@@ -25,6 +29,7 @@ export function createSim(map: MapDef, seed: number): SimState {
     ],
     enemies: [],
     projectiles: [],
+    areas: [],
     coins: [],
     crates: [],
     towers: [],
@@ -51,6 +56,12 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updatePlayers(s, moves);
   updateWaves(s);
   updateEnemies(s);
+  updateWeapons(s);
+  updateProjectiles(s);
+  updateAreas(s);
+  updateCrates(s);
+  removeDead(s);
+  updateCoins(s);
   updateOutcome(s);
   s.tick++;
 }

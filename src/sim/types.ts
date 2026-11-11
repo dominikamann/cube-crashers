@@ -57,19 +57,64 @@ export interface Enemy {
   radius: number;
 }
 
+export type DamageSource = WeaponKind | TowerKind | 'boss';
+
+/** What happens where a lobbed projectile lands. */
+export interface LandEffect {
+  radius: number;
+  damage: number;
+  /** if set, leaves an area that pulses `damage` every `interval` ticks for `duration` ticks */
+  duration?: number;
+  interval?: number;
+}
+
 export interface Projectile {
   id: number;
+  kind: DamageSource;
+  behavior: 'bolt' | 'lob' | 'boomerang';
   pos: Vec2;
+  vel: Vec2;
+  damage: number;
+  /** extra enemies a bolt may pass through; Infinity for boomerangs */
+  pierce: number;
+  /** tick at which the projectile expires (bolt) or lands (lob) */
+  until: number;
+  /** enemy ids already hit (pierce/boomerang must not hit the same enemy twice per pass) */
+  hitIds: number[];
+  ownerId: number;
+  /** lob: start and target for the arc */
+  from?: Vec2;
+  target?: Vec2;
+  launchedAt?: number;
+  land?: LandEffect;
+  /** boomerang: distance travelled outward, and whether it is returning */
+  travelled?: number;
+  range?: number;
+  returning?: boolean;
+}
+
+export interface Area {
+  id: number;
+  kind: DamageSource;
+  pos: Vec2;
+  radius: number;
+  damage: number;
+  interval: number;
+  nextAt: number;
+  until: number;
 }
 
 export interface Coin {
   id: number;
   pos: Vec2;
+  value: number;
 }
 
 export interface Crate {
   id: number;
   pos: Vec2;
+  weapon: WeaponKind;
+  hp: number;
 }
 
 export interface Tower {
@@ -122,6 +167,7 @@ export interface SimState {
   players: Player[];
   enemies: Enemy[];
   projectiles: Projectile[];
+  areas: Area[];
   coins: Coin[];
   crates: Crate[];
   towers: Tower[];
