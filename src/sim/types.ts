@@ -18,13 +18,16 @@ export type WeaponKind =
   | 'bomb';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
+export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
-export type DamageSource = WeaponKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
+export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
 export type KillCategory = 'weapon' | 'tower' | 'kart' | 'stomp' | 'dash' | 'other';
 
 export type Command =
   | { type: 'move'; playerId: number; dir: Vec2 }
   | { type: 'jump'; playerId: number }
+  /** Space is held: flies while a jetpack has fuel */
+  | { type: 'fly'; playerId: number }
   | { type: 'dash'; playerId: number }
   /** tap E: enter or leave a vehicle */
   | { type: 'use'; playerId: number }
@@ -35,12 +38,14 @@ export type Command =
   | { type: 'aim'; playerId: number; point: Vec2 }
   /** the fire button is held this tick */
   | { type: 'fire'; playerId: number }
+  /** slot 0–5 = normal weapons, -1 = the rare weapon (Q) */
   | { type: 'select'; playerId: number; slot: number };
 
 /** Everything one player asked for in one tick, collected from the commands. */
 export interface Intent {
   move: Vec2;
   jump: boolean;
+  fly: boolean;
   dash: boolean;
   use: boolean;
   hold: boolean;
@@ -94,6 +99,11 @@ export interface Player {
   safePoint: Vec2;
   /** ticks E has been held next to a nest */
   plantTicks: number;
+  /** jetpack fuel in ticks, 0 = no jetpack */
+  jetFuel: number;
+  flying: boolean;
+  rare: { kind: RareKind; until: number; cooldown: number } | null;
+  rareSelected: boolean;
 }
 
 export type EnemyState = 'move' | 'windup' | 'charge' | 'stunned' | 'fuse';
@@ -120,6 +130,13 @@ export interface Enemy {
   ramHitUntil: number;
   /** distance left in a rammer charge */
   chargeLeft: number;
+  /** slush build-up; at RARE.slush.freezeAt the enemy freezes */
+  chill: number;
+  frozenUntil: number;
+  /** caught in a gum bubble */
+  stuckUntil: number;
+  /** a wall slam from the leaf blower cannot repeat before this tick */
+  slamUntil: number;
 }
 
 export interface Horde {
@@ -143,7 +160,7 @@ export interface LandEffect {
 export interface Projectile {
   id: number;
   kind: DamageSource;
-  behavior: 'bolt' | 'lob' | 'boomerang';
+  behavior: 'bolt' | 'lob' | 'boomerang' | 'saw';
   /** fired by an enemy: hits players instead of enemies */
   hostile?: boolean;
   pos: Vec2;
@@ -166,6 +183,8 @@ export interface Projectile {
   travelled?: number;
   range?: number;
   returning?: boolean;
+  /** saw: wall bounces left */
+  bounces?: number;
 }
 
 export interface Area {
@@ -189,6 +208,18 @@ export interface Mine {
   expiresAt: number;
 }
 
+export interface JetpackItem {
+  id: number;
+  pos: Vec2;
+}
+
+export interface Bubble {
+  id: number;
+  pos: Vec2;
+  ownerId: number;
+  popAt: number;
+}
+
 export interface Coin {
   id: number;
   pos: Vec2;
@@ -201,7 +232,7 @@ export interface Crate {
   pos: Vec2;
 }
 
-export type Card = { type: 'weapon'; weapon: WeaponKind } | { type: 'perk'; perk: PerkKind };
+export type Card = { type: 'weapon'; weapon: WeaponKind } | { type: 'perk'; perk: PerkKind } | { type: 'rare'; rare: RareKind };
 
 export interface Offer {
   id: number;
@@ -323,6 +354,11 @@ export type SimEvent =
   | { type: 'kartJump'; pos: Vec2 }
   | { type: 'kartLand'; pos: Vec2 }
   | { type: 'kartDestroyed'; pos: Vec2 }
+  | { type: 'jetpackPicked'; playerId: number }
+  | { type: 'jetpackEmpty'; playerId: number }
+  | { type: 'rareFired'; kind: RareKind; playerId: number; pos: Vec2 }
+  | { type: 'rareExpired'; playerId: number }
+  | { type: 'bubblePop'; pos: Vec2 }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
 
@@ -347,6 +383,9 @@ export interface SimState {
   vehicleRespawns: { spot: number; at: number }[];
   powerups: Powerup[];
   nextPowerupAt: number;
+  jetpacks: JetpackItem[];
+  nextJetpackAt: number;
+  bubbles: Bubble[];
   credits: number;
   alarm: { level: number; nextAt: number };
   elevatorOpen: boolean;

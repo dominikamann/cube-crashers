@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { POWERUP } from '../sim/systems/powerups';
-import type { Card, PerkKind, PowerupKind, SimState, WeaponKind } from '../sim/types';
+import type { Card, PerkKind, PowerupKind, RareKind, SimState, WeaponKind } from '../sim/types';
 import { POWERUP_COLOR } from './fx';
 import { glowMat } from './pool';
 import type { Theme } from './theme';
@@ -23,6 +23,20 @@ export const PERK_GLYPH: Record<PerkKind, string> = {
   greed: '💰',
   regen: '💚',
   stomp: '🥾',
+};
+
+export const RARE_GLYPH: Record<RareKind, string> = {
+  slushMachine: '🧊',
+  bubblegumBazooka: '🫧',
+  leafBlower: '🍃',
+  pizzaCutter: '🍕',
+};
+
+const RARE_LABEL: Record<RareKind, string> = {
+  slushMachine: 'SLUSH',
+  bubblegumBazooka: 'BUBBLEGUM',
+  leafBlower: 'BLOWER',
+  pizzaCutter: 'PIZZA',
 };
 
 export const POWERUP_GLYPH: Record<PowerupKind, string> = {
@@ -77,7 +91,13 @@ function iconTexture(glyph: string, label: string, bg: string): THREE.CanvasText
   return tex;
 }
 
-const cardKey = (c: Card) => (c.type === 'weapon' ? `w:${c.weapon}` : `p:${c.perk}`);
+const cardKey = (c: Card) => (c.type === 'weapon' ? `w:${c.weapon}` : c.type === 'perk' ? `p:${c.perk}` : `r:${c.rare}`);
+
+function cardTexture(card: Card): THREE.CanvasTexture {
+  if (card.type === 'weapon') return iconTexture(WEAPON_GLYPH[card.weapon], WEAPON_LABEL[card.weapon], '#7b4fd1');
+  if (card.type === 'perk') return iconTexture(PERK_GLYPH[card.perk], PERK_LABEL[card.perk], '#1f8f6a');
+  return iconTexture(RARE_GLYPH[card.rare], RARE_LABEL[card.rare], '#d19a00');
+}
 
 export interface Pickups {
   update(s: SimState, theme: Theme, time: number): void;
@@ -111,14 +131,13 @@ export function createPickups(scene: THREE.Scene): Pickups {
         if (!g) {
           g = new THREE.Group();
           o.cards.forEach((card, i) => {
-            const weapon = card.type === 'weapon';
-            const tex = texFor(cardKey(card), () =>
-              weapon ? iconTexture(WEAPON_GLYPH[card.weapon], WEAPON_LABEL[card.weapon], '#7b4fd1') : iconTexture(PERK_GLYPH[card.perk], PERK_LABEL[card.perk], '#1f8f6a'));
+            const tex = texFor(cardKey(card), () => cardTexture(card));
+            const glowColor = card.type === 'weapon' ? 0xb07cff : card.type === 'perk' ? 0x3bffb0 : 0xffc928;
             const mesh = new THREE.Mesh(cardGeo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
             mesh.rotation.x = -0.75;
             mesh.position.set(o.cardPos[i].x, 1.1, o.cardPos[i].z);
             mesh.userData.phase = i;
-            const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: weapon ? 0xb07cff : 0x3bffb0, transparent: true, opacity: 0.5, depthWrite: false }));
+            const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.5, depthWrite: false }));
             glow.position.set(o.cardPos[i].x, 0.04, o.cardPos[i].z);
             g!.add(mesh, glow);
           });

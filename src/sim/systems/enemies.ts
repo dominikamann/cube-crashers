@@ -1,10 +1,12 @@
 import { ALARM_SPEED_STEP, BOMBER, FLOW_REBUILD_TICKS, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
+import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
-import { explode } from './combat';
+import { damageEnemy, explode } from './combat';
+import { airborne, held } from './rare';
 import { damagePlayer } from './player';
 
 export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hordeId?: number; elite?: boolean } = {}): Enemy {
@@ -29,6 +31,10 @@ export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hord
     cooldownUntil: 0,
     ramHitUntil: 0,
     chargeLeft: 0,
+    chill: 0,
+    frozenUntil: 0,
+    stuckUntil: 0,
+    slamUntil: 0,
   };
   s.enemies.push(e);
   return e;
@@ -93,7 +99,7 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     e.cooldownUntil = s.tick + RAMMER.cooldownTicks;
   };
   for (const p of players) {
-    if (p.air > 0 || s.tick < p.invulnUntil) continue;
+    if (airborne(p) || s.tick < p.invulnUntil) continue;
     if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
     damagePlayer(s, p, RAMMER.damage);
     moveCircle(s.map, p.pos, e.dir.x * 1.5, e.dir.z * 1.5, PLAYER_RADIUS, BLOCKS_WALKER);
@@ -152,11 +158,11 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
 
 function contactDamage(s: SimState, players: Player[]): void {
   for (const e of s.enemies) {
-    if (e.hp <= 0 || e.state === 'stunned') continue;
+    if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;
     const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
     if (dps === 0) continue;
     for (const p of players) {
-      if (p.air > 0 || p.vehicleId !== null) continue;
+      if (airborne(p) || p.vehicleId !== null) continue;
       if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, dps * DT);
     }
   }
@@ -203,11 +209,12 @@ export function updateEnemies(s: SimState): void {
       }
     }
 
-    if (e.state === 'charge') {
+    const isHeld = held(s, e);
+    if (e.state === 'charge' && !isHeld) {
       charge(s, e, players);
       continue;
     }
-    if (e.state === 'move') ({ dir, factor } = think(s, e, e.hordeId !== null ? hordes.get(e.hordeId) : undefined, players, field));
+    if (e.state === 'move' && !isHeld) ({ dir, factor } = think(s, e, e.hordeId !== null ? hordes.get(e.hordeId) : undefined, players, field));
     if (factor > 0 && (dir.x !== 0 || dir.z !== 0)) e.dir = dir;
 
     const slow = e.slowUntil > s.tick ? 0.5 : 1;
@@ -236,7 +243,20 @@ export function updateEnemies(s: SimState): void {
       }
     }
 
-    if (vx !== 0 || vz !== 0) moveCircle(s.map, e.pos, vx * DT, vz * DT, e.radius, BLOCKS_ENEMY);
+    if (e.frozenUntil > s.tick) {
+      // frozen solid: only a blast of air moves it
+      vx = e.knock.x;
+      vz = e.knock.z;
+    }
+    if (vx !== 0 || vz !== 0) {
+      const hit = moveCircle(s.map, e.pos, vx * DT, vz * DT, e.radius, BLOCKS_ENEMY);
+      const knock = Math.hypot(e.knock.x, e.knock.z);
+      if ((hit.hitX || hit.hitZ) && knock >= RARE.blower.slamSpeed && s.tick >= e.slamUntil) {
+        e.slamUntil = s.tick + RARE.blower.slamCooldownTicks;
+        e.knock = { x: 0, z: 0 };
+        damageEnemy(s, e, RARE.blower.slamDamage, 'leafBlower');
+      }
+    }
   }
 
   contactDamage(s, players);

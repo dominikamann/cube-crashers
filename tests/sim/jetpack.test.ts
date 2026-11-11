@@ -1,0 +1,98 @@
+import { describe, expect, it } from 'vitest';
+import { floor01 } from '../../src/sim/config/floor01';
+import { JETPACK } from '../../src/sim/config/rare';
+import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
+import { createSim, stepSim } from '../../src/sim/sim';
+import { addKart } from '../../src/sim/systems/vehicles';
+import type { Command } from '../../src/sim/types';
+import { move, quietSim, run } from './helpers';
+
+const fly: Command = { type: 'fly', playerId: 0 };
+const use: Command = { type: 'use', playerId: 0 };
+
+function withJetpack(fuel = JETPACK.fuelTicks) {
+  const s = quietSim();
+  s.players[0].jetFuel = fuel;
+  return s;
+}
+
+describe('jetpack', () => {
+  it('is picked up by walking over it', () => {
+    const s = quietSim();
+    s.jetpacks.push({ id: s.nextId++, pos: { ...s.players[0].pos } });
+    stepSim(s, []);
+    expect(s.players[0].jetFuel).toBe(JETPACK.fuelTicks);
+    expect(s.jetpacks).toHaveLength(0);
+    expect(s.events).toContainEqual({ type: 'jetpackPicked', playerId: 0 });
+  });
+
+  it('flies over a wall and burns fuel while flying', () => {
+    const s = withJetpack();
+    const p = s.players[0];
+    p.pos = { x: 42.5, z: 60.5 };
+    run(s, 60, () => [move(1, 0), fly]);
+    expect(p.pos.x).toBeGreaterThan(46.5);
+    expect(p.jetFuel).toBe(JETPACK.fuelTicks - 60);
+  });
+
+  it('does not take contact or glitch damage while flying', () => {
+    const s = withJetpack();
+    const p = s.players[0];
+    p.pos = { x: 34.5, z: 34.5 };
+    run(s, 60, () => [fly]);
+    expect(p.hp).toBe(100);
+  });
+
+  it('lands with a small stomp when Space is let go', () => {
+    const s = withJetpack();
+    run(s, 20, () => [fly]);
+    expect(s.players[0].flying).toBe(true);
+    stepSim(s, []);
+    expect(s.players[0].flying).toBe(false);
+    expect(s.events.some(e => e.type === 'stomp')).toBe(true);
+  });
+
+  it('puts the player on free floor when the fuel runs out above a wall', () => {
+    const s = withJetpack(8);
+    const p = s.players[0];
+    p.pos = { x: 43.4, z: 60.5 };
+    const events = run(s, 20, () => [move(1, 0), fly]);
+    expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
+    expect(p.flying).toBe(false);
+    expect(p.jetFuel).toBe(0);
+    expect(isFree(s.map, p.pos, 0.4, BLOCKS_WALKER), `${p.pos.x},${p.pos.z}`).toBe(true);
+  });
+
+  it('turns Space back into a jump once the fuel is gone', () => {
+    const s = withJetpack(1);
+    run(s, 3, () => [fly]);
+    stepSim(s, [{ type: 'jump', playerId: 0 }, fly]);
+    expect(s.events.some(e => e.type === 'jump')).toBe(true);
+  });
+
+  it('cannot be used in a kart', () => {
+    const s = withJetpack();
+    const p = s.players[0];
+    addKart(s, { ...p.pos }, 0);
+    stepSim(s, [use]);
+    run(s, 10, () => [fly]);
+    expect(p.flying).toBe(false);
+    expect(p.jetFuel).toBe(JETPACK.fuelTicks);
+  });
+
+  it('lies on a crate spot at the start and comes back later only when none is left on the map', () => {
+    const fresh = createSim(floor01, 5);
+    expect(fresh.jetpacks).toHaveLength(1);
+    expect(fresh.map.crateSpots.some(c => c.x === fresh.jetpacks[0].pos.x && c.z === fresh.jetpacks[0].pos.z)).toBe(true);
+    expect(fresh.crates.some(c => c.pos.x === fresh.jetpacks[0].pos.x && c.pos.z === fresh.jetpacks[0].pos.z)).toBe(false);
+
+    const s = quietSim();
+    s.nextJetpackAt = s.tick + 1;
+    run(s, 2);
+    expect(s.jetpacks).toHaveLength(1);
+    s.nextJetpackAt = s.tick + 1;
+    run(s, 2);
+    expect(s.jetpacks).toHaveLength(1);
+    expect(s.nextJetpackAt).toBeGreaterThan(s.tick + JETPACK.respawnTicks - 5);
+  });
+});

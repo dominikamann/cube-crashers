@@ -17,12 +17,14 @@ import {
   STOMP_KNOCKBACK,
   STOMP_RADIUS,
 } from '../config/balance';
+import { JETPACK } from '../config/rare';
 import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
 import { comboMult, damageEnemy } from './combat';
+import { updateFlight } from './rare';
 import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number): void {
@@ -44,6 +46,7 @@ export function damagePlayer(s: SimState, p: Player, amount: number): void {
   s.stats.downs++;
   p.combo = 0;
   p.air = 0;
+  p.flying = false;
   p.dashTicks = 0;
   p.plantTicks = 0;
   s.events.push({ type: 'playerDown', playerId: p.id }, { type: 'creditLost', credits: s.credits });
@@ -92,8 +95,14 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     p.combo = 0;
   }
 
-  if (it.select !== null && it.select !== p.selected && it.select >= 0 && it.select < p.weapons.length) {
+  if (it.select === -1) {
+    if (p.rare && !p.rareSelected) {
+      p.rareSelected = true;
+      s.events.push({ type: 'weaponSelected', playerId: p.id, slot: -1 });
+    }
+  } else if (it.select !== null && it.select >= 0 && it.select < p.weapons.length && (it.select !== p.selected || p.rareSelected)) {
     p.selected = it.select;
+    p.rareSelected = false;
     s.events.push({ type: 'weaponSelected', playerId: p.id, slot: p.selected });
   }
 
@@ -110,8 +119,15 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
   const moveDir = len > 0 ? { x: it.move.x / len, z: it.move.z / len } : null;
   if (moveDir) p.facing = moveDir;
 
+  const flying = updateFlight(s, p, it.fly);
+
   // vehicles move their driver (see vehicles.ts)
-  if (p.vehicleId === null) {
+  if (flying && moveDir) {
+    const speed = PLAYER_SPEED * JETPACK.speedFactor * (1 + 0.12 * p.perks.speed) * Math.min(len, 1);
+    // over everything, but never past the outer wall of the map
+    p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
+    p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
+  } else if (p.vehicleId === null && !flying) {
     if (it.dash && p.dashCharges > 0 && p.dashTicks === 0 && p.air === 0) {
       p.dashCharges--;
       if (p.dashRecharge <= 0) p.dashRecharge = DASH_RECHARGE_TICKS;
@@ -137,7 +153,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, BLOCKS_WALKER);
     }
 
-    if (it.jump && p.air === 0 && p.dashTicks === 0) {
+    if (it.jump && p.air === 0 && p.dashTicks === 0 && p.jetFuel === 0) {
       p.air = JUMP_TICKS;
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {

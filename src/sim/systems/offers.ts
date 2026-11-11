@@ -1,5 +1,6 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { ALL_PERKS, PERK_MAX } from '../config/perks';
+import { ALL_RARE, RARE } from '../config/rare';
 import { ALL_WEAPONS, MAX_WEAPON_LEVEL, MAX_WEAPONS } from '../config/weapons';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import type { Card, Crate, Player, SimState, Vec2, WeaponKind } from '../types';
@@ -64,6 +65,7 @@ function openCrate(s: SimState, crate: Crate, p: Player): void {
   }
   const cards: Card[] = [];
   while (cards.length < 3 && pool.length > 0) cards.push(...pool.splice(Math.floor(s.rng.next() * pool.length), 1));
+  if (s.rng.next() < RARE.cardChance) cards[0] = { type: 'rare', rare: s.rng.pick(ALL_RARE) };
   s.offers.push({
     id: s.nextId++,
     pos: { ...crate.pos },
@@ -79,6 +81,10 @@ function take(s: SimState, p: Player, card: Card): void {
   let level: number;
   if (card.type === 'weapon') {
     level = grantWeapon(p, card.weapon);
+  } else if (card.type === 'rare') {
+    p.rare = { kind: card.rare, until: s.tick + RARE.durationTicks, cooldown: 0 };
+    p.rareSelected = true;
+    level = 1;
   } else {
     level = ++p.perks[card.perk];
     if (card.perk === 'dash') p.dashCharges++;

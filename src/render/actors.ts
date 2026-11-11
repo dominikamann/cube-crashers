@@ -39,7 +39,22 @@ function makePlayer() {
   const light = new THREE.PointLight(0x2bf0ff, 0, 5);
   light.position.y = 1.6;
   root.add(light);
-  return { root, body, gun, sword, light, swordT: 1, yaw: 0 };
+  // jetpack on the back, flame below while flying
+  const pack = new THREE.Group();
+  pack.add(box(0.45, 0.5, 0.22, lambert(0xd0d4e0), 0, 0.8, 0.32));
+  pack.add(box(0.14, 0.22, 0.14, lambert(0x444455), -0.13, 0.48, 0.34));
+  pack.add(box(0.14, 0.22, 0.14, lambert(0x444455), 0.13, 0.48, 0.34));
+  const flame = box(0.22, 0.45, 0.22, glowMat(0xff9f2e, 3), 0, 0.15, 0.34);
+  flame.castShadow = false;
+  pack.add(flame);
+  pack.visible = false;
+  body.add(pack);
+  // golden glint around a player holding a rare weapon
+  const glint = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.72, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffc928, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+  glint.position.y = 0.05;
+  glint.visible = false;
+  root.add(glint);
+  return { root, body, gun, sword, light, pack, flame, glint, swordT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
 function makeTower(kind: TowerKind): { root: THREE.Group; head: THREE.Object3D; light: THREE.PointLight } {
@@ -157,12 +172,22 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const driving = p.vehicleId !== null;
     const down = p.downUntil !== null;
     const jump = p.air > 0 ? Math.sin(Math.PI * (1 - p.air / JUMP_TICKS)) * 1.3 : 0;
-    v.root.position.set(p.pos.x, jump + (driving ? 0.35 : 0), p.pos.z);
+    const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
+    v.root.position.set(p.pos.x, jump + fly + (driving ? 0.35 : 0), p.pos.z);
+    v.pack.visible = p.jetFuel > 0 || p.flying;
+    v.flame.visible = p.flying;
+    v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
+    v.glint.visible = p.rare !== null && !down;
+    v.glint.rotation.y = time * 3;
+    v.glint.scale.setScalar(1 + 0.1 * Math.sin(time * 8));
     v.yaw = Math.atan2(-p.aim.x, -p.aim.z);
     v.body.rotation.y = v.yaw;
     v.gun.rotation.y = v.yaw;
     v.gun.visible = !down;
-    const moving = !driving && p.air === 0 && (Math.abs(p.facing.x) + Math.abs(p.facing.z) > 0);
+    const moved = Math.hypot(p.pos.x - v.lastX, p.pos.z - v.lastZ) > 0.001;
+    v.lastX = p.pos.x;
+    v.lastZ = p.pos.z;
+    const moving = !driving && p.air === 0 && !p.flying && moved;
     v.body.position.y = moving && !down ? Math.abs(Math.sin(time * 14)) * 0.06 : 0;
     v.body.rotation.z = down ? Math.PI / 2 : 0;
     if (down) v.body.position.y = 0.25;

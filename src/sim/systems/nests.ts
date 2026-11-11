@@ -26,6 +26,7 @@ import { dist } from '../util';
 import { dropCoins, explode } from './combat';
 import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
+import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
 
@@ -86,6 +87,7 @@ export function setupFloor(s: SimState): void {
   for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 });
   placeStartCrates(s);
   placeStartKarts(s);
+  placeStartJetpack(s);
   s.nextPowerupAt = POWERUP.firstTicks;
 }
 

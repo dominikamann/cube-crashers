@@ -8,6 +8,7 @@ import { updateHordes } from './systems/hordes';
 import { setupFloor, updateAlarm, updateBlasts, updateNests } from './systems/nests';
 import { updateOffers } from './systems/offers';
 import { updatePowerups } from './systems/powerups';
+import { updateJetpacks, updateRare } from './systems/rare';
 import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
@@ -48,6 +49,10 @@ export function createPlayer(id: number, pos: Vec2): Player {
     magnetUntil: 0,
     safePoint: { ...pos },
     plantTicks: 0,
+    jetFuel: 0,
+    flying: false,
+    rare: null,
+    rareSelected: false,
   };
 }
 
@@ -73,6 +78,9 @@ export function createSim(map: FloorMap, seed: number): SimState {
     vehicleRespawns: [],
     powerups: [],
     nextPowerupAt: 0,
+    jetpacks: [],
+    nextJetpackAt: 0,
+    bubbles: [],
     credits: START_CREDITS,
     alarm: { level: 0, nextAt: 0 },
     elevatorOpen: false,
@@ -97,7 +105,7 @@ export function createSim(map: FloorMap, seed: number): SimState {
 }
 
 function emptyIntent(): Intent {
-  return { move: { x: 0, z: 0 }, jump: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null };
+  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null };
 }
 
 export function stepSim(s: SimState, commands: Command[]): void {
@@ -113,6 +121,9 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
       case 'jump':
         it.jump = true;
+        break;
+      case 'fly':
+        it.fly = true;
         break;
       case 'dash':
         it.dash = true;
@@ -152,6 +163,8 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateCoins(s);
   updateOffers(s);
   updatePowerups(s);
+  updateJetpacks(s);
+  updateRare(s);
   removeDead(s);
   updateOutcome(s);
   sampleStats(s);

@@ -9,7 +9,7 @@ import { createLoop } from './loop';
 import { createRenderer } from './render/renderer';
 import { floor01 } from './sim/config/floor01';
 import { createSim, stepSim } from './sim/sim';
-import { TICK_RATE, type SimEvent, type SimState, type WeaponKind } from './sim/types';
+import { TICK_RATE, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { buildRunLog, saveRunLog } from './runlog';
@@ -203,6 +203,11 @@ function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
+  if (params.get('demo') === 'rare') {
+    sim.players[0].jetFuel = 300;
+    sim.players[0].rare = { kind: (params.get('kind') as RareKind) ?? 'slushMachine', until: sim.tick + 3600, cooldown: 0 };
+    sim.players[0].rareSelected = true;
+  }
   if (params.get('demo') === 'nest') {
     // straight into a hold: next to a planted nest, with a crate opened beside it
     const nest = sim.nests[0];

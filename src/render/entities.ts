@@ -50,6 +50,18 @@ export function createEntities(scene: THREE.Scene): Entities {
   const lanes = new InstancedPool(scene, new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5), warnMat, 32, false);
   const blastRings = new InstancedPool(scene, new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
   const blastFills = new InstancedPool(scene, new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
+  const jetMat = lambert(0xd0d4e0);
+  const jetItems = new InstancedPool(scene, new THREE.BoxGeometry(0.55, 0.7, 0.3), jetMat, 8);
+  const jetGlowMat = glowMat(0xff9f2e, 2);
+  const jetGlow = new InstancedPool(scene, new THREE.BoxGeometry(0.4, 0.12, 0.4), jetGlowMat, 8, false);
+  const gumMat = new THREE.MeshStandardMaterial({ color: 0xff7fc8, transparent: true, opacity: 0.45, roughness: 0.2, depthWrite: false });
+  const gums = new InstancedPool(scene, new THREE.SphereGeometry(1, 20, 14), gumMat, 16, false);
+  const sawMat = lambert(0xf2c14e);
+  const saws = new InstancedPool(scene, new THREE.CylinderGeometry(0.5, 0.5, 0.08, 10), sawMat, 16);
+  const pepMat = lambert(0xc0392b);
+  const peps = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.1, 0.16), pepMat, 64, false);
+  const iceMat = new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1, depthWrite: false });
+  const ice = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), iceMat, 128, false);
   const hostileMat = glowMat(0xff3b3b, 4);
   const hostile = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.28, 0.28), hostileMat, 128, false);
   const bananaMat = lambert(0xffe135);
@@ -108,7 +120,7 @@ export function createEntities(scene: THREE.Scene): Entities {
       eyes.begin();
       pupils.begin();
       plates.begin();
-      const extra = [eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs];
+      const extra = [eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -124,6 +136,7 @@ export function createEntities(scene: THREE.Scene): Entities {
         const tint = e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
+        if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.elite) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 2, e.radius * 2.2 * (1 + 0.08 * Math.sin(time * 6)));
         if (e.kind === 'rammer') {
           for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);
@@ -161,6 +174,18 @@ export function createEntities(scene: THREE.Scene): Entities {
           hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, 1, undefined, time * 6);
           continue;
         }
+        if (p.behavior === 'saw') {
+          saws.add(p.pos.x, 0.5, p.pos.z, time * 25);
+          for (let i = 0; i < 4; i++) {
+            const a = time * 25 + (i * Math.PI) / 2;
+            peps.add(p.pos.x + Math.cos(a) * 0.28, 0.56, p.pos.z + Math.sin(a) * 0.28, a);
+          }
+          continue;
+        }
+        if (p.kind === 'bubblegumBazooka') {
+          gums.add(p.pos.x, 0.7, p.pos.z, 0, 0.35);
+          continue;
+        }
         if (p.behavior === 'lob') {
           const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
           const y = 0.6 + 4 * 2.5 * t * (1 - t);
@@ -194,6 +219,15 @@ export function createEntities(scene: THREE.Scene): Entities {
         blastFills.add(b.pos.x, 0.05, b.pos.z, 0, b.radius * Math.max(0.05, (s.tick - b.createdAt) / (b.at - b.createdAt)));
       }
       blastFills.end();
+      for (const j of s.jetpacks) {
+        jetItems.add(j.pos.x, 0.7 + Math.sin(time * 3 + j.id) * 0.12, j.pos.z, time * 1.5);
+        jetGlow.add(j.pos.x, 0.12, j.pos.z, time * 1.5, 1 + 0.15 * Math.sin(time * 6));
+      }
+      for (const b of s.bubbles) {
+        const left = Math.max(0, b.popAt - s.tick);
+        gums.add(b.pos.x, 0.9, b.pos.z, 0, 2.5 * (1 + (left < 30 ? 0.12 * Math.sin(time * 40) : 0.04 * Math.sin(time * 4))));
+      }
+      jetGlowMat.emissiveIntensity = 2 * Math.min(theme.glow, 1.4);
       for (const p of extra) p.end();
 
       coins.begin();

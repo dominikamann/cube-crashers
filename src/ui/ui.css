@@ -133,3 +133,8 @@ html, body {
 
 .bigscore { font-size: clamp(22px, 4vw, 40px); color: var(--gold); text-shadow: 4px 4px 0 var(--shadow); }
 .newbest { color: var(--green); animation: blink 0.6s steps(2) infinite; }
+
+.kart .bar.jet > i { background: #ff9f2e; }
+.slot.rare { border-color: var(--gold); background: linear-gradient(180deg, rgba(209, 154, 0, 0.55), var(--panel)); opacity: 1; }
+.slot.rare .timer { font-size: 9px; color: var(--gold); margin-bottom: 4px; }
+.slot.rare.ending .timer { color: var(--red); animation: blink 0.5s steps(2) infinite; }

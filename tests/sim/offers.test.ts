@@ -7,7 +7,7 @@ import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import type { Card, SimState } from '../../src/sim/types';
 import { move, quietSim, rel, run } from './helpers';
 
-const cardKey = (c: Card) => (c.type === 'weapon' ? `w:${c.weapon}` : `p:${c.perk}`);
+const cardKey = (c: Card) => (c.type === 'weapon' ? `w:${c.weapon}` : c.type === 'perk' ? `p:${c.perk}` : `r:${c.rare}`);
 
 function withCrate(): SimState {
   const s = quietSim();

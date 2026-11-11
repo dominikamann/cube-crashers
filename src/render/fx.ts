@@ -107,6 +107,28 @@ export function createFx(scene: THREE.Scene): Fx {
     }
   }
 
+  /** a cone of particles along `aim` (slush, wind) */
+  function spray(pos: Vec2, aim: Vec2, range: number, colors: number[], count: number) {
+    for (let i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
+      const a = Math.atan2(aim.z, aim.x) + (rand() - 0.5) * 0.7;
+      const speed = range * (2.2 + rand());
+      const life = 0.35 + rand() * 0.15;
+      particles.push({
+        x: pos.x + aim.x * 0.6,
+        y: 0.8,
+        z: pos.z + aim.z * 0.6,
+        vx: Math.cos(a) * speed,
+        vy: 1 + rand() * 2,
+        vz: Math.sin(a) * speed,
+        life,
+        maxLife: life,
+        size: 0.1 + rand() * 0.08,
+        color: colors[Math.floor(rand() * colors.length)],
+        spin: rand() * 10,
+      });
+    }
+  }
+
   function addShake(amp: number) {
     shakeAmp = Math.max(shakeAmp, amp);
     shakeTime = 0.25;
@@ -180,6 +202,27 @@ export function createFx(scene: THREE.Scene): Fx {
             if (e.kind === 'laser') beam(e.pos, 2.1, e.target, 0.4, 0xff8c42, 0.09);
             if (e.kind === 'frost') burst(e.pos, 1.8, 12, [0xc8f4ff, 0x7fdcff], 5, 0.1);
             break;
+          case 'rareFired': {
+            const p = s.players.find(x => x.id === e.playerId);
+            if (!p) break;
+            if (e.kind === 'slushMachine') spray(p.pos, p.aim, 5, [0x9fe8ff, 0xffffff, 0x4fc8ff], 18);
+            if (e.kind === 'leafBlower') spray(p.pos, p.aim, 6, [0xb8e986, 0x7cc56a, 0xffffff], 12);
+            break;
+          }
+          case 'bubblePop':
+            burst(e.pos, 0.9, 50, [0xff7fc8, 0xffb3df, 0xffffff], 6, 0.14);
+            break;
+          case 'jetpackPicked':
+          case 'jetpackEmpty': {
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 1, 24, [0xd0d4e0, 0xff9f2e, 0xffffff], 4, 0.12);
+            break;
+          }
+          case 'rareExpired': {
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 1, 30, [0xffc928, 0xd19a00, 0xffffff], 4, 0.12);
+            break;
+          }
           case 'shot':
             if (e.weapon === 'discoBall') {
               const from = { x: e.pos.x + Math.cos(time * 2.5) * 1.2, z: e.pos.z + Math.sin(time * 2.5) * 1.2 };
@@ -195,9 +238,10 @@ export function createFx(scene: THREE.Scene): Fx {
         }
       }
 
-      // dash trail and smoke from damaged karts
+      // dash trail, jetpack exhaust and smoke from damaged karts
       for (const p of s.players) {
         if (p.dashTicks > 0) burst(p.pos, 0.6, 3, [0x2bf0ff, 0xffffff], 1, 0.14, 0.3);
+        if (p.flying) burst(p.pos, 2.3, 2, [0xff9f2e, 0xffe14a, 0x888899], 0.8, 0.14, -0.6);
       }
       for (const v of s.vehicles) {
         if (v.hp < 30 && rand() < 0.3) burst(v.pos, 0.6, 1, [0x333344, 0x666677], 0.5, 0.2);

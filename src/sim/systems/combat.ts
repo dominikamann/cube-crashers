@@ -1,11 +1,13 @@
 import { BOMBER, CLOSE_BONUS, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
+import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
+import { airborne, makeBubble } from './rare';
 import { killCategory } from './stats';
 
 const HIT_PADDING = 0.15;
@@ -31,7 +33,7 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  */
 export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
   if (e.hp <= 0) return;
-  e.hp -= amount;
+  e.hp -= e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   s.events.push({ type: 'enemyHit', pos: { ...e.pos } });
   const horde = e.hordeId !== null ? s.hordes.find(h => h.id === e.hordeId) : undefined;
   if (horde) horde.aggro = true;
@@ -95,7 +97,7 @@ export function explode(
   s.events.push({ type: 'explosion', pos: { ...pos }, radius });
   if (damage.enemy) damageInRadius(s, pos, radius, damage.enemy, source, byPlayerId);
   if (damage.player) {
-    for (const p of s.players) if (p.air === 0 && dist(p.pos, pos) <= radius) damagePlayer(s, p, damage.player);
+    for (const p of s.players) if (!airborne(p) && dist(p.pos, pos) <= radius) damagePlayer(s, p, damage.player);
   }
   if (damage.tower) {
     for (const t of s.towers) if (dist(t.pos, pos) <= radius) t.hp -= damage.tower;
@@ -138,8 +140,41 @@ export function updateProjectiles(s: SimState): void {
       continue;
     }
 
+    if (p.behavior === 'saw') {
+      // bounce off walls axis by axis
+      const nx = p.pos.x + p.vel.x * DT, nz = p.pos.z + p.vel.z * DT;
+      if (tileAt(s.map, nx, p.pos.z) === Tile.Wall) {
+        p.vel.x = -p.vel.x;
+        p.bounces!--;
+      } else p.pos.x = nx;
+      if (tileAt(s.map, p.pos.x, nz) === Tile.Wall) {
+        p.vel.z = -p.vel.z;
+        p.bounces!--;
+      } else p.pos.z = nz;
+      if (s.tick >= p.until || p.bounces! < 0) continue;
+      if ((s.tick - p.launchedAt!) % RARE.pizza.rehitTicks === 0) p.hitIds = [];
+      for (const e of targets(s)) {
+        if (p.hitIds.includes(e.id) || dist(p.pos, e.pos) > e.radius + 0.4) continue;
+        p.hitIds.push(e.id);
+        damageEnemy(s, e, p.damage, p.kind, owner(p.ownerId));
+      }
+      keep.push(p);
+      continue;
+    }
+
     p.pos.x += p.vel.x * DT;
     p.pos.z += p.vel.z * DT;
+
+    if (p.kind === 'bubblegumBazooka') {
+      const hitWall = tileAt(s.map, p.pos.x, p.pos.z) === Tile.Wall;
+      const hitEnemy = targets(s).some(e => dist(p.pos, e.pos) <= e.radius + HIT_PADDING);
+      if (hitWall || hitEnemy || s.tick >= p.until) {
+        makeBubble(s, hitWall ? { x: p.pos.x - p.vel.x * DT, z: p.pos.z - p.vel.z * DT } : p.pos, p.ownerId);
+        continue;
+      }
+      keep.push(p);
+      continue;
+    }
 
     if (p.behavior === 'boomerang') {
       const speed = Math.hypot(p.vel.x, p.vel.z);
@@ -162,7 +197,7 @@ export function updateProjectiles(s: SimState): void {
     }
 
     if (p.hostile) {
-      const victim = s.players.find(pl => pl.downUntil === null && pl.air === 0 && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING);
+      const victim = s.players.find(pl => pl.downUntil === null && !airborne(pl) && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING);
       if (victim) damagePlayer(s, victim, p.damage);
       else keep.push(p);
       continue;

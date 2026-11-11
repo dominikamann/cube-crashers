@@ -1,4 +1,4 @@
-import type { EnemyKind, SimEvent, WeaponKind } from '../sim/types';
+import type { EnemyKind, RareKind, SimEvent, WeaponKind } from '../sim/types';
 import type { SynthParams } from './synth';
 
 export type SoundId =
@@ -43,6 +43,11 @@ export type SoundId =
   | 'kartJump'
   | 'kartLand'
   | 'kartDestroyed'
+  | 'jetpackPicked'
+  | 'jetpackEmpty'
+  | `rare_${RareKind}`
+  | 'rareExpired'
+  | 'bubblePop'
   | 'gameWon'
   | 'gameLost'
   | 'uiClick';
@@ -168,6 +173,17 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 700, attack: 0.002, sustain: 0.1, decay: 0.5, volume: 0.45, lowpass: 1400 },
     { wave: 'square', freq: 300, freqEnd: 60, attack: 0.002, sustain: 0.1, decay: 0.3, volume: 0.12 },
   ],
+  jetpackPicked: notes('square', [392, 523, 659, 784, 1047], 0.05, 0.1, 0.12, 0.03),
+  jetpackEmpty: [{ wave: 'noise', freq: 800, freqEnd: 200, attack: 0.005, sustain: 0.15, decay: 0.2, volume: 0.15, lowpass: 1500 }],
+  rare_slushMachine: [{ wave: 'noise', freq: 2600, attack: 0.01, sustain: 0.06, decay: 0.05, volume: 0.07, lowpass: 7000 }],
+  rare_bubblegumBazooka: [{ wave: 'sine', freq: 200, freqEnd: 520, attack: 0.01, sustain: 0.1, decay: 0.15, volume: 0.25 }],
+  rare_leafBlower: [{ wave: 'noise', freq: 500, attack: 0.02, sustain: 0.08, decay: 0.05, volume: 0.1, lowpass: 900 }],
+  rare_pizzaCutter: [{ wave: 'sawtooth', freq: 900, freqEnd: 1300, attack: 0.005, sustain: 0.12, decay: 0.12, volume: 0.07, vibrato: { rate: 45, depth: 60 }, lowpass: 3500 }],
+  rareExpired: notes('triangle', [784, 587, 440], 0.08, 0.1, 0.12, 0.04),
+  bubblePop: [
+    { wave: 'sine', freq: 700, freqEnd: 120, attack: 0.001, sustain: 0.03, decay: 0.12, volume: 0.3 },
+    { wave: 'noise', freq: 900, attack: 0.001, sustain: 0.02, decay: 0.12, volume: 0.25, lowpass: 2000 },
+  ],
   gameWon: notes('square', [523, 659, 784, 1047, 784, 1047, 1319], 0.12, 0.11, 0.25, 0.06),
   gameLost: notes('sawtooth', [523, 466, 415, 392], 0.25, 0.1, 0.3, 0.12).map(n => ({ ...n, lowpass: 1800 })),
   uiClick: [{ wave: 'square', freq: 1200, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
@@ -185,6 +201,8 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'explosion',
   'kartRam',
   'enemyShot',
+  'rare_slushMachine',
+  'rare_leafBlower',
 ]);
 
 export const MAX_COIN_STREAK_STEPS = 12;
@@ -267,6 +285,16 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('kartLand');
     case 'kartDestroyed':
       return one('kartDestroyed');
+    case 'jetpackPicked':
+      return one('jetpackPicked');
+    case 'jetpackEmpty':
+      return one('jetpackEmpty');
+    case 'rareFired':
+      return one(`rare_${e.kind}`);
+    case 'rareExpired':
+      return one('rareExpired');
+    case 'bubblePop':
+      return one('bubblePop');
     case 'gameWon':
       return one('gameWon');
     case 'gameLost':

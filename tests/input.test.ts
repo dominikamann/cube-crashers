@@ -207,4 +207,24 @@ describe('mouse steering', () => {
     expect(moveOf(k, s).z).toBeCloseTo(-1);
     expect(moveOf(k, s).x).toBeCloseTo(0);
   });
+
+  it('sends fly on every tick while Space is held, and jump only on the press', () => {
+    const types = (k: Keyboard, s: ReturnType<typeof createSim>, now: number) => k.commands(s, 0, now).map(c => c.type);
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.keyDown('Space', 0);
+    expect(types(k, s, 10)).toEqual(expect.arrayContaining(['jump', 'fly']));
+    const second = types(k, s, 20);
+    expect(second).toContain('fly');
+    expect(second).not.toContain('jump');
+    k.keyUp('Space');
+    expect(types(k, s, 30)).not.toContain('fly');
+  });
+
+  it('selects the rare weapon with Q', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.keyDown('KeyQ', 0);
+    expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
+  });
 });

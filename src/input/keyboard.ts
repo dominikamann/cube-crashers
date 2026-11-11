@@ -33,6 +33,7 @@ export class Keyboard {
     } else {
       const digit = /^(?:Digit|Numpad)([1-6])$/.exec(code);
       if (digit) this.slot = Number(digit[1]) - 1;
+      if (code === 'KeyQ') this.slot = -1;
     }
   }
 
@@ -118,6 +119,7 @@ export class Keyboard {
     if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
     if (this.jump) cmds.push({ type: 'jump', playerId });
+    if (this.down.has('Space')) cmds.push({ type: 'fly', playerId });
     if (this.dash) cmds.push({ type: 'dash', playerId });
     if (this.use) cmds.push({ type: 'use', playerId });
     if (this.down.has('KeyE')) cmds.push({ type: 'hold', playerId });

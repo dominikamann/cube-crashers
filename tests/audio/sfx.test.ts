@@ -43,6 +43,11 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   kartJump: { type: 'kartJump', pos: p },
   kartLand: { type: 'kartLand', pos: p },
   kartDestroyed: { type: 'kartDestroyed', pos: p },
+  jetpackPicked: { type: 'jetpackPicked', playerId: 0 },
+  jetpackEmpty: { type: 'jetpackEmpty', playerId: 0 },
+  rareFired: { type: 'rareFired', kind: 'slushMachine', playerId: 0, pos: p },
+  rareExpired: { type: 'rareExpired', playerId: 0 },
+  bubblePop: { type: 'bubblePop', pos: p },
   gameWon: { type: 'gameWon', score: 1000 },
   gameLost: { type: 'gameLost' },
 };
@@ -75,6 +80,11 @@ describe('soundsForEvent', () => {
     const pitch = (mult: number) => soundsForEvent({ type: 'comboUp', playerId: 0, mult })[0].pitch;
     expect(pitch(3)).toBeGreaterThan(pitch(2));
     expect(pitch(10)).toBeGreaterThan(pitch(9));
+  });
+
+  it('gives every rare weapon its own sound', () => {
+    const ids = (['slushMachine', 'bubblegumBazooka', 'leafBlower', 'pizzaCutter'] as const).map(kind => soundsForEvent({ type: 'rareFired', kind, playerId: 0, pos: p })[0].id);
+    expect(new Set(ids).size).toBe(4);
   });
 
   it('plays the long siren when the alarm hits 5', () => {

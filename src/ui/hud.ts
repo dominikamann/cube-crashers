@@ -1,5 +1,6 @@
 import { t } from '../i18n';
-import { WEAPON_GLYPH } from '../render/pickups';
+import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
+import { JETPACK } from '../sim/config/rare';
 import { ALARM_MAX, HOLD_RADIUS, HOLD_TICKS, PLANT_RANGE, START_CREDITS } from '../sim/config/balance';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
 import { comboMult } from '../sim/systems/combat';
@@ -59,6 +60,9 @@ export function createHud(root: HTMLElement): Hud {
   const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP');
   const hpFill = el('i', '', el('div', 'bar', left));
   const dashRow = el('div', 'dashes', left);
+  const jetBox = el('div', 'kart', left);
+  el('div', 'sub', jetBox, t('hud.jetpack'));
+  const jetFill = el('i', '', el('div', 'bar jet', jetBox));
   const kartBox = el('div', 'kart', left);
   el('div', 'sub', kartBox, t('hud.fuel'));
   const fuelFill = el('i', '', el('div', 'bar fuel', kartBox));
@@ -76,6 +80,10 @@ export function createHud(root: HTMLElement): Hud {
     return { slot, glyph, pipEls, reload };
   });
 
+  const rareSlot = el('div', 'slot rare txt', weaponRow);
+  el('div', 'key', rareSlot, 'Q');
+  const rareGlyph = el('div', 'glyph', rareSlot);
+  const rareTime = el('div', 'timer', rareSlot);
   const mapBox = el('div', 'hud-box mapbox', bottom);
   const minimap = createMinimap(mapBox);
 
@@ -150,6 +158,17 @@ export function createHud(root: HTMLElement): Hud {
         kartFill.style.width = `${Math.max(0, kart.hp / KART.hp) * 100}%`;
       }
 
+      jetBox.style.display = p.jetFuel > 0 ? '' : 'none';
+      jetFill.style.width = `${(p.jetFuel / JETPACK.fuelTicks) * 100}%`;
+      rareSlot.style.display = p.rare ? '' : 'none';
+      if (p.rare) {
+        rareGlyph.textContent = RARE_GLYPH[p.rare.kind];
+        const left = Math.max(0, Math.ceil((p.rare.until - s.tick) / TICK_RATE));
+        rareTime.textContent = `${left}s`;
+        rareSlot.classList.toggle('selected', p.rareSelected);
+        rareSlot.classList.toggle('ending', left <= 10);
+      }
+
       const key = p.weapons.map(w => `${w.kind}${w.level}`).join();
       if (key !== lastWeaponsKey) {
         lastWeaponsKey = key;
@@ -162,7 +181,7 @@ export function createHud(root: HTMLElement): Hud {
       }
       slots.forEach((sl, i) => {
         const w = p.weapons[i];
-        sl.slot.classList.toggle('selected', !!w && i === p.selected);
+        sl.slot.classList.toggle('selected', !!w && i === p.selected && !p.rareSelected);
         if (!w) return;
         const ready = w.cooldown === 0;
         sl.slot.classList.toggle('ready', ready);
@@ -216,10 +235,16 @@ export function createHud(root: HTMLElement): Hud {
             toast(t('toast.crateCoins', { coins: e.coins }), 'good');
             break;
           case 'cardPicked':
-            toast(t('toast.card', { name: e.card.type === 'weapon' ? t(`weapon.${e.card.weapon}`) : t(`perk.${e.card.perk}`), level: e.level }), 'good');
+            toast(e.card.type === 'rare' ? t('toast.rare', { name: t(`rare.${e.card.rare}`) }) : t('toast.card', { name: e.card.type === 'weapon' ? t(`weapon.${e.card.weapon}`) : t(`perk.${e.card.perk}`), level: e.level }), 'good');
             break;
           case 'comboUp':
             bump(combo);
+            break;
+          case 'jetpackPicked':
+            if (e.playerId === p.id) toast(t('toast.jetpack'), 'good');
+            break;
+          case 'jetpackEmpty':
+            if (e.playerId === p.id) toast(t('toast.jetpackEmpty'));
             break;
         }
       }

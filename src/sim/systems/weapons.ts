@@ -2,6 +2,7 @@ import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWORD, WEAPONS, l
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
 import { hitEnemy } from './combat';
+import { fireRare } from './rare';
 
 function rotate(v: Vec2, rad: number): Vec2 {
   const c = Math.cos(rad), si = Math.sin(rad);
@@ -138,6 +139,11 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
       if (w.cooldown < 1e-9) w.cooldown = 0;
     }
     if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
+    if (p.rareSelected && p.rare) {
+      const kind = p.rare.kind;
+      if (fireRare(s, p) && s.tick % 6 === 0) s.events.push({ type: 'rareFired', kind, playerId: p.id, pos: { ...p.pos } });
+      continue;
+    }
     const w = p.weapons[p.selected];
     if (!w || w.cooldown > 0) continue;
     if (fire(s, p, w)) {
