@@ -13,6 +13,8 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   shooter: { w: 0.55, h: 1.0, d: 0.55, day: 0x2fb8a6, night: 0x3bffe0, eyeY: 0.75, eyeX: 0, eye: 0.26 },
   bomber: { w: 0.7, h: 0.6, d: 0.7, day: 0xd93a2f, night: 0xff5a3b, eyeY: 0.4, eyeX: 0.16, eye: 0.12 },
   rammer: { w: 1.1, h: 0.8, d: 1.3, day: 0x4a6fa5, night: 0x6f9fe0, eyeY: 0.55, eyeX: 0.3, eye: 0.16 },
+  megaBlock: { w: 3.2, h: 2.8, d: 3.2, day: 0x5b4a8a, night: 0x7b5fd1, eyeY: 2.0, eyeX: 0.7, eye: 0.5 },
+  wormSegment: { w: 0.95, h: 0.85, d: 0.95, day: 0x7b4fd1, night: 0x8f63ff, eyeY: 0.6, eyeX: 0.22, eye: 0.16 },
   swarmer: { w: 0.6, h: 0.3, d: 0.45, day: 0xb15cff, night: 0xd08cff, eyeY: 0.2, eyeX: 0.1, eye: 0.09 },
 };
 
@@ -53,6 +55,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const lanes = new InstancedPool(scene, new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5), warnMat, 32, false);
   const blastRings = new InstancedPool(scene, new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
   const blastFills = new InstancedPool(scene, new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
+  const bossHornMat = glowMat(0xff2bd6, 1.6);
+  const bossHorns = new InstancedPool(scene, new THREE.BoxGeometry(0.25, 0.6, 0.25), bossHornMat, 64);
+  const redEyeMat = glowMat(0xff2b2b, 3);
+  const redEyes = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.18, 0.06), redEyeMat, 64, false);
   const jetMat = lambert(0xd0d4e0);
   const jetItems = new InstancedPool(scene, new THREE.BoxGeometry(0.55, 0.7, 0.3), jetMat, 8);
   const jetGlowMat = glowMat(0xff9f2e, 2);
@@ -180,7 +186,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       eyes.begin();
       pupils.begin();
       plates.begin();
-      const extra = [eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
+      const heads = new Set(s.boss?.worms.map(w => w[0]) ?? []);
+      const extra = [bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -198,6 +205,21 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
+        if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
+          const big = e.kind === 'megaBlock';
+          if (!big && !heads.has(e.id)) continue;
+          const fx = Math.sin(yaw), fz = Math.cos(yaw);
+          const sx = Math.cos(yaw), sz = -Math.sin(yaw);
+          const hw = big ? 1.1 : 0.32, top = y + (l.h / 2) * scale + (big ? 0.2 : 0.15);
+          for (const side of [-1, 1]) {
+            bossHorns.add(e.pos.x + sx * side * hw, top, e.pos.z + sz * side * hw, yaw, big ? 1.8 : 1);
+            const ex = e.pos.x + fx * ((l.d / 2) * scale + 0.03) + sx * side * (big ? 0.7 : 0.22);
+            const ez = e.pos.z + fz * ((l.d / 2) * scale + 0.03) + sz * side * (big ? 0.7 : 0.22);
+            redEyes.add(ex, y + (big ? 0.4 : 0.1), ez, yaw, big ? 2.2 : 1);
+          }
+          if (big) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 1.5, 3.4 * (1 + 0.06 * Math.sin(time * 5)));
+          continue;
+        }
         if (e.elite) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 2, e.radius * 2.2 * (1 + 0.08 * Math.sin(time * 6)));
         if (e.kind === 'rammer') {
           for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);

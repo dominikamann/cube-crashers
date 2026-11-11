@@ -1,0 +1,154 @@
+import { describe, expect, it } from 'vitest';
+import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
+import { floor01 } from '../../src/sim/config/floor01';
+import { createSim } from '../../src/sim/sim';
+import { BOSS, bossHp } from '../../src/sim/systems/boss';
+import { damageEnemy } from '../../src/sim/systems/combat';
+import { damagePlayer } from '../../src/sim/systems/player';
+import { enterFloor } from '../../src/sim/systems/run';
+import type { Enemy, SimEvent, SimState } from '../../src/sim/types';
+import { rel, run } from './helpers';
+
+function bossFloor(kind: 'megaBlock' | 'worm', players = 1): SimState {
+  const s = createSim(floor01, 4, { mode: 'run', players });
+  const index = RUN_FLOORS.findIndex(id => FLOORS[id].boss === kind);
+  enterFloor(s, index);
+  s.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
+  s.hordes = [];
+  s.enemies = s.enemies.filter(e => e.kind === 'megaBlock' || e.kind === 'wormSegment');
+  for (const p of s.players) p.invulnUntil = 0;
+  return s;
+}
+
+const segs = (s: SimState, worm = 0): Enemy[] => s.boss!.worms[worm].map(id => s.enemies.find(e => e.id === id)!);
+const kill = (s: SimState, e: Enemy) => damageEnemy(s, e, 1e9, 'pixelBlaster', 0);
+
+describe('the run', () => {
+  it('has five floors with a boss on 3 and 5', () => {
+    expect(RUN_FLOORS).toHaveLength(5);
+    expect(FLOORS[RUN_FLOORS[2]].boss).toBe('megaBlock');
+    expect(FLOORS[RUN_FLOORS[4]].boss).toBe('worm');
+  });
+});
+
+describe('boss floors', () => {
+  it('have a boss instead of nests, and the alarm stays quiet', () => {
+    const s = bossFloor('megaBlock');
+    expect(s.nests).toHaveLength(0);
+    expect(s.boss?.kind).toBe('megaBlock');
+    expect(s.enemies.some(e => e.kind === 'megaBlock')).toBe(true);
+    run(s, 4000);
+    expect(s.alarm.level).toBe(0);
+  });
+
+  it('open the elevator when the boss falls, with a coin shower, exactly once', () => {
+    const s = bossFloor('megaBlock');
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    kill(s, boss);
+    const events = run(s, 3);
+    expect(events.filter(e => e.type === 'bossDead')).toHaveLength(1);
+    expect(s.elevatorOpen).toBe(true);
+    expect(s.coins.length).toBeGreaterThanOrEqual(BOSS.deathCoins);
+    expect(s.boss).toBeNull();
+  });
+
+  it('give exactly one outcome when the boss dies in the tick the last credit is lost', () => {
+    const s = bossFloor('megaBlock');
+    s.credits = 1;
+    kill(s, s.enemies.find(e => e.kind === 'megaBlock')!);
+    damagePlayer(s, s.players[0], 1000);
+    const events: SimEvent[] = [...s.events, ...run(s, 5)];
+    expect(events.filter(e => e.type === 'gameWon' || e.type === 'gameLost')).toHaveLength(1);
+    expect(s.phase).toBe('lost');
+  });
+});
+
+describe('Mega Block', () => {
+  it('scales its health with the team and the difficulty', () => {
+    const one = bossFloor('megaBlock', 1);
+    const four = bossFloor('megaBlock', 4);
+    expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * 1.45);
+  });
+
+  it('enters each phase once and calls reinforcements', () => {
+    const s = bossFloor('megaBlock');
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    damageEnemy(s, boss, boss.maxHp * 0.4, 'pixelBlaster', 0);
+    const events = run(s, 3);
+    expect(events.filter(e => e.type === 'bossPhase')).toEqual([{ type: 'bossPhase', phase: 2 }]);
+    expect(s.enemies.length).toBeGreaterThan(1);
+    expect(run(s, 30).filter(e => e.type === 'bossPhase')).toHaveLength(0);
+  });
+
+  it('stomps where a player stands after a warning: hits who stays, misses who leaves', () => {
+    const s = bossFloor('megaBlock');
+    const p = s.players[0];
+    s.boss!.nextAttackAt = s.tick;
+    const events = run(s, 2);
+    expect(events.some(e => e.type === 'blastWarning')).toBe(true);
+    run(s, 70);
+    expect(p.hp).toBeLessThan(100);
+
+    const t = bossFloor('megaBlock');
+    const q = t.players[0];
+    t.boss!.nextAttackAt = t.tick;
+    run(t, 2);
+    q.pos = rel(q.pos, 4, 0);
+    run(t, 70);
+    expect(q.hp).toBe(100);
+  });
+});
+
+describe('Segment Worm', () => {
+  it('starts as one long worm', () => {
+    const s = bossFloor('worm');
+    expect(s.boss!.worms).toHaveLength(1);
+    expect(segs(s)).toHaveLength(BOSS.wormSegments);
+  });
+
+  it('splits in two when a middle segment is destroyed', () => {
+    const s = bossFloor('worm');
+    kill(s, segs(s)[7]);
+    run(s, 1);
+    expect(s.boss!.worms.map(w => w.length).sort((a, b) => a - b)).toEqual([7, BOSS.wormSegments - 8]);
+    expect(s.events.some(e => e.type === 'wormSplit')).toBe(true);
+  });
+
+  it('does not split into pieces smaller than 3', () => {
+    const s = bossFloor('worm');
+    kill(s, segs(s)[1]);
+    run(s, 1);
+    expect(s.boss!.worms).toHaveLength(1);
+    expect(s.boss!.worms[0]).toHaveLength(BOSS.wormSegments - 1);
+  });
+
+  it('never has more than 4 worms', () => {
+    const s = bossFloor('worm');
+    for (let i = 0; i < 8; i++) {
+      const longest = s.boss!.worms.reduce((a, b) => (b.length > a.length ? b : a));
+      const list = longest.map(id => s.enemies.find(e => e.id === id)!);
+      kill(s, list[Math.floor(list.length / 2)]);
+      run(s, 1);
+    }
+    expect(s.boss!.worms.length).toBeLessThanOrEqual(4);
+  });
+
+  it('chases the players', () => {
+    const s = bossFloor('worm');
+    const head = segs(s)[0];
+    const p = s.players[0];
+    const before = Math.hypot(head.pos.x - p.pos.x, head.pos.z - p.pos.z);
+    p.invulnUntil = 1e9;
+    run(s, 120);
+    expect(Math.hypot(head.pos.x - p.pos.x, head.pos.z - p.pos.z)).toBeLessThan(before);
+  });
+
+  it('is beaten when every segment is gone', () => {
+    const s = bossFloor('worm');
+    for (const e of segs(s)) kill(s, e);
+    const events = run(s, 2);
+    expect(events.filter(e => e.type === 'bossDead')).toHaveLength(1);
+    expect(s.elevatorOpen).toBe(true);
+    expect(bossHp(s)).toBe(0);
+  });
+});

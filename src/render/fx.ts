@@ -167,6 +167,14 @@ export function createFx(scene: THREE.Scene): Fx {
             ring(e.pos, e.radius, [0xffe14a, 0xff8c42]);
             addShake(Math.min(0.4, 0.08 * e.radius));
             break;
+          case 'bossDead':
+            burst(e.pos, 1.5, 300, [0x7b4fd1, 0xff2bd6, 0xffe14a, 0x2bf0ff, 0xffffff], 9, 0.22);
+            addShake(0.6);
+            break;
+          case 'wormSplit':
+            burst(e.pos, 0.6, 40, [0x7b4fd1, 0xff2bd6], 5, 0.18);
+            addShake(0.2);
+            break;
           case 'stomp':
             ring(e.pos, e.radius, [0xffffff, 0x2bf0ff]);
             break;

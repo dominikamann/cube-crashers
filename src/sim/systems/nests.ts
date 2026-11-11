@@ -26,6 +26,7 @@ import { floorDef } from '../config/floors';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
+import { spawnBoss } from './boss';
 import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
@@ -79,6 +80,19 @@ function canSpawn(s: SimState, comp: HordeComp): boolean {
 /** Fills a fresh floor: which nest spots are used, their first hordes, and a few roaming hordes. */
 export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: alarmTicks(s) };
+  s.boss = null;
+  const def = floorDef(s.map.id);
+  if (def?.kind === 'boss') {
+    // a boss floor: no nests, no rising alarm, just the boss and a few helpers
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    s.nests = [];
+    spawnBoss(s, def.boss!);
+    placeStartCrates(s);
+    placeStartKarts(s);
+    s.nextPowerupAt = s.tick + POWERUP.firstTicks;
+    s.look = 'day';
+    return;
+  }
   const spots = shuffled(s, s.map.nestSpots).slice(0, NESTS_PER_FLOOR);
   s.nests = spots.map(spot => ({
     id: s.nextId++,

@@ -232,6 +232,7 @@ export function updateEnemies(s: SimState): void {
       charge(s, e, players);
       continue;
     }
+    if (e.kind === 'wormSegment') continue;
     if (e.kind === 'swarmer') {
       if (!isHeld) flySwarmer(s, e, players);
       continue;

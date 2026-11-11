@@ -1,7 +1,7 @@
 import { FLOORS } from '../sim/config/floors';
 import type { Coin, Enemy, EnemyKind, EnemyState, SimState } from '../sim/types';
 
-const KINDS: EnemyKind[] = ['blob', 'hunter', 'tank', 'splitter', 'splitling', 'shooter', 'bomber', 'rammer', 'swarmer'];
+const KINDS: EnemyKind[] = ['blob', 'hunter', 'tank', 'splitter', 'splitling', 'shooter', 'bomber', 'rammer', 'swarmer', 'megaBlock', 'wormSegment'];
 const STATES: EnemyState[] = ['move', 'windup', 'charge', 'stunned', 'fuse'];
 
 /** an enemy as a flat array: most of a snapshot is enemies, and objects repeat every key name */
@@ -39,6 +39,7 @@ type SnapFields = Pick<
   | 'stats'
   | 'run'
   | 'theme'
+  | 'boss'
 >;
 
 function packEnemy(e: Enemy): PackedEnemy {
@@ -107,6 +108,7 @@ export function encodeSnapshot(s: SimState): SnapState {
     look: s.look,
     stats: { ...s.stats, samples: [] },
     run: s.run,
+    boss: s.boss,
     theme: s.theme,
     mapId: s.map.id,
   };

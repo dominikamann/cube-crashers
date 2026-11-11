@@ -9,6 +9,7 @@ import { padAt } from '../sim/systems/towers';
 import { KART } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
+import { bossHp } from '../sim/systems/boss';
 import { floorDef } from '../sim/config/floors';
 
 export interface Hud {
@@ -105,6 +106,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const mapBox = el('div', 'hud-box mapbox', bottom);
   const minimap = createMinimap(mapBox);
 
+  const bossBox = el('div', 'boss txt', layer);
+  const bossName = el('div', '', bossBox);
+  const bossBar = el('div', 'bar', bossBox);
+  const bossFill = el('i', '', bossBar);
+  for (const f of [0.66, 0.33]) el('div', 'mark', bossBar).style.left = `${f * 100}%`;
   const hint = el('div', 'hint txt', layer);
   const down = el('div', 'down txt', layer);
   const danger = el('div', 'danger', layer);
@@ -135,7 +141,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
       creditEls.forEach((c, i) => c.classList.toggle('on', i < s.credits));
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
-      nestText.textContent = t('hud.nests', { n: s.nests.length - alive, total: s.nests.length });
+      nestText.textContent = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : s.boss ? t('hud.bossFight') : '';
       const def = floorDef(s.map.id);
       floorText.textContent = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length, name: def ? t(def.name as 'floor.plaza') : '' }) : '';
 
@@ -261,6 +267,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (e.level > lastAlarm) toast(e.level >= ALARM_MAX ? t('toast.overload') : t('toast.alarm', { level: e.level }), 'warn');
             lastAlarm = e.level;
             break;
+          case 'bossSpawn':
+            toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
+            break;
           case 'floorStart':
             toast(t('toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
             break;
@@ -306,6 +315,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         }
       }
 
+      if (s.boss) {
+        bossBox.style.display = '';
+        bossName.textContent = t(s.boss.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock');
+        bossFill.style.width = `${Math.max(0, bossHp(s) / s.boss.maxHp) * 100}%`;
+      } else bossBox.style.display = 'none';
       minimap.update(s, time, p.id);
     },
   };

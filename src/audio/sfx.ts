@@ -51,6 +51,10 @@ export type SoundId =
   | 'rareExpired'
   | 'bubblePop'
   | 'waveStart'
+  | 'bossSpawn'
+  | 'bossPhase'
+  | 'bossDead'
+  | 'wormSplit'
   | 'gameWon'
   | 'gameLost'
   | 'uiClick';
@@ -190,6 +194,20 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 900, attack: 0.001, sustain: 0.02, decay: 0.12, volume: 0.25, lowpass: 2000 },
   ],
   waveStart: notes('square', [659, 784, 1047], 0.1, 0.1, 0.15, 0.05),
+  bossSpawn: siren(6, 450, 600, 0.5, 0.1),
+  bossPhase: [
+    { wave: 'noise', freq: 500, attack: 0.002, sustain: 0.1, decay: 0.4, volume: 0.4, lowpass: 900 },
+    { wave: 'square', freq: 300, freqEnd: 600, attack: 0.01, sustain: 0.15, decay: 0.1, volume: 0.1 },
+  ],
+  bossDead: [
+    { wave: 'noise', freq: 500, attack: 0.005, sustain: 0.3, decay: 1.5, volume: 0.5, lowpass: 1200 },
+    { wave: 'sine', freq: 100, freqEnd: 20, attack: 0.005, sustain: 0.3, decay: 1.0, volume: 0.45 },
+    ...notes('square', [523, 659, 784, 1047, 1319], 0.1, 0.11, 0.3).map(n => ({ ...n, at: (n.at ?? 0) + 0.6 })),
+  ],
+  wormSplit: [
+    { wave: 'noise', freq: 900, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.3, lowpass: 1200 },
+    { wave: 'square', freq: 200, freqEnd: 60, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.12 },
+  ],
   gameWon: notes('square', [523, 659, 784, 1047, 784, 1047, 1319], 0.12, 0.11, 0.25, 0.06),
   gameLost: notes('sawtooth', [523, 466, 415, 392], 0.25, 0.1, 0.3, 0.12).map(n => ({ ...n, lowpass: 1800 })),
   uiClick: [{ wave: 'square', freq: 1200, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
@@ -317,6 +335,14 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('crateCoins');
     case 'buyDenied':
       return one('buildDenied');
+    case 'bossSpawn':
+      return one('bossSpawn');
+    case 'bossPhase':
+      return one('bossPhase');
+    case 'bossDead':
+      return one('bossDead');
+    case 'wormSplit':
+      return one('wormSplit');
     case 'gameWon':
       return one('gameWon');
     case 'gameLost':

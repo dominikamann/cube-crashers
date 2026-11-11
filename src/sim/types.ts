@@ -6,7 +6,7 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer';
+export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer' | 'megaBlock' | 'wormSegment';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -300,6 +300,18 @@ export interface Blast {
   damage: number;
 }
 
+export interface BossState {
+  kind: 'megaBlock' | 'worm';
+  maxHp: number;
+  phase: 1 | 2 | 3;
+  /** Mega Block: its enemy id */
+  enemyId: number | null;
+  /** Segment Worm: each worm as segment enemy ids, head first */
+  worms: number[][];
+  nextAttackAt: number;
+  lastPos: Vec2;
+}
+
 export interface Vehicle {
   id: number;
   kind: 'kart';
@@ -417,6 +429,10 @@ export type SimEvent =
   | { type: 'floorStart'; floor: number; mapId: string }
   | { type: 'bought'; playerId: number; offer: number; kind: ShopOffer['kind'] }
   | { type: 'buyDenied'; playerId: number; offer: number }
+  | { type: 'bossSpawn'; kind: 'megaBlock' | 'worm' }
+  | { type: 'bossPhase'; phase: 2 | 3 }
+  | { type: 'bossDead'; pos: Vec2 }
+  | { type: 'wormSplit'; pos: Vec2 }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
 
@@ -439,6 +455,7 @@ export interface SimState {
   offers: Offer[];
   towers: Tower[];
   nests: Nest[];
+  boss: BossState | null;
   blasts: Blast[];
   vehicles: Vehicle[];
   vehicleRespawns: { spot: number; at: number }[];

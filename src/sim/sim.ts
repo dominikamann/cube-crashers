@@ -7,6 +7,7 @@ import { Rng } from './rng';
 import { initRun, updateRunStage } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
 import { updateShaft } from './systems/shaft';
+import { moveBoss, updateBoss } from './systems/boss';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -104,6 +105,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     offers: [],
     towers: [],
     nests: [],
+    boss: null,
     blasts: [],
     vehicles: [],
     vehicleRespawns: [],
@@ -207,12 +209,14 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateBlasts(s);
   updateHordes(s);
   updateEnemies(s);
+  moveBoss(s);
   updateConveyors(s);
   updateWeapons(s, intents);
   updateProjectiles(s);
   updateMines(s);
   updateTowers(s);
   updateAreas(s);
+  updateBoss(s);
   updateCoins(s);
   updateOffers(s);
   if (onFloor) {

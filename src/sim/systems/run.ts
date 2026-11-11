@@ -49,6 +49,7 @@ export function enterFloor(s: SimState, index: number): void {
   s.offers = [];
   s.towers = [];
   s.nests = [];
+  s.boss = null;
   s.blasts = [];
   s.vehicles = [];
   s.vehicleRespawns = [];

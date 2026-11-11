@@ -31,6 +31,7 @@ export function enterShaft(s: SimState): void {
   s.offers = [];
   s.towers = [];
   s.nests = [];
+  s.boss = null;
   s.blasts = [];
   s.vehicles = [];
   s.vehicleRespawns = [];
