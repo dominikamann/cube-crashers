@@ -186,4 +186,16 @@ describe('mouse steering', () => {
     k.keyDown('KeyW', 0);
     expect(moveOf(k, s).z).toBeCloseTo(-1);
   });
+
+  it('never steers a kart with the mouse: driving keys stay fixed to the screen', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0];
+    p.vehicleId = 99;
+    const k = new Keyboard();
+    k.steerWithMouse = true;
+    k.setAim({ x: p.pos.x + 5, z: p.pos.z });
+    k.keyDown('KeyW', 0);
+    expect(moveOf(k, s).z).toBeCloseTo(-1);
+    expect(moveOf(k, s).x).toBeCloseTo(0);
+  });
 });

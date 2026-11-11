@@ -13,7 +13,7 @@ export const en = {
   'settings.title': 'Settings',
   'settings.music': 'Music',
   'settings.sfx': 'Sound effects',
-  'settings.steer': 'W walks toward the crosshair',
+  'settings.steer': 'On foot: W walks toward the crosshair',
   'settings.on': 'On',
   'settings.off': 'Off',
   'pause.title': 'Paused',

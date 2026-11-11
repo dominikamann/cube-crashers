@@ -3,13 +3,13 @@ import { t } from '../i18n';
 export interface Settings {
   music: number;
   sfx: number;
-  /** W walks toward the crosshair instead of up the screen */
+  /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, steerWithMouse: true };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, steerWithMouse: false };
 
 export function loadSettings(): Settings {
   try {

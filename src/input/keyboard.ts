@@ -7,7 +7,7 @@ const TOWER_KEYS: Record<string, TowerKind> = { Digit1: 'laser', Digit2: 'popcor
 /** Turns key state into sim commands. Times are passed in so it can be tested without a DOM. */
 export class Keyboard {
   buildMenuOpen = false;
-  /** W walks toward the crosshair instead of up the screen */
+  /** on foot, W walks toward the crosshair instead of up the screen */
   steerWithMouse = false;
   private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
@@ -102,7 +102,8 @@ export class Keyboard {
       z /= len;
     }
     const p = s.players.find(pl => pl.id === playerId);
-    if (this.steerWithMouse && p && this.aim) {
+    // on foot only: a kart is always steered with the keys alone, the mouse just aims
+    if (this.steerWithMouse && p && p.vehicleId === null && this.aim) {
       const fx = this.aim.x - p.pos.x, fz = this.aim.z - p.pos.z;
       const fl = Math.hypot(fx, fz);
       // too close to tell a direction: keep the last one
