@@ -223,6 +223,17 @@ describe('credits', () => {
   });
 });
 
+describe('hit feedback', () => {
+  it('reports continuous damage at most four times a second', () => {
+    const s = quietSim();
+    s.players[0].pos = { x: 34.5, z: 34.5 };
+    const events = run(s, 60);
+    expect(s.players[0].hp).toBeLessThan(100);
+    expect(events.filter(e => e.type === 'playerHit').length).toBeLessThanOrEqual(4);
+    expect(events.filter(e => e.type === 'playerHit').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('tiles and perks', () => {
   it('boost tiles speed the player up for 2 seconds', () => {
     const s = quietSim();

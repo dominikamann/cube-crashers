@@ -25,7 +25,6 @@ export class Keyboard {
 
   keyDown(code: string, now: number): void {
     if (code === 'KeyE' && !this.down.has('KeyE')) this.eSince = now;
-    if (code === 'KeyE' && !this.down.has('KeyE')) this.use = true;
     if (code === 'Space' && !this.down.has('Space')) this.jump = true;
     if (code.startsWith('Shift') && !this.down.has(code)) this.dash = true;
     this.down.add(code);
@@ -55,9 +54,11 @@ export class Keyboard {
     this.wheelSteps += Math.sign(steps);
   }
 
-  keyUp(code: string): void {
+  /** `now` lets a short tap of E (get in/out of a kart) be told apart from holding it (plant, build) */
+  keyUp(code: string, now = Infinity): void {
     this.down.delete(code);
     if (code === 'KeyE') {
+      if (this.eSince !== null && now - this.eSince < BUILD_HOLD_MS) this.use = true;
       this.eSince = null;
       this.closeMenu();
     }

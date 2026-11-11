@@ -35,4 +35,12 @@ describe('flow field', () => {
     const f = buildFlowField(MAP, [{ x: 1.5, z: 1.5 }], BLOCKS_ENEMY);
     expect(flowDir(MAP, f, { x: 6.5, z: 6.5 })).toEqual({ x: 0, z: 0 });
   });
+
+  it('still guides enemies when the target stands on a tile they avoid', () => {
+    const map = parseMap('pool', ['#########', '#S......#', '#.~~~~..#', '#.~~~~..#', '#.~~~~..#', '#.~~~~..#', '#E......#', '#########']);
+    const f = buildFlowField(map, [{ x: 3.5, z: 3.5 }], BLOCKS_ENEMY);
+    expect(f[6 * map.w + 7]).toBeGreaterThan(0);
+    const d = flowDir(map, f, { x: 7.5, z: 6.5 });
+    expect(Math.hypot(d.x, d.z)).toBeCloseTo(1);
+  });
 });

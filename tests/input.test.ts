@@ -90,16 +90,25 @@ describe('action keys and mouse', () => {
     expect(types(k, s, 20)).not.toEqual(expect.arrayContaining(['dash']));
   });
 
-  it('sends use once when E goes down and hold on every tick while it stays down', () => {
+  it('sends use when E is tapped, and only hold while it is held down', () => {
     const s = createSim(floor01, 1);
     const k = new Keyboard();
     k.keyDown('KeyE', 0);
-    expect(types(k, s, 10)).toEqual(expect.arrayContaining(['use', 'hold']));
-    const second = types(k, s, 20);
-    expect(second).toContain('hold');
-    expect(second).not.toContain('use');
-    k.keyUp('KeyE');
-    expect(types(k, s, 30)).not.toContain('hold');
+    expect(types(k, s, 10)).toContain('hold');
+    expect(types(k, s, 10)).not.toContain('use');
+    k.keyUp('KeyE', 80);
+    expect(types(k, s, 90)).toContain('use');
+    expect(types(k, s, 100)).not.toContain('use');
+    expect(types(k, s, 100)).not.toContain('hold');
+  });
+
+  it('does not send use when E was held long (planting or building)', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.keyDown('KeyE', 0);
+    types(k, s, 100);
+    k.keyUp('KeyE', 400);
+    expect(types(k, s, 410)).not.toContain('use');
   });
 
   it('aims at the mouse point and fires while the button is held', () => {

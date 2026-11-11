@@ -3,6 +3,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { ALL_WEAPONS } from '../../src/sim/config/weapons';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { grantWeapon } from '../../src/sim/systems/offers';
+import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import type { Card, SimState } from '../../src/sim/types';
 import { move, quietSim, rel, run } from './helpers';
 
@@ -32,6 +33,18 @@ describe('crates', () => {
     expect(new Set(offer.cards.map(cardKey)).size).toBe(3);
     expect(s.events.some(e => e.type === 'offerOpened')).toBe(true);
     for (const c of offer.cardPos) expect(Math.hypot(c.x - offer.pos.x, c.z - offer.pos.z)).toBeGreaterThan(1.2);
+  });
+
+  it('spread the cards apart even in a corner', () => {
+    const s = quietSim();
+    s.players[0].pos = { x: 2.5, z: 3.1 };
+    s.crates.push({ id: s.nextId++, pos: { x: 2.5, z: 2.5 } });
+    stepSim(s, []);
+    const cp = s.offers[0].cardPos;
+    for (let i = 0; i < cp.length; i++) {
+      expect(isFree(s.map, cp[i], 0.4, BLOCKS_WALKER), `card ${i}`).toBe(true);
+      for (let j = i + 1; j < cp.length; j++) expect(Math.hypot(cp[i].x - cp[j].x, cp[i].z - cp[j].z)).toBeGreaterThanOrEqual(1.4);
+    }
   });
 
   it('do not hand out a card to a player who just stands there', () => {

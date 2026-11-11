@@ -5,13 +5,31 @@ import type { Blocks, FloorMap } from './tilemap';
 export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks): Int16Array {
   const field = new Int16Array(m.w * m.h).fill(-1);
   const queue: number[] = [];
-  for (const t of targets) {
-    const tx = Math.floor(t.x), tz = Math.floor(t.z);
-    if (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h) continue;
+  const seed = (tx: number, tz: number) => {
+    if (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h) return;
     const i = tz * m.w + tx;
-    if (field[i] === 0) continue;
+    if (field[i] === 0) return;
     field[i] = 0;
     queue.push(i);
+  };
+  for (const t of targets) {
+    const tx = Math.floor(t.x), tz = Math.floor(t.z);
+    seed(tx, tz);
+    // a target standing where enemies cannot go (glitch floor): lead them to the closest edge instead
+    if (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h || !blocks(m.tiles[tz * m.w + tx])) continue;
+    for (let r = 1; r <= 4; r++) {
+      let found = false;
+      for (let oz = -r; oz <= r; oz++) {
+        for (let ox = -r; ox <= r; ox++) {
+          if (Math.max(Math.abs(ox), Math.abs(oz)) !== r) continue;
+          const x = tx + ox, z = tz + oz;
+          if (x < 0 || z < 0 || x >= m.w || z >= m.h || blocks(m.tiles[z * m.w + x])) continue;
+          seed(x, z);
+          found = true;
+        }
+      }
+      if (found) break;
+    }
   }
   for (let head = 0; head < queue.length; head++) {
     const i = queue[head];

@@ -191,6 +191,18 @@ describe('rammer', () => {
   });
 });
 
+describe('splitter', () => {
+  it('never puts its splitlings inside a wall', () => {
+    const s = quietSim();
+    // hugging the west wall of the plaza building at x = 19
+    const e = spawnEnemy(s, 'splitter', { x: 18.6, z: 27.5 });
+    damageEnemy(s, e, 1000, 'laser');
+    const kids = s.enemies.filter(x => x.kind === 'splitling');
+    expect(kids).toHaveLength(2);
+    for (const k of kids) expect(isFree(s.map, k.pos, k.radius, BLOCKS_ENEMY), `${k.pos.x},${k.pos.z}`).toBe(true);
+  });
+});
+
 describe('elite', () => {
   it('has 5 times the hp and drops a crate', () => {
     const s = quietSim();

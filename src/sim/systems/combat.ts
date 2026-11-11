@@ -1,7 +1,7 @@
 import { BOMBER, CLOSE_BONUS, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { MINE } from '../config/weapons';
-import { Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
 import { spawnEnemy } from './enemies';
@@ -55,8 +55,11 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   s.score += def.score * (e.elite ? ELITE.score : 1) * mult;
   dropCoins(s, e.pos, def.coins * (e.elite ? 3 : 1), Math.round(mult * (1 + 0.25 * greed)));
   if (e.kind === 'splitter') {
-    spawnEnemy(s, 'splitling', { x: e.pos.x - 0.3, z: e.pos.z }, { hordeId: e.hordeId ?? undefined });
-    spawnEnemy(s, 'splitling', { x: e.pos.x + 0.3, z: e.pos.z }, { hordeId: e.hordeId ?? undefined });
+    const r = ENEMIES.splitling.radius;
+    for (const side of [-1, 1]) {
+      const at = nearestFree(s.map, { x: e.pos.x + side * 0.3, z: e.pos.z }, r, BLOCKS_ENEMY);
+      spawnEnemy(s, 'splitling', at, { hordeId: e.hordeId ?? undefined });
+    }
   }
   if (e.elite) s.crates.push({ id: s.nextId++, pos: { ...e.pos } });
   // a bomber that is shot goes off at once, but only hurts its own kind

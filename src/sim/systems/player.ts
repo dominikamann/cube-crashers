@@ -19,6 +19,8 @@ import {
 } from '../config/balance';
 import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState } from '../types';
+
+export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
 import { comboMult, damageEnemy } from './combat';
 import { damageVehicle } from './vehicles';
@@ -31,7 +33,11 @@ export function damagePlayer(s: SimState, p: Player, amount: number): void {
   }
   p.hp = Math.max(0, p.hp - amount);
   s.stats.damageTaken += amount;
-  s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp });
+  // continuous damage (contact, glitch floor) would report a hit every tick; four times a second is enough
+  if (s.tick - p.lastHitEventAt >= HIT_EVENT_TICKS || amount >= 5 || p.hp <= 0) {
+    p.lastHitEventAt = s.tick;
+    s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp });
+  }
   if (p.hp > 0) return;
 
   s.credits--;

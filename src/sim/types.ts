@@ -82,6 +82,7 @@ export interface Player {
   /** enemy ids already hit by the current dash */
   dashHits: number[];
   invulnUntil: number;
+  lastHitEventAt: number;
   combo: number;
   comboUntil: number;
   perks: Record<PerkKind, number>;

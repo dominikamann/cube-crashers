@@ -38,6 +38,7 @@ export function createPlayer(id: number, pos: Vec2): Player {
     dashRecharge: 0,
     dashHits: [],
     invulnUntil: 0,
+    lastHitEventAt: -1000,
     combo: 0,
     comboUntil: 0,
     perks: { speed: 0, dash: 0, magnet: 0, greed: 0, regen: 0, stomp: 0 },

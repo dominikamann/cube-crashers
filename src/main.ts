@@ -166,7 +166,7 @@ function startGame() {
     }
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
   });
-  addEventListener('keyup', e => keyboard.keyUp(e.code));
+  addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));
   addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;

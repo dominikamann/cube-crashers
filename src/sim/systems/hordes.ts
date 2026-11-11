@@ -1,5 +1,5 @@
 import { AGGRO_RADIUS, DEAGGRO_RADIUS, WANDER_RANGE } from '../config/balance';
-import { BLOCKS_ENEMY, hasLos, isFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, hasLos, isFree, nearestFree } from '../map/tilemap';
 import type { Enemy, EnemyKind, Horde, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { spawnEnemy } from './enemies';
@@ -27,7 +27,7 @@ export function spawnHorde(s: SimState, pos: Vec2, comp: HordeComp, opts: { rush
   let elite = s.rng.next() < (opts.eliteChance ?? 0);
   for (const group of comp) {
     for (let i = 0; i < group.count; i++) {
-      let at = { ...pos };
+      let at = nearestFree(s.map, pos, 0.6, BLOCKS_ENEMY);
       for (let tries = 0; tries < 8; tries++) {
         const c = { x: pos.x + s.rng.range(-2.5, 2.5), z: pos.z + s.rng.range(-2.5, 2.5) };
         if (isFree(s.map, c, 0.6, BLOCKS_ENEMY) && hasLos(s.map, pos, c)) {
