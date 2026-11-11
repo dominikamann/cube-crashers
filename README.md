@@ -36,8 +36,8 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 ### macOS
 
 1. Download the `.dmg` that matches your Mac:
-   - Apple Silicon (M1, M2, M3, M4 …): `Cube Crashers-<version>-arm64.dmg`
-   - Intel Mac: `Cube Crashers-<version>.dmg`
+   - Apple Silicon (M1, M2, M3, M4 …): `CubeCrashers-<version>-mac-apple-silicon.dmg`
+   - Intel Mac: `CubeCrashers-<version>-mac-intel.dmg`
 2. Open the `.dmg` and drag **Cube Crashers** into **Applications**.
 3. The app is not signed yet, so macOS blocks it the first time. In **Applications**, **right-click Cube Crashers
    → Open → Open**. After that it starts normally.
@@ -45,7 +45,7 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 
 ### Windows
 
-1. Download `Cube Crashers Setup <version>.exe`.
+1. Download `CubeCrashers-<version>-windows-setup.exe`.
 2. Run it. Windows SmartScreen warns about an unknown publisher because the installer is not signed yet:
    click **More info → Run anyway**.
 3. Choose the install folder and finish the setup. Start the game from the Start menu or the desktop.
