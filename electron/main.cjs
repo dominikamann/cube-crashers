@@ -3,6 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const lan = require('./lan.cjs');
+const { startUpdater } = require('./updater.cjs');
 
 let win = null;
 
@@ -139,7 +140,21 @@ ipcMain.handle('lan:close', event => {
   if (fromGame(event)) stopLan();
 });
 
-app.whenReady().then(createWindow);
+// ---------- updates ----------
+
+let updater = null;
+let lastUpdate = null;
+ipcMain.handle('update:state', event => (fromGame(event) ? lastUpdate : null));
+ipcMain.on('update:install', event => fromGame(event) && updater?.install());
+ipcMain.on('update:download', event => fromGame(event) && updater?.openDownload());
+
+app.whenReady().then(() => {
+  createWindow();
+  updater = startUpdater(e => {
+    lastUpdate = e;
+    win?.webContents.send('update:event', e);
+  });
+});
 app.on('window-all-closed', () => {
   stopLan();
   discovery?.stop();

@@ -1,5 +1,7 @@
 appId: io.github.cubecrashers
 productName: Cube Crashers
+# no spaces in file names: GitHub would rename them and the auto-updater would not find them
+artifactName: CubeCrashers-${version}-${os}-${arch}.${ext}
 directories:
   output: release
   buildResources: build
@@ -7,13 +9,19 @@ files:
   - dist/**
   - electron/**
   - package.json
+# the auto-updater reads releases from here (public repository, no token needed to read)
+publish:
+  provider: github
+  owner: dominikamann
+  repo: cube-crashers
 mac:
   category: public.app-category.games
   target:
+    # zip is what the macOS auto-updater downloads; dmg is for people installing by hand
     - target: dmg
       arch: [arm64, x64]
-  # unsigned for now; set an identity and notarize later
-  identity: null
+    - target: zip
+      arch: [arm64, x64]
 win:
   target:
     - target: nsis

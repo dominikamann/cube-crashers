@@ -17,6 +17,7 @@ import { totalKills } from './sim/systems/stats';
 import { TICK_RATE, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
+import { createUpdateBanner } from './ui/update-banner';
 import { createScreens, loadSettings, recordScore, saveSettings, type JoinEntry, type RunSummary } from './ui/screens';
 
 document.title = t('title');
@@ -97,6 +98,7 @@ function startGame() {
     connect: (target: string) => void joinGame(target),
   };
 
+  createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
   const hud = createHud(app);
   const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
   const screens = createScreens(

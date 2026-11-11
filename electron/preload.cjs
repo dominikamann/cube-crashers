@@ -3,6 +3,16 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('cubeCrashers', {
   saveRunLog: json => ipcRenderer.invoke('save-run-log', json),
+  updates: {
+    state: () => ipcRenderer.invoke('update:state'),
+    install: () => ipcRenderer.send('update:install'),
+    download: () => ipcRenderer.send('update:download'),
+    on: cb => {
+      const listener = (_event, e) => cb(e);
+      ipcRenderer.on('update:event', listener);
+      return () => ipcRenderer.removeListener('update:event', listener);
+    },
+  },
   lan: {
     host: name => ipcRenderer.invoke('lan:host', name),
     join: address => ipcRenderer.invoke('lan:join', address),

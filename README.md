@@ -36,8 +36,8 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 ### macOS
 
 1. Download the `.dmg` that matches your Mac:
-   - Apple Silicon (M1, M2, M3, M4 …): `CubeCrashers-<version>-mac-apple-silicon.dmg`
-   - Intel Mac: `CubeCrashers-<version>-mac-intel.dmg`
+   - Apple Silicon (M1, M2, M3, M4 …): `CubeCrashers-<version>-mac-arm64.dmg`
+   - Intel Mac: `CubeCrashers-<version>-mac-x64.dmg`
 2. Open the `.dmg` and drag **Cube Crashers** into **Applications**.
 3. The app is not signed yet, so macOS blocks it the first time. In **Applications**, **right-click Cube Crashers
    → Open → Open**. After that it starts normally.
@@ -45,12 +45,20 @@ Get the latest version from the **[Releases page](https://github.com/dominikaman
 
 ### Windows
 
-1. Download `CubeCrashers-<version>-windows-setup.exe`.
+1. Download `CubeCrashers-<version>-win-x64.exe`.
 2. Run it. Windows SmartScreen warns about an unknown publisher because the installer is not signed yet:
    click **More info → Run anyway**.
 3. Choose the install folder and finish the setup. Start the game from the Start menu or the desktop.
 4. **For LAN games:** when Windows asks whether Cube Crashers may use the network, allow it for **private
    networks**.
+
+### Updates
+
+The app checks GitHub for a new release when it starts (and every few hours).
+- **Windows:** the update downloads in the background; a banner offers **Restart now**, otherwise it is
+  installed the next time you quit.
+- **macOS:** as long as the app is not signed, macOS does not let it replace itself; the banner then shows a
+  **Download** button that opens the release page. Signed builds update like on Windows.
 
 ### From the source code
 
@@ -249,6 +257,19 @@ npm run dist:mac  # .dmg files for macOS (Apple Silicon + Intel) into release/
 npm run dist:win  # Windows installer (.exe) into release/ (works from macOS too)
 npm run icon      # regenerate the pixel-art app icon
 ```
+
+**Releasing:** bump the version in `package.json`, run `npm run dist:mac` and `npm run dist:win`, then upload
+*everything* in `release/` that is a file (`.dmg`, `.zip`, `.exe`, `.blockmap`, `latest.yml`,
+`latest-mac.yml`) to a new GitHub release. The `latest*.yml` files are what the installed apps look for.
+
+**Signed macOS builds:** nothing secret is stored in this repository. Once per Mac:
+1. Create a *Developer ID Application* certificate (Xcode → Settings → Accounts → your team → Manage
+   Certificates → + → Developer ID Application). It is stored in your keychain.
+2. Create an app-specific password at appleid.apple.com and store it for notarization in your keychain:
+   `xcrun notarytool store-credentials cube-crashers --apple-id <your Apple ID> --team-id <your team ID>`
+   (asks for the password).
+
+Then `npm run dist:mac:signed` builds, signs and notarizes the macOS apps.
 
 **Testing LAN play on one computer:** run `npm run dev`, open the game in two browser windows, host in one and
 join in the other. The dev server includes a small relay for this. Or start the desktop app twice: one hosts,

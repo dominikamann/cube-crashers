@@ -68,7 +68,11 @@ const KEEP = 20;
 declare global {
   interface Window {
     /** set by the desktop app's preload script */
-    cubeCrashers?: { saveRunLog(json: string): Promise<void>; lan?: import('./net/electron-lan').LanBridge };
+    cubeCrashers?: {
+      saveRunLog(json: string): Promise<void>;
+      lan?: import('./net/electron-lan').LanBridge;
+      updates?: import('./ui/update-banner').UpdateBridge;
+    };
   }
 }
 
