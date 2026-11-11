@@ -7,6 +7,10 @@ import { DT, type Command, type SimEvent, type WeaponKind } from './sim/types';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
+if (new URLSearchParams(location.search).has('sound')) {
+  void import('./audio/soundboard').then(m => m.showSoundboard(app));
+  throw new Error('soundboard mode');
+}
 app.innerHTML = '<canvas id="game"></canvas>';
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 Object.assign(document.body.style, { margin: '0', overflow: 'hidden', background: '#000' });
