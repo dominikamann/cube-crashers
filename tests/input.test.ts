@@ -139,3 +139,51 @@ describe('action keys and mouse', () => {
     expect(cmds.some(c => c.type === 'build')).toBe(true);
   });
 });
+
+describe('mouse steering', () => {
+  const moveOf = (k: Keyboard, s: ReturnType<typeof createSim>) => {
+    const c = k.commands(s, 0, 10)[0];
+    return c.type === 'move' ? c.dir : { x: NaN, z: NaN };
+  };
+
+  it('W walks toward the crosshair, S away from it, A and D sideways', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0].pos;
+    const k = new Keyboard();
+    k.steerWithMouse = true;
+    k.setAim({ x: p.x + 5, z: p.z });
+    k.keyDown('KeyW', 0);
+    expect(moveOf(k, s).x).toBeCloseTo(1);
+    expect(moveOf(k, s).z).toBeCloseTo(0);
+    k.keyUp('KeyW');
+    k.keyDown('KeyS', 0);
+    expect(moveOf(k, s).x).toBeCloseTo(-1);
+    k.keyUp('KeyS');
+    k.keyDown('KeyD', 0);
+    // crosshair is to the right of the player, so "right of forward" points down the screen
+    expect(moveOf(k, s).z).toBeCloseTo(1);
+    expect(moveOf(k, s).x).toBeCloseTo(0);
+  });
+
+  it('keeps the last direction when the crosshair sits on the player', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0].pos;
+    const k = new Keyboard();
+    k.steerWithMouse = true;
+    k.setAim({ x: p.x, z: p.z - 5 });
+    k.keyDown('KeyW', 0);
+    moveOf(k, s);
+    k.setAim({ x: p.x + 0.05, z: p.z });
+    expect(moveOf(k, s).z).toBeCloseTo(-1);
+  });
+
+  it('uses fixed screen directions when switched off', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0].pos;
+    const k = new Keyboard();
+    k.steerWithMouse = false;
+    k.setAim({ x: p.x + 5, z: p.z });
+    k.keyDown('KeyW', 0);
+    expect(moveOf(k, s).z).toBeCloseTo(-1);
+  });
+});

@@ -7,6 +7,6 @@ describe('t', () => {
   });
 
   it('fills placeholders', () => {
-    expect(t('hud.wave', { n: 3, total: 10 })).toBe('Wave 3/10');
+    expect(t('hud.nests', { n: 3, total: 4 })).toBe('Nests 3/4');
   });
 });

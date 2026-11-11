@@ -1,5 +1,6 @@
 // Electron main process. Phase 2 will start the built-in LAN server from here.
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
 
 if (!app.requestSingleInstanceLock()) {
@@ -21,6 +22,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
@@ -43,6 +45,15 @@ app.on('second-instance', () => {
     if (win.isMinimized()) win.restore();
     win.focus();
   }
+});
+
+// run logs stay on this machine, in the app's user data folder
+ipcMain.handle('save-run-log', (_event, json) => {
+  if (typeof json !== 'string' || json.length > 1_000_000) return;
+  JSON.parse(json);
+  const dir = path.join(app.getPath('userData'), 'runs');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `run-${new Date().toISOString().replace(/[:.]/g, '-')}.json`), json);
 });
 
 app.whenReady().then(createWindow);

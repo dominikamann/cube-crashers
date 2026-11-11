@@ -12,7 +12,9 @@ import { createSim, stepSim } from './sim/sim';
 import { TICK_RATE, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
-import { createScreens, loadSettings } from './ui/screens';
+import { buildRunLog, saveRunLog } from './runlog';
+import { totalKills } from './sim/systems/stats';
+import { createScreens, loadSettings, recordScore } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -51,7 +53,9 @@ function startGame() {
   function applySettings() {
     audio?.mixer.setMusicVolume(settings.music);
     audio?.mixer.setSfxVolume(settings.sfx);
+    keyboard.steerWithMouse = settings.steerWithMouse;
   }
+  applySettings();
 
   const hud = createHud(app);
   const buildMenu = createBuildMenu(app, kind => keyboard.chooseTower(kind));
@@ -80,33 +84,45 @@ function startGame() {
       // the crosshair replaces the mouse pointer while playing
       canvas.style.cursor = mode === 'playing' ? 'none' : '';
       renderer.render(sim, alpha, frameEvents, frameDt);
-      hud.update(sim, frameEvents, keyboard.buildMenuOpen);
+      hud.update(sim, frameEvents, keyboard.buildMenuOpen, performance.now() / 1000);
       buildMenu.update(sim, keyboard.buildMenuOpen && mode === 'playing', frameEvents);
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
+          if (e.type === 'alarmChanged') audio.music.playTrack(e.level >= 5 ? 'boss' : 'battle');
           if (e.type === 'gameWon' || e.type === 'gameLost') audio.music.playTrack(null);
         }
       }
       for (const e of frameEvents) {
-        if (e.type === 'gameWon') finish(() => screens.won(e.score, sim.tick / TICK_RATE));
-        if (e.type === 'gameLost') finish(() => screens.lost());
+        if (e.type === 'gameWon' || e.type === 'gameLost') finish(e.type === 'gameWon');
       }
       frameEvents = [];
     },
   );
 
-  function finish(show: () => void) {
+  function finish(won: boolean) {
     mode = 'over';
     keyboard.releaseAll();
+    saveRunLog(buildRunLog(sim));
+    const summary = {
+      score: sim.score,
+      seconds: sim.tick / TICK_RATE,
+      kills: totalKills(sim),
+      maxCombo: sim.stats.maxCombo,
+      credits: sim.credits,
+      nestsDestroyed: sim.nests.filter(n => n.state === 'destroyed').length,
+      nests: sim.nests.length,
+      best: recordScore(sim.score),
+    };
     setTimeout(() => {
       hud.setVisible(false);
-      show();
+      screens.result(won, summary);
     }, 1800);
   }
 
   function newGame() {
-    sim = createSim(floor01, (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+    const fixed = Number(params.get('seed'));
+    sim = createSim(floor01, fixed > 0 ? fixed : (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
     if (params.has('demo')) applyDemo(sim);
     frameEvents = [];
     keyboard.releaseAll();
@@ -187,6 +203,17 @@ function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
+  if (params.get('demo') === 'nest') {
+    // straight into a hold: next to a planted nest, with a crate opened beside it
+    const nest = sim.nests[0];
+    nest.state = 'planted';
+    nest.progress = 500;
+    nest.nextRushAt = 0;
+    sim.players[0].pos = { x: nest.pos.x + 2, z: nest.pos.z + 2 };
+    sim.players[0].invulnUntil = 1e9;
+    sim.crates.push({ id: sim.nextId++, pos: { x: nest.pos.x + 2.5, z: nest.pos.z + 2 } });
+    sim.alarm.level = Number(params.get('alarm') ?? 2);
+  }
   const warp = Number(params.get('warp') ?? 0);
   for (let i = 0; i < warp; i++) stepSim(sim, []);
 }

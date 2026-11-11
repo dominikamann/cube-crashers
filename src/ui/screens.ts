@@ -3,18 +3,22 @@ import { t } from '../i18n';
 export interface Settings {
   music: number;
   sfx: number;
+  /** W walks toward the crosshair instead of up the screen */
+  steerWithMouse: boolean;
 }
 
 const SETTINGS_KEY = 'cube-crashers.settings';
+const SCORES_KEY = 'cube-crashers.scores';
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, steerWithMouse: true };
 
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { music: 0.8, sfx: 0.9, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
   } catch {
     // storage unavailable: use defaults
   }
-  return { music: 0.8, sfx: 0.9 };
+  return { ...DEFAULTS };
 }
 
 export function saveSettings(s: Settings): void {
@@ -23,6 +27,35 @@ export function saveSettings(s: Settings): void {
   } catch {
     // storage unavailable: settings only last for this session
   }
+}
+
+/** Adds a score to the local top 5 and returns the list (highest first). */
+export function recordScore(score: number): number[] {
+  let scores: number[] = [];
+  try {
+    scores = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '[]');
+  } catch {
+    // storage unavailable
+  }
+  scores = [...scores, score].sort((a, b) => b - a).slice(0, 5);
+  try {
+    localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+  } catch {
+    // storage unavailable
+  }
+  return scores;
+}
+
+export interface RunSummary {
+  score: number;
+  seconds: number;
+  kills: number;
+  maxCombo: number;
+  credits: number;
+  nestsDestroyed: number;
+  nests: number;
+  /** local top scores including this run */
+  best: number[];
 }
 
 export interface ScreenActions {
@@ -37,8 +70,7 @@ export interface ScreenActions {
 export interface Screens {
   title(): void;
   pause(): void;
-  won(score: number, seconds: number): void;
-  lost(): void;
+  result(won: boolean, summary: RunSummary): void;
   hide(): void;
   readonly visible: boolean;
 }
@@ -67,6 +99,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       onClick();
     });
     parent.append(b);
+    return b;
   }
 
   function text(parent: HTMLElement, tag: string, cls: string, value: string) {
@@ -76,6 +109,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     e.textContent = value;
     parent.append(e);
     return e;
+  }
+
+  function changed() {
+    saveSettings(settings);
+    actions.settingsChanged(settings);
   }
 
   function settingsScreen() {
@@ -93,12 +131,17 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         input.value = String(settings[key]);
         input.addEventListener('input', () => {
           settings[key] = Number(input.value);
-          saveSettings(settings);
-          actions.settingsChanged(settings);
+          changed();
         });
         row.append(input);
         s.append(row);
       }
+      const label = () => `${t('settings.steer')}: ${t(settings.steerWithMouse ? 'settings.on' : 'settings.off')}`;
+      const steer = button(s, label(), () => {
+        settings.steerWithMouse = !settings.steerWithMouse;
+        steer.textContent = label();
+        changed();
+      });
       button(s, t('menu.back'), () => back());
     });
   }
@@ -108,7 +151,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       back = api.title;
       show('title', s => {
         text(s, 'div', 'logo', t('title'));
-        text(s, 'p', '', t('tagline'));
+        text(s, 'p', '', t('menu.goal'));
         button(s, t('menu.play'), actions.play, true);
         button(s, t('menu.settings'), settingsScreen);
         button(s, t('menu.quit'), actions.quit);
@@ -124,19 +167,15 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(s, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    won(score, seconds) {
+    result(won, r) {
       show('', s => {
-        text(s, 'h2', '', t('won.title'));
-        const m = Math.floor(seconds / 60), sec = String(Math.floor(seconds % 60)).padStart(2, '0');
-        text(s, 'p', '', t('won.stats', { score, time: `${m}:${sec}` }));
-        button(s, t('menu.playAgain'), actions.play, true);
-        button(s, t('menu.mainMenu'), actions.mainMenu);
-      });
-    },
-    lost() {
-      show('', s => {
-        text(s, 'h2', '', t('lost.title'));
-        text(s, 'p', '', t('lost.subtitle'));
+        text(s, 'h2', '', t(won ? 'won.title' : 'lost.title'));
+        if (!won) text(s, 'p', '', t('lost.subtitle'));
+        text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
+        if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
+        const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
+        text(s, 'p', '', t('result.stats', { time: `${m}:${sec}`, kills: r.kills, combo: r.maxCombo, credits: r.credits, nests: `${r.nestsDestroyed}/${r.nests}` }));
+        text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
         button(s, t('menu.playAgain'), actions.play, true);
         button(s, t('menu.mainMenu'), actions.mainMenu);
       });

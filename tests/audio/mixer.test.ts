@@ -28,7 +28,7 @@ describe('mixer', () => {
     const mixer = createMixer(ctx as unknown as BaseAudioContext);
     mixer.limiter.reset();
     for (let i = 0; i < 40; i++) mixer.play('enemyKilled', 1, true);
-    for (let i = 0; i < 40; i++) mixer.play('bossImpact', 1, true);
+    for (let i = 0; i < 40; i++) mixer.play('explosion', 1, true);
     const buf = await ctx.startRendering();
     let peak = 0;
     for (let c = 0; c < buf.numberOfChannels; c++) {

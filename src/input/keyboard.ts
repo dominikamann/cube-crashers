@@ -7,6 +7,9 @@ const TOWER_KEYS: Record<string, TowerKind> = { Digit1: 'laser', Digit2: 'popcor
 /** Turns key state into sim commands. Times are passed in so it can be tested without a DOM. */
 export class Keyboard {
   buildMenuOpen = false;
+  /** W walks toward the crosshair instead of up the screen */
+  steerWithMouse = false;
+  private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
   menuPad: number | null = null;
   private down = new Set<string>();
@@ -98,8 +101,17 @@ export class Keyboard {
       x /= len;
       z /= len;
     }
-    const cmds: Command[] = [{ type: 'move', playerId, dir: { x, z } }];
     const p = s.players.find(pl => pl.id === playerId);
+    if (this.steerWithMouse && p && this.aim) {
+      const fx = this.aim.x - p.pos.x, fz = this.aim.z - p.pos.z;
+      const fl = Math.hypot(fx, fz);
+      // too close to tell a direction: keep the last one
+      if (fl > 0.6) this.forward = { x: fx / fl, z: fz / fl };
+      const ahead = -z, side = x;
+      x = this.forward.x * ahead - this.forward.z * side;
+      z = this.forward.z * ahead + this.forward.x * side;
+    }
+    const cmds: Command[] = [{ type: 'move', playerId, dir: { x, z } }];
 
     if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
