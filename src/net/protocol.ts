@@ -1,7 +1,7 @@
 import type { Command, Difficulty, RunMode, SimEvent } from '../sim/types';
 import type { SnapState } from './snapshot';
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
