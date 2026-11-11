@@ -222,12 +222,12 @@ Up to **8 players** on the same network (Wi-Fi or cable), all with the desktop a
 
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
-2. Click **LAN game → Host LAN game**. Your game shows up on the network automatically.
+2. Click **LAN party → Host LAN game**. Your game shows up on the network automatically.
 3. Pick the **difficulty** in the lobby, wait for your friends, click **Start**.
 
 **Everyone else joins:**
 1. Enter a name in *Settings* as well.
-2. Click **LAN game → Join LAN game**. Games on your network appear in a list after a moment; click one.
+2. Click **LAN party → Join LAN game**. Games on your network appear in a list after a moment; click one.
 3. If no game shows up (some routers block it), type the host's address into the field, e.g. `192.168.1.20`.
    The host finds it in the system network settings.
 

@@ -10,7 +10,7 @@ export const en = {
   'menu.back': 'Back',
   'menu.host': 'Host LAN game',
   'menu.quick': 'Quick floor',
-  'menu.lan': 'LAN game',
+  'menu.lan': 'LAN party',
   'menu.onePlayer': '1 player',
   'menu.twoPlayers': '2 players · split screen',
   'split.needPad': 'Player 2 needs a controller: connect one and press a button.',
