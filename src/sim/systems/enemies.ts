@@ -1,4 +1,6 @@
 import { ENEMIES } from '../config/enemies';
+import { dist } from '../util';
+import { damagePlayer, PLAYER_RADIUS } from './player';
 import { DT, type Enemy, type EnemyKind, type SimState, type Vec2 } from '../types';
 
 export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2): Enemy {
@@ -33,6 +35,9 @@ export function updateEnemies(s: SimState): void {
       continue;
     }
     survivors.push(e);
+    for (const p of s.players) {
+      if (dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS) damagePlayer(s, p, ENEMIES[e.kind].contactDamage * DT);
+    }
   }
   s.enemies = survivors;
 }
