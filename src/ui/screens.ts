@@ -7,6 +7,7 @@ import { ALL_RARE } from '../sim/config/rare';
 import { FLOORS, RUN_FLOORS } from '../sim/config/floors';
 import { TOWERS } from '../sim/config/towers';
 import { WEAPONS } from '../sim/config/weapons';
+import { MAX_PLAYERS } from '../sim/config/balance';
 import { buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 
@@ -37,7 +38,8 @@ export interface Settings {
   /** set once discovery became the versus default */
   discoveryDefault?: boolean;
   versusMap: string;
-  versusBots: number;
+  /** versus on this computer: players in the match, bots fill up the rest */
+  versusSize: number;
 }
 
 const TIP_COUNT = 15;
@@ -49,7 +51,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusBots: 3, versusChaos: false, splitTogether: true, versusDiscovery: true };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -511,8 +513,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (mode === 'versus') {
         if (!lan) {
+          // like the LAN lobby: how many players the match has, bots fill up the rest
           const humans = settings.localPlayers;
-          choose(t('setup.bots'), [0, 1, 3, 5, 8 - humans].filter((n, i, a) => n + humans <= 8 && a.indexOf(n) === i).map(n => ({ label: String(n), value: n })), settings.versusBots, v => (settings.versusBots = v));
+          const sizes = [humans, ...[2, 4, 6, 8].filter(n => n > humans)];
+          if (!sizes.includes(settings.versusSize)) settings.versusSize = sizes.find(n => n >= settings.versusSize) ?? MAX_PLAYERS;
+          choose(t('setup.size'), sizes.map(n => ({ label: n === humans ? t('lobby.fillOff') : String(n), value: n })), settings.versusSize, v => (settings.versusSize = v));
         }
       } else {
         choose(t('settings.difficulty'), DIFFICULTIES.map(d => ({ label: t(`difficulty.${d}` as 'difficulty.medium'), value: d })), settings.difficulty, v => (settings.difficulty = v), true);
@@ -674,7 +679,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             const mine = vote.votes[me] === i;
             const c = document.createElement('button');
             c.className = `vote-card${mine ? ' on' : ''}`;
-            c.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(o.mode === 'ffa' ? 'versus.ffa' : 'versus.team')}</div><div>${t(o.rule === 'score' ? 'versus.score' : 'versus.rounds')}</div><div class="map">${t(FLOORS[o.map].name as 'floor.plaza')}</div><div class="count">${'●'.repeat(n) || '–'}</div>`;
+            c.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(o.mode === 'ffa' ? 'versus.ffa' : 'versus.team')}</div><div>${t(`versus.${o.rule}` as 'versus.score')}</div><div class="map">${t(FLOORS[o.map].name as 'floor.plaza')}</div>${o.chaos ? `<div class="chaos">${t('versus.chaosCard')}</div>` : ''}<div class="count">${'●'.repeat(n) || '–'}</div>`;
             c.addEventListener('click', () => {
               actions.click();
               lan.vote(i as 0 | 1);
@@ -685,16 +690,27 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           text(s, 'p', '', t('lobby.voteEnds', { s: vote.endsIn }));
         }
         if (isHost) {
-          const diff = button(s, diffLabel(difficulty), () => {
+          // two blocks, each with only its own setting: co-op with the difficulty, versus with the bots
+          const group = (title: string) => {
+            const g = document.createElement('div');
+            g.className = 'lobby-group';
+            text(g, 'div', 'setup-label', title);
+            const row = document.createElement('div');
+            row.className = 'lobby-group-row';
+            g.append(row);
+            s.append(g);
+            return row;
+          };
+          const coop = group(t('lobby.coop'));
+          button(coop, t('lobby.start'), lan.start, true);
+          const diff = button(coop, diffLabel(difficulty), () => {
             difficulty = nextDiff(difficulty);
             diff.textContent = diffLabel(difficulty);
             lan.setDifficulty(difficulty);
           });
-          const row = document.createElement('div');
-          row.className = 'row2';
-          s.append(row);
-          button(row, t('lobby.start'), lan.start, true);
-          if (!vote) button(row, t('lobby.versus'), () => setupScreen('versus', lan), true);
+          diff.classList.add('small');
+          const vs = group(t('mode.versus'));
+          if (!vote) button(vs, t('lobby.versus'), () => setupScreen('versus', lan), true);
           // one control for the bots: how many players the lobby is topped up to (bots show up right away)
           const bots = document.createElement('div');
           bots.className = 'stepper txt lobby-bots';
@@ -717,7 +733,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           plus.disabled = at === sizes.length - 1;
           plus.addEventListener('click', () => stepTo(at + 1));
           bots.append(minus, count, plus);
-          s.append(bots);
+          vs.append(bots);
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));
@@ -729,7 +745,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       show('', s => {
         text(s, 'h2', '', t('join.title'));
         if (games.length === 0) text(s, 'p', 'blinking', t('join.searching'));
-        for (const g of games) button(s, `${g.label} (${g.players}/6)`, () => lan.connect(g.target), true);
+        for (const g of games) button(s, `${g.label} (${g.players}/${MAX_PLAYERS})`, () => lan.connect(g.target), true);
         if (canEnterAddress) {
           const row = document.createElement('label');
           row.className = 'setting txt';

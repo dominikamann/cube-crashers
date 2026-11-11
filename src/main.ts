@@ -441,7 +441,7 @@ function startGame() {
     lastSoloMode = 'versus';
     setSplit(settings.localPlayers === 2);
     const humans = split ? 2 : 1;
-    const bots = Math.max(0, Math.min(8 - humans, settings.versusBots));
+    const bots = Math.max(0, Math.min(MAX_PLAYERS, settings.versusSize) - humans);
     const names = [playerName(), ...(split ? [t('split.player2')] : []), ...Array.from({ length: bots }, () => `Bot ${withDefaults({ name: '', color: null }).name}`)];
     const colors = settings.color !== null ? [settings.color] : undefined;
     // discovery: the next step of the rotation instead of the chosen match
