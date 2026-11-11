@@ -11,6 +11,7 @@ export function dropCoins(s: SimState, pos: Vec2, count: number): void {
       id: s.nextId++,
       pos: { x: pos.x + s.rng.range(-0.4, 0.4), z: pos.z + s.rng.range(-0.4, 0.4) },
       value: 1,
+      spawnedAt: s.tick,
     });
   }
 }

@@ -108,6 +108,8 @@ export interface Coin {
   id: number;
   pos: Vec2;
   value: number;
+  /** tick the coin dropped; after COIN_VACUUM_SECONDS it flies to the nearest player */
+  spawnedAt?: number;
 }
 
 export interface Crate {

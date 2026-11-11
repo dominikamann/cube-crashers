@@ -59,3 +59,21 @@ describe('sim purity', () => {
     }
   });
 });
+
+describe('player area', () => {
+  it('reaches every build pad, including the forward ones', () => {
+    for (const pad of map01.pads) {
+      const s = createSim(map01, 1);
+      s.players[0].weapons = [];
+      for (let i = 0; i < 600; i++) {
+        const p = s.players[0].pos;
+        const dx = pad.pos.x - p.x, dz = pad.pos.z - p.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.05) break;
+        stepSim(s, [move(dx / Math.max(d, 1), dz / Math.max(d, 1))]);
+      }
+      const p = s.players[0].pos;
+      expect(Math.hypot(pad.pos.x - p.x, pad.pos.z - p.z), `pad ${pad.id}`).toBeLessThan(1.2);
+    }
+  });
+});

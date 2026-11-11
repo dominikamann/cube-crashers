@@ -70,3 +70,16 @@ describe('splitter', () => {
     expect(s.enemies.find(x => x.id === e.id)).toBeUndefined();
   });
 });
+
+describe('coin vacuum', () => {
+  it('flies coins to the player after they have been lying for 4 seconds', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.weapons = [];
+    s.coins.push({ id: s.nextId++, pos: { x: 0, z: -20 }, value: 1, spawnedAt: s.tick });
+    run(s, 4 * 60 - 5);
+    expect(p.coins).toBe(0);
+    run(s, 4 * 60);
+    expect(p.coins).toBe(1);
+  });
+});

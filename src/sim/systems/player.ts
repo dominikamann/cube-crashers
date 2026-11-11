@@ -2,7 +2,8 @@ import { DT, TICK_RATE, type Player, type SimState, type Vec2 } from '../types';
 import { clamp } from '../util';
 
 export const PLAYER_SPEED = 6;
-export const PLAYER_AREA = { minX: -6, maxX: 6, minZ: -6, maxZ: 7 };
+// reaches past the forward build pad (z = -20) but stays clear of the spawn line
+export const PLAYER_AREA = { minX: -6, maxX: 6, minZ: -22, maxZ: 7 };
 
 export const RESPAWN_SECONDS = 3;
 export const DOWN_COIN_LOSS = 0.25;
