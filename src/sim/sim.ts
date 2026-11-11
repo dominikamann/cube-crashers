@@ -7,6 +7,8 @@ import { updateEnemies } from './systems/enemies';
 import { updateHordes } from './systems/hordes';
 import { setupFloor, updateAlarm, updateNests } from './systems/nests';
 import { updateOffers } from './systems/offers';
+import { updatePowerups } from './systems/powerups';
+import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
 import { sampleStats } from './systems/stats';
@@ -134,6 +136,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
     }
   }
   updatePlayers(s, intents);
+  updateVehicles(s, intents);
   updateNests(s, intents);
   updateAlarm(s);
   updateHordes(s);
@@ -143,9 +146,10 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateMines(s);
   updateTowers(s);
   updateAreas(s);
-  removeDead(s);
   updateCoins(s);
   updateOffers(s);
+  updatePowerups(s);
+  removeDead(s);
   updateOutcome(s);
   sampleStats(s);
   s.tick++;

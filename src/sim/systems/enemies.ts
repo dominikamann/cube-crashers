@@ -93,8 +93,8 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     e.cooldownUntil = s.tick + RAMMER.cooldownTicks;
   };
   for (const p of players) {
-    if (p.air > 0 || p.vehicleId !== null || s.tick < p.invulnUntil) continue;
-    if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS) continue;
+    if (p.air > 0 || s.tick < p.invulnUntil) continue;
+    if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
     damagePlayer(s, p, RAMMER.damage);
     moveCircle(s.map, p.pos, e.dir.x * 1.5, e.dir.z * 1.5, PLAYER_RADIUS, BLOCKS_WALKER);
     stun(RAMMER.hitStunTicks);

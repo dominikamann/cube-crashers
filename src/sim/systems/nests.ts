@@ -22,6 +22,8 @@ import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
 import { placeStartCrates } from './offers';
+import { POWERUP } from './powerups';
+import { placeStartKarts } from './vehicles';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
 
 function shuffled<T>(s: SimState, list: T[]): T[] {
@@ -81,6 +83,8 @@ export function setupFloor(s: SimState): void {
   const far = shuffled(s, s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS + 3));
   for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 });
   placeStartCrates(s);
+  placeStartKarts(s);
+  s.nextPowerupAt = POWERUP.firstTicks;
 }
 
 function besideNest(s: SimState, n: Nest): Vec2 {

@@ -21,9 +21,14 @@ import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState } from '../types';
 import { dist } from '../util';
 import { comboMult, damageEnemy } from './combat';
+import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
+  if (p.vehicleId !== null) {
+    damageVehicle(s, p.vehicleId, amount);
+    return;
+  }
   p.hp = Math.max(0, p.hp - amount);
   s.stats.damageTaken += amount;
   s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp });

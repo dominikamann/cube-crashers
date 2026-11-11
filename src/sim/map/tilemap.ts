@@ -168,3 +168,16 @@ export function reachable(m: FloorMap, from: Vec2, blocks: Blocks): Uint8Array {
   }
   return mask;
 }
+
+/** The free spot closest to `pos` for a circle of radius `r` (searches outward in rings). */
+export function nearestFree(m: FloorMap, pos: Vec2, r: number, blocks: Blocks, minDist = 0): Vec2 {
+  if (minDist === 0 && isFree(m, pos, r, blocks)) return { ...pos };
+  for (let ring = Math.max(minDist, 0.5); ring <= 6; ring += 0.5) {
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const c = { x: pos.x + Math.cos(a) * ring, z: pos.z + Math.sin(a) * ring };
+      if (isFree(m, c, r, blocks) && hasLos(m, pos, c)) return c;
+    }
+  }
+  return { ...pos };
+}

@@ -17,7 +17,7 @@ export function padAt(s: SimState, pos: Vec2): number | null {
 export function tryBuild(s: SimState, playerId: number, padId: number, kind: TowerKind): void {
   const p = s.players.find(x => x.id === playerId);
   const pad = s.map.pads.find(x => x.id === padId);
-  if (!p || !pad || p.downUntil !== null || padAt(s, p.pos) !== padId) {
+  if (!p || !pad || p.downUntil !== null || p.vehicleId !== null || padAt(s, p.pos) !== padId) {
     s.events.push({ type: 'buildDenied', padId, reason: 'notOnPad' });
     return;
   }

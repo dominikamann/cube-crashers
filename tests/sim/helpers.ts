@@ -12,6 +12,7 @@ export function quietSim(seed = 7): SimState {
   s.mines = [];
   s.vehicles = [];
   s.powerups = [];
+  s.vehicleRespawns = [];
   s.nextPowerupAt = Number.MAX_SAFE_INTEGER;
   s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
   return s;
