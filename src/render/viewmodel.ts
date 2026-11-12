@@ -113,6 +113,22 @@ export function createViewModel(): ViewModel {
   const fist = box(0.12, 0.12, 0.12, lambert(0xffd2a8), 0, -0.06, 0.05);
   hand.add(arm, fist);
   scene.add(hand);
+  // driving in first person: the kart's cockpit in front of you, a steering wheel in two gloves that turns as you steer
+  const cockpit = new THREE.Group();
+  const cockpitPaint = lambert(0xe23b3b), cockpitDark = lambert(0x23232e), cockpitSteel = lambert(0x8a90a4);
+  cockpit.add(box(1.1, 0.22, 0.5, cockpitPaint, 0, -0.2, -0.55), box(0.7, 0.16, 0.5, cockpitPaint, 0, -0.14, -1.0), box(0.16, 0.02, 0.9, lambert(0xf4f4fa), 0, -0.05, -0.85), box(0.06, 0.3, 0.06, cockpitSteel, 0, -0.02, -0.38));
+  const fpWheel = new THREE.Group();
+  fpWheel.add(box(0.44, 0.06, 0.06, cockpitDark, 0, 0.19, 0), box(0.44, 0.06, 0.06, cockpitDark, 0, -0.19, 0), box(0.06, 0.44, 0.06, cockpitDark, -0.19, 0, 0), box(0.06, 0.44, 0.06, cockpitDark, 0.19, 0, 0));
+  fpWheel.add(box(0.36, 0.05, 0.05, cockpitSteel, 0, 0, 0), box(0.12, 0.12, 0.06, cockpitPaint, 0, 0, 0), box(0.1, 0.07, 0.07, glowMat(0xff3b3b, 1.4), 0, 0.19, 0.01));
+  // the gloves at ten and two
+  fpWheel.add(box(0.1, 0.12, 0.1, lambert(0xffd2a8), -0.19, 0.08, 0.04), box(0.1, 0.12, 0.1, lambert(0xffd2a8), 0.19, 0.08, 0.04));
+  fpWheel.position.set(0, 0.12, -0.3);
+  fpWheel.rotation.x = -0.45;
+  cockpit.add(fpWheel);
+  cockpit.position.set(0, -0.42, -0.25);
+  cockpit.visible = false;
+  scene.add(cockpit);
+  const steerOf = new Map<number, { yaw: number; steer: number }>();
   // a shot: a flash at the muzzle and a tracer from there to the crosshair
   const flash = box(0.12, 0.12, 0.04, glowMat(0xfff2a0, 2), 0, 0.02, -0.62);
   flash.visible = false;
@@ -131,6 +147,21 @@ export function createViewModel(): ViewModel {
   return {
     update(s, playerId, time, frameDt) {
       const p = s.players.find(x => x.id === playerId);
+      const ride = p && p.downUntil === null && p.vehicleId !== null ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
+      cockpit.visible = !!ride && (ride.kind === 'kart' || ride.kind === 'roller');
+      if (ride && cockpit.visible) {
+        // the wheel follows the turn the kart is making, eased so it does not twitch
+        const speed = Math.hypot(ride.vel.x, ride.vel.z);
+        let st = steerOf.get(ride.id);
+        if (!st) steerOf.set(ride.id, (st = { yaw: 0, steer: 0 }));
+        const yaw = speed > 0.5 ? Math.atan2(-ride.vel.x, -ride.vel.z) : st.yaw;
+        const turn = Math.atan2(Math.sin(yaw - st.yaw), Math.cos(yaw - st.yaw)) / Math.max(1e-3, frameDt);
+        st.yaw = yaw;
+        st.steer += (Math.max(-1, Math.min(1, turn / 3)) - st.steer) * Math.min(1, frameDt * 10);
+        fpWheel.rotation.z = st.steer * 1.4;
+        // the engine shakes it a little at speed
+        cockpit.position.y = -0.42 + Math.sin(time * 40) * 0.004 * Math.min(1, speed / 6);
+      }
       hand.visible = !!p && p.downUntil === null && p.vehicleId === null;
       if (!p || !hand.visible) return;
       const w = p.weapons[p.selected];

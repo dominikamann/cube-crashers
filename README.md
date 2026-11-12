@@ -156,7 +156,7 @@ After the last floor (or a lost run) the **result screen** shows every player: s
 best weapon, best combo, towers built, coins collected, revives and downs.
 
 **Things to know:**
-- Every game opens with a **countdown** (10 … 1, GO!) that shows what you are about to play.
+- Every game opens with a **countdown** (6 … 1, GO!) that shows what you are about to play.
 - You have **3 lives** (depends on the difficulty). Going down costs one; you get back up at the last safe
   spot. Out of lives = game over (in a team: you are out until the next floor, see [LAN party](#lan-party)).
 - Now and then a **hidden heart** lies on top of a block far from the start. Climb up (a ladder or the jetpack)

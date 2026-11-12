@@ -110,8 +110,8 @@ export interface SimOptions {
   colors?: number[];
 }
 
-/** the countdown that opens a game: 10 9 ... 1 GO! */
-export const COUNTDOWN_TICKS = 10 * TICK_RATE;
+/** the countdown that opens a game: 6 5 ... 1 GO! */
+export const COUNTDOWN_TICKS = 6 * TICK_RATE;
 
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';

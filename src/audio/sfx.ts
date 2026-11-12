@@ -371,7 +371,7 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('kartDestroyed');
     case 'countdown':
       // a beep for every number, rising, and a fanfare at GO!
-      return e.n > 0 ? one('comboUp', 0.6 + 0.05 * (10 - e.n)) : one('elevatorOpen', 1.15);
+      return e.n > 0 ? one('comboUp', 0.7 + 0.07 * (6 - e.n)) : one('elevatorOpen', 1.15);
     case 'raceLap':
       return one('comboUp', 1 + 0.1 * Math.min(e.lap, 6));
     case 'raceEnd':

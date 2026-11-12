@@ -467,30 +467,34 @@ function loadMark(): Promise<HTMLImageElement> {
 const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
 
 /** a floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
-function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550') {
-  // drawn small in the game's own pixel font and blown up without smoothing, so it is made of the same fat
-  // pixels as everything else: 26 pixels per tile, the font at its native 8
-  const res = 26;
-  const small = document.createElement('canvas');
-  small.width = spot.w * res;
-  small.height = spot.h * res;
-  const c = small.getContext('2d')!;
-  const markH = Math.round(small.height * 0.72), markW = Math.round(markH * (img.width / img.height));
-  c.font = `8px 'Press Start 2P', monospace`;
-  c.textBaseline = 'middle';
-  const amann = c.measureText('Amann').width, labs = c.measureText('Labs').width;
-  const gap = 5;
-  const left = Math.round((small.width - (markW + gap + amann + labs)) / 2);
-  c.drawImage(img, left, Math.round((small.height - markH) / 2), markW, markH);
-  c.fillStyle = ink;
-  c.fillText('Amann', left + markW + gap, small.height / 2 + 1);
-  c.globalAlpha = 0.7;
-  c.fillText('Labs', left + markW + gap + amann, small.height / 2 + 1);
+function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550', withMark = true) {
+  // the A and "AmannLabs", drawn sharp at the full size of the texture
+  const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
+  const markH = h * 0.74, markW = markH * (img.width / img.height);
+  // the lettering of amannlabs.eu: a bold "Amann" and a light "Labs" in a clean sans, with a little air between the letters
+  const size = Math.round(h * 0.4);
+  const font = (weight: number) => `${weight} ${size}px 'Avenir Next', 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif`;
   g.save();
   g.globalAlpha = alpha;
-  g.imageSmoothingEnabled = false;
-  g.drawImage(small, spot.tx * px, spot.tz * px, spot.w * px, spot.h * px);
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.textBaseline = 'middle';
+  (g as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${(size * 0.04).toFixed(1)}px`;
+  g.font = font(600);
+  const amann = g.measureText('Amann').width;
+  g.font = font(300);
+  const labs = g.measureText('Labs').width;
+  const gap = h * 0.2;
+  const left = x + (w - (markW + gap + amann + labs)) / 2;
+  if (withMark) g.drawImage(img, left, y + (h - markH) / 2, markW, markH);
+  g.fillStyle = ink;
+  g.font = font(600);
+  g.fillText('Amann', left + markW + gap, y + h / 2);
+  g.font = font(300);
+  g.fillText('Labs', left + markW + gap + amann, y + h / 2);
   g.restore();
+  // where the A sits, in tiles: its centre and size (the floor logo's A is a piece of its own that reacts to players)
+  return { cx: (left + markW / 2) / px, cz: spot.tz + spot.h / 2, w: markW / px, h: markH / px };
 }
 
 function padTexture(): THREE.CanvasTexture {
@@ -591,19 +595,54 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   disposables.push(floorTex);
   // the AmannLabs logo once or twice per map, painted in when the image is ready
   let disposed = false;
+  /** the A of the floor logo: it wakes up when a player steps on the logo */
+  let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number }; glow: number } | null = null;
   /** the wall logos glow gently, like a sign */
   const logoMats: THREE.MeshBasicMaterial[] = [];
   const spots = logoSpots(map);
   if (spots.length) {
-    // the pixel font has to be there before the logo is drawn with it
-    Promise.all([loadMark(), document.fonts?.load("8px 'Press Start 2P'").catch(() => [])])
-      .then(([img]) => {
+    loadMark()
+      .then(img => {
         if (disposed) return;
-        const g = (floorTex.image as HTMLCanvasElement).getContext('2d')!;
         // clearly readable: light lettering on the dark floors, dark on the light ones
         const ink = DARK_FLOORS.has(look) ? '#ffffff' : '#2a2550';
-        for (const spot of spots) if (spot.kind === 'floor') paintLogo(g, img, spot, px, 0.62, ink);
-        floorTex.needsUpdate = true;
+        for (const spot of spots) {
+          if (spot.kind !== 'floor') continue;
+          // the lettering lies on the floor as a decal of its own, far sharper than the floor's texture; the A
+          // is another piece, so it can come alive
+          const fine = 160;
+          let at = { cx: 0, cz: 0, w: 1, h: 1 };
+          const words = canvasTexture(spot.w * fine, spot.h * fine, c => (at = paintLogo(c, img, { tx: 0, tz: 0, w: spot.w, h: spot.h }, fine, 1, ink, false)), false);
+          words.anisotropy = 8;
+          at = { ...at, cx: at.cx + spot.tx, cz: at.cz + spot.tz };
+          const wordsGeo = new THREE.PlaneGeometry(spot.w, spot.h);
+          const wordsMat = new THREE.MeshBasicMaterial({ map: words, transparent: true, opacity: 0.86, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
+          const wordsMesh = new THREE.Mesh(wordsGeo, wordsMat);
+          wordsMesh.rotation.x = -Math.PI / 2;
+          wordsMesh.position.set(spot.tx + spot.w / 2, 0.02, spot.tz + spot.h / 2);
+          disposables.push(words, wordsGeo, wordsMat);
+          addToScene(wordsMesh);
+          const res = 256, tw = Math.round(res * (at.w / at.h));
+          const tex = canvasTexture(tw, res, c => {
+            c.imageSmoothingQuality = 'high';
+            c.drawImage(img, 0, 0, tw, res);
+          }, false);
+          const geo = new THREE.PlaneGeometry(at.w, at.h);
+          const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.position.set(at.cx, 0.03, at.cz);
+          // a ring of light on the floor under it, that opens when the A wakes up
+          const ringGeo = new THREE.RingGeometry(0.4, 0.47, 48);
+          const ringMat = new THREE.MeshBasicMaterial({ color: 0x2bf0ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.set(at.cx, 0.025, at.cz);
+          disposables.push(tex, geo, mat, ringGeo, ringMat);
+          addToScene(mesh);
+          addToScene(ring);
+          logoMark = { mesh, mat, ring, ringMat, spot, glow: 0 };
+        }
         for (const spot of spots) if (spot.kind === 'wall') addToScene(wallLogo(img, spot));
       })
       .catch(() => {});
@@ -960,6 +999,23 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   return {
     update(s, theme, time) {
       for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
+      if (logoMark) {
+        // step on the logo and its A lights up, rises off the floor, grows and spins; walk off and it settles again
+        const k = logoMark, r = k.spot;
+        const on = s.players.some(p => p.downUntil === null && p.pos.x > r.tx - 0.3 && p.pos.x < r.tx + r.w + 0.3 && p.pos.z > r.tz - 0.3 && p.pos.z < r.tz + r.h + 0.3);
+        k.glow += ((on ? 1 : 0) - k.glow) * 0.12;
+        const g = k.glow;
+        k.mesh.position.y = 0.03 + g * 0.9 + g * 0.08 * Math.sin(time * 5);
+        k.mesh.scale.setScalar(1 + 0.05 * Math.sin(time * 2.4) + g * 0.6);
+        // lying flat at rest, standing up and turning when awake
+        k.mesh.rotation.set(-Math.PI / 2 + g * Math.PI / 2, g * time * 2.5, 0, 'YXZ');
+        k.mat.opacity = 0.7 + 0.3 * g;
+        k.mat.color.setScalar(1 + g * 0.9);
+        // the ring opens under it and breathes between the logo's cyan and magenta
+        k.ring.scale.setScalar(0.6 + g * 1.1 + g * 0.08 * Math.sin(time * 6));
+        k.ringMat.opacity = g * 0.85;
+        k.ringMat.color.setHSL(0.52 + 0.3 * (0.5 + 0.5 * Math.sin(time * 1.5)), 1, 0.6);
+      }
       const key = `${theme.roadA}-${theme.roadB}-${theme.wallA}-${theme.hemiGround}`;
       if (key !== lastKey) {
         lastKey = key;

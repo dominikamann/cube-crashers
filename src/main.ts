@@ -1097,7 +1097,8 @@ function applyDemo(sim: SimState) {
       const spot = m.logoSpots(sim.map).find(s => s.kind === (params.get('logo') === 'wall' ? 'wall' : 'floor'));
       if (!spot) return;
       const p = sim.players[0];
-      if (spot.kind === 'floor') p.pos = { x: spot.tx + spot.w / 2, z: spot.tz + spot.h + 1.5 };
+      // (&on=1: standing on it, which wakes its A up)
+      if (spot.kind === 'floor') p.pos = { x: spot.tx + spot.w / 2 + (params.has('on') ? 1 : 0), z: spot.tz + (params.has('on') ? 0.5 : spot.h + 1.5) };
       else p.pos = { x: spot.tx + 0.5 + (spot.along === 'x' ? spot.w / 2 : 0) + spot.facing.x * 3, z: spot.tz + 0.5 + (spot.along === 'z' ? spot.w / 2 : 0) + spot.facing.z * 3 };
       sim.enemies = [];
     });
