@@ -532,10 +532,10 @@ firing and protects you: hits damage the kart instead of you. Boost pads speed y
 low walls. 20 seconds of fuel; comes back 45 seconds after it breaks. Once unlocked, the **Steamroller** and
 the **Hoverboard** appear on the map as well (see [Unlocks](#unlocks-and-endless-mode)).
 
-
 Now and then a **unicorn** trots in on its own ("A unicorn appeared!"). Ride it like a kart: faster than one,
 it leaps off ramps, spears monsters with its horn and leaves a rainbow behind. It never runs out of steam, but
 once it is wrecked it is gone until the next lucky moment.
+
 ### Power-ups
 
 Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, **Rapid Fire**,
