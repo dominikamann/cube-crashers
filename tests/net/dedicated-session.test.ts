@@ -27,7 +27,7 @@ describe('a dedicated server session', () => {
     t.onMessage((_f, d) => got.push(parseMessage(d) as HostMessage));
     t.send(0, JSON.stringify({ type: 'info' }));
     hub.flush();
-    expect(got[0]).toEqual({ type: 'info', name: 'Dominiks Server', mode: 'gungame', players: 2, max: 8, version: APP_VERSION, protocol: PROTOCOL_VERSION, playing: false });
+    expect(got[0]).toEqual({ type: 'info', name: 'Dominiks Server', mode: 'gungame', players: 2, bots: 0, max: 8, version: APP_VERSION, protocol: PROTOCOL_VERSION, playing: false });
     expect(hub.kicked).toHaveLength(1);
     expect(host.lobby).toHaveLength(2);
   });
@@ -58,6 +58,17 @@ describe('a dedicated server session', () => {
     expect(cs[0].lobby[0].ready).toBeFalsy();
   });
 
+  it('the probe counts everyone in the lobby and says how many of them are bots', () => {
+    const { hub, host } = server(2);
+    host.setAutoFill(7);
+    const t = hub.client();
+    const got: HostMessage[] = [];
+    t.onMessage((_f, d) => got.push(parseMessage(d) as HostMessage));
+    t.send(0, JSON.stringify({ type: 'info' }));
+    hub.flush();
+    expect(got[0]).toMatchObject({ players: 7, bots: 5 });
+  });
+
   it('a LAN host answers a probe too, counting itself', () => {
     const hub = createMemoryHub();
     new HostSession(hub.host(), { name: 'Host' });
@@ -76,5 +87,7 @@ describe('a dedicated server session', () => {
     expect(parseMessage(JSON.stringify({ type: 'info', name: 'x', mode: 'score', players: 1, max: 8, version: '0.4.1', protocol: 4, playing: true }))).toMatchObject({ name: 'x' });
     expect(parseMessage(JSON.stringify({ type: 'info', name: 'x'.repeat(200), mode: 'score', players: 1, max: 8, version: '0.4.1', protocol: 4, playing: true }))).toMatchObject({ name: 'x'.repeat(40) });
     expect(parseMessage(JSON.stringify({ type: 'info', name: 'x', players: 'many' }))).toBeNull();
+    // a server without the bot count (older) counts as none
+    expect(parseMessage(JSON.stringify({ type: 'info', name: 'x', mode: 'score', players: 3, max: 8, version: '0.4.1', protocol: 3, playing: false }))).toMatchObject({ bots: 0 });
   });
 });

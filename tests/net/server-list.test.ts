@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ServerInfo } from '../../src/net/protocol';
-import { createServerBrowser, normalizeAddress, parseServerList, rankServers, type Probe, type ServerRow } from '../../src/net/server-list';
+import { createServerBrowser, normalizeAddress, parseServerList, playerCount, rankServers, type Probe, type ServerRow } from '../../src/net/server-list';
 
-const info = (o: Partial<ServerInfo> = {}): ServerInfo => ({ name: 'S', mode: 'score', players: 0, max: 8, version: '0.4.1', protocol: 3, playing: false, ...o });
+const info = (o: Partial<ServerInfo> = {}): ServerInfo => ({ name: 'S', mode: 'score', players: 0, bots: 0, max: 8, version: '0.4.1', protocol: 3, playing: false, ...o });
 
 describe('server addresses', () => {
   it('adds the default port and accepts names, IPv4 and IPv6', () => {
@@ -13,6 +13,12 @@ describe('server addresses', () => {
   });
   it('turns away anything that is not a host and port', () => {
     for (const bad of ['', 'ws://x:1', 'a b', 'host:0', 'host:70000', 'host:12ab', 'x'.repeat(300), 'host/path']) expect(normalizeAddress(bad)).toBeNull();
+  });
+});
+
+describe('how a server reads in the list', () => {
+  it('players with the bots among them', () => {
+    expect(playerCount(info({ players: 8, bots: 5 }))).toEqual({ players: 8, max: 8, bots: 5 });
   });
 });
 
@@ -41,11 +47,11 @@ describe('ranking the servers', () => {
   const probes = new Map<string, Probe>([
     ['a:1', null],
     ['b:1', { info: info({ protocol: 2, version: '0.3.7' }), ping: 20 }],
-    ['c:1', { info: info({ name: 'Busy Server', players: 5 }), ping: 80 }],
-    ['d:1', { info: info({ players: 0 }), ping: 10 }],
+    ['c:1', { info: info({ name: 'Busy Server', players: 6, bots: 1 }), ping: 80 }],
+    ['d:1', { info: info({ players: 6, bots: 6 }), ping: 10 }],
   ]);
 
-  it('lists playable servers first (most players first), then other versions, then offline ones', () => {
+  it('lists playable servers first (most real players first), then other versions, then offline ones', () => {
     const rows = rankServers(entries, probes, 3, []);
     expect(rows.map(r => [r.address, r.status])).toEqual([
       ['c:1', 'online'],

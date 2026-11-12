@@ -1,7 +1,7 @@
 import { APP_VERSION } from '../version';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
-import { normalizeAddress, type ServerRow } from '../net/server-list';
+import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
@@ -271,6 +271,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     return e;
   }
 
+  /** "8/8 players (5 bots)" */
+  const seats = (r: ServerRow) => {
+    const c = playerCount(r.info!);
+    return c.bots > 0 ? t('online.playersBots', { n: c.players, max: c.max, b: c.bots }) : t('online.players', { n: c.players, max: c.max });
+  };
   const modeName = (m: ServerMode | 'lan') => (m === 'coop' || m === 'lan' ? t(`server.mode.${m}`) : t(`versus.${m}` as 'versus.score'));
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   const nextDiff = (d: Difficulty) => DIFFICULTIES[(DIFFICULTIES.indexOf(d) + 1) % DIFFICULTIES.length];
@@ -897,7 +902,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
               r.status === 'checking' ? [t('online.checking')]
               : r.status === 'offline' ? [t('online.offline'), r.address]
               : r.status === 'incompatible' ? [t('online.otherVersion', { v: r.info!.version }), r.address]
-              : [modeName(r.info!.mode), t('online.players', { n: r.info!.players, max: r.info!.max }), t('online.ping', { ms: r.ping ?? 0 }), ...(r.info!.playing ? [t('online.running')] : [])];
+              : [modeName(r.info!.mode), seats(r), t('online.ping', { ms: r.ping ?? 0 }), ...(r.info!.playing ? [t('online.running')] : [])];
             sub.textContent = bits.join(' · ');
             const info = document.createElement('div');
             info.className = 'server-info';

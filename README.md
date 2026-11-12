@@ -219,7 +219,7 @@ the whole team.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
-- **Controls** are listed at the bottom of the settings screen.
+- **Controls** are listed at the bottom of the settings screen, and **About** shows the version you have installed.
 - **Credits** (title screen): who made the game.
 
 ---
@@ -261,7 +261,8 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 **Playing:** click **Online Multiplayer** on the title screen (desktop app). The list shows the servers from
 the shared [`servers.json`](servers.json) and the ones you added yourself:
 
-- Servers you can join come first (most players first), with their mode, players and ping.
+- Servers you can join come first (most real players first), with their mode, ping and who is on them,
+  bots counted apart: *8/8 players (5 bots)*. A real player who joins takes a bot's place.
 - Servers on another version say so (e.g. *other version (v0.4.3)*), offline ones are greyed out at the end.
 - **Add a server**: type its address, e.g. `10.12.3.23` or `play.example.org:47800`. It is remembered on
   your computer; the ✕ removes it again.
@@ -357,7 +358,8 @@ Press **V** (controller: **View**) to switch between the view from above and fir
 first person. The mouse turns and tilts the view (it is captured; **Esc** pauses and frees it), on a controller
 the right stick. **W** walks where you look. You see your weapon in hand; hotdogs and bombs land where the
 crosshair meets the ground, with a marker. In a kart you sit behind the wheel, on a hoverboard you see its nose.
-Health bars over monsters and other players show at a glance whether you hit.
+Health bars over monsters and other players show at a glance whether you hit. If the mouse was outside the
+window when you pressed V, the game cannot capture it: *Click to aim* appears, and one click fixes it.
 
 ---
 

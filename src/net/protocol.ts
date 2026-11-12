@@ -35,7 +35,10 @@ export interface ServerStatus {
 export interface ServerInfo {
   name: string;
   mode: ServerMode | 'lan';
+  /** everyone in the lobby or match, bots included */
   players: number;
+  /** how many of them are bots */
+  bots: number;
   max: number;
   /** the game version the server runs, e.g. "0.4.1" */
   version: string;
@@ -145,8 +148,8 @@ export function parseMessage(raw: string): Message | null {
     case 'info':
       // the probe has no fields; the answer has all of them
       if (m.name === undefined) return { type: 'info' };
-      if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean') return null;
-      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing };
+      if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !(m.bots === undefined || isNum(m.bots)) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean') return null;
+      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing };
     case 'leave':
       return { type: 'leave' };
     case 'welcome':

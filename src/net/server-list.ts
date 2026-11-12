@@ -57,9 +57,13 @@ export function parseServerList(json: unknown): ServerListEntry[] {
   return out;
 }
 
+/** what the list shows: everyone on the server, out of how many, and how many of them are bots */
+export const playerCount = (info: ServerInfo) => ({ players: info.players, max: info.max, bots: info.bots });
+const humans = (r: ServerRow) => (r.info ? r.info.players - r.info.bots : 0);
+
 const ORDER: Record<ServerRow['status'], number> = { online: 0, checking: 1, incompatible: 2, offline: 3 };
 
-/** own servers and the shared list together, playable ones first (most players, then lowest ping) */
+/** own servers and the shared list together, playable ones first (most real players, then lowest ping) */
 export function rankServers(entries: ServerListEntry[], probes: Map<string, Probe>, protocol: number, own: string[]): ServerRow[] {
   const rows = new Map<string, ServerRow>();
   for (const address of own) rows.set(address, { address, name: address, own: true, status: 'checking' });
@@ -83,7 +87,7 @@ export function rankServers(entries: ServerListEntry[], probes: Map<string, Prob
   const list = [...rows.values()];
   return list
     .map((r, i) => ({ r, i }))
-    .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || (b.r.info?.players ?? 0) - (a.r.info?.players ?? 0) || (a.r.ping ?? 0) - (b.r.ping ?? 0) || a.i - b.i)
+    .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || humans(b.r) - humans(a.r) || (a.r.ping ?? 0) - (b.r.ping ?? 0) || a.i - b.i)
     .map(x => x.r);
 }
 
