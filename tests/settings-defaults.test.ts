@@ -36,4 +36,14 @@ describe('settings defaults', () => {
     store.set('cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, bindings: 'oops' }));
     expect(loadSettings().bindings).toEqual(DEFAULT_BINDINGS);
   });
+
+  it('colour-blind mode is off until switched on, then stays on', () => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    expect(loadSettings().colorBlind).toBe(false);
+    store.set('cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, colorBlind: true }));
+    expect(loadSettings().colorBlind).toBe(true);
+    store.set('cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, colorBlind: 'yes' }));
+    expect(loadSettings().colorBlind).toBe(false);
+  });
 });

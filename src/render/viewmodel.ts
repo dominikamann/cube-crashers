@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { SimState, WeaponKind } from '../sim/types';
-import { PLAYER_COLORS } from './actors';
+import { playerColor } from './palette';
 import { box, glowMat, lambert } from './pool';
 
 /**
@@ -99,8 +99,14 @@ export function createViewModel(): ViewModel {
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
   const hand = new THREE.Group();
-  const suits = PLAYER_COLORS.map(c => lambert(c));
-  const arm = box(0.12, 0.12, 0.5, suits[0], 0.02, -0.08, 0.3);
+  // one material per suit colour shown so far (colour-blind mode adds a few)
+  const suits = new Map<number, THREE.Material>();
+  const suit = (c: number) => {
+    let m = suits.get(c);
+    if (!m) suits.set(c, (m = lambert(c)));
+    return m;
+  };
+  const arm = box(0.12, 0.12, 0.5, suit(playerColor(0)), 0.02, -0.08, 0.3);
   const fist = box(0.12, 0.12, 0.12, lambert(0xffd2a8), 0, -0.06, 0.05);
   hand.add(arm, fist);
   scene.add(hand);
@@ -140,7 +146,7 @@ export function createViewModel(): ViewModel {
         st.kind = kind;
         st.lastCooldown = 0;
       }
-      arm.material = suits[p.color % suits.length];
+      arm.material = suit(playerColor(p.color));
       // a fresh cooldown means a shot: kick back
       const cd = kind === 'rare' ? (p.rare?.cooldown ?? 0) : (w?.cooldown ?? 0);
       if (cd > st.lastCooldown) st.kick = 1;

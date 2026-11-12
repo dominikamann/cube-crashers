@@ -1,6 +1,6 @@
 import { keyName, t } from '../i18n';
 import { WEAPON_ACTIONS } from '../input/bindings';
-import { PLAYER_COLORS } from '../render/actors';
+import { cssColor, playerColor } from '../render/palette';
 import { EMOTES } from '../sim/systems/emotes';
 import type { SimEvent, SimState, Vec2 } from '../sim/types';
 
@@ -50,7 +50,7 @@ export function createEmotes(root: HTMLElement) {
         if (!e.pos) for (const old of shown.filter(x => x.playerId === e.playerId)) old.until = 0;
         const el = document.createElement('div');
         el.className = e.pos ? 'emote ping' : 'emote';
-        el.style.setProperty('--who', `#${PLAYER_COLORS[who.color % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`);
+        el.style.setProperty('--who', cssColor(playerColor(who.color)));
         el.textContent = e.pos ? `${who.name}: ${t(`emote.${e.emote}`)}` : t(`emote.${e.emote}`);
         layer.append(el);
         shown.push({ el, until: now + (e.pos ? PING_SECONDS : BUBBLE_SECONDS), playerId: e.pos ? null : e.playerId, pos: e.pos ?? null });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { setKeyBindings, t } from '../src/i18n';
+import { setColorBlindWords, setKeyBindings, t } from '../src/i18n';
 import { DEFAULT_BINDINGS } from '../src/input/bindings';
 
 describe('t', () => {
@@ -22,5 +22,16 @@ describe('key names in the text', () => {
     expect(t('hud.build', { 'key.use': 'X' })).toBe('Press X to build');
     setKeyBindings(DEFAULT_BINDINGS);
     expect(t('hud.build')).toBe('Press E to build');
+  });
+});
+
+describe('team names', () => {
+  it('say Red and Blue, and in colour-blind mode Orange and Blue with their shapes', () => {
+    expect(t('versus.hudTeam', { red: 2, blue: 3, time: '1:00' })).toBe('Red 2 : 3 Blue · 1:00');
+    setColorBlindWords(true);
+    expect(t('versus.hudTeam', { red: 2, blue: 3, time: '1:00' })).toBe('▲ Orange 2 : 3 Blue ● · 1:00');
+    expect(t('versus.team')).toBe('▲ Orange vs Blue ●');
+    setColorBlindWords(false);
+    expect(t('versus.red')).toBe('Red');
   });
 });

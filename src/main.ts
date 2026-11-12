@@ -5,7 +5,8 @@ import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
-import { setKeyBindings, t } from './i18n';
+import { setColorBlindWords, setKeyBindings, t } from './i18n';
+import { setColorBlind } from './render/palette';
 import { lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
@@ -102,6 +103,10 @@ function startGame() {
     keyboard.steerWithMouse = settings.steerWithMouse;
     keyboard.setBindings(settings.bindings);
     setKeyBindings(settings.bindings);
+    // takes effect right away, also in a paused match: the renderers read the palette every frame
+    setColorBlind(settings.colorBlind);
+    setColorBlindWords(settings.colorBlind);
+    document.body.classList.toggle('color-blind', settings.colorBlind);
     renderer.setQuality(settings.graphics);
     renderer.setDamageNumbers(settings.damageNumbers);
   }

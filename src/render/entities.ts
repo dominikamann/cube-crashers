@@ -4,6 +4,7 @@ import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
 import { addMonsterParts, MONSTER_LIFT } from './monster-parts';
 import { voxelBody } from './voxel-body';
+import { palette } from './palette';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
@@ -205,7 +206,18 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         bodyMats.get(k)!.color.setHex(night > 0.5 ? l.night : l.day);
         bodies.get(k)!.begin();
       }
-      eyeMat.color.setHex(night > 0.5 ? 0xffffff : 0xfff27a);
+      const pal = palette();
+      eyeMat.color.setHex(night > 0.5 ? 0xffffff : pal.eyes);
+      // colour-blind mode: angry eyes and warnings flash hard on and off instead of only being red
+      const flash = Math.floor(time * 8) % 2 === 0;
+      redEyeMat.color.setHex(pal.angryEyes);
+      redEyeMat.emissive.setHex(pal.angryEyes);
+      redEyeMat.emissiveIntensity = pal.blinkWarnings ? (flash ? 3 : 0.3) * Math.min(theme.glow, 1.4) : 1.6;
+      warnMat.color.setHex(pal.warn);
+      hostileMat.color.setHex(pal.hostileShot);
+      hostileMat.emissive.setHex(pal.hostileShot);
+      boltMat.color.setHex(pal.playerShot);
+      boltMat.emissive.setHex(pal.playerShot);
       eyeMat.emissive.copy(eyeMat.color);
       eyeMat.emissiveIntensity = 1.3 * Math.min(theme.glow, 1.5);
       boomerangMat.emissiveIntensity = 1.5 * theme.glow;
@@ -217,7 +229,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
-      warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
+      warnMat.opacity = pal.blinkWarnings ? (flash ? 0.7 : 0.12) : 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
       tmpFrom.y = 0.06;
 
       const slowed = (until: number) => until > s.tick;
@@ -346,7 +358,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
       for (const p of s.projectiles) {
         if (p.hostile) {
-          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, 1, undefined, time * 6);
+          // colour-blind mode: monster shots are also bigger than the players' bolts
+          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
           continue;
         }
         if (p.behavior === 'saw') {

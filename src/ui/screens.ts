@@ -3,7 +3,7 @@ import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
-import { PLAYER_COLORS } from '../render/actors';
+import { cssColor, playerColor } from '../render/palette';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
 import { ALL_RARE } from '../sim/config/rare';
@@ -50,6 +50,8 @@ export interface Settings {
   servers: string[];
   /** which key does what (Settings → Controls) */
   bindings: Bindings;
+  /** colours and shapes that do not rely on telling red from green */
+  colorBlind: boolean;
 }
 
 const TIP_COUNT = 16;
@@ -76,7 +78,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS } };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -102,6 +104,7 @@ export function loadSettings(): Settings {
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
     loaded.bindings = validBindings(loaded.bindings);
+    loaded.colorBlind = loaded.colorBlind === true;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -306,7 +309,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (k in TOWERS) return t(`tower.${k}` as 'tower.laser');
     return t(`source.${k}` as 'source.stomp');
   };
-  const hex = (c: number) => `#${PLAYER_COLORS[c % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`;
+  const hex = (c: number) => cssColor(playerColor(c));
 
   function changed() {
     saveSettings(settings);
@@ -494,6 +497,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
       chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
+      chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
+      text(card, 'div', 'settings-note', t('settings.colorBlindHint'));
 
       section(t('settings.player'));
       const input = document.createElement('input');

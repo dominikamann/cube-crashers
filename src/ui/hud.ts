@@ -5,6 +5,7 @@ import { MAZE } from '../sim/systems/maze';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t, type StringKey } from '../i18n';
+import { cssColor, isColorBlind, palette } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { JETPACK } from '../sim/config/rare';
 import { ALARM_MAX, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
@@ -233,6 +234,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       hpFill.style.width = `${(p.hp / p.maxHp) * 100}%`;
+      // colour-blind mode: the bar also darkens from light blue to dark orange as health drops
+      hpFill.style.background = isColorBlind() ? cssColor(palette().health(p.hp / p.maxHp)) : '';
       danger.style.display = p.hp < 30 && p.downUntil === null && s.phase === 'playing' ? '' : 'none';
       const dashKey = `${p.dashCharges}/${maxDashCharges(p)}`;
       if (dashKey !== lastDash) {
