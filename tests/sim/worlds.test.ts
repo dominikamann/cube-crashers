@@ -62,6 +62,17 @@ describe('the new worlds', () => {
 });
 
 describe('under water', () => {
+  it('the sea is full of fish and sharks from the start, and the Kraken keeps calling new schools', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    s.players[0].invulnUntil = 1e9;
+    const sea = () => s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0);
+    expect(sea().filter(e => e.kind === 'fish').length).toBeGreaterThanOrEqual(15);
+    expect(sea().some(e => e.kind === 'shark')).toBe(true);
+    for (const e of sea()) e.hp = 0;
+    for (let i = 0; i < 30 * 60; i++) stepSim(s, []);
+    expect(sea().length).toBeGreaterThanOrEqual(5);
+  }, 90_000);
+
   it('the Kraken crawls toward the players', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
     const p = s.players[0];
@@ -94,8 +105,10 @@ describe('under water', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
     expect(s.boss?.kind).toBe('kraken');
     s.players[0].invulnUntil = 1e9;
+    // held in place far from the player: it lashes and inks from afar instead of crawling up to grab
+    s.enemies.find(e => e.id === s.boss!.enemyId)!.speed = 0;
     let warned = 0;
-    for (let i = 0; i < 8 * 60; i++) {
+    for (let i = 0; i < 20 * 60; i++) {
       stepSim(s, []);
       warned += s.events.filter(e => e.type === 'blastWarning').length;
     }

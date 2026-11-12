@@ -198,8 +198,8 @@ Between the floors the elevator takes you to a short game of its own, then to th
   and calls reinforcements. Get out of the marked areas.
 - **The Kraken:** crawls slowly across the sea bed toward you on eight long tentacles. Up close it slaps them
   down in a ring around itself; from further away it slams them down in lines, bursts ink clouds under everyone,
-  or grabs a player with a tentacle and drags them in (dash to break free). Each phase calls a school of fish
-  and sharks.
+  or grabs a player with a tentacle and drags them in (dash to break free). Schools of fish and sharks swim
+  about from the start, the Kraken keeps calling new ones, faster each phase, and a big school at each new phase.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
 - The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.

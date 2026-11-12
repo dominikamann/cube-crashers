@@ -1,5 +1,5 @@
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
-import { PLAYER_RADIUS } from '../config/balance';
+import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
@@ -35,6 +35,11 @@ export const BOSS = {
   grabDps: 12,
   /** its tentacle slap: a ring of blows around it */
   slapRadius: 3.8,
+  /** the Kraken's sea: schools swim around from the start, and it calls a new one this often, faster each phase */
+  startSchools: 3,
+  schoolSeconds: { 1: 20, 2: 16, 3: 12 } as Record<1 | 2 | 3, number>,
+  /** no new school while this many fish and sharks are still alive */
+  seaCap: 30,
   /** King Rex */
   rexHp: 1600,
   /** King Rex's roar: the ground cracks in a ring around it */
@@ -50,6 +55,8 @@ const SEA_REINFORCEMENTS: Record<2 | 3, HordeComp> = {
   2: [{ kind: 'fish', count: 12 }, { kind: 'shark', count: 1 }],
   3: [{ kind: 'fish', count: 10 }, { kind: 'shark', count: 3 }],
 };
+
+const SCHOOL: HordeComp = [{ kind: 'fish', count: 7 }, { kind: 'shark', count: 1 }];
 
 const byId = (s: SimState, id: number) => s.enemies.find(e => e.id === id);
 
@@ -81,6 +88,12 @@ export function spawnBoss(s: SimState, kind: BossKind): void {
     b = { kind, maxHp: BOSS.wormSegments * 60 * hpScale(s), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
   }
   b.nextAttackAt = s.tick + 3 * TICK_RATE;
+  if (kind === 'kraken') {
+    // the sea bed is alive: a few schools already swim about, away from where the players come in
+    const far = s.map.waypoints.filter(w => dist(w, s.map.spawn) > 12 && dist(w, centre) > 6);
+    for (let i = 0; i < BOSS.startSchools && far.length > 0; i++) spawnHorde(s, far.splice(Math.floor(s.rng.next() * far.length), 1)[0], SCHOOL);
+    b.nextSchoolAt = s.tick + BOSS.schoolSeconds[1] * TICK_RATE;
+  }
   s.boss = b;
   s.events.push({ type: 'bossSpawn', kind });
 }
@@ -258,6 +271,13 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
     s.events.push({ type: 'bossPhase', phase: b.phase });
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
+  }
+  if (b.nextSchoolAt !== undefined && s.tick >= b.nextSchoolAt) {
+    // the Kraken calls the sea: a new school sweeps in from somewhere away from the players
+    b.nextSchoolAt = s.tick + BOSS.schoolSeconds[b.phase] * TICK_RATE;
+    const sea = s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0).length;
+    const entries = s.map.waypoints.filter(w => s.players.every(p => dist(w, p.pos) > 10));
+    if (sea < BOSS.seaCap && s.enemies.length + 8 <= ENEMY_CAP && entries.length > 0) spawnHorde(s, s.rng.pick(entries), SCHOOL, { rush: true });
   }
   if (s.tick >= b.nextAttackAt) {
     attack(s, b);

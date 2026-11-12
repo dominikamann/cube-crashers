@@ -384,6 +384,8 @@ export interface BossState {
   lastPos: Vec2;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */
   grab?: { playerId: number; until: number } | null;
+  /** the Kraken: when it next calls a school of fish and sharks */
+  nextSchoolAt?: number;
 }
 
 export interface Vehicle {
