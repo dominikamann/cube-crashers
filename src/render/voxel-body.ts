@@ -22,41 +22,41 @@ const BELLY: [number, number, number] = [1.45, 1.4, 1.2];
 
 const SHAPES: Partial<Record<EnemyKind, Shape>> = {
   // a round drop, flat underneath, with a lighter belly
-  blob: { n: [6, 6, 6], inside: (u, v, w) => round(u, v < 0 ? v * 0.7 : v, w, 2.6), tone: (_u, v, w) => (w > 0.4 && v < 0.1 ? 1.3 : 1) },
+  blob: { n: [9, 9, 9], inside: (u, v, w) => round(u, v < 0 ? v * 0.7 : v, w, 2.6), tone: (_u, v, w) => (w > 0.4 && v < 0.1 ? 1.3 : 1) },
   // a wedge: narrow nose, wide hips, stripes down its back
-  hunter: { n: [5, 3, 8], inside: (u, v, w) => Math.abs(u) <= 1 - 0.3 * (w + 1) && v <= 1 - 0.25 * (w + 1), tone: (_u, v, w) => (v > 0 && Math.floor((w + 1) * 4) % 2 === 0 ? 0.7 : 1) },
+  hunter: { n: [8, 5, 12], inside: (u, v, w) => Math.abs(u) <= 1 - 0.3 * (w + 1) && v <= 1 - 0.25 * (w + 1), tone: (_u, v, w) => (v > 0 && Math.floor((w + 1) * 4) % 2 === 0 ? 0.7 : 1) },
   // a boulder with armour bands
-  tank: { n: [7, 6, 7], inside: (u, v, w) => round(u, v, w, 5), tone: (_u, v) => (Math.abs(v - 0.1) < 0.2 ? 0.7 : 1) },
+  tank: { n: [11, 9, 11], inside: (u, v, w) => round(u, v, w, 5), tone: (_u, v) => (Math.abs(v - 0.1) < 0.2 ? 0.7 : 1) },
   // two halves with a gap between them (the glowing core shows through)
-  splitter: { n: [7, 6, 6], inside: (u, v, w) => Math.abs(u) > 0.15 && round(u, v, w, 3) },
-  splitling: { n: [3, 3, 3], inside: (u, v, w) => round(u, v, w, 3, 1.4) },
+  splitter: { n: [9, 8, 8], inside: (u, v, w) => Math.abs(u) > 0.15 && round(u, v, w, 3) },
+  splitling: { n: [5, 5, 5], inside: (u, v, w) => round(u, v, w, 3, 1.4) },
   // a thin body under a wide head
-  shooter: { n: [4, 7, 4], inside: (u, v, w) => (v > 0.15 ? round(u, (v - 0.55) / 0.45, w, 4) : Math.abs(u) < 0.6 && Math.abs(w) < 0.6), tone: (_u, v) => (v > 0.15 ? 1 : 0.8) },
+  shooter: { n: [6, 11, 6], inside: (u, v, w) => (v > 0.15 ? round(u, (v - 0.55) / 0.45, w, 4) : Math.abs(u) < 0.6 && Math.abs(w) < 0.6), tone: (_u, v) => (v > 0.15 ? 1 : 0.8) },
   // a ball, like a bomb, with a dark band
-  bomber: { n: [5, 5, 5], inside: (u, v, w) => round(u, v, w, 2, 1.15), tone: (_u, v) => (Math.abs(v) < 0.25 ? 0.6 : 1) },
+  bomber: { n: [8, 8, 8], inside: (u, v, w) => round(u, v, w, 2, 1.15), tone: (_u, v) => (Math.abs(v) < 0.25 ? 0.6 : 1) },
   // a heavy wedge with its head down
-  rammer: { n: [7, 5, 8], inside: (u, v, w) => round(u, v, w, 6) && v <= 1 - 0.45 * Math.max(0, w), tone: (_u, v, w) => (w > 0.6 ? 1.25 : v > 0.5 ? 0.8 : 1) },
-  swarmer: { n: [5, 2, 4], inside: (u, _v, w) => Math.abs(u) + Math.abs(w) <= 1.3 },
-  shielder: { n: [5, 6, 4], inside: (u, v, w) => round(u, v, w, 5), tone: (_u, v) => (v > 0.5 ? 0.75 : 1) },
-  healer: { n: [4, 6, 4], inside: (u, v, w) => round(u, v, w, 3), tone: (_u, v, w) => (w > 0.3 && v < 0.2 ? BELLY : 1) },
+  rammer: { n: [10, 7, 12], inside: (u, v, w) => round(u, v, w, 6) && v <= 1 - 0.45 * Math.max(0, w), tone: (_u, v, w) => (w > 0.6 ? 1.25 : v > 0.5 ? 0.8 : 1) },
+  swarmer: { n: [7, 3, 6], inside: (u, _v, w) => Math.abs(u) + Math.abs(w) <= 1.3 },
+  shielder: { n: [8, 9, 6], inside: (u, v, w) => round(u, v, w, 5), tone: (_u, v) => (v > 0.5 ? 0.75 : 1) },
+  healer: { n: [7, 9, 7], inside: (u, v, w) => round(u, v, w, 3), tone: (_u, v, w) => (w > 0.3 && v < 0.2 ? BELLY : 1) },
   // a diamond standing on its tip
-  teleporter: { n: [5, 7, 5], inside: (u, v, w) => Math.abs(u) + Math.abs(v) + Math.abs(w) <= 1.25, tone: (u, v, w) => (Math.abs(u) + Math.abs(v) + Math.abs(w) < 0.6 ? 1.5 : 1) },
+  teleporter: { n: [7, 10, 7], inside: (u, v, w) => Math.abs(u) + Math.abs(v) + Math.abs(w) <= 1.25, tone: (u, v, w) => (Math.abs(u) + Math.abs(v) + Math.abs(w) < 0.6 ? 1.5 : 1) },
   // a fish: a flat oval with a lighter belly and a stripe
-  fish: { n: [2, 4, 6], inside: (_u, v, w) => (v / 1) ** 2 + (w / 1) ** 2 <= 1.15, tone: (_u, v, w) => (v < -0.3 ? BELLY : Math.abs(w + 0.1) < 0.2 ? 0.7 : 1) },
+  fish: { n: [3, 6, 9], inside: (_u, v, w) => (v / 1) ** 2 + (w / 1) ** 2 <= 1.15, tone: (_u, v, w) => (v < -0.3 ? BELLY : Math.abs(w + 0.1) < 0.2 ? 0.7 : 1) },
   // a shark: a long torpedo, pointed snout, white belly
-  shark: { n: [5, 4, 12], inside: (u, v, w) => u * u + v * v <= 1.2 - 0.9 * Math.max(0, w) ** 2 - 0.5 * Math.max(0, -w - 0.4), tone: (_u, v) => (v < -0.2 ? [1.6, 1.6, 1.6] : 1) },
+  shark: { n: [7, 6, 16], inside: (u, v, w) => u * u + v * v <= 1.2 - 0.9 * Math.max(0, w) ** 2 - 0.5 * Math.max(0, -w - 0.4), tone: (_u, v) => (v < -0.2 ? [1.6, 1.6, 1.6] : 1) },
   // the Kraken: a big round head with spots, lighter round the mouth
   kraken: {
-    n: [10, 8, 9],
+    n: [14, 11, 13],
     inside: (u, v, w) => u * u + ((v - 0.1) / 0.95) ** 2 + w * w <= 1.15,
     tone: (u, v, w) => (w > 0.5 && v < -0.2 ? BELLY : Math.sin(u * 9) * Math.sin(v * 7 + w * 5) > 0.55 ? 0.7 : 1),
   },
   // a dome on straight sides
-  ghost: { n: [6, 6, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15) },
+  ghost: { n: [9, 9, 9], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15) },
   // the glitch ghost: the same dome, with scan lines through it
-  phantom: { n: [6, 7, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15), tone: (_u, v) => (Math.floor((v + 1) * 3.5) % 2 === 0 ? 1.35 : 0.8) },
-  megaBlock: { n: [10, 9, 10], inside: (u, v, w) => round(u, v, w, 8), tone: (u, v, w) => (Math.abs(u) > 0.7 && Math.abs(w) > 0.7 ? 0.7 : Math.abs(v) < 0.12 ? 0.75 : 1) },
-  wormSegment: { n: [5, 5, 5], inside: (u, v, w) => round(u, v, w, 3) },
+  phantom: { n: [9, 10, 9], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15), tone: (_u, v) => (Math.floor((v + 1) * 3.5) % 2 === 0 ? 1.35 : 0.8) },
+  megaBlock: { n: [12, 11, 12], inside: (u, v, w) => round(u, v, w, 8), tone: (u, v, w) => (Math.abs(u) > 0.7 && Math.abs(w) > 0.7 ? 0.7 : Math.abs(v) < 0.12 ? 0.75 : 1) },
+  wormSegment: { n: [7, 7, 7], inside: (u, v, w) => round(u, v, w, 3) },
   // long and low: a body, and a flat snout with nostrils; light belly, dark ridges on the back
   // a crocodile: a long low body that tapers into the tail, a flat upper jaw with eye bumps on top
   // (the lower jaw is a separate part, so it can open)
@@ -81,14 +81,24 @@ const SHAPES: Partial<Record<EnemyKind, Shape>> = {
     inside: (u, v, w) => (v > 0 ? u * u + ((v - 0.5) / 0.5) ** 2 + w * w <= 1.2 : (u / 0.85) ** 2 + ((v + 0.5) / 0.55) ** 2 + (w / 0.9) ** 2 <= 1.25),
     tone: (u, v, w) => (w > 0.4 && Math.abs(u) < 0.65 && (v > 0.15 ? v < 0.8 : v < -0.1) ? [1.75, 1.6, 1.35] : 1),
   },
-  // upright on two legs: a barrel of a body, a big head out in front, a light belly
+  // a T-Rex: a barrel of a body held level, a thick neck up to a big head with a heavy upper jaw and a brow
+  // over the snout, a light belly and dark stripes down the back (the lower jaw, legs, arms and tail are parts)
   trex: {
-    n: [8, 14, 14],
-    inside: (u, v, w) =>
-      v > 0.3
-        ? w > -0.05 && Math.abs(u) <= 0.85 && (v < 0.95 || w < 0.7) && (w < 0.5 || v > 0.42)
-        : (u / 0.95) ** 2 + ((v + 0.3) / 0.7) ** 2 + ((w + 0.25) / 0.7) ** 2 <= 1.2,
-    tone: (_u, v, w) => (v <= 0.3 && w > 0.1 && v < 0 ? BELLY : v > 0.75 || (v <= 0.3 && w < -0.5) ? 0.75 : 1),
+    n: [10, 16, 18],
+    inside: (u, v, w) => {
+      // the head: brow and upper jaw, the mouth cut out underneath toward the front
+      if (v >= 0.42 && w >= 0.3) {
+        if (w > 0.72 && v > 0.78) return false;
+        if (Math.abs(u) > (w > 0.72 ? 0.4 : 0.52)) return false;
+        return v >= (w > 0.5 ? 0.55 : 0.42);
+      }
+      // the neck
+      if (v >= 0.2 && v < 0.42 && w >= 0.25 && w <= 0.62) return Math.abs(u) <= 0.4;
+      // the body: a rounded barrel
+      return (u / 0.78) ** 2 + ((v + 0.2) / 0.5) ** 2 + ((w + 0.1) / 0.62) ** 2 <= 1.15;
+    },
+    tone: (u, v, w) =>
+      v < -0.35 && Math.abs(u) < 0.5 ? BELLY : v > 0.95 || (v < 0.4 && v > -0.05 && Math.abs(u) < 0.3 && Math.floor((w + 1) * 6) % 2 === 0) ? 0.72 : w > 0.5 && v < 0.62 && v >= 0.42 ? 0.85 : 1,
   },
 };
 

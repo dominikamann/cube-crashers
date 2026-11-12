@@ -22,6 +22,8 @@ interface Part {
   /** phase offset within the animation */
   ph?: number;
   amp?: number;
+  /** sway: how far the part rises while an attack winds up (the Kraken's tentacles), slamming down after */
+  lift?: number;
 }
 
 const PI = Math.PI;
@@ -151,14 +153,34 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     { at: [0, -0.2, -0.3], size: [0.07, 0.07, 0.45], color: 'dark', anim: 'wag', amp: 0.9 },
   ],
   trex: [
-    ...feet(0.28, -0.95, 0.26, 0.3, 0.42, 0.14),
-    { at: [0, -0.3, -0.78], size: [0.38, 0.36, 0.75], color: 'body', anim: 'wag', amp: 0.35 },
-    // tiny arms, and teeth under the big head
-    { at: [-0.42, 0.05, 0.3], size: [0.09, 0.26, 0.09], color: 'dark', anim: 'arm', ph: PI, amp: 0.5 },
-    { at: [0.42, 0.05, 0.3], size: [0.09, 0.26, 0.09], color: 'dark', anim: 'arm', amp: 0.5 },
-    ...[0.45, 0.62, 0.78].flatMap((z): Part[] => [
-      { at: [-0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
-      { at: [0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
+    // strong legs: thigh, shin and a clawed foot, stepping together
+    ...[-1, 1].flatMap((side): Part[] => {
+      const ph = side < 0 ? 0 : PI;
+      return [
+        { at: [side * 0.42, -0.62, -0.05], size: [0.34, 0.5, 0.46], color: 'body', anim: 'leg', ph, amp: 0.16 },
+        { at: [side * 0.44, -0.98, 0.02], size: [0.22, 0.4, 0.24], color: 'dark', anim: 'leg', ph, amp: 0.16 },
+        { at: [side * 0.44, -1.22, 0.12], size: [0.3, 0.14, 0.52], color: 'dark', anim: 'leg', ph, amp: 0.16 },
+        ...[-0.1, 0, 0.1].map((x): Part => ({ at: [side * 0.44 + x, -1.24, 0.42], size: [0.06, 0.08, 0.1], color: 0xf2f0e6, anim: 'leg', ph, amp: 0.16 })),
+      ];
+    }),
+    // a long tail as counterweight, three pieces that sweep
+    { at: [0, -0.25, -0.72], size: [0.5, 0.42, 0.6], color: 'body', anim: 'wag', amp: 0.25 },
+    { at: [0, -0.22, -1.2], size: [0.34, 0.3, 0.55], color: 'body', anim: 'wag', ph: 0.5, amp: 0.4 },
+    { at: [0, -0.2, -1.6], size: [0.2, 0.18, 0.5], color: 'dark', anim: 'wag', ph: 1, amp: 0.55 },
+    // tiny arms that come up before a stomp
+    { at: [-0.42, 0.12, 0.42], size: [0.1, 0.3, 0.1], color: 'dark', anim: 'arm', ph: PI, amp: 0.5 },
+    { at: [0.42, 0.12, 0.42], size: [0.1, 0.3, 0.1], color: 'dark', anim: 'arm', amp: 0.5 },
+    // the lower jaw, hinged under the brow, with its teeth and a red tongue: it gapes before a stomp and chomps on it
+    { at: [0, 0.36, 0.8], size: [0.5, 0.14, 0.72], color: 'light', anim: 'jaw', pivot: [0, 0.42, 0.42] },
+    ...[0.6, 0.76, 0.92, 1.06].flatMap((z): Part[] => [
+      { at: [-0.19, 0.47, z], size: [0.06, 0.1, 0.06], color: 0xffffff, anim: 'jaw', pivot: [0, 0.42, 0.42] },
+      { at: [0.19, 0.47, z], size: [0.06, 0.1, 0.06], color: 0xffffff, anim: 'jaw', pivot: [0, 0.42, 0.42] },
+    ]),
+    { at: [0, 0.45, 0.75], size: [0.3, 0.05, 0.5], color: 0xc0303a, anim: 'jaw', pivot: [0, 0.42, 0.42] },
+    // the upper teeth
+    ...[0.62, 0.78, 0.94, 1.08].flatMap((z): Part[] => [
+      { at: [-0.22, 0.52, z], size: [0.06, 0.12, 0.06], color: 0xffffff },
+      { at: [0.22, 0.52, z], size: [0.06, 0.12, 0.06], color: 0xffffff },
     ]),
   ],
   fish: [
@@ -171,7 +193,14 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     { at: [0, 0.05, -0.95], size: [0.08, 0.5, 0.3], color: 'dark', anim: 'wag', amp: 0.6 },
     { at: [-0.42, -0.12, 0.15], size: [0.3, 0.05, 0.22], color: 'dark' },
     { at: [0.42, -0.12, 0.15], size: [0.3, 0.05, 0.22], color: 'dark' },
-    ...[0.48, 0.6, 0.72].map((z): Part => ({ at: [0, -0.12, z], size: [0.4, 0.06, 0.05], color: 0xffffff })),
+    // the lower jaw that gapes before a charge, teeth above and below
+    { at: [0, -0.24, 0.6], size: [0.34, 0.1, 0.42], color: 'light', anim: 'jaw', pivot: [0, -0.2, 0.4] },
+    ...[0.5, 0.64, 0.78].flatMap((z): Part[] => [
+      { at: [-0.12, -0.16, z], size: [0.05, 0.08, 0.05], color: 0xffffff, anim: 'jaw', pivot: [0, -0.2, 0.4] },
+      { at: [0.12, -0.16, z], size: [0.05, 0.08, 0.05], color: 0xffffff, anim: 'jaw', pivot: [0, -0.2, 0.4] },
+      { at: [-0.14, -0.08, z], size: [0.05, 0.08, 0.05], color: 0xffffff },
+      { at: [0.14, -0.08, z], size: [0.05, 0.08, 0.05], color: 0xffffff },
+    ]),
   ],
   kraken: [
     // eight long, thick tentacles fanning out around it, each in five pieces that thin out and wave, with
@@ -186,10 +215,17 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
           anim: 'sway',
           ph: i * 0.8 + k * 0.6,
           amp: 0.2 + k * 0.08,
+          // the tentacles rear up while an attack is telegraphed and slam down when it lands
+          lift: 0.3 + k * 0.28,
         },
-        { at: [Math.cos(a) * r, -1.22 + k * 0.08, Math.sin(a) * r], size: [0.3 - k * 0.04, 0.06, 0.3 - k * 0.04], color: 0xffd0e4, anim: 'sway', ph: i * 0.8 + k * 0.6, amp: 0.2 + k * 0.08 },
+        { at: [Math.cos(a) * r, -1.22 + k * 0.08, Math.sin(a) * r], size: [0.3 - k * 0.04, 0.06, 0.3 - k * 0.04], color: 0xffd0e4, anim: 'sway', ph: i * 0.8 + k * 0.6, amp: 0.2 + k * 0.08, lift: 0.3 + k * 0.28 },
       ]);
     }).flat(),
+    // a beak under the eyes: the lower half snaps with the attacks
+    { at: [0, -0.42, 1.42], size: [0.5, 0.26, 0.44], color: 0x3a1a3a },
+    { at: [0, -0.5, 1.68], size: [0.3, 0.16, 0.2], color: 0x3a1a3a },
+    { at: [0, -0.7, 1.42], size: [0.44, 0.18, 0.4], color: 0x2a1030, anim: 'jaw', pivot: [0, -0.62, 1.1] },
+    { at: [0, -0.68, 1.66], size: [0.26, 0.12, 0.18], color: 0x2a1030, anim: 'jaw', pivot: [0, -0.62, 1.1] },
   ],
   phantom: [
     { at: [-0.24, -0.5, 0], size: [0.18, 0.18, 0.6], color: 'light', anim: 'sway', amp: 0.4 },
@@ -266,8 +302,8 @@ export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: E
         }
         break;
       case 'arm': {
-        // hangs from the shoulder and swings with the steps
-        const a = p.still ? 0 : Math.sin(p.phase + ph) * amp;
+        // hangs from the shoulder and swings with the steps; thrown up before an attack, down as it lands
+        const a = p.attack === 1 ? -1.4 - 0.1 * Math.sin(p.time * 16) : p.attack && p.attack > 1 ? 0.7 : p.still ? 0 : Math.sin(p.phase + ph) * amp;
         ly -= (part.size[1] / 2) * Math.cos(a);
         lz -= (part.size[1] / 2) * Math.sin(a);
         rx += a;
@@ -291,7 +327,8 @@ export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: E
         break;
       }
       case 'sway':
-        rz += Math.sin(p.time * 5 + id + ph) * amp;
+        rz += Math.sin(p.time * 5 + id + ph) * amp * (p.attack === 1 ? 2 : 1);
+        if (part.lift && p.attack) ly += p.attack <= 1 ? part.lift * (0.8 + 0.2 * Math.sin(p.time * 9 + ph)) : -part.lift * 0.12;
         break;
       case 'jaw': {
         // wide open while winding up, snapping shut again and again during the attack

@@ -4,6 +4,9 @@ import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
 import { addMonsterParts, MONSTER_LIFT } from './monster-parts';
 import { voxelBody } from './voxel-body';
+import { BOSS } from '../sim/systems/boss';
+import { TREX } from '../sim/config/balance';
+import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -29,7 +32,7 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   shark: { w: 0.7, h: 0.6, d: 1.6, day: 0x6f8fb0, night: 0x8fb4dc, eyeY: 0.4, eyeX: 0.22, eye: 0.1 },
   kraken: { w: 3.0, h: 2.2, d: 2.6, day: 0xd04a8a, night: 0xff6ab0, eyeY: 1.5, eyeX: 0.6, eye: 0.45 },
   phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
-  trex: { w: 0.9, h: 1.6, d: 1.7, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.38, eyeX: 0.24, eye: 0.14 },
+  trex: { w: 1.1, h: 2.0, d: 2.2, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.8, eyeX: 0.26, eye: 0.16 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -154,6 +157,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const bob = (id: number, time: number, amp: number) => Math.abs(Math.sin(time * 8 + id * 1.7)) * amp;
 
   const tmpFrom = new THREE.Vector3();
+  // a boss roars while its blasts are telegraphed and strikes when they land: the sim only sets the time
+  // of the next attack, so the moment it changes is the moment the attack began
+  let bossAttackAt = -1;
+  let bossRoarTime = -1e9;
 
   // white flash for a moment after a hit
   const flashUntil = new Map<number, number>();
@@ -252,6 +259,13 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       partsGlow.begin();
       const isNight = theme.pointLights > 0.5;
       const awake = s.players.filter(p => p.downUntil === null);
+      if (s.boss && s.boss.nextAttackAt !== bossAttackAt) {
+        // the first frame of a fight only arms the timer (no roar at spawn)
+        if (bossAttackAt >= 0) bossRoarTime = time;
+        bossAttackAt = s.boss.nextAttackAt;
+      }
+      const sinceRoar = time - bossRoarTime;
+      const bossCue = sinceRoar < BOSS.warnTicks / TICK_RATE ? 1 : sinceRoar < BOSS.warnTicks / TICK_RATE + 0.4 ? 2 : 0;
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
         // King Rex is a T-Rex grown to boss size
@@ -275,17 +289,22 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
-        const squash = HOPPERS.has(e.kind) && !held ? 0.84 + 0.26 * hop : 1;
+        // a T-Rex that has just stomped, a boss between its roar and its strike
+        const stomped = e.kind === 'trex' && e.cooldownUntil - s.tick > TREX.cooldownTicks - 20;
+        const attack = e.state === 'windup' ? 1 : e.state === 'charge' || stomped ? 2 : boss ? bossCue : 0;
+        // Mega Block rears up on its roar and comes down flat on the stomp
+        const squash = HOPPERS.has(e.kind) && !held ? 0.84 + 0.26 * hop : e.kind === 'megaBlock' && attack === 2 ? 0.8 : e.kind === 'megaBlock' && attack === 1 ? 1.1 : 1;
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : 0;
+        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
         const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
         // lean into a run or a charge, rear back before one; a hit makes it wobble; a tank sways under its weight
-        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : 0;
+        // a T-Rex throws its head back for the roar
+        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? -0.22 : e.kind === 'trex' && attack === 2 ? 0.15 : 0;
         const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * 0.05 : 0);
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
@@ -300,7 +319,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
-          attack: e.state === 'windup' ? 1 : e.state === 'charge' ? 2 : 0,
+          attack,
         });
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
@@ -366,7 +385,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           const ox = side * l.eyeX * scale;
           const ex = e.pos.x + fx * front + fz * ox, ez = e.pos.z + fz * front - fx * ox;
           const size = l.eye * scale;
-          if (winding) angryEyes.addScaled(ex, ey, ez, yaw, size, size * 0.7, size);
+          if (winding || attack === 1) angryEyes.addScaled(ex, ey, ez, yaw, size, size * 0.7, size);
           else eyes.addScaled(ex, ey, ez, yaw, size, size * blink, size);
           const px = look * l.eye * 0.25 * scale;
           pupils.addScaled(ex + fx * 0.03 + fz * px, ey - l.eye * 0.15 * scale * blink, ez + fz * 0.03 - fx * px, yaw, size * 0.5, size * 0.5 * blink, size * 0.5);
