@@ -7,7 +7,8 @@ import type { SnapState } from './snapshot';
 export type ViewMode = 'both' | 'fp' | 'top';
 export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
 
-export const PROTOCOL_VERSION = 2;
+/** 3: versus, votes, team wishes, gun game, the host's view setting (0.4.0) */
+export const PROTOCOL_VERSION = 3;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

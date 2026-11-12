@@ -18,6 +18,8 @@ Gun Game, from above or in **first person** like a classic shooter.
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
+![Versus in first person: everyone for themselves in Neon City](docs/design/versus.gif)
+
 <table>
   <tr>
     <td><img src="docs/design/candy.gif" alt="Candy Factory with conveyor belts" /></td>

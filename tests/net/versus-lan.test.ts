@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMessage } from '../../src/net/protocol';
+import { parseMessage, PROTOCOL_VERSION } from '../../src/net/protocol';
 import { ClientSession, HostSession, VOTE_SECONDS } from '../../src/net/session';
 import { createMemoryHub } from '../../src/net/transport';
 
@@ -102,7 +102,7 @@ describe('auto-fill with bots', () => {
     host.setAutoFill(8);
     hub.flush();
     const bots = host.lobby.filter(p => p.bot).length;
-    (cs[0] as unknown as { net: { send(to: string, d: string): void } }).net.send('all', JSON.stringify({ type: 'hello', v: 2, name: 'Again' }));
+    (cs[0] as unknown as { net: { send(to: string, d: string): void } }).net.send('all', JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Again' }));
     hub.flush();
     expect(host.lobby.filter(p => p.bot)).toHaveLength(bots);
   });

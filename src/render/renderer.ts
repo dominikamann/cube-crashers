@@ -281,7 +281,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       fill.intensity = theme.fillIntensity;
       for (const v of views) {
         if (!v.bloom) continue;
-        v.bloom.strength = theme.bloomStrength;
+        // in first person glowing things come close to the lens: much less bloom, or they turn into floodlights
+        v.bloom.strength = theme.bloomStrength * (v.fp ? 0.35 : 1);
         v.bloom.radius = theme.bloomRadius;
         v.bloom.threshold = theme.bloomThreshold;
       }

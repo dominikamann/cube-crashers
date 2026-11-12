@@ -6,7 +6,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { t } from './i18n';
-import { lookOf } from './input/first-person';
+import { lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
@@ -278,6 +278,17 @@ function startGame() {
       if (mode === 'playing' && split && pad2) cmds = [...cmds, ...padCtl2.commands(pad2, s, 1, now)];
       // versus bots play on this computer like extra players
       if (mode === 'playing' && role === 'solo') for (const b of versusBots) cmds = [...cmds, ...b(s)];
+      // dev (?bot=1 in versus, for recordings): player 1 is a bot too, the first-person view follows its aim
+      if (import.meta.env.DEV && params.has('bot') && s.versus && mode === 'playing' && role === 'solo') {
+        selfBot ??= createVersusBot(localId());
+        cmds = [...cmds.filter(c => c.playerId !== localId()), ...selfBot(s)];
+        const me = s.players.find(p => p.id === localId());
+        if (me && keyboard.firstPerson) {
+          const want = yawOf(me.aim);
+          const diff = Math.atan2(Math.sin(want - keyboard.yaw), Math.cos(want - keyboard.yaw));
+          keyboard.yaw += diff * 0.1;
+        }
+      }
       if (role === 'solo') {
         stepSim(s, cmds);
         keyboard.onEvents(s.events);
@@ -497,6 +508,8 @@ function startGame() {
 
   let lastSoloMode: RunMode = 'run';
   let versusBots: ((s: SimState) => Command[])[] = [];
+  /** dev: player 1 played by a bot (?bot=1 in versus) */
+  let selfBot: ((s: SimState) => Command[]) | null = null;
   /** bots of a LAN versus match (they run on the host) */
   let lanBots: ((s: SimState) => Command[])[] = [];
   /** fill LAN versus matches up with bots to this many players */
