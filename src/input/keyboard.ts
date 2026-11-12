@@ -3,6 +3,7 @@ import { instantUse } from './context';
 import { aimDistance, clampPitch, forwardOf, lookOf, MOUSE_TURN, PITCH_START, viewMove, yawOf } from './first-person';
 import type { Command, EmoteId, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 import { EMOTES } from '../sim/systems/emotes';
+import { actionOf, DEFAULT_BINDINGS, keysOf, WEAPON_ACTIONS, type Action, type Bindings } from './bindings';
 
 import { TOWER_ORDER } from '../sim/config/towers';
 
@@ -11,10 +12,13 @@ export const BUILD_HOLD_MS = 150;
 export const AUTO_BUILD_MS = 700;
 /** the card that is preselected when the build menu opens */
 export const DEFAULT_TOWER: TowerKind = 'laser';
-/** 1–5 (or the number pad) pick a card in the open build menu */
-const TOWER_KEYS: Record<string, TowerKind> = Object.fromEntries(TOWER_ORDER.flatMap((k, i) => [[`Digit${i + 1}`, k], [`Numpad${i + 1}`, k]]));
+/** 0–5 for the weapon keys, else -1 */
+const slotOf = (action: Action | null) => (action === null ? -1 : (WEAPON_ACTIONS as readonly string[]).indexOf(action));
 
-/** Turns key state into sim commands. Times are passed in so it can be tested without a DOM. */
+/**
+ * Turns key state into sim commands. Times are passed in so it can be tested without a DOM.
+ * The comments name the default keys (E, Space, 1–6 …); the player can move every action to another key.
+ */
 export class Keyboard {
   buildMenuOpen = false;
   /** on foot, W walks toward the crosshair instead of up the screen */
@@ -52,17 +56,40 @@ export class Keyboard {
   /** the emote bar (C) is open: 1–6 send a quick message instead of switching weapons */
   emoteOpen = false;
   private emote: { emote: EmoteId; ping: boolean } | null = null;
+  private bindings: Bindings = { ...DEFAULT_BINDINGS };
+  /** every key of each action, worked out once per change of the bindings */
+  private keys = new Map<Action, string[]>();
+
+  constructor(bindings: Readonly<Bindings> = DEFAULT_BINDINGS) {
+    this.setBindings(bindings);
+  }
+
+  /** the player's keys (Settings → Controls); on a change, keys held right now are let go */
+  setBindings(b: Readonly<Bindings>): void {
+    if (this.keys.size > 0 && (Object.keys(b) as Action[]).every(a => this.bindings[a] === b[a])) return;
+    this.bindings = { ...b };
+    this.keys.clear();
+    for (const a of Object.keys(b) as Action[]) this.keys.set(a, keysOf(b, a));
+    this.down.clear();
+  }
+
+  private held(action: Action): boolean {
+    return (this.keys.get(action) ?? []).some(c => this.down.has(c));
+  }
 
   keyDown(code: string, now: number): void {
-    if (code === 'KeyC' && !this.down.has(code)) {
+    const action = actionOf(this.bindings, code);
+    const first = !this.down.has(code);
+    const slot = slotOf(action);
+    if (action === 'emotes' && first) {
       this.emoteOpen = !this.emoteOpen;
       this.down.add(code);
       return;
     }
     if (this.emoteOpen) {
-      const digit = /^(?:Digit|Numpad)([1-6])$/.exec(code);
-      if (digit) {
-        const emote = EMOTES[Number(digit[1]) - 1];
+      // the weapon keys pick the message
+      if (slot >= 0) {
+        const emote = EMOTES[slot];
         // the ping and "nest here" mark the spot under the crosshair
         this.emote = { emote, ping: emote === 'here' || emote === 'nest' };
         this.emoteOpen = false;
@@ -71,22 +98,22 @@ export class Keyboard {
       }
       if (code === 'Escape') this.emoteOpen = false;
     }
-    if (code === 'KeyE' && !this.down.has('KeyE')) {
+    if (action === 'use' && first) {
       this.eSince = now;
       this.ePressed = true;
     }
-    if (code === 'Space' && !this.down.has('Space')) this.jump = true;
-    if (code.startsWith('Shift') && !this.down.has(code)) this.dash = true;
-    if (code === 'KeyV' && !this.down.has(code)) this.toggleView = true;
+    if (action === 'jump' && first) this.jump = true;
+    if (action === 'dash' && first) this.dash = true;
+    if (action === 'view' && first) this.toggleView = true;
     this.down.add(code);
     if (this.buildMenuOpen) {
-      if (TOWER_KEYS[code]) this.chosen = TOWER_KEYS[code];
+      // the first weapon keys pick a card in the open build menu
+      if (slot >= 0 && slot < TOWER_ORDER.length) this.chosen = TOWER_ORDER[slot];
     } else {
-      const digit = /^(?:Digit|Numpad)([1-6])$/.exec(code);
-      if (digit) this.slot = Number(digit[1]) - 1;
-      if (code === 'KeyQ') this.slot = -1;
-      if (digit) this.shopKey = Number(digit[1]) - 1;
-      if (code === 'Enter' || code === 'KeyR') this.readyPressed = true;
+      if (slot >= 0) this.slot = this.shopKey = slot;
+      if (action === 'rare') this.slot = -1;
+      // R says ready in the shop unless the player gave R a job of its own
+      if (code === 'Enter' || (code === 'KeyR' && action === null)) this.readyPressed = true;
     }
   }
 
@@ -140,7 +167,7 @@ export class Keyboard {
   /** `now` lets a short tap of E (get in/out of a kart) be told apart from holding it (plant, build) */
   keyUp(code: string, now = Infinity): void {
     this.down.delete(code);
-    if (code === 'KeyE') {
+    if (actionOf(this.bindings, code) === 'use') {
       // with the build menu open a tap of E builds the preselected tower; otherwise a tap is "use"
       // a press commands() has not seen yet decides there whether it was "use"
       if (this.ePressed) this.eTapPending = true;
@@ -182,9 +209,8 @@ export class Keyboard {
   }
 
   commands(s: SimState, playerId: number, now: number): Command[] {
-    const has = (...codes: string[]) => codes.some(c => this.down.has(c));
-    let x = (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0);
-    let z = (has('KeyS', 'ArrowDown') ? 1 : 0) - (has('KeyW', 'ArrowUp') ? 1 : 0);
+    let x = (this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0);
+    let z = (this.held('down') ? 1 : 0) - (this.held('up') ? 1 : 0);
     const len = Math.hypot(x, z);
     if (len > 0) {
       x /= len;
@@ -269,10 +295,10 @@ export class Keyboard {
     } else if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
     if (this.jump) cmds.push({ type: 'jump', playerId });
-    if (this.down.has('Space')) cmds.push({ type: 'fly', playerId });
+    if (this.held('jump')) cmds.push({ type: 'fly', playerId });
     if (this.dash) cmds.push({ type: 'dash', playerId });
     if (this.use) cmds.push({ type: 'use', playerId });
-    if (this.down.has('KeyE')) cmds.push({ type: 'hold', playerId });
+    if (this.held('use')) cmds.push({ type: 'hold', playerId });
     this.jump = this.dash = this.use = false;
     if (p && this.wheelSteps !== 0 && p.weapons.length > 0) {
       const n = p.weapons.length;
