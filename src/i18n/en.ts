@@ -157,7 +157,7 @@ export const en = {
   'floor.jungle': 'Pixel Jungle',
   'floor.servers': 'Server Farm',
   'floor.underwater': 'Sunken Arcade',
-  'toast.unicorn': 'A unicorn appeared! Ride it with E',
+  'toast.unicorn': 'A unicorn appeared! Ride it with {key.use}',
   'bossrush.title': 'Boss Rush',
   'bossrush.sub': 'Every boss in a row: Mega Block, Segment Worm, King Rex. A shop between them, at the difficulty set above.',
   'bossrush.play': 'Start the Boss Rush',
