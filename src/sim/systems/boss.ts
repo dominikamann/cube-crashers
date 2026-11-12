@@ -85,7 +85,8 @@ export function spawnBoss(s: SimState, kind: BossKind): void {
   } else {
     const ids: number[] = [];
     for (let i = 0; i < BOSS.wormSegments; i++) ids.push(spawnEnemy(s, 'wormSegment', { x: centre.x, z: centre.z - i * BOSS.wormSpacing }).id);
-    b = { kind, maxHp: BOSS.wormSegments * 60 * hpScale(s), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
+    // the bar and the phases count from what the segments really have
+    b = { kind, maxHp: ids.reduce((sum, id) => sum + (byId(s, id)?.hp ?? 0), 0), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
   }
   b.nextAttackAt = s.tick + 3 * TICK_RATE;
   if (kind === 'kraken') {

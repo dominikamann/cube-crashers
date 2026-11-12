@@ -4,11 +4,12 @@ import { PERK_MAX } from '../../src/sim/config/perks';
 import { POPCORN_FLIGHT, TOWERS } from '../../src/sim/config/towers';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
-import { damageEnemy } from '../../src/sim/systems/combat';
+import { damageEnemy, explode } from '../../src/sim/systems/combat';
 import { bestWeapon } from '../../src/sim/systems/stats';
 import { BOSS_BODY_RESIST } from '../../src/sim/config/balance';
 import { takeCard } from '../../src/sim/systems/offers';
 import { enterFloor } from '../../src/sim/systems/run';
+import { bossHp } from '../../src/sim/systems/boss';
 import { quietSim } from './helpers';
 
 describe('review fixes', () => {
@@ -67,6 +68,31 @@ describe('bosses and stomps', () => {
     expect(seg.hp).toBeCloseTo(hp - 40 * BOSS_BODY_RESIST - 20, 5);
   });
 
+});
+
+describe('blasts on the Segment Worm', () => {
+  it('the worm starts with a full bar: its health counts what the segments really have', () => {
+    const s = createSim(floor01, 3, { mode: 'run' });
+    enterFloor(s, 4);
+    expect(s.boss?.kind).toBe('worm');
+    expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
+    expect(s.boss!.phase).toBe(1);
+  });
+
+  it('a blast over many segments shares its damage: the worm takes it about once, not once per segment', () => {
+    const s = quietSim();
+    const segs = Array.from({ length: 8 }, (_, i) => spawnEnemy(s, 'wormSegment', { x: 30.5 + i * 0.4, z: 40.5 }));
+    const before = segs.reduce((n, e) => n + e.hp, 0);
+    explode(s, { x: 31.9, z: 40.5 }, 3, { enemy: 50 }, 'explosion', 0);
+    const taken = before - segs.reduce((n, e) => n + e.hp, 0);
+    expect(taken).toBeGreaterThan(0);
+    expect(taken).toBeLessThanOrEqual(50 + 1e-6);
+    // a blast on a single ordinary monster still hits in full
+    const blob = spawnEnemy(s, 'tank', { x: 20.5, z: 40.5 });
+    const hp = blob.hp;
+    explode(s, blob.pos, 1, { enemy: 50 }, 'explosion', 0);
+    expect(hp - blob.hp).toBe(50);
+  });
 });
 
 describe('per-player stats for the result screen', () => {

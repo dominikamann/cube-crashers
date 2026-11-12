@@ -5,7 +5,7 @@ import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MI
 import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
-import { hitEnemy, isBossBody } from './combat';
+import { hitMany, isBossBody } from './combat';
 import { fireRare } from './rare';
 
 function rotate(v: Vec2, rad: number): Vec2 {
@@ -55,13 +55,12 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       const arc = w.kind === 'flySwatter' ? SWATTER : SWORD;
       const radius = arc.radius + arc.radiusPerLevel * (w.level - 1);
       const minDot = Math.cos((arc.halfArcDeg * Math.PI) / 180);
-      for (const e of targets(s)) {
+      const inArc = targets(s).filter(e => {
         const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
         const d = Math.hypot(dx, dz);
-        if (d > radius + e.radius) continue;
-        if (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot) continue;
-        hitEnemy(s, e, damage, w.kind, p.id);
-      }
+        return d <= radius + e.radius && (d <= 0.6 || (dx * p.aim.x + dz * p.aim.z) / d >= minDot);
+      });
+      hitMany(s, inArc, damage, w.kind, p.id);
       // versus: the blade cuts rivals in the arc too
       for (const r of rivals(s, p.id)) {
         const dx = r.pos.x - p.pos.x, dz = r.pos.z - p.pos.z;
@@ -80,7 +79,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         const along = qx * p.aim.x + qz * p.aim.z;
         return along > 0 && along <= reach + r && Math.abs(qx * -p.aim.z + qz * p.aim.x) <= r + RAIL.width;
       };
-      for (const e of targets(s)) if (onLine(e.pos, e.radius)) hitEnemy(s, e, damage, w.kind, p.id);
+      hitMany(s, targets(s).filter(e => onLine(e.pos, e.radius)), damage, w.kind, p.id);
       for (const r of rivals(s, p.id)) if (onLine(r.pos, PLAYER_RADIUS)) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
       s.events.push({ type: 'railFired', from: { ...p.pos }, to: { x: p.pos.x + p.aim.x * reach, z: p.pos.z + p.aim.z * reach } });
       return true;
@@ -150,9 +149,9 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         const d = Math.hypot(dx, dz);
         return d <= MAGNET.range + r && (d < 0.6 || (dx * p.aim.x + dz * p.aim.z) / d >= minDot);
       };
-      for (const e of targets(s)) {
-        if (!inCone(e.pos, e.radius)) continue;
-        hitEnemy(s, e, damage, w.kind, p.id);
+      const inside = targets(s).filter(e => inCone(e.pos, e.radius));
+      hitMany(s, inside, damage, w.kind, p.id);
+      for (const e of inside) {
         // bosses are too heavy to move
         if (isBossBody(s, e)) continue;
         const dx = to.x - e.pos.x, dz = to.z - e.pos.z;
@@ -173,7 +172,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
     case 'discoBall': {
       const hits = nearestEnemies(s, p.pos, DISCO.range, DISCO.targets + (w.level - 1));
       if (hits.length === 0) return false;
-      for (const e of hits) hitEnemy(s, e, damage, w.kind, p.id);
+      hitMany(s, hits, damage, w.kind, p.id);
       return true;
     }
     case 'bananaMine': {

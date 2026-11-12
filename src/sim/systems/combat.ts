@@ -87,6 +87,12 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
 }
 
 /** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter. */
+/** A player's weapon hits several monsters at once; the worm's segments share it (see damageMany). */
+export function hitMany(s: SimState, hits: Enemy[], base: number, source: DamageSource, ownerId: number): void {
+  const segments = hits.filter(e => e.kind === 'wormSegment').length;
+  for (const e of hits) hitEnemy(s, e, e.kind === 'wormSegment' ? base / segments : base, source, ownerId);
+}
+
 export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSource, ownerId: number): void {
   const owner = s.players.find(p => p.id === ownerId);
   if (!owner) {
@@ -104,10 +110,17 @@ export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSour
   damageEnemy(s, e, amount, source, ownerId);
 }
 
+/**
+ * Damage that lands on several monsters at once (a blast, a sword swing, a beam). The Segment Worm's segments
+ * lie close together: they share it, so the worm takes it once like any other boss instead of once per segment.
+ */
+export function damageMany(s: SimState, hits: Enemy[], amount: number, source: DamageSource, byPlayerId?: number): void {
+  const segments = hits.filter(e => e.kind === 'wormSegment').length;
+  for (const e of hits) damageEnemy(s, e, e.kind === 'wormSegment' ? amount / segments : amount, source, byPlayerId);
+}
+
 export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number): void {
-  for (const e of targets(s)) {
-    if (dist(pos, e.pos) <= radius + e.radius) damageEnemy(s, e, amount, source, byPlayerId);
-  }
+  damageMany(s, targets(s).filter(e => dist(pos, e.pos) <= radius + e.radius), amount, source, byPlayerId);
   // versus: blasts, puddles and areas of a player hurt their rivals as well
   if (s.versus && byPlayerId !== undefined) {
     for (const r of rivals(s, byPlayerId)) {
