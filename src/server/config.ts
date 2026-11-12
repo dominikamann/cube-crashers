@@ -26,7 +26,7 @@ export interface ServerConfig {
 
 /** how the lobby introduces the server; teams = red against blue can happen, so team wishes matter */
 export function serverIdentity(c: ServerConfig): { name: string; mode: ServerMode; teams: boolean } {
-  const teams = c.mode === 'capture' || c.mode === 'discovery' || ((c.mode === 'score' || c.mode === 'king' || c.mode === 'rounds') && c.teams);
+  const teams = c.mode === 'capture' || c.mode === 'discovery' || ((c.mode === 'score' || c.mode === 'king' || c.mode === 'rounds' || c.mode === 'coinop') && c.teams);
   return { name: c.name, mode: c.mode, teams };
 }
 
@@ -106,7 +106,7 @@ export const HELP = `Cube Crashers dedicated server
   --port <number>      port to listen on (default 47800); open it in your router
   --mode <mode>        ${SERVER_MODES.join(' | ')} (default discovery)
   --map <arena>        versus always on this arena: ${DISCOVERY_MAPS.join(', ')} (default: a new one each match)
-  --teams              red against blue (score, king, rounds); capture is always teams
+  --teams              red against blue (score, king, rounds, coinop); capture is always teams
   --difficulty <level> co-op: ${DIFFICULTIES.join(', ')} (default medium)
   --bots <0-${MAX_PLAYERS}>         versus: bots fill every match up to this many players (default 4)
   --view <view>        both | fp (first person only) | top (from above only) (default both)

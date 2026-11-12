@@ -1,5 +1,5 @@
 import { PLAYER_RADIUS } from '../config/balance';
-import { pvpDamage, rivals } from './versus';
+import { coinOpRule, pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
 import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MINE, RAIL, SWATTER, SWORD, WEAPONS, YOYO, levelMul } from '../config/weapons';
 import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
@@ -196,7 +196,7 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
   // the Glitch Maze is played without weapons
   if (s.run.stage === 'maze') return;
   for (const p of s.players) {
-    const rate = s.tick < p.rapidUntil ? 2 : 1;
+    const rate = s.tick < p.rapidUntil || coinOpRule(s) === 'rapid' ? 2 : 1;
     for (const w of p.weapons) {
       w.cooldown -= DT * rate;
       if (w.cooldown < 1e-9) w.cooldown = 0;
@@ -209,9 +209,11 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
     }
     const w = p.weapons[p.selected];
     if (!w || w.cooldown > 0) continue;
-    if (fire(s, p, w)) {
-      w.cooldown = WEAPONS[w.kind].cooldown;
-      s.events.push({ type: 'shot', weapon: w.kind, pos: { ...p.pos } });
+    // coin-op chaos: swords only, whatever is in your hand
+    const use = coinOpRule(s) === 'swords' ? { ...w, kind: 'laserSword' as const } : w;
+    if (fire(s, p, use)) {
+      w.cooldown = WEAPONS[use.kind].cooldown;
+      s.events.push({ type: 'shot', weapon: use.kind, pos: { ...p.pos } });
     }
   }
 }

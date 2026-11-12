@@ -1,11 +1,12 @@
-import { PLAYER_RADIUS } from '../config/balance';
+import { JUMP_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
-import { TICK_RATE, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
+import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { spawnHorde } from './hordes';
+import { explode } from './combat';
 
 export const VERSUS = {
   /** score race: back in the game this long after going down */
@@ -39,7 +40,33 @@ export const VERSUS = {
   touch: 1.1,
   /** chaos: a horde every so often */
   chaosEveryTicks: 20 * TICK_RATE,
+  /** coin-op chaos: a new rule this often */
+  coinOpEveryTicks: 30 * TICK_RATE,
+  /** coin-op chaos */
+  turbo: 1.5,
+  moonJump: 1.8,
+  boomRadius: 2.5,
+  boomDamage: 25,
 };
+
+/** the rules coin-op chaos switches between */
+export const COIN_OP_RULES: CoinOpRule[] = ['turbo', 'moon', 'rapid', 'swords', 'boom', 'double'];
+
+/** the coin-op rule in force right now, or null */
+export function coinOpRule(s: SimState): CoinOpRule | null {
+  return s.versus?.coinop?.rule ?? null;
+}
+
+/** how long a jump lasts: longer on the moon */
+export function jumpTicks(s: SimState): number {
+  return coinOpRule(s) === 'moon' ? Math.round(JUMP_TICKS * VERSUS.moonJump) : JUMP_TICKS;
+}
+
+/** a coin-op rule other than the current one */
+function nextCoinOp(s: SimState, current: CoinOpRule | null): CoinOpRule {
+  const others = COIN_OP_RULES.filter(r => r !== current);
+  return others[Math.floor(s.rng.next() * others.length) % others.length];
+}
 
 /** what a weapon hit worth `amount` against monsters does to a player */
 export function pvpDamage(amount: number): number {
@@ -81,7 +108,7 @@ export const DISCOVERY_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', '
  * throws in monsters now and then.
  */
 export function discovery(i: number): { mode: VersusMode; rule: VersusRule; map: string; chaos: boolean } {
-  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame'];
+  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame', 'coinop'];
   const rule = rules[i % rules.length];
   // over the rules' cycle the team mode flips every lap, so every rule comes in both flavours
   // (capture is always teams, gun game always everyone for themselves)
@@ -162,8 +189,13 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     nextHordeAt: s.tick + VERSUS.chaosEveryTicks,
     king: null,
     flags: null,
+    coinop: null,
   };
   const v = s.versus;
+  if (rule === 'coinop') {
+    v.coinop = { rule: nextCoinOp(s, null), nextAt: s.tick + VERSUS.coinOpEveryTicks };
+    s.events.push({ type: 'coinOpRule', rule: v.coinop.rule });
+  }
   if (rule === 'king') {
     v.limit = VERSUS.kingLimit[mode];
     v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: 0 };
@@ -222,7 +254,7 @@ function startRound(s: SimState): void {
 export function versusDeath(s: SimState, p: Player, attackerId: number | undefined): void {
   const v = s.versus!;
   const killer = attackerId !== undefined && attackerId !== p.id ? s.players.find(x => x.id === attackerId) : undefined;
-  if (killer && v.rule === 'score') {
+  if (killer && (v.rule === 'score' || v.rule === 'coinop')) {
     v.scores[killer.id] = (v.scores[killer.id] ?? 0) + 1;
     if (v.mode === 'team' && killer.team !== undefined) v.teamScores[killer.team]++;
   }
@@ -256,6 +288,9 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   p.invulnUntil = p.downUntil + VERSUS.spawnInvulnTicks;
   const base = v.rule === 'capture' ? v.flags?.[p.team ?? 0]?.base : undefined;
   p.safePoint = base ? nearBase(s, base, []) : safeSpawn(s, p, s.players.filter(o => o !== p && o.downUntil === null));
+  // coin-op chaos: whoever goes down blows up and may take others along (only once they are down themselves,
+  // so the blast cannot catch them again; the blast counts as nobody's kill)
+  if (v.coinop?.rule === 'boom') explode(s, { ...p.pos }, VERSUS.boomRadius, { player: VERSUS.boomDamage }, 'explosion');
 }
 
 /** the cube `p` carries falls where they stand */
@@ -364,6 +399,10 @@ export function updateVersus(s: SimState): void {
   if (v.chaos && s.tick >= (v.nextHordeAt ?? 0) && s.map.waypoints.length > 0) {
     v.nextHordeAt = s.tick + VERSUS.chaosEveryTicks;
     if (s.enemies.length < 40) spawnHorde(s, s.rng.pick(s.map.waypoints), [{ kind: 'blob', count: 4 }, { kind: 'hunter', count: 2 }], { rush: true });
+  }
+  if (v.coinop && s.tick >= v.coinop.nextAt) {
+    v.coinop = { rule: nextCoinOp(s, v.coinop.rule), nextAt: s.tick + VERSUS.coinOpEveryTicks };
+    s.events.push({ type: 'coinOpRule', rule: v.coinop.rule });
   }
   if (v.rule === 'king') updateKing(s);
   if (v.rule === 'capture') updateFlags(s);

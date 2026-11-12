@@ -171,7 +171,7 @@ function startGame() {
     const maps = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
     const pick = (): VersusOption => ({
       mode: Math.random() < 0.5 ? 'ffa' : 'team',
-      rule: (['score', 'score', 'rounds', 'king', 'capture', 'gungame'] as const)[Math.floor(Math.random() * 6)],
+      rule: (['score', 'score', 'rounds', 'king', 'capture', 'gungame', 'coinop'] as const)[Math.floor(Math.random() * 7)],
       map: maps[Math.floor(Math.random() * maps.length)],
     });
     const fix = (o: VersusOption): VersusOption => (o.rule === 'capture' ? { ...o, mode: 'team' } : o.rule === 'gungame' ? { ...o, mode: 'ffa' } : o);

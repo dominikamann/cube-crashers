@@ -8,7 +8,6 @@ import {
   DASH_TICKS,
   HAZARD_DPS,
   IDLE_EPSILON,
-  JUMP_TICKS,
   PLAYER_RADIUS,
   PLAYER_SPEED,
   RESPAWN_INVULN_TICKS,
@@ -29,13 +28,15 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
-import { carryingCube, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
+import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
 
 export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
   // the difficulty is about monsters; between players every hit counts the same
   if (!s.versus) amount *= DIFFICULTY[s.difficulty].enemyDamage;
+  // coin-op chaos: hits between players count double
+  else if (attackerId !== undefined && coinOpRule(s) === 'double') amount *= 2;
   if (p.vehicleId !== null) {
     damageVehicle(s, p.vehicleId, amount);
     return;
@@ -202,10 +203,11 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
   if (moveDir) p.facing = moveDir;
 
   const flying = updateFlight(s, p, it.fly);
+  const turbo = coinOpRule(s) === 'turbo' ? VERSUS.turbo : 1;
 
   // vehicles move their driver (see vehicles.ts)
   if (flying && moveDir) {
-    const speed = PLAYER_SPEED * JETPACK.speedFactor * (1 + 0.12 * p.perks.speed) * Math.min(len, 1);
+    const speed = PLAYER_SPEED * JETPACK.speedFactor * (1 + 0.12 * p.perks.speed) * turbo * Math.min(len, 1);
     // over everything, but never past the outer wall of the map
     p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
     p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
@@ -232,7 +234,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     } else if (moveDir) {
       const boost = s.tick < p.boostUntil ? BOOST_FACTOR : 1;
       const carry = carryingCube(s, p) ? VERSUS.carrySpeed : 1;
-      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * carry * Math.min(len, 1);
+      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * carry * turbo * Math.min(len, 1);
       // in the air you clear barriers (low walls), only real walls stop you
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }
@@ -241,7 +243,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     pushOutOfTowers(s, p, p.dashTicks > 0 ? p.dashDir : moveDir ?? null);
 
     if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying && s.run.stage !== 'maze') {
-      p.air = JUMP_TICKS;
+      p.air = jumpTicks(s);
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {
       p.air--;

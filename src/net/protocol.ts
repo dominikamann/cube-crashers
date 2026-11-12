@@ -22,8 +22,9 @@ export const SNAPSHOT_EVERY_TICKS = 2;
 export const MAX_SERVER_NAME = 40;
 
 /** what a dedicated server plays: a co-op run, one versus rule, or Discovery (all of them in turn) */
-export type ServerMode = 'coop' | 'discovery' | 'gungame' | 'score' | 'king' | 'rounds' | 'capture';
-export const SERVER_MODES: ServerMode[] = ['coop', 'discovery', 'gungame', 'score', 'king', 'rounds', 'capture'];
+export type ServerMode = 'coop' | 'discovery' | 'gungame' | 'coinop' | 'score' | 'king' | 'rounds' | 'capture';
+export const SERVER_MODES: ServerMode[] = ['coop', 'discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'];
+const VERSUS_RULES = ['score', 'rounds', 'king', 'capture', 'gungame', 'coinop'];
 
 /** what a dedicated server tells its lobby: its name, its mode and when the next match starts (null = waiting for players) */
 export interface ServerStatus {
@@ -113,13 +114,13 @@ const validPlayers = (x: unknown) =>
   Array.isArray(x) && x.length >= 1 && x.length <= MAX_PLAYERS && x.every(p => isObj(p) && isNum(p.id) && typeof p.name === 'string' && isNum(p.color));
 
 const validOption = (o: unknown) =>
-  isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && ['score', 'rounds', 'king', 'capture', 'gungame'].includes(o.rule as string) && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
+  isObj(o) && (o.mode === 'ffa' || o.mode === 'team') && VERSUS_RULES.includes(o.rule as string) && typeof o.map === 'string' && Object.hasOwn(FLOORS, o.map);
 const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
 const validServer = (v: unknown) =>
   v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)));
-const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture', 'gungame'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
+const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
 export function parseMessage(raw: string): Message | null {

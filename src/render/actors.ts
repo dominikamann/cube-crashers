@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
+import { jumpTicks } from '../sim/systems/versus';
 import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
@@ -331,7 +332,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     }
     const driving = p.vehicleId !== null;
     const down = p.downUntil !== null;
-    const jump = p.air > 0 ? Math.sin(Math.PI * (1 - p.air / JUMP_TICKS)) * 1.3 : 0;
+    // on the moon (coin-op chaos) a jump lasts longer and goes higher
+    const length = jumpTicks(s);
+    const jump = p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
     v.root.position.set(p.pos.x, jump + fly + (driving ? 0.35 : 0), p.pos.z);
     v.pack.visible = p.jetpack || p.flying;

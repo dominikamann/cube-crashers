@@ -42,7 +42,9 @@ export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft'
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus';
 export type VersusMode = 'ffa' | 'team';
-export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame';
+export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
+/** Coin-Op Chaos: the rule in force for the next 30 seconds */
+export type CoinOpRule = 'turbo' | 'moon' | 'rapid' | 'swords' | 'boom' | 'double';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -443,6 +445,8 @@ export interface VersusState {
   nextHordeAt?: number;
   /** king of the cube: the zone, its radius and when it moves on */
   king?: { pos: Vec2; radius: number; nextMoveAt: number; spot: number } | null;
+  /** coin-op chaos: the rule in force and when it changes */
+  coinop?: { rule: CoinOpRule; nextAt: number } | null;
   /** capture the cube: each team's cube, its base, and who carries it */
   flags?: { base: Vec2; pos: Vec2; carrier: number | null }[] | null;
 }
@@ -512,6 +516,7 @@ export type SimEvent =
   | { type: 'cubeReturned'; team: 0 | 1 }
   | { type: 'cubeCaptured'; team: 0 | 1; playerId: number }
   | { type: 'kingMoved'; pos: Vec2 }
+  | { type: 'coinOpRule'; rule: CoinOpRule }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
   | { type: 'mazePower'; playerId: number }

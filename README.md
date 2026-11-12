@@ -297,9 +297,9 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 |---|---|---|
 | `--name <text>` | Name in the server list | Cube Crashers Server |
 | `--port <number>` | Port the server listens on | 47800 |
-| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `score`, `king`, `rounds`, `capture` or `coop` (the Tower Run) | discovery |
+| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture` or `coop` (the Tower Run) | discovery |
 | `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
-| `--teams` | Red against Blue for `score`, `king`, `rounds` (`capture` is always teams) | off |
+| `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-8>` | Bots fill every versus match up to this many players | 4 |
 | `--difficulty <level>` | Co-op: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
 | `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
@@ -345,6 +345,7 @@ Blaster; crates with weapons, karts and a jetpack lie around. Up to 8 players, b
 | **King of the Cube** | A glowing zone moves around the map. A point per second while you hold it alone. |
 | **Capture the Cube** | Red vs Blue. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. |
 | **Gun Game** | One weapon at a time: every kill moves you up the ladder (Blaster → Candy Cannon → Hotdog → Boomerang → Pixel Rail → Bomb → Disco Ball → Laser Sword → **Fly Swatter**). A kill with the swatter wins, then the next match moves to a new map. Getting swatted costs you a step. |
+| **Coin-Op Chaos** | A score race where a random rule changes every 30 seconds: *turbo* (everyone runs faster), *moon* (long floaty jumps), *rapid fire*, *swords only*, *boom* (whoever goes down explodes) or *double damage*. |
 
 - **Free for all** or **Red vs Blue** (teams are evened out; on the LAN everyone can wish for a team).
 - **Monsters roam too**: hordes join the fight now and then.
@@ -642,9 +643,9 @@ docs/         gameplay GIF and screenshots
 - [x] First-person view as a switch (and the default for versus)
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
 - [ ] Emotes and pings, for online play
-- [ ] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
+- [x] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
 - [ ] Daily Run: the same seed for everyone each day, with its own best list
-- [ ] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
+- [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
 - [ ] Replay of the last seconds (kill cam)
 - [ ] Key rebinding: a Controls page, click an action and press the new key
 - [ ] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green

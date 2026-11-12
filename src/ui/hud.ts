@@ -349,6 +349,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'laneEnd':
             toast(e.coreLeft > 0 ? t('lane.end', { pct: Math.round(e.coreLeft * 100), coins: e.coins }) : t('lane.lost'), e.coreLeft > 0 ? 'final' : 'warn');
             break;
+          case 'coinOpRule':
+            toast(t(`coinop.${e.rule}` as 'coinop.turbo'), 'final');
+            break;
           case 'gunLevel':
             if (e.playerId === p.id) toast(t('toast.gunLevel', { weapon: t(`weapon.${e.weapon}` as 'weapon.bomb') }), 'good');
             break;
@@ -450,7 +453,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           raceMain.textContent = t('versus.hudGun', { me: me + 1, n: vs.limit, weapon: held ? t(`weapon.${held}` as 'weapon.bomb') : '', lead: Math.max(0, ...Object.values(vs.scores)) + 1, time });
         } else if (vs.mode === 'team') raceMain.textContent = t('versus.hudTeam', { red: vs.teamScores[0], blue: vs.teamScores[1], time });
         else raceMain.textContent = t('versus.hudFfa', { me, lead: Math.max(0, ...Object.values(vs.scores)), time });
-        raceSub.textContent = vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
+        raceSub.textContent = vs.coinop ? t('versus.hudCoinOp', { rule: t(`coinop.${vs.coinop.rule}` as 'coinop.turbo') }) : vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
       }
       const race = s.run.stage === 'race' ? s.run.race : null;
       const lane = s.run.stage === 'lane' ? s.run.lane : null;
