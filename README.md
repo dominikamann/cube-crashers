@@ -196,8 +196,10 @@ Between the floors the elevator takes you to a short game of its own, then to th
   are ready. The shop closes after 25 seconds or when everyone is ready.
 - **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
   and calls reinforcements. Get out of the marked areas.
-- **The Kraken:** sits in the middle of the sea bed and slams its tentacles down in lines toward you, or
-  bursts ink clouds under everyone. Each phase calls a school of fish and sharks.
+- **The Kraken:** crawls slowly across the sea bed toward you on eight long tentacles. Up close it slaps them
+  down in a ring around itself; from further away it slams them down in lines, bursts ink clouds under everyone,
+  or grabs a player with a tentacle and drags them in (dash to break free). Each phase calls a school of fish
+  and sharks.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
 - The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
@@ -574,7 +576,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
-| **The Kraken** | Boss of the Sunken Arcade. | Marked lines and rings |
+| **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **King Rex** | The last boss of the Boss Rush. | Red rings |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |

@@ -380,6 +380,10 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'emote':
       // a ping chirps higher than a message
       return one('select', e.pos ? 1.6 : 1.3);
+    case 'krakenGrab':
+      return one('kartRam', 0.6);
+    case 'krakenRelease':
+      return one('dash', 1.2);
     case 'unicornAppeared':
       return one('cardPicked', 1.5);
     case 'coinOpRule':

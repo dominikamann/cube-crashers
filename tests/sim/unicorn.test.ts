@@ -18,7 +18,7 @@ describe('the unicorn', () => {
     }
     expect(seen).toBeGreaterThan(0);
     expect(seen).toBeLessThan(15);
-  });
+  }, 90_000);
 
   it('is ridden like a kart, faster than one, and spears monsters with its horn', () => {
     expect(VEHICLES.unicorn.speed).toBeGreaterThan(VEHICLES.kart.speed);

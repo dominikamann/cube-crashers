@@ -373,6 +373,24 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
+      // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
+      const grab = s.boss?.kind === 'kraken' ? s.boss.grab : null;
+      const kraken = grab ? s.enemies.find(e => e.id === s.boss!.enemyId) : undefined;
+      const held = grab ? s.players.find(p => p.id === grab.playerId) : undefined;
+      if (kraken && held) {
+        const dx = held.pos.x - kraken.pos.x, dz = held.pos.z - kraken.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const look = ENEMY_LOOK.kraken;
+        const color = theme.pointLights > 0.5 ? look.night : look.day;
+        const n = Math.max(4, Math.round(d / 0.45));
+        for (let i = 1; i <= n; i++) {
+          const t = i / n;
+          const wave = Math.sin(time * 14 - t * 9) * 0.3 * (1 - t * 0.5);
+          const x = kraken.pos.x + dx * t - (dz / d) * wave, z = kraken.pos.z + dz * t + (dx / d) * wave;
+          const size = 0.62 - 0.32 * t;
+          partsLit.addScaled(x, 0.55 + 0.45 * Math.sin(Math.PI * t), z, Math.atan2(dx, dz), size, size, 0.5, i === n ? 0xffd0e4 : color);
+        }
+      }
       for (const p of [eyes, pupils, plates, angryEyes]) p.end();
       // forget monsters that are gone
       if (bornAt.size > 600) {

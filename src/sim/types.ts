@@ -382,6 +382,8 @@ export interface BossState {
   worms: number[][];
   nextAttackAt: number;
   lastPos: Vec2;
+  /** the Kraken: a player held by a tentacle and dragged in, until this tick */
+  grab?: { playerId: number; until: number } | null;
 }
 
 export interface Vehicle {
@@ -596,6 +598,8 @@ export type SimEvent =
   | { type: 'bought'; playerId: number; offer: number; kind: ShopOffer['kind'] }
   | { type: 'buyDenied'; playerId: number; offer: number }
   | { type: 'bossSpawn'; kind: BossKind }
+  | { type: 'krakenGrab'; playerId: number }
+  | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }
   | { type: 'bossDead'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }

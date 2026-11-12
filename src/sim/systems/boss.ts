@@ -1,6 +1,8 @@
-import { BLOCKS_ENEMY, moveCircle, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
+import { PLAYER_RADIUS } from '../config/balance';
+import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
-import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type SimState, type Vec2 } from '../types';
+import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
 import { hpScale } from './coop';
 import { dropCoins } from './combat';
@@ -26,6 +28,13 @@ export const BOSS = {
   /** shockwave: blasts in a line, one after another */
   waveLength: 8,
   waveStep: 1.5,
+  /** the Kraken's grab: how far it reaches, how fast it drags, how long it holds, what it does per second */
+  grabRange: 10,
+  grabSpeed: 5,
+  grabTicks: 100,
+  grabDps: 12,
+  /** its tentacle slap: a ring of blows around it */
+  slapRadius: 3.8,
   /** King Rex */
   rexHp: 1600,
   /** King Rex's roar: the ground cracks in a ring around it */
@@ -101,8 +110,18 @@ function attack(s: SimState, b: BossState): void {
     }
   } else if (b.kind === 'kraken') {
     const kraken = byId(s, b.enemyId!);
-    // tentacles slam down in lines toward the players, or an ink cloud bursts under each of them
-    if (kraken && s.rng.next() < 0.6) {
+    const roll = s.rng.next();
+    const near = kraken ? alive.filter(p => dist(p.pos, kraken.pos) <= BOSS.slapRadius + 2) : [];
+    const reach = kraken ? alive.filter(p => dist(p.pos, kraken.pos) <= BOSS.grabRange && dist(p.pos, kraken.pos) > BOSS.slapRadius && hasLos(s.map, kraken.pos, p.pos)) : [];
+    // too close: a slap all round; someone in reach: grab them; otherwise tentacles in lines, or ink under everyone
+    if (kraken && near.length > 0 && roll < 0.5) {
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        telegraph(s, { x: kraken.pos.x + Math.cos(a) * BOSS.slapRadius, z: kraken.pos.z + Math.sin(a) * BOSS.slapRadius }, 1.4, BOSS.strikeDamage, 45);
+      }
+    } else if (kraken && !b.grab && reach.length > 0 && roll < 0.8) {
+      grabPlayer(s, s.rng.pick(reach));
+    } else if (kraken && s.rng.next() < 0.6) {
       for (const p of alive.slice(0, 3)) {
         const d = dist(kraken.pos, p.pos) || 1;
         const dir = { x: (p.pos.x - kraken.pos.x) / d, z: (p.pos.z - kraken.pos.z) / d };
@@ -185,15 +204,42 @@ function resolveWorms(s: SimState, b: BossState): void {
   b.worms = b.worms.filter(w => w.length > 0);
 }
 
+/** The Kraken wraps a tentacle round `p` and starts dragging them in. */
+export function grabPlayer(s: SimState, p: Player): void {
+  const b = s.boss;
+  if (!b || b.kind !== 'kraken') return;
+  b.grab = { playerId: p.id, until: s.tick + BOSS.grabTicks };
+  s.events.push({ type: 'krakenGrab', playerId: p.id });
+}
+
+/** A held player is dragged toward the Kraken; a dash (or going down) breaks free. */
+function drag(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
+  const g = b.grab;
+  if (!g) return;
+  const p = s.players.find(x => x.id === g.playerId);
+  const kraken = byId(s, b.enemyId!);
+  const free = () => {
+    b.grab = null;
+    if (p) s.events.push({ type: 'krakenRelease', playerId: p.id });
+  };
+  if (!p || !kraken || p.downUntil !== null || s.tick >= g.until || p.dashTicks > 0 || intents?.get(p.id)?.dash) return free();
+  const d = dist(p.pos, kraken.pos);
+  if (d <= kraken.radius + PLAYER_RADIUS + 0.3) return free();
+  const step = Math.min(BOSS.grabSpeed * DT, d - kraken.radius - PLAYER_RADIUS);
+  moveCircle(s.map, p.pos, ((kraken.pos.x - p.pos.x) / d) * step, ((kraken.pos.z - p.pos.z) / d) * step, PLAYER_RADIUS, BLOCKS_WALKER);
+  damagePlayer(s, p, BOSS.grabDps * DT, 'other');
+}
+
 /** Moves boss bodies; runs right after the other enemies. */
 export function moveBoss(s: SimState): void {
   if (s.boss?.kind === 'worm') moveWorms(s, s.boss);
 }
 
 /** Deaths, splits, phases and attacks; runs after all damage of the tick. */
-export function updateBoss(s: SimState): void {
+export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   const b = s.boss;
   if (!b || s.phase !== 'playing') return;
+  drag(s, b, intents);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);

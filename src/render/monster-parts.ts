@@ -174,17 +174,21 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     ...[0.48, 0.6, 0.72].map((z): Part => ({ at: [0, -0.12, z], size: [0.4, 0.06, 0.05], color: 0xffffff })),
   ],
   kraken: [
-    // eight tentacles fanning out around it, each in three pieces that wave
+    // eight long, thick tentacles fanning out around it, each in five pieces that thin out and wave, with
+    // light suckers along the underside
     ...Array.from({ length: 8 }, (_, i): Part[] => {
       const a = (i / 8) * Math.PI * 2;
-      return [1.7, 2.3, 2.85].map((r, k): Part => ({
-        at: [Math.cos(a) * r, -0.95 + k * 0.05, Math.sin(a) * r],
-        size: [0.55 - k * 0.12, 0.4 - k * 0.08, 0.55 - k * 0.12],
-        color: k === 2 ? 'light' : 'body',
-        anim: 'sway',
-        ph: i * 0.8 + k * 0.6,
-        amp: 0.25 + k * 0.1,
-      }));
+      return [1.6, 2.3, 3.0, 3.65, 4.25].flatMap((r, k): Part[] => [
+        {
+          at: [Math.cos(a) * r, -0.95 + k * 0.08, Math.sin(a) * r],
+          size: [0.85 - k * 0.14, 0.6 - k * 0.09, 0.85 - k * 0.14],
+          color: k >= 3 ? 'light' : 'body',
+          anim: 'sway',
+          ph: i * 0.8 + k * 0.6,
+          amp: 0.2 + k * 0.08,
+        },
+        { at: [Math.cos(a) * r, -1.22 + k * 0.08, Math.sin(a) * r], size: [0.3 - k * 0.04, 0.06, 0.3 - k * 0.04], color: 0xffd0e4, anim: 'sway', ph: i * 0.8 + k * 0.6, amp: 0.2 + k * 0.08 },
+      ]);
     }).flat(),
   ],
   phantom: [
