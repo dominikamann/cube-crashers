@@ -2,6 +2,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/dominikamann/cube-crashers?label=version&color=ff2bd6)](https://github.com/dominikamann/cube-crashers/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
+[![Play in the browser](https://img.shields.io/badge/play-in%20the%20browser-fa5c5c?logo=itchdotio&logoColor=white)](https://amannlabs.itch.io/cube-crashers)
 ![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
 ![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
@@ -57,7 +58,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
   </tr>
 </table>
 
-Runs on **Windows and macOS**. Free and open source (MIT).
+Runs on **Windows and macOS**, and [in the browser](https://amannlabs.itch.io/cube-crashers). Free and open source (MIT).
 
 ---
 
@@ -89,7 +90,11 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 
 ## Download and install
 
-Get the latest version from the **[Releases page](https://github.com/dominikamann/cube-crashers/releases/latest)**.
+**No install needed:** [play in the browser on itch.io](https://amannlabs.itch.io/cube-crashers), alone, in
+split screen or online. LAN parties need the desktop app.
+
+For the desktop app, get the latest version from the
+**[Releases page](https://github.com/dominikamann/cube-crashers/releases/latest)** (or from the itch.io page).
 
 ### macOS
 
@@ -664,6 +669,17 @@ npm run icon      # regenerate the pixel-art app icon
 **Releasing:** bump the version in `package.json`, run `npm run dist:mac` and `npm run dist:win`, then upload
 *everything* in `release/` that is a file (`.dmg`, `.zip`, `.exe`, `.blockmap`, `latest.yml`,
 `latest-mac.yml`) to a new GitHub release. The `latest*.yml` files are what the installed apps look for.
+
+**The itch.io page** gets every release too, with [butler](https://itch.io/docs/butler/): the browser version
+and the same desktop builds as on GitHub.
+
+```bash
+npm run build
+butler push dist amannlabs/cube-crashers:html5 --userversion <version>
+butler push release/CubeCrashers-<version>-win-x64.exe   amannlabs/cube-crashers:windows   --userversion <version>
+butler push release/CubeCrashers-<version>-mac-arm64.zip amannlabs/cube-crashers:mac-arm64 --userversion <version>
+butler push release/CubeCrashers-<version>-mac-x64.zip   amannlabs/cube-crashers:mac-x64   --userversion <version>
+```
 
 **Signed macOS builds:** nothing secret is stored in this repository. Once per Mac:
 1. Create a *Developer ID Application* certificate (Xcode → Settings → Accounts → your team → Manage
