@@ -96,9 +96,16 @@ export function maxDashCharges(p: Player): number {
   return 1 + p.perks.dash;
 }
 
+/** a stomp right after the last one hurts less, then less again; a moment on the ground and it is back to full */
+const STOMP_CHAIN = [1, 0.6, 0.4];
+const STOMP_CHAIN_PAUSE_TICKS = 30;
+
 function stomp(s: SimState, p: Player): void {
+  const inRow = p.lastStompAt !== undefined && s.tick - p.lastStompAt <= jumpTicks(s) + STOMP_CHAIN_PAUSE_TICKS;
+  p.stompChain = inRow ? (p.stompChain ?? 0) + 1 : 0;
+  p.lastStompAt = s.tick;
   const radius = STOMP_RADIUS + 0.5 * p.perks.stomp;
-  const damage = STOMP_DAMAGE + 10 * p.perks.stomp;
+  const damage = (STOMP_DAMAGE + 10 * p.perks.stomp) * STOMP_CHAIN[Math.min(p.stompChain, STOMP_CHAIN.length - 1)];
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius });
   const under = s.enemies.filter(e => e.hp > 0 && dist(p.pos, e.pos) <= radius + e.radius);
   const part = wormShare(under);

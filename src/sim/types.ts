@@ -177,6 +177,9 @@ export interface Player {
   perched?: boolean;
   /** climbing a ladder: ticks left until you stand on the wall top at `top` */
   climb?: { ticks: number; top: Vec2 } | null;
+  /** stomps in a row (each one lands soon after the last): every one after the first hurts less */
+  stompChain?: number;
+  lastStompAt?: number;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
   /** downed in a team game: can be helped up until this tick */

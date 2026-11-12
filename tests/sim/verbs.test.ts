@@ -8,7 +8,7 @@ import { ENEMIES } from '../../src/sim/config/enemies';
 import { DASH_DAMAGE, STOMP_DAMAGE } from '../../src/sim/config/balance';
 
 describe('jump', () => {
-  it('avoids contact damage in the air and stomps on landing', () => {
+  it('high in the jump no monster reaches you, and the landing stomps', () => {
     const s = quietSim();
     const p = s.players[0];
     const tank = spawnEnemy(s, 'tank', rel(p.pos, 0.3, 0));
@@ -16,9 +16,12 @@ describe('jump', () => {
     expect(s.events).toContainEqual({ type: 'jump', playerId: 0 });
     let landedAt = -1;
     for (let i = 0; i < 40 && landedAt < 0; i++) {
+      // the top of the jump is safe (taking off and landing are not, see stomp-balance.test.ts)
+      const hp = p.hp;
+      const high = p.air > 8 && p.air < 22;
       stepSim(s, []);
       if (s.events.some(e => e.type === 'stomp')) landedAt = s.tick;
-      else expect(p.hp).toBe(100);
+      else if (high) expect(p.hp).toBe(hp);
     }
     expect(landedAt).toBeGreaterThan(25);
     expect(landedAt).toBeLessThan(35);

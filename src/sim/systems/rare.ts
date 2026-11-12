@@ -1,4 +1,4 @@
-import { carryingCube } from './versus';
+import { carryingCube, jumpTicks } from './versus';
 import { perchable } from '../map/perch';
 import { PLAYER_RADIUS } from '../config/balance';
 import { JETPACK, RARE } from '../config/rare';
@@ -10,6 +10,16 @@ import { damageEnemy, damageMany, explode, wormShare } from './combat';
 /** In the air from a jump or on a jetpack: no contact, glitch or ground blast damage. */
 export function airborne(p: Player): boolean {
   return p.air > 0 || p.flying;
+}
+
+/** how high a jump has to be before monsters cannot reach you: the lower part, taking off and landing, is not safe */
+const SAFE_HEIGHT = 0.5;
+
+/** Out of the monsters' reach: flying, or high in a jump (not while taking off or about to land). */
+export function aloft(s: SimState, p: Player): boolean {
+  if (p.flying) return true;
+  if (p.air <= 0) return false;
+  return Math.sin(Math.PI * (1 - p.air / jumpTicks(s))) > SAFE_HEIGHT;
 }
 
 function inCone(from: Vec2, aim: Vec2, target: Vec2, range: number, halfConeDeg: number): boolean {
