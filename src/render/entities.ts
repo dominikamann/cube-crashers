@@ -288,6 +288,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
+          attack: e.state === 'windup' ? 1 : e.state === 'charge' ? 2 : 0,
         });
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
