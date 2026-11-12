@@ -556,7 +556,6 @@ docs/         gameplay GIF and screenshots
 - [ ] Dedicated server and online play with a server list
 - [ ] Key rebinding
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
-- [ ] German translation
 
 ## Contributing
 
