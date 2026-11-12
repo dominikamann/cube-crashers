@@ -64,6 +64,7 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
 - [The run: five floors, a different game between them, shop, bosses](#the-run-five-floors-a-different-game-between-them-shop-bosses)
+- [Boss Rush](#boss-rush)
 - [Daily Run](#daily-run)
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
@@ -165,9 +166,12 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | Floor | Theme | What happens | Then |
 |---|---|---|---|
 | 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
-| 2 | Candy Factory | Nests; **conveyor belts** push players and monsters | **Lane Defense** |
-| 3 | Mega Block Arena | **Boss: Mega Block** | **Glitch Maze** |
-| 4 | Neon City *or* Neon Highway | Nests; permanent night, more elites | **Shaft ride** |
+| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
+| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
+| 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
+
+Which world each floor is depends on the run (its seed), so no two runs look quite the same; on the LAN
+everyone gets the same ones. Every world can also be played on its own under **Single floor**.
 | 5 | Rooftop | **Final boss: Segment Worm** | – |
 
 Between the floors the elevator takes you to a short game of its own, then to the shop:
@@ -188,6 +192,8 @@ Between the floors the elevator takes you to a short game of its own, then to th
   are ready. The shop closes after 25 seconds or when everyone is ready.
 - **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
   and calls reinforcements. Get out of the marked areas.
+- **The Kraken:** sits in the middle of the sea bed and slams its tentacles down in lines toward you, or
+  bursts ink clouds under everyone. Each phase calls a school of fish and sharks.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
 - The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
@@ -195,6 +201,12 @@ Between the floors the elevator takes you to a short game of its own, then to th
   fresh. Beat the Segment Worm and take the last elevator to win the run.
 
 ---
+
+## Boss Rush
+
+Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
+**the Kraken** and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a
+ring around itself and stomps under everyone. At the difficulty you set; its own best list.
 
 ## Daily Run
 
@@ -221,6 +233,7 @@ the whole team.
 
 ## Settings and graphics
 
+- **Mouse speed (first person):** how fast the mouse or touchpad turns the view, 0.5× to 3×. On a touchpad try 2× or 3×.
 - **Graphics quality:** Low, Medium, High (default) or Ultra. Higher levels use sharper shadows, smoothing,
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
@@ -461,7 +474,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
-| **Fly Swatter** | A huge slap right in front of you: very strong, very short. The knife of this game. |
+| **Fly Swatter** | A huge slap swung sideways right across your front: very strong, very short. The knife of this game. |
 | **Bubble Wand** | A slow soap bubble: the monster it hits floats stuck in it for a few seconds. |
 | **Magnet Glove** | Pulls the monsters in front of you together at the crosshair (then throw a bomb). Yanks rivals toward you. |
 | **Yo-yo Launcher** | Out and straight back on its string, hitting on both ways. Short and quick. |
@@ -512,13 +525,17 @@ once it is finished. Towers are solid: you walk round them, and work on them fro
   meanwhile. Gold marks on the base show the level.
 - **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
 
-### Crash Kart, Steamroller, Hoverboard
+### Crash Kart, Steamroller, Hoverboard, Unicorn
 
 Tap `E` next to a kart to get in. Twice as fast as walking, rams monsters out of the way, keeps your weapons
 firing and protects you: hits damage the kart instead of you. Boost pads speed you up, ramps launch you over
 low walls. 20 seconds of fuel; comes back 45 seconds after it breaks. Once unlocked, the **Steamroller** and
 the **Hoverboard** appear on the map as well (see [Unlocks](#unlocks-and-endless-mode)).
 
+
+Now and then a **unicorn** trots in on its own ("A unicorn appeared!"). Ride it like a kart: faster than one,
+it leaps off ramps, spears monsters with its horn and leaves a rainbow behind. It never runs out of steam, but
+once it is wrecked it is gone until the next lucky moment.
 ### Power-ups
 
 Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, **Rapid Fire**,
@@ -547,6 +564,11 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Crocodile** | Heavy and tough. Lunges a short way with a snap of its jaws. | Red lane on the ground |
 | **Monkey** | Keeps its distance and throws coconuts that burst where you stood. | Red ring where it lands |
 | **T-Rex** | The biggest of them all: roars, then stomps everything around it. Shows up once the alarm has risen. | Red ring around it |
+| **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
+| **Pixel Fish** | Small and fast, in schools (under water). | – |
+| **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
+| **The Kraken** | Boss of the Sunken Arcade. | Marked lines and rings |
+| **King Rex** | The last boss of the Boss Rush. | Red rings |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
