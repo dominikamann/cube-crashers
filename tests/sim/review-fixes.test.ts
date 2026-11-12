@@ -6,10 +6,13 @@ import { createSim, stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { damageEnemy, explode } from '../../src/sim/systems/combat';
 import { bestWeapon } from '../../src/sim/systems/stats';
-import { BOSS_BODY_RESIST } from '../../src/sim/config/balance';
+import { BOSS_BODY_RESIST, STOMP_DAMAGE } from '../../src/sim/config/balance';
+import { updateTowers } from '../../src/sim/systems/towers';
 import { takeCard } from '../../src/sim/systems/offers';
 import { enterFloor } from '../../src/sim/systems/run';
 import { bossHp } from '../../src/sim/systems/boss';
+import { ENEMIES } from '../../src/sim/config/enemies';
+import { hpScale } from '../../src/sim/systems/coop';
 import { quietSim } from './helpers';
 
 describe('review fixes', () => {
@@ -71,11 +74,38 @@ describe('bosses and stomps', () => {
 });
 
 describe('blasts on the Segment Worm', () => {
+  const segmentsHurt = (setup: (s: ReturnType<typeof quietSim>) => void) => {
+    const s = quietSim();
+    const segs = Array.from({ length: 6 }, (_, i) => spawnEnemy(s, 'wormSegment', { x: 30.5 + i * 0.4, z: 40.5 }));
+    const before = segs.reduce((n, e) => n + e.hp, 0);
+    setup(s);
+    return before - segs.reduce((n, e) => n + e.hp, 0);
+  };
+
+  it('a Tesla bolt does not jump along the worm, a bumper and a stomp share their hit', () => {
+    const tower = (kind: 'tesla' | 'bumper') => (s: ReturnType<typeof quietSim>) => {
+      s.players[0].pos = { x: 10.5, z: 10.5 };
+      s.towers.push({ id: 900, kind, padId: 0, pos: { x: 31.5, z: 42 }, hp: 40, maxHp: 40, cooldown: 0, level: 1, buildLeft: 0, upgrading: false });
+      updateTowers(s);
+    };
+    expect(segmentsHurt(tower('tesla'))).toBeLessThanOrEqual(TOWERS.tesla.damage + 1e-6);
+    expect(segmentsHurt(tower('bumper'))).toBeLessThanOrEqual(TOWERS.bumper.damage + 1e-6);
+    const stomped = segmentsHurt(s => {
+      s.players[0].pos = { x: 31.5, z: 40.5 };
+      s.players[0].air = 1;
+      stepSim(s, []);
+    });
+    expect(stomped).toBeGreaterThan(0);
+    expect(stomped).toBeLessThanOrEqual(STOMP_DAMAGE * BOSS_BODY_RESIST + 1e-6);
+  });
+
   it('the worm starts with a full bar: its health counts what the segments really have', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
     enterFloor(s, 4);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
+    // 18 segments of 100 on medium for one player: the bar is not counted twice or left unscaled
+    expect(s.boss!.maxHp).toBeCloseTo(18 * ENEMIES.wormSegment.hp * hpScale(s), 5);
     expect(s.boss!.phase).toBe(1);
   });
 

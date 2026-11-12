@@ -86,13 +86,23 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   if (e.kind === 'bomber') explode(s, e.pos, BOMBER.deathRadius, { enemy: BOMBER.enemy }, 'explosion', byPlayerId);
 }
 
-/** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter. */
-/** A player's weapon hits several monsters at once; the worm's segments share it (see damageMany). */
-export function hitMany(s: SimState, hits: Enemy[], base: number, source: DamageSource, ownerId: number): void {
+/**
+ * For one hit that lands on several monsters at once (a blast, a swing, a beam, a stomp): the Segment Worm's
+ * segments lie close together, so they share it and the worm takes it once like any other boss, instead of once
+ * per segment. Returns each monster's part of the hit.
+ */
+export function wormShare(hits: Enemy[]): (e: Enemy) => number {
   const segments = hits.filter(e => e.kind === 'wormSegment').length;
-  for (const e of hits) hitEnemy(s, e, e.kind === 'wormSegment' ? base / segments : base, source, ownerId);
+  return e => (e.kind === 'wormSegment' ? 1 / segments : 1);
 }
 
+/** A player's weapon hits several monsters at once; the worm's segments share it (see wormShare). */
+export function hitMany(s: SimState, hits: Enemy[], base: number, source: DamageSource, ownerId: number): void {
+  const part = wormShare(hits);
+  for (const e of hits) hitEnemy(s, e, base * part(e), source, ownerId);
+}
+
+/** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter. */
 export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSource, ownerId: number): void {
   const owner = s.players.find(p => p.id === ownerId);
   if (!owner) {
@@ -110,13 +120,10 @@ export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSour
   damageEnemy(s, e, amount, source, ownerId);
 }
 
-/**
- * Damage that lands on several monsters at once (a blast, a sword swing, a beam). The Segment Worm's segments
- * lie close together: they share it, so the worm takes it once like any other boss instead of once per segment.
- */
+/** Damage that lands on several monsters at once; the worm's segments share it (see wormShare). */
 export function damageMany(s: SimState, hits: Enemy[], amount: number, source: DamageSource, byPlayerId?: number): void {
-  const segments = hits.filter(e => e.kind === 'wormSegment').length;
-  for (const e of hits) damageEnemy(s, e, e.kind === 'wormSegment' ? amount / segments : amount, source, byPlayerId);
+  const part = wormShare(hits);
+  for (const e of hits) damageEnemy(s, e, amount * part(e), source, byPlayerId);
 }
 
 export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number): void {

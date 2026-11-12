@@ -25,7 +25,7 @@ import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
-import { comboMult, damageEnemy } from './combat';
+import { comboMult, damageEnemy, wormShare } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
@@ -100,11 +100,11 @@ function stomp(s: SimState, p: Player): void {
   const radius = STOMP_RADIUS + 0.5 * p.perks.stomp;
   const damage = STOMP_DAMAGE + 10 * p.perks.stomp;
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius });
-  for (const e of s.enemies) {
-    if (e.hp <= 0) continue;
+  const under = s.enemies.filter(e => e.hp > 0 && dist(p.pos, e.pos) <= radius + e.radius);
+  const part = wormShare(under);
+  for (const e of under) {
     const d = dist(p.pos, e.pos);
-    if (d > radius + e.radius) continue;
-    damageEnemy(s, e, damage, 'stomp', p.id);
+    damageEnemy(s, e, damage * part(e), 'stomp', p.id);
     const k = STOMP_KNOCKBACK / Math.max(d, 0.2);
     e.knock.x += (e.pos.x - p.pos.x) * k;
     e.knock.z += (e.pos.z - p.pos.z) * k;

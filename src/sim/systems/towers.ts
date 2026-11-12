@@ -6,7 +6,7 @@ import { BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
 import { PLAYER_RADIUS } from '../config/balance';
 import { airborne } from './rare';
 import { dist, nearestEnemy, targets } from '../util';
-import { damageEnemy, isBossBody } from './combat';
+import { damageEnemy, isBossBody, wormShare } from './combat';
 
 export const BUILD_RADIUS = 1.2;
 
@@ -144,7 +144,8 @@ function fire(s: SimState, t: Tower): boolean {
         const from: typeof first = e;
         damageEnemy(s, from, damage, t.kind);
         damage *= TESLA.falloff;
-        e = targets(s).filter(o => !hit.has(o.id) && dist(o.pos, from.pos) <= TESLA.hop).sort((a, b) => dist(a.pos, from.pos) - dist(b.pos, from.pos))[0];
+        // the bolt does not run along the worm: one segment takes it, like one hit on any other boss
+        e = targets(s).filter(o => !hit.has(o.id) && dist(o.pos, from.pos) <= TESLA.hop && !(o.kind === 'wormSegment' && from.kind === 'wormSegment')).sort((a, b) => dist(a.pos, from.pos) - dist(b.pos, from.pos))[0];
       }
       s.events.push({ type: 'teslaChain', points });
       return true;
@@ -158,8 +159,9 @@ function fire(s: SimState, t: Tower): boolean {
         const d = Math.hypot(dx, dz) || 1;
         return { x: dx / d, z: dz / d };
       };
+      const part = wormShare(near);
       for (const e of near) {
-        damageEnemy(s, e, def.damage, t.kind);
+        damageEnemy(s, e, def.damage * part(e), t.kind);
         if (isBossBody(s, e)) continue;
         const a = away(e.pos);
         e.knock = { x: a.x * BUMPER.knock, z: a.z * BUMPER.knock };

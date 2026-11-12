@@ -5,7 +5,7 @@ import { JETPACK, RARE } from '../config/rare';
 import { BLOCKS_WALKER, hasLos, isFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
-import { damageEnemy, explode } from './combat';
+import { damageEnemy, damageMany, explode, wormShare } from './combat';
 
 /** In the air from a jump or on a jetpack: no contact, glitch or ground blast damage. */
 export function airborne(p: Player): boolean {
@@ -79,15 +79,16 @@ export function fireRare(s: SimState, p: Player): boolean {
     case 'slushMachine': {
       const c = RARE.slush;
       r.cooldown = c.everyTicks;
-      for (const e of targets(s)) {
-        if (!inCone(p.pos, p.aim, e.pos, c.range + e.radius, c.halfConeDeg) || !hasLos(s.map, p.pos, e.pos)) continue;
+      const cone = targets(s).filter(e => inCone(p.pos, p.aim, e.pos, c.range + e.radius, c.halfConeDeg) && hasLos(s.map, p.pos, e.pos));
+      const part = wormShare(cone);
+      for (const e of cone) {
         e.slowUntil = Math.max(e.slowUntil, s.tick + 30);
         e.chill += c.chill;
         if (e.chill >= c.freezeAt) {
           e.chill = 0;
           e.frozenUntil = s.tick + c.frozenTicks;
         }
-        damageEnemy(s, e, c.damage, r.kind, p.id);
+        damageEnemy(s, e, c.damage * part(e), r.kind, p.id);
       }
       return true;
     }
@@ -177,9 +178,7 @@ export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boole
   }
   if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = landingSpot(s, p.pos);
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
-  for (const e of targets(s)) {
-    if (dist(e.pos, p.pos) <= JETPACK.landRadius + e.radius) damageEnemy(s, e, JETPACK.landDamage, 'stomp', p.id);
-  }
+  damageMany(s, targets(s).filter(e => dist(e.pos, p.pos) <= JETPACK.landRadius + e.radius), JETPACK.landDamage, 'stomp', p.id);
   return false;
 }
 

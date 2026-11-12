@@ -989,6 +989,8 @@ function startGame() {
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';
     newVersusGame();
+    // dev: &view=top keeps the camera above the arena (for recordings)
+    if (params.get('view') === 'top') keyboard.setFirstPerson(false, { x: 0, z: -1 });
   } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
