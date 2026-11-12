@@ -16,9 +16,9 @@ export const RACE = {
   winnerBonus: 50,
   /** playing alone: a medal for finishing the laps within this many seconds */
   medals: {
-    gold: { seconds: 150, coins: 100 },
-    silver: { seconds: 210, coins: 60 },
-    bronze: { seconds: 360, coins: 30 },
+    gold: { seconds: 80, coins: 100 },
+    silver: { seconds: 105, coins: 60 },
+    bronze: { seconds: 150, coins: 30 },
   },
   spawnEveryTicks: 4 * TICK_RATE,
   spawnCount: 3,
@@ -76,6 +76,7 @@ export function enterRace(s: SimState): void {
   s.elevatorOpen = false;
   s.players.forEach((p, i) => {
     p.flying = false;
+    p.descent = 0;
     p.jetpack = false;
     p.jetFuel = 0;
     p.air = 0;

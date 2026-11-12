@@ -84,6 +84,7 @@ export function enterFloor(s: SimState, index: number): void {
     // off any wall top or ladder of the floor before
     p.perched = false;
     p.climb = null;
+    p.descent = 0;
     // a jetpack is only for the floor it was found on
     p.jetpack = false;
     p.jetFuel = 0;

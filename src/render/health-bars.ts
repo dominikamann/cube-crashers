@@ -59,7 +59,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
       }
       for (const p of s.players) {
         if (p.downUntil !== null || p.hp <= 0) continue;
-        bars.push({ x: p.pos.x, y: 1.95 + (p.flying ? 2.5 : 0) + (p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0), z: p.pos.z, w: 0.9, frac: Math.max(0, p.hp / p.maxHp), playerId: p.id });
+        bars.push({ x: p.pos.x, y: 1.95 + (p.flying || (p.descent ?? 0) > 0 ? 2.5 : 0) + (p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0), z: p.pos.z, w: 0.9, frac: Math.max(0, p.hp / p.maxHp), playerId: p.id });
       }
     },
     face(camera, hide) {

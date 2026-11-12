@@ -3,6 +3,8 @@ import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import { jumpTicks } from '../sim/systems/versus';
 import { wallTop } from './world';
 import { CLIMB_TICKS } from '../sim/map/ladders';
+import { perchable } from '../sim/map/perch';
+import { JETPACK } from '../sim/config/rare';
 import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
@@ -410,7 +412,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     // on the moon (coin-op chaos) a jump lasts longer and goes higher
     const length = jumpTicks(s);
     const jump = p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
-    const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
+    // after a flight: sinking gently onto the floor, or onto the block below (eased, slow at the bottom)
+    const sinking = !p.flying && (p.descent ?? 0) > 0;
+    const below = sinking && perchable(s.map, p.pos.x, p.pos.z) ? wallTop(s.map, p.pos.x, p.pos.z) : 0;
+    const left = sinking ? p.descent! / JETPACK.descentTicks : 0;
+    const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : sinking ? below + (2.5 - below) * (1 - (1 - left) * (1 - left)) : 0;
     // landed on top of a wall block with the jetpack
     // or on the way up a ladder: up the rungs, then over the top
     const climbed = p.climb ? 1 - p.climb.ticks / CLIMB_TICKS : 0;
@@ -422,8 +428,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const z = p.climb ? p.pos.z + (p.climb.top.z - p.pos.z) * over : p.pos.z;
     v.root.position.set(x, perch + jump + fly + (driving ? mount : 0), z);
     v.pack.visible = p.jetpack || p.flying;
-    v.flame.visible = p.flying;
-    v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
+    v.flame.visible = p.flying || sinking;
+    // a short braking flame on the way down
+    v.flame.scale.set(1, (0.7 + Math.random() * 0.6) * (sinking ? 0.5 : 1), 1);
     v.glint.visible = p.rare !== null && !down;
     const marked = palette().teamMarks && s.versus?.mode === 'team' && p.team !== undefined && !down;
     v.marks.forEach((m, team) => {

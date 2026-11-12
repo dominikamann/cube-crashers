@@ -179,6 +179,8 @@ export interface Player {
   climb?: { ticks: number; top: Vec2 } | null;
   /** stomps in a row (each one lands soon after the last): every one after the first hurts less */
   stompChain?: number;
+  /** sinking down after the jetpack was let go: ticks until the landing */
+  descent?: number;
   lastStompAt?: number;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;

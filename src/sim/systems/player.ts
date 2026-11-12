@@ -190,6 +190,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     p.pos = { ...p.safePoint };
     p.perched = false;
     p.climb = null;
+    p.descent = 0;
     p.invulnUntil = s.tick + RESPAWN_INVULN_TICKS;
     s.events.push({ type: 'playerRespawn', playerId: p.id });
   }

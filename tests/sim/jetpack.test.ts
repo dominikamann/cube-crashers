@@ -47,13 +47,29 @@ describe('jetpack', () => {
     expect(p.hp).toBe(100);
   });
 
-  it('lands with a small stomp when Space is let go', () => {
+  it('let go of Space and you sink down gently, landing with a small stomp at the bottom', () => {
     const s = withJetpack();
+    const p = s.players[0];
     run(s, 20, () => [fly]);
-    expect(s.players[0].flying).toBe(true);
+    expect(p.flying).toBe(true);
     stepSim(s, []);
-    expect(s.players[0].flying).toBe(false);
-    expect(s.events.some(e => e.type === 'stomp')).toBe(true);
+    // still in the air, on the way down
+    expect(p.flying).toBe(false);
+    expect(p.descent).toBeGreaterThan(0);
+    expect(s.events.some(e => e.type === 'stomp')).toBe(false);
+    const events = run(s, JETPACK.descentTicks);
+    expect(p.descent ?? 0).toBe(0);
+    expect(events.some(e => e.type === 'stomp')).toBe(true);
+  });
+
+  it('holding Space again on the way down flies on', () => {
+    const s = withJetpack();
+    const p = s.players[0];
+    run(s, 20, () => [fly]);
+    stepSim(s, []);
+    run(s, JETPACK.takeoffTicks + 1, () => [fly]);
+    expect(p.flying).toBe(true);
+    expect(p.descent ?? 0).toBe(0);
   });
 
   it('when the fuel runs out above a block, the player lands on top of it', () => {
@@ -61,6 +77,8 @@ describe('jetpack', () => {
     const p = s.players[0];
     p.pos = { x: 43.4, z: 60.5 };
     const events = run(s, 20, () => [move(1, 0), fly]);
+    // the drop down onto the block
+    run(s, JETPACK.descentTicks);
     expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
     expect(p.flying).toBe(false);
     expect(p.jetFuel).toBeLessThan(JETPACK.fuelTicks / 10);
@@ -84,7 +102,7 @@ describe('jetpack', () => {
     const events = run(s, 40, () => [fly]);
     expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
     expect(p.jetpack).toBe(true);
-    run(s, JETPACK.rechargeTicks + 10);
+    run(s, JETPACK.descentTicks + JETPACK.rechargeTicks + 10);
     expect(p.jetFuel).toBe(JETPACK.fuelTicks);
   });
 

@@ -7,6 +7,8 @@ export const JETPACK = {
   rechargeTicks: 360,
   /** Space has to be held this long before you take off; a shorter tap is a jump */
   takeoffTicks: 12,
+  /** let go of Space: this long to sink back down before landing */
+  descentTicks: 24,
   respawnTicks: 5400,
   pickupRadius: 0.9,
   speedFactor: 1.2,

@@ -9,7 +9,7 @@ import { damageEnemy, damageMany, explode, wormShare } from './combat';
 
 /** In the air from a jump or on a jetpack: no contact, glitch or ground blast damage. */
 export function airborne(p: Player): boolean {
-  return p.air > 0 || p.flying;
+  return p.air > 0 || p.flying || (p.descent ?? 0) > 0;
 }
 
 /** how high a jump has to be before monsters cannot reach you: the lower part, taking off and landing, is not safe */
@@ -18,6 +18,8 @@ const SAFE_HEIGHT = 0.5;
 /** Out of the monsters' reach: flying, or high in a jump (not while taking off or about to land). */
 export function aloft(s: SimState, p: Player): boolean {
   if (p.flying) return true;
+  // sinking down from a flight: out of reach for the upper half of the way
+  if ((p.descent ?? 0) > 0) return p.descent! > JETPACK.descentTicks / 2;
   if (p.air <= 0) return false;
   return Math.sin(Math.PI * (1 - p.air / jumpTicks(s))) > SAFE_HEIGHT;
 }
@@ -170,26 +172,38 @@ export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boole
     p.flying = true;
     p.perched = false;
     p.air = 0;
+    p.descent = 0;
     p.jetFuel = Math.max(0, p.jetFuel - 1);
     if (p.jetFuel === 0) s.events.push({ type: 'jetpackEmpty', playerId: p.id });
     if (p.jetFuel > 0) return true;
+  }
+  if (!p.flying && (p.descent ?? 0) > 0) {
+    // on the way down: still over everything, steering as in flight; the landing comes at the bottom
+    p.descent!--;
+    if (p.descent === 0) land(s, p);
+    return true;
   }
   if (!p.flying) {
     // the tank refills on the ground
     if (p.jetpack && p.air === 0 && !wantsToFly) p.jetFuel = Math.min(JETPACK.fuelTicks, p.jetFuel + JETPACK.fuelTicks / JETPACK.rechargeTicks);
     return false;
   }
+  // let go (or out of fuel): sink down gently instead of dropping
   p.flying = false;
-  // over a block in the arena: land on top of it (a place to catch your breath); anywhere else, the nearest floor
+  p.descent = JETPACK.descentTicks;
+  return true;
+}
+
+/** The end of a flight: over a block in the arena, land on top of it (a place to catch your breath); anywhere else, the nearest floor */
+function land(s: SimState, p: Player): void {
   if (perchable(s.map, p.pos.x, p.pos.z)) {
     p.perched = true;
     s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
-    return false;
+    return;
   }
   if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = landingSpot(s, p.pos);
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
   damageMany(s, targets(s).filter(e => dist(e.pos, p.pos) <= JETPACK.landRadius + e.radius), JETPACK.landDamage, 'stomp', p.id);
-  return false;
 }
 
 /** Nearest free floor tile centre, searched outward ring by ring (no line of sight needed: we come down from above). */

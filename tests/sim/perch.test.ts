@@ -42,6 +42,8 @@ describe('landing on a wall with the jetpack', () => {
     const { p, at } = onWall(s);
     p.jetFuel = 10;
     stepSim(s, []);
+    // sinking down onto the block
+    run(s, JETPACK.descentTicks);
     expect(p.flying).toBe(false);
     expect(p.perched).toBe(true);
     expect(p.pos).toEqual(at);
@@ -53,6 +55,8 @@ describe('landing on a wall with the jetpack', () => {
     const s = quietSim();
     const { p, at } = onWall(s);
     stepSim(s, []);
+    // sinking down onto the block
+    run(s, JETPACK.descentTicks);
     run(s, 10, () => [move(1, 0)]);
     expect(p.perched).toBe(true);
     run(s, 60, () => [move(-1, 0)]);
@@ -65,6 +69,8 @@ describe('landing on a wall with the jetpack', () => {
     const s = quietSim();
     const { p } = onWall(s);
     stepSim(s, []);
+    // sinking down onto the block
+    run(s, JETPACK.descentTicks);
     const e = spawnEnemy(s, 'tank', { x: p.pos.x - 1, z: p.pos.z });
     e.speed = 0;
     const hp = p.hp;
@@ -77,6 +83,8 @@ describe('landing on a wall with the jetpack', () => {
     const { p, at } = onWall(s, s.players[1].id);
     p.invulnUntil = 0;
     stepSim(s, []);
+    // sinking down onto the block
+    run(s, JETPACK.descentTicks);
     expect(p.perched).toBe(true);
     const a = s.players[0];
     a.invulnUntil = 0;
@@ -89,6 +97,8 @@ describe('landing on a wall with the jetpack', () => {
     const s = quietSim();
     const { p } = onWall(s);
     stepSim(s, []);
+    // sinking down onto the block
+    run(s, JETPACK.descentTicks);
     p.downUntil = s.tick;
     stepSim(s, []);
     expect(p.perched).toBe(false);
