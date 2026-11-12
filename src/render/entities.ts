@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
-import { addMonsterParts, MONSTER_LIFT } from './monster-parts';
+import { addMonsterParts, MONSTER_LIFT, RHINO_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
@@ -340,7 +340,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
-        });
+        }, rhinoBoss ? RHINO_PARTS : undefined);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';

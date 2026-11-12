@@ -285,8 +285,29 @@ export interface PartPose {
 }
 
 /** Adds the parts of one monster to the pools (lit ones and glowing ones). */
-export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: EnemyKind, bodyColor: number, id: number, p: PartPose): void {
-  const parts = MONSTER_PARTS[kind];
+/**
+ * The Rhino (a rammer grown to boss size) wears these instead of the rammer's parts: thick legs, a big horn and
+ * a small one on its nose, ears, a heavy brow and a short tail.
+ */
+export const RHINO_PARTS: Part[] = [
+  ...fourLegs(0.42, -0.5, 0.44, 0.3, 0.26),
+  { at: [0, 0.12, -0.78], size: [0.1, 0.1, 0.26], color: 'dark', anim: 'wag', amp: 0.5 },
+  // the horns: the big one in three steps that taper, a small one behind it
+  { at: [0, 0.02, 0.74], size: [0.26, 0.26, 0.2], color: 0xf2ead8 },
+  { at: [0, 0.2, 0.84], size: [0.18, 0.24, 0.16], color: 0xf2ead8 },
+  { at: [0, 0.4, 0.9], size: [0.1, 0.2, 0.1], color: 0xfff8ea },
+  { at: [0, 0.22, 0.5], size: [0.14, 0.16, 0.12], color: 0xf2ead8 },
+  // ears and a heavy brow over the eyes
+  { at: [-0.36, 0.46, 0.3], size: [0.14, 0.2, 0.1], color: 'dark' },
+  { at: [0.36, 0.46, 0.3], size: [0.14, 0.2, 0.1], color: 'dark' },
+  { at: [0, 0.34, 0.56], size: [0.86, 0.1, 0.12], color: 'dark' },
+  // armour plates along its back
+  { at: [0, 0.44, -0.05], size: [0.7, 0.08, 0.5], color: 'light' },
+  { at: [0, 0.44, -0.5], size: [0.56, 0.08, 0.3], color: 'light' },
+];
+
+export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: EnemyKind, bodyColor: number, id: number, p: PartPose, override?: Part[]): void {
+  const parts = override ?? MONSTER_PARTS[kind];
   if (!parts) return;
   const c = Math.cos(p.yaw), sn = Math.sin(p.yaw);
   for (const part of parts) {
