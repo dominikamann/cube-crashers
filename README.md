@@ -545,6 +545,8 @@ Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, 
 
 ## Monsters
 
+![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.gif)
+
 All monsters are original voxel creatures, built from many small cubes, with feet, arms, tails and wings that
 move. Every dangerous attack is announced first: the eyes glow red, and the ground shows where it will hit.
 
