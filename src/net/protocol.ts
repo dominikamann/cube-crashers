@@ -26,8 +26,11 @@ export const SNAPSHOT_EVERY_TICKS = 2;
 export const MAX_SERVER_NAME = 40;
 
 /** what a dedicated server plays: a co-op run, one versus rule, or Discovery (all of them in turn) */
-export type ServerMode = 'coop' | 'discovery' | 'gungame' | 'coinop' | 'score' | 'king' | 'rounds' | 'capture';
-export const SERVER_MODES: ServerMode[] = ['coop', 'discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'];
+export type ServerMode = 'coop' | 'brawl' | 'bossrush' | 'endless' | 'discovery' | 'gungame' | 'coinop' | 'score' | 'king' | 'rounds' | 'capture';
+export const SERVER_MODES: ServerMode[] = ['coop', 'brawl', 'bossrush', 'endless', 'discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'];
+/** the co-op games a server (or a LAN host) can run, and the kind of run each is */
+export const COOP_MODES: Partial<Record<ServerMode, 'run' | 'brawl' | 'bossrush' | 'endless'>> = { coop: 'run', brawl: 'brawl', bossrush: 'bossrush', endless: 'endless' };
+export const isCoop = (m: ServerMode) => m in COOP_MODES;
 const VERSUS_RULES = ['score', 'rounds', 'king', 'capture', 'gungame', 'coinop'];
 
 /** what a dedicated server tells its lobby: its name, its mode and when the next match starts (null = waiting for players) */

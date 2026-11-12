@@ -27,7 +27,7 @@ describe('dedicated server settings', () => {
   });
 
   it('says clearly what is wrong', () => {
-    expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, discovery, gungame/);
+    expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, brawl, bossrush, endless, discovery, gungame/);
     expect(() => parseConfig(['--map', 'mars'], {}, null)).toThrow(/map.*neon/);
     expect(() => parseConfig(['--port', '99999'], {}, null)).toThrow(/port/);
     expect(() => parseConfig(['--bots', '12'], {}, null)).toThrow(/bots.*0.*10/);

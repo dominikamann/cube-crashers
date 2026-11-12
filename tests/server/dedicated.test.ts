@@ -128,6 +128,20 @@ describe('the dedicated server', () => {
     expect(host.sim!.versus?.mode).toBe('team');
   });
 
+  it('a server can run the other co-op games too: Boss Brawl, Boss Rush, Endless', () => {
+    for (const [mode, run_] of [['brawl', 'brawl'], ['bossrush', 'bossrush'], ['endless', 'endless']] as const) {
+      const { host, cs, run } = setup({ mode, bots: 4 }, 2);
+      cs[0].setReady(true);
+      cs[1].setReady(true);
+      run(1);
+      expect(host.sim!.run.mode, mode).toBe(run_);
+      expect(host.sim!.players, mode).toHaveLength(2);
+      // the clients see the same game
+      expect(cs[0].view!.run.mode, mode).toBe(run_);
+      expect(cs[0].view!.map.id, mode).toBe(host.sim!.map.id);
+    }
+  });
+
   it('co-op runs the tower with the humans only, at the set difficulty', () => {
     const { host, cs, run } = setup({ mode: 'coop', difficulty: 'high', bots: 4 }, 2);
     cs[0].setReady(true);

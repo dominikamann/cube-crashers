@@ -313,7 +313,8 @@ export class HostSession {
     const humans = this.lobby.filter(p => !p.bot);
     this.vote = null;
     this.running(true);
-    this.sim = createSim(floor01, seed, {
+    // (the Boss Brawl is always in the Mega Block Arena)
+    this.sim = createSim(mode === 'brawl' ? FLOORS.arena.map : floor01, seed, {
       mode,
       unlocked,
       difficulty,
@@ -435,8 +436,8 @@ export class ClientSession {
         this.viewMode = m.view ?? 'both';
         this.lobby = m.players;
         this.vote = null;
-        this.view = createSim(m.versus && m.mapId ? FLOORS[m.mapId].map : floor01, m.seed, {
-          mode: m.versus ? 'versus' : m.mode === 'quick' ? 'quick' : 'run',
+        this.view = createSim(m.versus && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
+          mode: m.versus ? 'versus' : m.mode && ['quick', 'brawl', 'bossrush', 'endless'].includes(m.mode) ? m.mode : 'run',
           versus: m.versus,
           unlocked: m.unlocked ?? [],
           difficulty: m.difficulty,

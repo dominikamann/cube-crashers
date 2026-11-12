@@ -1,3 +1,4 @@
+import { COOP_MODES, isCoop } from '../net/protocol';
 import { createVersusBot } from '../bots/versus';
 import type { VersusOption } from '../net/protocol';
 import type { HostSession } from '../net/session';
@@ -28,9 +29,9 @@ export class DedicatedServer {
     this.log = opts.log ?? (() => {});
     host.viewMode = cfg.view;
     host.difficulty = cfg.difficulty;
-    host.setAutoFill(cfg.mode === 'coop' ? 0 : cfg.bots);
+    host.setAutoFill(isCoop(cfg.mode) ? 0 : cfg.bots);
     if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
-    if (cfg.mode === 'coop' && (cfg.map || cfg.monsters || cfg.teams)) this.log('note: --map, --monsters and --teams are for versus; co-op always runs the tower');
+    if (isCoop(cfg.mode) && (cfg.map || cfg.monsters || cfg.teams)) this.log('note: --map, --monsters and --teams are for versus; the co-op games bring their own maps');
   }
 
   private humans(): number {
@@ -74,10 +75,10 @@ export class DedicatedServer {
     this.startsAt = null;
     this.overSince = null;
     this.seed = (this.seed * 48271) % 2147483647 || 1;
-    if (this.cfg.mode === 'coop') {
-      this.host.start(this.seed, this.cfg.difficulty, 'run');
+    if (isCoop(this.cfg.mode)) {
+      this.host.start(this.seed, this.cfg.difficulty, COOP_MODES[this.cfg.mode]!);
       this.bots = [];
-      this.log(`co-op run started with ${this.humans()} player(s)`);
+      this.log(`${this.cfg.mode} started with ${this.humans()} player(s)`);
     } else {
       const option = this.next();
       this.host.startVersus(option, this.seed);

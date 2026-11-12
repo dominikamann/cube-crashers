@@ -2,6 +2,7 @@ import { APP_VERSION } from '../version';
 import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
+import { isCoop } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
 import { cssColor, playerColor } from '../render/palette';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
@@ -244,6 +245,8 @@ export interface JoinEntry {
 
 export interface LanActions {
   start(): void;
+  /** another co-op game with everyone in the lobby: the Boss Brawl, the Boss Rush, Endless */
+  startMode(mode: 'brawl' | 'bossrush' | 'endless'): void;
   leave(): void;
   setDifficulty(d: Difficulty): void;
   connect(target: string): void;
@@ -335,9 +338,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   };
   let countdown: HTMLElement | null = null;
   const countdownText = (server: ServerStatus) => (server.running ? t('lobby.running') : server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
-  const modeName = (m: ServerMode | 'lan') => (m === 'coop' || m === 'lan' ? t(`server.mode.${m}`) : t(`versus.${m}` as 'versus.score'));
+  const modeName = (m: ServerMode | 'lan') => (m === 'lan' || isCoop(m) ? t(`server.mode.${m}` as 'server.mode.coop') : t(`versus.${m}` as 'versus.score'));
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
-  const nextDiff = (d: Difficulty) => DIFFICULTIES[(DIFFICULTIES.indexOf(d) + 1) % DIFFICULTIES.length];
   /** a kill source as players know it: weapon, rare weapon, tower or move */
   const sourceName = (k: string | null) => {
     if (!k) return '–';
@@ -395,6 +397,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     parent.append(a);
   }
 
+  /** the pinned first-person tip closes itself after this long */
+  const FP_TIP_SKIP_MS = 120_000;
   /** A rotating tip on the title screen; it stops once the screen is gone. */
   let tipAt = Math.floor(Math.random() * TIP_COUNT);
   function tipBox(parent: HTMLElement) {
@@ -428,15 +432,21 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       close.className = 'tip-close';
       close.textContent = '\u2715';
       close.title = t('tip.close');
-      close.addEventListener('click', e => {
-        e.stopPropagation();
-        actions.click();
+      const dismiss = () => {
+        if (!close.isConnected) return;
         markSeen(FP_TIP_KEY);
         close.remove();
         box.classList.remove('pinned');
         rotate();
+      };
+      close.addEventListener('click', e => {
+        e.stopPropagation();
+        actions.click();
+        dismiss();
       });
       box.append(close);
+      // nobody closed it: after two minutes it moves on by itself
+      window.setTimeout(() => box.isConnected && dismiss(), FP_TIP_SKIP_MS);
       return;
     }
     rotate();
@@ -684,9 +694,22 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   function lanScreen() {
     show('', s => {
       text(s, 'h2', '', t('menu.lan'));
-      text(s, 'p', '', t('lan.intro'));
-      button(s, t('menu.host'), actions.host, true);
-      button(s, t('menu.join'), actions.join);
+      text(s, 'p', 'mode-hint', t('lan.intro'));
+      // two cards: what each choice does, and one button each
+      const cards = document.createElement('div');
+      cards.className = 'mode-cards lan-cards';
+      s.append(cards);
+      for (const [title, sub, label_, fn, primary] of [
+        [t('lan.hostTitle'), t('lan.hostSub'), t('menu.host'), actions.host, true],
+        [t('lan.joinTitle'), t('lan.joinSub'), t('menu.join'), actions.join, false],
+      ] as [string, string, string, () => void, boolean][]) {
+        const card = document.createElement('div');
+        card.className = 'daily-box lan-box';
+        text(card, 'div', 'setup-label', title);
+        text(card, 'p', 'mode-hint', sub);
+        button(card, label_, fn, primary).classList.add('small');
+        cards.append(card);
+      }
       button(s, t('menu.back'), () => api.title());
     });
   }
@@ -792,7 +815,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         text(box, 'p', 'daily-best', best.length ? t('daily.best', { list: best.join(' · ') }) : t('daily.none'));
         const b = button(box, t('daily.play'), actions.daily);
         b.classList.add('small');
-        s.append(box);
+        // the three extra games side by side, as small cards
+        const cards = document.createElement('div');
+        cards.className = 'mode-cards';
+        s.append(cards);
+        cards.append(box);
         // the Boss Rush: every boss in a row
         const rush = document.createElement('div');
         rush.className = 'daily-box rush-box';
@@ -800,7 +827,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         text(rush, 'p', 'mode-hint', t('bossrush.sub'));
         const rb = button(rush, t('bossrush.play'), actions.bossRush);
         rb.classList.add('small');
-        s.append(rush);
+        cards.append(rush);
         // the Boss Brawl: every boss in one arena, one or two at a time
         const brawl = document.createElement('div');
         brawl.className = 'daily-box rush-box';
@@ -808,7 +835,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         text(brawl, 'p', 'mode-hint', t('brawl.sub'));
         const bb = button(brawl, t('brawl.play'), actions.bossBrawl);
         bb.classList.add('small');
-        s.append(brawl);
+        cards.append(brawl);
       }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
@@ -975,68 +1002,63 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           text(s, 'p', '', t('lobby.voteEnds', { s: vote.endsIn }));
         }
         if (isHost) {
-          // two blocks, each with only its own setting: co-op with the difficulty, versus with the bots
-          const group = (title: string) => {
+          // the host's card: what to play, row by row. A label on the left, the choices on the right; a click on a
+          // game starts it for everyone
+          text(s, 'p', 'lobby-hint', t('lobby.hostHint'));
+          const card = document.createElement('div');
+          card.className = 'setup-body lobby-card';
+          s.append(card);
+          const rowOf = (title: string) => {
             const g = document.createElement('div');
-            g.className = 'lobby-group';
+            g.className = 'setup-row';
             text(g, 'div', 'setup-label', title);
             const row = document.createElement('div');
-            row.className = 'lobby-group-row';
+            row.className = 'chips';
             g.append(row);
-            s.append(g);
+            card.append(g);
             return row;
           };
-          const coop = group(t('lobby.coop'));
-          button(coop, t('lobby.start'), lan.start, true);
-          const diff = button(coop, diffLabel(difficulty), () => {
-            difficulty = nextDiff(difficulty);
-            diff.textContent = diffLabel(difficulty);
-            lan.setDifficulty(difficulty);
-          });
-          diff.classList.add('small');
-          const vs = group(t('mode.versus'));
-          if (!vote) button(vs, t('lobby.versus'), () => setupScreen('versus', lan), true);
-          // one control for the bots: how many players the lobby is topped up to (bots show up right away)
-          const bots = document.createElement('div');
-          bots.className = 'stepper txt lobby-bots';
-          const sizes = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-          const at = Math.max(0, sizes.indexOf(lan.autoFill()));
-          const stepTo = (i: number) => {
-            actions.click();
-            lan.setAutoFill(sizes[Math.max(0, Math.min(sizes.length - 1, i))]);
+          const go = (row: HTMLElement, label_: string, fn: () => void) => {
+            const b = button(row, label_, fn, true);
+            b.classList.add('small', 'go');
+            return b;
           };
-          const minus = document.createElement('button');
-          minus.className = 'chip';
-          minus.textContent = '\u2212';
-          minus.disabled = at === 0;
-          minus.addEventListener('click', () => stepTo(at - 1));
-          const count = document.createElement('span');
-          count.textContent = lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() });
-          const plus = document.createElement('button');
-          plus.className = 'chip';
-          plus.textContent = '+';
-          plus.disabled = at === sizes.length - 1;
-          plus.addEventListener('click', () => stepTo(at + 1));
-          bots.append(minus, count, plus);
-          vs.append(bots);
-          // the view for everyone (co-op and versus)
-          const viewRow = document.createElement('div');
-          viewRow.className = 'chips lobby-view';
-          text(viewRow, 'span', 'setup-label', t('lobby.view'));
-          for (const v of ['both', 'fp', 'top'] as const) {
+          const chip = (row: HTMLElement, label_: string, on: boolean, fn: () => void) => {
             const c = document.createElement('button');
-            c.className = `chip small${lan.viewMode() === v ? ' on' : ''}`;
-            c.textContent = t(`lobby.view.${v}` as 'lobby.view.both');
+            c.className = `chip small${on ? ' on' : ''}`;
+            c.textContent = label_;
             c.addEventListener('click', () => {
               actions.click();
-              lan.setViewMode(v);
+              fn();
             });
-            viewRow.append(c);
-          }
-          s.append(viewRow);
+            row.append(c);
+          };
+          // together: every co-op game of the title screen
+          const coop = rowOf(t('lobby.coopRow'));
+          go(coop, t('mode.run'), lan.start);
+          go(coop, t('bossrush.title'), () => lan.startMode('bossrush'));
+          go(coop, t('brawl.title'), () => lan.startMode('brawl'));
+          if (profile.unlocked.includes('endless')) go(coop, t('mode.endless'), () => lan.startMode('endless'));
+          const diffRow = rowOf(t('settings.difficulty'));
+          for (const d of DIFFICULTIES) chip(diffRow, t(`difficulty.${d}` as 'difficulty.medium'), d === difficulty, () => lan.setDifficulty(d));
+          // against each other: the versus page picks the rule and the map (or puts it to the vote)
+          const vs = rowOf(t('lobby.versusRow'));
+          if (!vote) go(vs, t('lobby.versus'), () => setupScreen('versus', lan));
+          else text(vs, 'span', 'lobby-note', t('lobby.voteRunning'));
+          // one control for the bots: how many players a versus match is topped up to (bots show up right away)
+          const botsRow = rowOf(t('lobby.botsRow'));
+          const sizes = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+          const at = Math.max(0, sizes.indexOf(lan.autoFill()));
+          const stepTo = (k: number) => lan.setAutoFill(sizes[Math.max(0, Math.min(sizes.length - 1, k))]);
+          chip(botsRow, '\u2212', false, () => stepTo(at - 1));
+          text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
+          chip(botsRow, '+', false, () => stepTo(at + 1));
+          // the view for everyone (co-op and versus)
+          const viewRow = rowOf(t('lobby.view'));
+          for (const v of ['both', 'fp', 'top'] as const) chip(viewRow, t(`lobby.view.${v}` as 'lobby.view.both'), lan.viewMode() === v, () => lan.setViewMode(v));
         } else if (server) {
           // a dedicated server starts by itself: the countdown, and a button to say you are ready
-          if (server.mode === 'coop') text(s, 'p', '', diffLabel(difficulty));
+          if (isCoop(server.mode)) text(s, 'p', '', diffLabel(difficulty));
           countdown = text(s, 'p', 'lobby-countdown', countdownText(server));
           // ready only counts between matches
           if (!server.running) {

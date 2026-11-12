@@ -351,7 +351,7 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 |---|---|---|
 | `--name <text>` | Name in the server list | Cube Crashers Server |
 | `--port <number>` | Port the server listens on | 47800 |
-| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture` or `coop` (the Tower Run) | discovery |
+| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`, `coop` (the Tower Run), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
 | `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
 | `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |

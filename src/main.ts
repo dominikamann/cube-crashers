@@ -151,7 +151,8 @@ function startGame() {
       if (!host) return;
       const [a, b] = voteOptions();
       host.startVote(option ? [option, b.map === option.map && b.rule === option.rule ? a : b] : [a, b]);
-      lastLobby = '';
+      // back to the lobby, where the vote is shown (the versus page would hide it)
+      drawHostLobby();
     },
     startDiscovery: () => {
       if (!host) return;
@@ -177,8 +178,14 @@ function startGame() {
       lastLobby = '';
     },
     backToLobby: () => {
-      lastLobby = '';
       mode = 'lobby';
+      drawHostLobby();
+    },
+    startMode: (coop: 'brawl' | 'bossrush' | 'endless') => {
+      if (!host) return;
+      lanBots = [];
+      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop);
+      enterPlay();
     },
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
     setAutoFill: (n: number) => {
@@ -807,7 +814,12 @@ function startGame() {
     if (document.querySelector('.screen.setup')) return;
     const key = JSON.stringify([host.lobby, host.difficulty, host.voteInfo()]);
     if (key === lastLobby) return;
-    lastLobby = key;
+    drawHostLobby();
+  }
+  /** shows the host's lobby now, also over the versus page */
+  function drawHostLobby() {
+    if (!host) return;
+    lastLobby = JSON.stringify([host.lobby, host.difficulty, host.voteInfo()]);
     screens.lobby(host.lobby, host.difficulty, true, 0, lanActions, host.voteInfo());
   }
 
