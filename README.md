@@ -45,7 +45,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
     <td><img src="docs/design/lane.gif" alt="Lane Defense: hold the lane, save the arcade cabinet" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Kart Rally: most laps in two minutes</sub></td>
+    <td align="center"><sub>Kart Rally: first to five laps wins</sub></td>
     <td align="center"><sub>Lane Defense: keep the arcade cabinet alive</sub></td>
   </tr>
   <tr>
@@ -186,9 +186,10 @@ everyone gets the same ones. Every world can also be played on its own under **S
 
 Between the floors the elevator takes you to a short game of its own, then to the shop:
 
-- **Kart Rally:** everyone sits in their own kart (no getting out), two minutes on a race track with a jump, boost
-  pads, an S-bend and a narrow canyon. Laps only count through every checkpoint in order. Ram or shoot the monsters
-  on the track. Alone you drive for a bronze, silver or gold medal; together the most laps win a bonus.
+- **Kart Rally:** everyone sits in their own kart (no getting out, and it cannot be wrecked) on a race track with a
+  jump, boost pads, an S-bend and a narrow canyon. **The first to drive five laps wins**, and the race ends right
+  then. Laps only count through every checkpoint in order. Ram or shoot the monsters on the track. Alone you drive
+  for a medal by your time (gold within 2:30, silver within 3:30, bronze within 6:00).
 - **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.
