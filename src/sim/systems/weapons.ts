@@ -1,7 +1,8 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
-import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWATTER, SWORD, WEAPONS, levelMul } from '../config/weapons';
+import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, RAIL, SWATTER, SWORD, WEAPONS, levelMul } from '../config/weapons';
+import { Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
 import { hitEnemy } from './combat';
@@ -68,6 +69,20 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         if (d > radius + PLAYER_RADIUS || (d > 0.6 && (dx * p.aim.x + dz * p.aim.z) / d < minDot)) continue;
         damagePlayer(s, r, pvpDamage(damage), 'other', p.id);
       }
+      return true;
+    }
+    case 'pixelRail': {
+      // the beam runs until the first wall
+      let reach = 0;
+      while (reach < RAIL.range && tileAt(s.map, p.pos.x + p.aim.x * reach, p.pos.z + p.aim.z * reach) !== Tile.Wall) reach += 0.25;
+      const onLine = (q: Vec2, r: number) => {
+        const qx = q.x - p.pos.x, qz = q.z - p.pos.z;
+        const along = qx * p.aim.x + qz * p.aim.z;
+        return along > 0 && along <= reach + r && Math.abs(qx * -p.aim.z + qz * p.aim.x) <= r + RAIL.width;
+      };
+      for (const e of targets(s)) if (onLine(e.pos, e.radius)) hitEnemy(s, e, damage, w.kind, p.id);
+      for (const r of rivals(s, p.id)) if (onLine(r.pos, PLAYER_RADIUS)) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
+      s.events.push({ type: 'railFired', from: { ...p.pos }, to: { x: p.pos.x + p.aim.x * reach, z: p.pos.z + p.aim.z * reach } });
       return true;
     }
     case 'candyCannon': {

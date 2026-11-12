@@ -20,6 +20,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   raceLap: { type: 'raceLap', playerId: 0, lap: 1 },
   pvpKill: { type: 'pvpKill', killerId: 0, victimId: 1 },
   gunLevel: { type: 'gunLevel', playerId: 0, level: 1, weapon: 'candyCannon' },
+  railFired: { type: 'railFired', from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
   cubeTaken: { type: 'cubeTaken', team: 1, playerId: 0 },
   cubeDropped: { type: 'cubeDropped', team: 1, pos: { x: 0, z: 0 } },
   cubeReturned: { type: 'cubeReturned', team: 1 },

@@ -95,6 +95,11 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 500, attack: 0.002, sustain: 0.01, decay: 0.05, volume: 0.1, lowpass: 900 },
   ],
   shot_bomb: [{ wave: 'sine', freq: 260, freqEnd: 520, attack: 0.01, sustain: 0.12, decay: 0.12, volume: 0.22 }],
+  // a charged zap
+  shot_pixelRail: [
+    { wave: 'sawtooth', freq: 1800, freqEnd: 300, attack: 0.002, sustain: 0.05, decay: 0.18, volume: 0.13, lowpass: 4000 },
+    { wave: 'square', freq: 90, freqEnd: 40, attack: 0.001, sustain: 0.04, decay: 0.1, volume: 0.1 },
+  ],
   // a whoosh and a wet KLATSCH
   shot_flySwatter: [
     { wave: 'noise', freq: 600, attack: 0.02, sustain: 0.04, decay: 0.05, volume: 0.1, lowpass: 1800 },
@@ -264,6 +269,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('buildDenied');
     case 'towerFired':
       return one(`tower_${e.kind}`);
+    case 'railFired':
+      // the zap itself comes with the shot; this is the crack where the beam ends
+      return one('enemyHit', 0.6);
     case 'playerHit':
       return one('playerHit');
     case 'playerDown':

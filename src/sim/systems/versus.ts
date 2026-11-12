@@ -125,7 +125,7 @@ export function safeSpawn(s: SimState, p: Player, others: Player[]): Vec2 {
 }
 
 /** gun game: the weapons from first to last; a kill with the last one wins */
-export const GUN_LADDER: WeaponKind[] = ['pixelBlaster', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'bomb', 'discoBall', 'laserSword', 'flySwatter'];
+export const GUN_LADDER: WeaponKind[] = ['pixelBlaster', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'pixelRail', 'bomb', 'discoBall', 'laserSword', 'flySwatter'];
 
 /** a fresh start: the blaster, or in gun game the weapon of the player's step on the ladder */
 function equip(p: Player, s?: SimState): void {

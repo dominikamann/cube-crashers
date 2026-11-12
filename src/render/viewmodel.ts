@@ -31,6 +31,12 @@ function makeModel(kind: Look): THREE.Group {
       for (const o of [-0.11, 0, 0.11]) g.add(box(0.015, 0.04, 0.32, lambert(0x1f8a44), o, 0, -0.6));
       g.rotation.x = 0.35;
       break;
+    case 'pixelRail':
+      g.add(box(0.1, 0.1, 0.55, lambert(0x2a2550), 0, 0, -0.15));
+      for (const z of [-0.2, -0.32, -0.44]) g.add(box(0.14, 0.14, 0.04, glowMat(0x9ff8ff, 1.4), 0, 0, z));
+      g.add(box(0.04, 0.04, 0.3, metal, 0, 0, -0.55));
+      g.add(box(0.06, 0.13, 0.08, dark, 0, -0.12, 0.02));
+      break;
     case 'candyCannon':
       g.add(box(0.16, 0.16, 0.5, lambert(0xff7ac8), 0, 0, -0.15));
       g.add(box(0.2, 0.2, 0.06, lambert(0xffffff), 0, 0, -0.42));

@@ -126,6 +126,20 @@ describe('weapons', () => {
     expect(dmg('flySwatter')).toBeGreaterThan(dmg('laserSword') * 2);
   });
 
+  it('the pixel rail hits everything in a line at once, but not what is off the line', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.weapons = held('pixelRail');
+    const a = spawnEnemy(s, 'tank', rel(p.pos, 0, -2));
+    const b = spawnEnemy(s, 'tank', rel(p.pos, 0, -4));
+    const off = spawnEnemy(s, 'tank', rel(p.pos, 2, -3));
+    stepSim(s, [aimAt(rel(p.pos, 0, -6)), fire]);
+    expect(a.hp).toBe(TANK - dmg('pixelRail'));
+    expect(b.hp).toBe(TANK - dmg('pixelRail'));
+    expect(off.hp).toBe(TANK);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'railFired' }));
+  });
+
   it('candy cannon fires a spread of 6 pellets', () => {
     const s = quietSim();
     const p = s.players[0];

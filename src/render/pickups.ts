@@ -15,6 +15,7 @@ export const WEAPON_GLYPH: Record<WeaponKind, string> = {
   bananaMine: '🍌',
   bomb: '💣',
   flySwatter: '🪰',
+  pixelRail: '⚡',
 };
 
 export const PERK_GLYPH: Record<PerkKind, string> = {
@@ -58,6 +59,7 @@ const WEAPON_LABEL: Record<WeaponKind, string> = {
   bananaMine: 'BANANA',
   bomb: 'BOMB',
   flySwatter: 'SWATTER',
+  pixelRail: 'RAIL',
 };
 
 const PERK_LABEL: Record<PerkKind, string> = {

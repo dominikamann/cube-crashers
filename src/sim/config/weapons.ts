@@ -19,6 +19,7 @@ export const WEAPONS: Record<WeaponKind, WeaponDef> = {
   bananaMine: { cooldown: 2.5, damage: 40 },
   bomb: { cooldown: 5, damage: 50 },
   flySwatter: { cooldown: 0.8, damage: 55 },
+  pixelRail: { cooldown: 1.4, damage: 26 },
 };
 
 export const ALL_WEAPONS = Object.keys(WEAPONS) as WeaponKind[];
@@ -31,6 +32,8 @@ export function levelMul(level: number): number {
 export const BLASTER = { speed: 20, range: 9 };
 export const SWORD = { radius: 2.2, radiusPerLevel: 0.2, halfArcDeg: 70 };
 /** the fly swatter: a huge slap, but only right in front of you (the knife of this game) */
+/** the pixel rail: an instant beam through everything in a line, stopped only by walls */
+export const RAIL = { range: 14, width: 0.3 };
 export const SWATTER = { radius: 1.4, radiusPerLevel: 0.1, halfArcDeg: 40 };
 export const CANDY = { speed: 14, range: 5, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */

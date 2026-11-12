@@ -321,6 +321,7 @@ export const en = {
   'weapon.bananaMine': 'Banana Mine',
   'weapon.bomb': 'Party Bomb',
   'weapon.flySwatter': 'Fly Swatter',
+  'weapon.pixelRail': 'Pixel Rail',
   'build.help': 'Wheel or 1–3 choose · E builds · hold E builds right away',
   'build.helpPad': '◀ ▶ choose · X builds · hold X builds right away · B closes',
   'build.helpUpgrade': 'E upgrades',

@@ -250,6 +250,11 @@ export function createFx(scene: THREE.Scene): Fx {
             if (pos) burst(pos, 1, 30, [0xffc928, 0xd19a00, 0xffffff], 4, 0.12);
             break;
           }
+          case 'railFired':
+            // a bright beam along the line, and sparks where it stops
+            beam(e.from, 0.9, e.to, 0.9, 0x9ff8ff, 0.16);
+            burst(e.to, 0.9, 8, [0x9ff8ff, 0xffffff], 3, 0.08, 0.6);
+            break;
           case 'shot':
             if (e.weapon === 'flySwatter') {
               // KLATSCH: a shock ring where the paddle lands, and a jolt
