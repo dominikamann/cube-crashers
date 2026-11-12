@@ -1102,6 +1102,14 @@ function applyDemo(sim: SimState) {
       sim.enemies = [];
     });
   }
+  // ?demo=garage: every vehicle in a row next to the player (to look at them)
+  if (params.get('demo') === 'garage') {
+    void import('./sim/systems/vehicles').then(m => {
+      sim.enemies = [];
+      sim.vehicles = [];
+      (['kart', 'kart', 'roller', 'hoverboard', 'unicorn'] as const).forEach((kind, i) => m.addVehicle(sim, kind, { x: sim.players[0].pos.x - 11 + i * 2.2, z: sim.players[0].pos.z - 1 }, 0));
+    });
+  }
   // ?demo=unicorn: a unicorn right next to the player
   if (params.get('demo') === 'unicorn') void import('./sim/systems/vehicles').then(m => m.addVehicle(sim, 'unicorn', { x: sim.players[0].pos.x + 2, z: sim.players[0].pos.z - 1 }, 0));
   // ?demo=jetpack: a jetpack lying right next to the player (to look at it)
