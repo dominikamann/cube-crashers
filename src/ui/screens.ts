@@ -87,7 +87,7 @@ export function withDefaults<T extends { name: string; color: number | null }>(s
   return {
     ...s,
     name: s.name.trim() ? s.name : `${pick(FUN_NAMES.adjectives)} ${pick(FUN_NAMES.nouns)}`,
-    color: s.color ?? Math.floor(rnd() * 8) % 8,
+    color: s.color ?? Math.floor(rnd() * 10) % 10,
   };
 }
 
@@ -280,7 +280,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     return e;
   }
 
-  /** "8/8 players (5 bots)" */
+  /** "10/10 players (6 bots)" */
   const seats = (r: ServerRow) => {
     const c = playerCount(r.info!);
     return c.bots > 0 ? t('online.playersBots', { n: c.players, max: c.max, b: c.bots }) : t('online.players', { n: c.players, max: c.max });
@@ -494,7 +494,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       colors.classList.add('colors');
       const drawColors = () => {
         colors.replaceChildren();
-        [null, 0, 1, 2, 3, 4, 5, 6, 7].forEach(c => {
+        [null, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(c => {
           const b = document.createElement('button');
           b.className = `swatch${settings.color === c ? ' on' : ''}`;
           if (c === null) b.textContent = 'A';
@@ -597,7 +597,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         if (!lan) {
           // like the LAN lobby: how many players the match has, bots fill up the rest
           const humans = settings.localPlayers;
-          const sizes = [humans, ...[2, 4, 6, 8].filter(n => n > humans)];
+          const sizes = [humans, ...[2, 4, 6, 8, 10].filter(n => n > humans)];
           if (!sizes.includes(settings.versusSize)) settings.versusSize = sizes.find(n => n >= settings.versusSize) ?? MAX_PLAYERS;
           choose(t('setup.size'), sizes.map(n => ({ label: n === humans ? t('lobby.fillOff') : String(n), value: n })), settings.versusSize, v => (settings.versusSize = v));
         }
@@ -724,11 +724,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const table = document.createElement('table');
         table.className = 'ranking txt';
         const head = ['', t('rank.player'), t('rank.score'), t('rank.kills'), t('rank.weapon'), t('rank.combo'), t('rank.towers'), t('rank.coins'), t('rank.revives'), t('rank.downs')];
-        table.innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>`;
+        // versus has no towers, coins or revives: just who scored, who crashed whom, and who went down
+        const cols = versus ? [0, 1, 2, 3, 9] : head.map((_h, i) => i);
+        table.innerHTML = `<tr>${cols.map(i => `<th>${head[i]}</th>`).join('')}</tr>`;
         r.ranking.forEach((row, i) => {
           const tr = document.createElement('tr');
           const cells = [i === 0 && r.ranking.length > 1 ? '\u2605' : `${i + 1}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
-          cells.forEach((c, j) => {
+          cols.forEach(j => {
+            const c = cells[j];
             const td = document.createElement('td');
             td.textContent = String(c);
             if (j === 1) td.style.color = hex(row.color);
@@ -822,7 +825,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           // one control for the bots: how many players the lobby is topped up to (bots show up right away)
           const bots = document.createElement('div');
           bots.className = 'stepper txt lobby-bots';
-          const sizes = [0, 2, 3, 4, 5, 6, 7, 8];
+          const sizes = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
           const at = Math.max(0, sizes.indexOf(lan.autoFill()));
           const stepTo = (i: number) => {
             actions.click();

@@ -42,7 +42,7 @@ async function main() {
     port: cfg.port,
     onMessage: (from, data) => onMessage(from, data),
     onPeer: (peer, joined) => onPeer(peer, joined),
-    // 8 players plus plenty of room for server-list probes (short-lived) and for telling more that it is full
+    // the players plus plenty of room for server-list probes (short-lived) and for telling more that it is full
     maxPeers: MAX_PLAYERS + 56,
   }).catch(err => {
     console.error(`error: cannot listen on port ${cfg.port} (${(err as Error).message})`);

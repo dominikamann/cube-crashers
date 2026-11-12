@@ -20,7 +20,7 @@ export const BOT_IDS = 1000;
 /** how long a versus vote stays open */
 export const VOTE_SECONDS = 30;
 /** names for bots that fill a match up */
-const BOT_NAMES = ['Bot Turbo', 'Bot Pixel', 'Bot Crispy', 'Bot Wobbly', 'Bot Sneaky', 'Bot Cosmic', 'Bot Funky', 'Bot Lucky'];
+const BOT_NAMES = ['Bot Turbo', 'Bot Pixel', 'Bot Crispy', 'Bot Wobbly', 'Bot Sneaky', 'Bot Cosmic', 'Bot Funky', 'Bot Lucky', 'Bot Zippy', 'Bot Mango'];
 
 const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready', 'emote']);
 const HELD = new Set(['hold', 'fire', 'fly']);
@@ -272,7 +272,7 @@ export class HostSession {
       if (this.lobby.length >= MAX_PLAYERS) return reject('full');
       const used = new Set(this.lobby.map(p => p.color));
       const wish = m.color !== undefined && !used.has(m.color) ? m.color : undefined;
-      const color = wish ?? [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;
+      const color = wish ?? [...Array(MAX_PLAYERS).keys()].find(c => !used.has(c)) ?? 0;
       this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color });
       // what anyone in the lobby has unlocked is available to everyone
       for (const u of m.unlocked ?? []) this.unlocked.add(u);

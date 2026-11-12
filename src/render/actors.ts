@@ -11,7 +11,7 @@ import { box, glowMat, lambert, setGlow } from './pool';
 import type { Theme } from './theme';
 
 /** suit colours of the up to six players (also used by the HUD and minimap) */
-export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4, 0xff6fd8, 0xe8e8f0];
+export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4, 0xff6fd8, 0xe8e8f0, 0xb8e04a, 0xb0703c];
 
 export interface Actors {
   /** `localIds`: the players on this screen (two in split screen) */

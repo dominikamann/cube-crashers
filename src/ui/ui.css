@@ -203,7 +203,7 @@ body.split .card { width: 110px; }
 .stepper { display: flex; align-items: center; gap: 10px; font-size: 12px; background: rgba(20, 16, 50, 0.55); padding: 4px; }
 .stepper span { min-width: 220px; text-align: center; }
 .row2 { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-.row2 .btn { min-width: 0; width: 260px; white-space: nowrap; }
+.row2 .btn { min-width: 260px; width: auto; max-width: min(640px, calc(100vw - 32px)); line-height: 1.5; }
 .foot { position: absolute; bottom: clamp(12px, 3vh, 28px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; padding: 4px; border: 2px solid rgba(255, 255, 255, 0.18); border-radius: 999px; background: rgba(16, 12, 40, 0.6); backdrop-filter: blur(6px); }
 .foot .btn { background: transparent; color: #e8e6ff; border: 0; box-shadow: none; border-radius: 999px; padding: 9px 16px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
 .foot .btn + .btn { margin-left: 2px; }
@@ -346,6 +346,13 @@ body.split .card { width: 110px; }
 .daily-best { color: var(--gold); font-size: 10px; }
 
 /* the kill cam banner */
-.killcam { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 10px; background: rgba(120, 10, 40, 0.75); border: 2px solid #ff5a7a; pointer-events: none; }
-.killcam b { color: #fff; font-size: 14px; letter-spacing: 1px; }
+.killcam { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 12px; padding: 6px 12px; border-radius: 8px; background: rgba(120, 10, 40, 0.55); border: 1px solid rgba(255, 90, 122, 0.7); pointer-events: none; }
+.killcam b { color: #fff; font-size: 10px; font-weight: normal; letter-spacing: 1px; }
 .killcam span { color: rgba(255, 255, 255, 0.75); font-size: 9px; }
+
+/* versus: messages stay small and out of the middle of the screen, so they do not get in the way of aiming */
+body.versus .toasts { top: 96px; gap: 6px; }
+body.versus .toast { font-size: clamp(9px, 1.1vw, 13px); opacity: 0.9; }
+body.versus .toast.final { font-size: clamp(11px, 1.5vw, 17px); text-shadow: 2px 2px 0 var(--shadow); animation-duration: 2.6s; }
+.ranking { max-width: calc(100vw - 32px); }
+body.versus .down { top: 130px; transform: translateX(-50%); font-size: 13px; }

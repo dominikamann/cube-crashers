@@ -130,7 +130,7 @@ ipcMain.on('lan:kick', (event, peer) => {
 
 ipcMain.on('lan:info', (event, next) => {
   if (!fromGame(event) || typeof next !== 'object' || next === null) return;
-  info = { players: Math.min(6, Math.max(1, Number(next.players) || 1)), open: next.open !== false };
+  info = { players: Math.min(10, Math.max(1, Number(next.players) || 1)), open: next.open !== false };
 });
 
 ipcMain.handle('lan:discover', event => {

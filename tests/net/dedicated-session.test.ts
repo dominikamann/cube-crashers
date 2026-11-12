@@ -27,7 +27,7 @@ describe('a dedicated server session', () => {
     t.onMessage((_f, d) => got.push(parseMessage(d) as HostMessage));
     t.send(0, JSON.stringify({ type: 'info' }));
     hub.flush();
-    expect(got[0]).toEqual({ type: 'info', name: 'Dominiks Server', mode: 'gungame', players: 2, bots: 0, max: 8, version: APP_VERSION, protocol: PROTOCOL_VERSION, playing: false });
+    expect(got[0]).toEqual({ type: 'info', name: 'Dominiks Server', mode: 'gungame', players: 2, bots: 0, max: 10, version: APP_VERSION, protocol: PROTOCOL_VERSION, playing: false });
     expect(hub.kicked).toHaveLength(1);
     expect(host.lobby).toHaveLength(2);
   });

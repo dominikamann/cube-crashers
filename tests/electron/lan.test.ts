@@ -114,11 +114,11 @@ describe('desktop LAN server', () => {
     expect(page.state.open).toBe(false);
   });
 
-  it('accepts at most 10 connections (8 players and room to turn more away)', async () => {
+  it('accepts at most 14 connections (10 players and room to turn more away)', async () => {
     const { host } = await quietHost();
-    const conns = Array.from({ length: 12 }, () => raw(host.port));
-    await wait(250);
-    expect(conns.filter(c => c.state.open && !c.state.closed)).toHaveLength(10);
+    const conns = Array.from({ length: 17 }, () => raw(host.port));
+    await wait(300);
+    expect(conns.filter(c => c.state.open && !c.state.closed)).toHaveLength(14);
   });
 
   it('drops a peer that sends too much too fast', async () => {

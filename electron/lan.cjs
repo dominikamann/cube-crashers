@@ -10,8 +10,8 @@ const MAX_BYTES = 256 * 1024;
 /** clients only send inputs: small and at most a little over 60 per second */
 const MAX_CLIENT_BYTES = 16 * 1024;
 const MAX_MESSAGES_PER_SECOND = 120;
-// 7 clients next to the host, plus room to tell an 8th that the game is full
-const MAX_PEERS = 10;
+// 9 clients next to the host, plus room to tell more that the game is full and for server-list probes
+const MAX_PEERS = 14;
 const ADMIT_MS = 5000;
 const HEARTBEAT_MS = 2000;
 const MAX_GAMES = 20;
@@ -197,7 +197,7 @@ function startDiscovery({ port = BEACON_PORT, expireMs = 3000, onGames }) {
     if (m.open === false) return;
     const address = `${rinfo.address}:${m.gamePort}`;
     if (!games.has(address) && games.size >= MAX_GAMES) return;
-    games.set(address, { address, name: m.name.slice(0, 16), players: Math.min(6, Math.max(1, Number(m.players) || 1)), seen: Date.now() });
+    games.set(address, { address, name: m.name.slice(0, 16), players: Math.min(10, Math.max(1, Number(m.players) || 1)), seen: Date.now() });
     report();
   });
   sock.bind(port);

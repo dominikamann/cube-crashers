@@ -233,7 +233,7 @@ the whole team.
 
 ## Playing together on the LAN
 
-Up to **8 players** on the same network (Wi-Fi or cable), all with the desktop app.
+Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop app.
 
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
@@ -269,7 +269,7 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 the shared [`servers.json`](servers.json) and the ones you added yourself:
 
 - Servers you can join come first (most real players first), with their mode, ping and who is on them,
-  bots counted apart: *8/8 players (5 bots)*. A real player who joins takes a bot's place.
+  bots counted apart: *10/10 players (6 bots)*. A real player who joins takes a bot's place.
 - Servers on another version say so (e.g. *other version (v0.4.3)*), offline ones are greyed out at the end.
 - **Add a server**: type its address, e.g. `10.12.3.23` or `play.example.org:47800`. It is remembered on
   your computer; the ✕ removes it again.
@@ -307,7 +307,7 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 | `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture` or `coop` (the Tower Run) | discovery |
 | `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
 | `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
-| `--bots <0-8>` | Bots fill every versus match up to this many players | 4 |
+| `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |
 | `--difficulty <level>` | Co-op: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
 | `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
 | `--countdown <seconds>` | Wait this long for players before a match | 30 |
@@ -343,7 +343,7 @@ Once it is merged, every game shows it the next time the list is opened.
 ## Versus: players against players
 
 From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
-Blaster; crates with weapons, karts and a jetpack lie around. Up to 8 players, bots fill up.
+Blaster; crates with weapons, karts and a jetpack lie around. Up to 10 players, bots fill up.
 
 | Rule | How it works |
 |---|---|
@@ -643,7 +643,7 @@ docs/         gameplay GIF and screenshots
 
 - [x] Tower Run: one big floor with nests, hordes, weapons, towers, kart, power-ups, combo, score
 - [x] Jetpack and rare weapons
-- [x] LAN co-op for up to 8 players with revives and a ranking
+- [x] LAN co-op for up to 10 players with revives and a ranking
 - [x] Difficulty levels
 - [x] Graphics quality setting (sharper shadows, ambient occlusion)
 - [x] A run over 5 floors with different themes, a shaft ride between floors, boss floors
@@ -651,7 +651,7 @@ docs/         gameplay GIF and screenshots
 - [x] Controller support and local split screen
 - [x] A different minigame between the floors: Kart Rally, Lane Defense, Glitch Maze
 - [x] Neon Highway
-- [x] Versus for up to 8 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
+- [x] Versus for up to 10 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
 - [x] First-person view as a switch (and the default for versus)
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
 - [x] Emotes and pings, for online play

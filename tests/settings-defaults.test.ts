@@ -6,7 +6,7 @@ describe('settings defaults', () => {
     const s = withDefaults({ name: '', color: null }, () => 0.5);
     expect(s.name.length).toBeGreaterThan(3);
     expect(FUN_NAMES.adjectives.some(a => s.name.startsWith(a))).toBe(true);
-    expect(s.color).toBe(4);
+    expect(s.color).toBe(5);
   });
 
   it('keeps a name and colour the player chose', () => {

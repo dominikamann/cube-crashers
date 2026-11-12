@@ -26,12 +26,12 @@ describe('LAN session', () => {
     const hub = createMemoryHub();
     const host = new HostSession(hub.host(), { name: 'H' });
     const odd = new ClientSession(hub.client(), { name: 'Old', version: PROTOCOL_VERSION + 1 });
-    for (let i = 0; i < 7; i++) new ClientSession(hub.client(), { name: `P${i}` });
+    for (let i = 0; i < 9; i++) new ClientSession(hub.client(), { name: `P${i}` });
     const late = new ClientSession(hub.client(), { name: 'Late' });
     hub.flush();
     expect(odd.status).toBe('rejected');
     expect(late.status).toBe('rejected');
-    expect(host.lobby).toHaveLength(8);
+    expect(host.lobby).toHaveLength(10);
   });
 
   it('starts everyone on the same floor and moves each player by their own input', () => {

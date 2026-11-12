@@ -168,6 +168,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       padMode = useButton;
     },
     update(s, events, buildMenuOpen, time, localId) {
+      // versus: the messages are smaller and sit under the score, out of the line of fire (see ui.css)
+      document.body.classList.toggle('versus', !!s.versus);
       const p = s.players.find(x => x.id === localId) ?? s.players[0];
 
       creditEls.forEach((c, i) => c.classList.toggle('on', i < s.credits));
