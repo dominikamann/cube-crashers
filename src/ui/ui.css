@@ -454,3 +454,5 @@ body.no-map .mapbox { display: none; }
   .setup-row .setup-label { text-align: left; }
   .setup-body > p.mode-hint { margin-left: 0; }
 }
+/* tips are to read, not to mark */
+.tip-box { user-select: none; -webkit-user-select: none; }
