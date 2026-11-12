@@ -676,7 +676,7 @@ Contributions are welcome. Please keep in mind:
 
 ## Credits
 
-A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help from hard-working AI helpers.
+A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help from hard-working AI bots.
 
 ## License
 
