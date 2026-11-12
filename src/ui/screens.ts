@@ -534,7 +534,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (mode === 'versus' && settings.versusDiscovery) text(body, 'p', 'mode-hint', t('versus.discoveryHint'));
       if (mode === 'versus' && !settings.versusDiscovery) {
-        choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         choose(
           t('setup.rule'),
           (['score', 'rounds', 'king', 'capture', 'gungame'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
@@ -547,6 +546,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           true,
         );
         text(body, 'p', 'mode-hint', t(`versus.${settings.versusRule}Hint` as 'versus.scoreHint'));
+        // capture is always teams and gun game always everyone for themselves: no choice to offer there
+        if (settings.versusRule !== 'capture' && settings.versusRule !== 'gungame') {
+          choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
+        }
         choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
         if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
         choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
