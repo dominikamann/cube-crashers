@@ -231,6 +231,19 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
   }
 }
 
+/** Glitch ghosts drift on the ground straight at the nearest player, right through walls. */
+function drift(s: SimState, e: Enemy, players: Player[]): void {
+  const target = nearestPlayer(players, e.pos);
+  if (!target || target.d < 1e-3) return;
+  const dir = unit(e.pos, target.p.pos);
+  const slow = e.slowUntil > s.tick ? 0.5 : 1;
+  e.dir = dir;
+  e.pos.x = Math.min(s.map.w - 1.5, Math.max(1.5, e.pos.x + (dir.x * e.speed * slow + e.knock.x) * DT));
+  e.pos.z = Math.min(s.map.h - 1.5, Math.max(1.5, e.pos.z + (dir.z * e.speed * slow + e.knock.z) * DT));
+  e.knock.x *= 0.85;
+  e.knock.z *= 0.85;
+}
+
 /** Swarmers fly over everything straight at the nearest player, weaving a little. */
 function flySwarmer(s: SimState, e: Enemy, players: Player[]): void {
   const target = nearestPlayer(players, e.pos);
@@ -323,6 +336,10 @@ export function updateEnemies(s: SimState): void {
     if (e.kind === 'wormSegment') continue;
     if (e.kind === 'swarmer') {
       if (!isHeld) flySwarmer(s, e, players);
+      continue;
+    }
+    if (e.kind === 'phantom') {
+      if (!isHeld) drift(s, e, players);
       continue;
     }
     if (e.state === 'move' && !isHeld) ({ dir, factor } = think(s, e, e.hordeId !== null ? hordes.get(e.hordeId) : undefined, players, field));

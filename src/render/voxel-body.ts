@@ -43,6 +43,8 @@ const SHAPES: Partial<Record<EnemyKind, Shape>> = {
   teleporter: { n: [5, 7, 5], inside: (u, v, w) => Math.abs(u) + Math.abs(v) + Math.abs(w) <= 1.25, tone: (u, v, w) => (Math.abs(u) + Math.abs(v) + Math.abs(w) < 0.6 ? 1.5 : 1) },
   // a dome on straight sides
   ghost: { n: [6, 6, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15) },
+  // the glitch ghost: the same dome, with scan lines through it
+  phantom: { n: [6, 7, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15), tone: (_u, v) => (Math.floor((v + 1) * 3.5) % 2 === 0 ? 1.35 : 0.8) },
   megaBlock: { n: [10, 9, 10], inside: (u, v, w) => round(u, v, w, 8), tone: (u, v, w) => (Math.abs(u) > 0.7 && Math.abs(w) > 0.7 ? 0.7 : Math.abs(v) < 0.12 ? 0.75 : 1) },
   wormSegment: { n: [5, 5, 5], inside: (u, v, w) => round(u, v, w, 3) },
   // long and low: a body, and a flat snout with nostrils; light belly, dark ridges on the back

@@ -18,6 +18,7 @@ export const HORDE_COMPS: Record<string, HordeComp> = {
   fieldMedic: [{ kind: 'healer', count: 2 }, { kind: 'tank', count: 1 }, { kind: 'blob', count: 6 }],
   jungle: [{ kind: 'croc', count: 1 }, { kind: 'monkey', count: 2 }, { kind: 'blob', count: 4 }],
   rexHunt: [{ kind: 'trex', count: 1 }, { kind: 'hunter', count: 5 }],
+  haunting: [{ kind: 'phantom', count: 4 }, { kind: 'blob', count: 4 }],
   blinkers: [{ kind: 'teleporter', count: 4 }, { kind: 'hunter', count: 3 }],
 };
 

@@ -24,6 +24,7 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   teleporter: { w: 0.55, h: 0.7, d: 0.55, day: 0x7a5cff, night: 0xa98cff, eyeY: 0.5, eyeX: 0, eye: 0.2 },
   croc: { w: 0.8, h: 0.5, d: 2.0, day: 0x3f9b4b, night: 0x5fe07a, eyeY: 0.48, eyeX: 0.22, eye: 0.13 },
   monkey: { w: 0.7, h: 0.9, d: 0.6, day: 0x9b6a3c, night: 0xc98a52, eyeY: 0.66, eyeX: 0.13, eye: 0.11 },
+  phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
   trex: { w: 0.9, h: 1.6, d: 1.7, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.38, eyeX: 0.24, eye: 0.14 },
 };
 
@@ -229,6 +230,12 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
         const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock';
+        // a glitch ghost is hard to see from afar: it flickers in and out, jumping about, until it is close
+        if (e.kind === 'phantom') {
+          const near = Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z)));
+          const seen = near < 4 || (Math.floor(time * 12 + e.id * 3.1) % 5 === 0 && Math.sin(time * 7 + e.id) > -0.3);
+          if (!seen && (flashUntil.get(e.id) ?? 0) <= time) continue;
+        }
         // a new monster pops out of the floor with a little overshoot
         let born = bornAt.get(e.id);
         if (born === undefined) bornAt.set(e.id, (born = time));

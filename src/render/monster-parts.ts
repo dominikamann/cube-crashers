@@ -146,6 +146,10 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
       { at: [0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
     ]),
   ],
+  phantom: [
+    { at: [-0.24, -0.5, 0], size: [0.18, 0.18, 0.6], color: 'light', anim: 'sway', amp: 0.4 },
+    { at: [0.24, -0.5, 0], size: [0.18, 0.18, 0.6], color: 'light', anim: 'sway', ph: PI, amp: 0.4 },
+  ],
   ghost: [
     { at: [-0.27, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', amp: 0.3 },
     { at: [0, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', ph: PI * 0.66, amp: 0.3 },
