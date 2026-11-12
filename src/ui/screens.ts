@@ -23,6 +23,8 @@ export interface Settings {
   steerWithMouse: boolean;
   graphics: GraphicsQuality;
   damageNumbers: boolean;
+  /** versus: watch the last seconds again when you are knocked out */
+  killCam: boolean;
   /** suit colour 0–5, or null for automatic */
   color: number | null;
   /** players on this computer: 2 = split screen */
@@ -71,7 +73,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [] };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [] };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -474,6 +476,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
+      chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
 
       section(t('settings.player'));
       const input = document.createElement('input');

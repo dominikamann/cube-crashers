@@ -28,6 +28,7 @@ import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, ty
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createEmotes } from './ui/emotes';
+import { KillCamRecorder, type KillCamPlayback } from './killcam';
 import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
@@ -240,6 +241,14 @@ function startGame() {
   const buildMenu = createBuildMenu(hudRoots[0], kind => keyboard.chooseTower(kind));
   const markers2 = createMarkers(hudRoots[1]);
   const emotes = createEmotes(hudRoots[0]);
+  // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
+  const killcam = new KillCamRecorder();
+  let replay: KillCamPlayback | null = null;
+  const killBanner = document.createElement('div');
+  killBanner.className = 'killcam';
+  killBanner.innerHTML = `<b></b><span>${t('killcam.skip')}</span>`;
+  killBanner.style.display = 'none';
+  hudRoots[0].append(killBanner);
   const emotes2 = createEmotes(hudRoots[1]);
   const hud2 = createHud(hudRoots[1], { buy: () => {}, ready: () => {} });
   const buildMenu2 = createBuildMenu(hudRoots[1], () => {});
@@ -352,7 +361,20 @@ function startGame() {
       const s = view();
       // the crosshair replaces the mouse pointer while playing
       canvas.style.cursor = mode === 'playing' && view().run.stage === 'floor' ? 'none' : '';
-      renderer.setViews(split ? [0, 1] : [localId()]);
+      // knocked out in versus: the last seconds again, from the side of who did it
+      if (!replay && s.versus && mode === 'playing' && settings.killCam && !split) {
+        killcam.record(s, frameEvents);
+        const kill = frameEvents.find(e => e.type === 'pvpKill' && e.victimId === localId() && e.killerId !== null && e.killerId !== localId());
+        if (kill && kill.type === 'pvpKill') {
+          replay = killcam.start(kill.killerId!);
+          const who = s.players.find(p => p.id === kill.killerId);
+          killBanner.querySelector('b')!.textContent = t('killcam.banner', { name: who?.name ?? '?' });
+        }
+      }
+      const me = s.players.find(p => p.id === localId());
+      if (replay && (mode !== 'playing' || !s.versus || (me && me.downUntil === null) || !replay.advance(frameDt))) replay = null;
+      killBanner.style.display = replay ? '' : 'none';
+      renderer.setViews(replay ? [replay.killerId] : split ? [0, 1] : [localId()]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
       // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad
@@ -364,13 +386,14 @@ function startGame() {
       }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
-      renderer.setFirstPerson(0, fp0on ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
+      // the kill cam is watched from above, following who did it
+      renderer.setFirstPerson(0, fp0on && !replay ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
       const fp1on = split && padCtl2.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(1, fp1on ? { yaw: padCtl2.yaw, pitch: padCtl2.pitch } : null);
-      fpCross[0].style.display = fp0on && mode === 'playing' ? '' : 'none';
+      fpCross[0].style.display = fp0on && mode === 'playing' && !replay ? '' : 'none';
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
-      fpClick.style.display = fp0on && mode === 'playing' && !padActive && fp0 === keyboard && document.pointerLockElement !== canvas ? '' : 'none';
-      showCockpit(0, fp0on && mode === 'playing', localId());
+      fpClick.style.display = fp0on && mode === 'playing' && !replay && !padActive && fp0 === keyboard && document.pointerLockElement !== canvas ? '' : 'none';
+      showCockpit(0, fp0on && mode === 'playing' && !replay, localId());
       showCockpit(1, fp1on && mode === 'playing', 1);
       if (mode !== 'playing' || padActive || !keyboard.firstPerson) lockPointer(false);
       renderer.setLookAhead(0, padActive);
@@ -382,7 +405,7 @@ function startGame() {
         renderer.setMouseLook(0, { x: clamp((mouse.x - r.left - vw / 2) / (vw / 2)), y: clamp((mouse.y - r.top - r.height / 2) / (r.height / 2)) });
       } else renderer.setMouseLook(0, null);
       if (split) renderer.setLookAhead(1, true);
-      renderer.render(s, alpha, frameEvents, frameDt);
+      renderer.render(replay ? replay.state : s, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive ? useLabel(0) : null);
       buildMenu.setPadLabels(padActive);
@@ -517,6 +540,8 @@ function startGame() {
 
   function enterPlay() {
     frameEvents = [];
+    killcam.clear();
+    replay = null;
     keyboard.releaseAll();
     screens.hide();
     setHudVisible(true);
@@ -894,6 +919,11 @@ function startGame() {
     const target = e.target instanceof Element ? e.target : null;
     const inGame = target === canvas || (keyboard.firstPerson && !target?.closest('button, a, input, select, label'));
     if (!inGame) return;
+    // a click skips the kill cam
+    if (replay) {
+      replay = null;
+      return;
+    }
     if (e.button === 0) keyboard.mouseDown();
     // middle click: "over here!" at the crosshair
     if (e.button === 1) {

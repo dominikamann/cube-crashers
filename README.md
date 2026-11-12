@@ -360,6 +360,9 @@ Blaster; crates with weapons, karts and a jetpack lie around. Up to 8 players, b
   now and then monsters. The default.
 - Towers have an owner and fire at rivals, but only at a third of their strength.
 
+**Kill cam:** knocked out by a rival, you watch the last seconds again from their side while you wait to come
+back (a click skips it; *Settings → Kill cam* switches it off).
+
 ## First-person view
 
 Press **V** (controller: **View**) to switch between the view from above and first person. Versus starts in
@@ -655,7 +658,7 @@ docs/         gameplay GIF and screenshots
 - [x] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
 - [x] Daily Run: the same seed for everyone each day, with its own best list
 - [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
-- [ ] Replay of the last seconds (kill cam)
+- [x] Replay of the last seconds (kill cam)
 - [ ] Key rebinding: a Controls page, click an action and press the new key
 - [ ] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
