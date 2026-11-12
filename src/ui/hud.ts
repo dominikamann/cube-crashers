@@ -349,6 +349,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'laneEnd':
             toast(e.coreLeft > 0 ? t('lane.end', { pct: Math.round(e.coreLeft * 100), coins: e.coins }) : t('lane.lost'), e.coreLeft > 0 ? 'final' : 'warn');
             break;
+          case 'gunLevel':
+            if (e.playerId === p.id) toast(t('toast.gunLevel', { weapon: t(`weapon.${e.weapon}` as 'weapon.bomb') }), 'good');
+            break;
           case 'pvpKill': {
             const name = (id: number | null) => s.players.find(x => x.id === id)?.name ?? '';
             const mine = e.killerId === p.id || e.victimId === p.id;
@@ -442,6 +445,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         if (vs.rule === 'rounds') {
           const mine = vs.mode === 'team' ? (vs.roundWins[p.team ?? 0] ?? 0) : (vs.roundWins[p.id] ?? 0);
           raceMain.textContent = t('versus.hudRounds', { round: vs.round, me: mine, best: Math.max(0, ...Object.values(vs.roundWins)) });
+        } else if (vs.rule === 'gungame') {
+          const held = p.weapons[0]?.kind;
+          raceMain.textContent = t('versus.hudGun', { me: me + 1, n: vs.limit, weapon: held ? t(`weapon.${held}` as 'weapon.bomb') : '', lead: Math.max(0, ...Object.values(vs.scores)) + 1, time });
         } else if (vs.mode === 'team') raceMain.textContent = t('versus.hudTeam', { red: vs.teamScores[0], blue: vs.teamScores[1], time });
         else raceMain.textContent = t('versus.hudFfa', { me, lead: Math.max(0, ...Object.values(vs.scores)), time });
         raceSub.textContent = vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';

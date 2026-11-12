@@ -23,7 +23,7 @@ export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft'
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus';
 export type VersusMode = 'ffa' | 'team';
-export type VersusRule = 'score' | 'rounds' | 'king' | 'capture';
+export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
@@ -485,6 +485,7 @@ export type SimEvent =
   | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
   | { type: 'raceLap'; playerId: number; lap: number }
   | { type: 'pvpKill'; killerId: number | null; victimId: number }
+  | { type: 'gunLevel'; playerId: number; level: number; weapon: WeaponKind }
   | { type: 'versusRound'; winner: number | null; round: number }
   | { type: 'versusEnd'; winners: number[] }
   | { type: 'cubeTaken'; team: 0 | 1; playerId: number }

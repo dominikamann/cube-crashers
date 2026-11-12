@@ -1,6 +1,6 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
-import { TICK_RATE, type Player, type SimState, type Vec2, type VersusMode, type VersusRule } from '../types';
+import { TICK_RATE, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
@@ -81,10 +81,11 @@ export const DISCOVERY_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', '
  * throws in monsters now and then.
  */
 export function discovery(i: number): { mode: VersusMode; rule: VersusRule; map: string; chaos: boolean } {
-  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture'];
+  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame'];
   const rule = rules[i % rules.length];
   // over the rules' cycle the team mode flips every lap, so every rule comes in both flavours
-  const team = rule === 'capture' || (i + Math.floor(i / rules.length)) % 2 === 1;
+  // (capture is always teams, gun game always everyone for themselves)
+  const team = rule === 'capture' || (rule !== 'gungame' && (i + Math.floor(i / rules.length)) % 2 === 1);
   return { mode: team ? 'team' : 'ffa', rule, map: DISCOVERY_MAPS[(i * 5) % DISCOVERY_MAPS.length], chaos: i % 3 === 2 };
 }
 
@@ -123,8 +124,13 @@ export function safeSpawn(s: SimState, p: Player, others: Player[]): Vec2 {
   return isFree(s.map, best, PLAYER_RADIUS, BLOCKS_WALKER) ? { ...best } : nearestFree(s.map, best, PLAYER_RADIUS, BLOCKS_WALKER);
 }
 
-function equip(p: Player): void {
-  p.weapons = [{ kind: 'pixelBlaster', level: 1, cooldown: 0 }];
+/** gun game: the weapons from first to last; a kill with the last one wins */
+export const GUN_LADDER: WeaponKind[] = ['pixelBlaster', 'candyCannon', 'hotdogSlinger', 'joystickBoomerang', 'bomb', 'discoBall', 'laserSword', 'flySwatter'];
+
+/** a fresh start: the blaster, or in gun game the weapon of the player's step on the ladder */
+function equip(p: Player, s?: SimState): void {
+  const step = s?.versus?.rule === 'gungame' ? Math.min(GUN_LADDER.length - 1, s.versus.scores[p.id] ?? 0) : -1;
+  p.weapons = [{ kind: step >= 0 ? GUN_LADDER[step] : 'pixelBlaster', level: step >= 0 ? 3 : 1, cooldown: 0 }];
   p.selected = 0;
   p.rare = null;
   p.rareSelected = false;
@@ -135,8 +141,9 @@ function equip(p: Player): void {
 
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
 export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>): void {
-  // capture the cube needs two teams
+  // capture the cube needs two teams; gun game is everyone for themselves
   if (rule === 'capture') mode = 'team';
+  if (rule === 'gungame') mode = 'ffa';
   s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
   s.nests = [];
   s.boss = null;
@@ -161,6 +168,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     v.limit = VERSUS.kingLimit[mode];
     v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: 0 };
   }
+  if (rule === 'gungame') v.limit = GUN_LADDER.length;
   if (rule === 'capture') {
     v.limit = VERSUS.captureLimit;
     v.endsAt = s.tick + VERSUS.captureMinutes * 60 * TICK_RATE;
@@ -183,7 +191,8 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     s.versus!.scores[p.id] = 0;
   });
   // something to grab right away: crates, karts and a jetpack on the map
-  placeStartCrates(s);
+  // (gun game hands out the weapons itself: no crates)
+  if (rule !== 'gungame') placeStartCrates(s);
   placeStartKarts(s);
   placeStartJetpack(s);
   s.nextPowerupAt = s.tick + 20 * TICK_RATE;
@@ -194,7 +203,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
 function startRound(s: SimState): void {
   const placed: Player[] = [];
   for (const p of s.players) {
-    equip(p);
+    equip(p, s);
     p.vehicleId = null;
     p.downUntil = null;
     p.reviveUntil = null;
@@ -217,6 +226,16 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     v.scores[killer.id] = (v.scores[killer.id] ?? 0) + 1;
     if (v.mode === 'team' && killer.team !== undefined) v.teamScores[killer.team]++;
   }
+  if (killer && v.rule === 'gungame') {
+    // swatted: the victim drops a step (before the killer moves up, so the swatter kill still wins)
+    if (killer.weapons[0]?.kind === 'flySwatter') v.scores[p.id] = Math.max(0, (v.scores[p.id] ?? 0) - 1);
+    v.scores[killer.id] = (v.scores[killer.id] ?? 0) + 1;
+    const level = v.scores[killer.id];
+    if (level < GUN_LADDER.length) {
+      equip(killer, s);
+      s.events.push({ type: 'gunLevel', playerId: killer.id, level, weapon: GUN_LADDER[level] });
+    }
+  }
   if (killer) killer.stats.kills++;
   s.events.push({ type: 'pvpKill', killerId: killer?.id ?? null, victimId: p.id });
   if (p.vehicleId !== null) {
@@ -225,7 +244,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     p.vehicleId = null;
   }
   dropCube(s, p);
-  equip(p);
+  equip(p, s);
   p.air = 0;
   p.dashTicks = 0;
   p.combo = 0;
@@ -329,7 +348,7 @@ export function updateVersus(s: SimState): void {
   const v = s.versus;
   if (!v || s.phase !== 'playing') return;
 
-  if (s.tick >= v.nextCrateAt) {
+  if (s.tick >= v.nextCrateAt && v.rule !== 'gungame') {
     v.nextCrateAt = s.tick + VERSUS.crateEveryTicks;
     const free = s.map.crateSpots.filter(c => !s.crates.some(x => dist(x.pos, c) < 1));
     if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) } });

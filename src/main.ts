@@ -9,7 +9,7 @@ import { t } from './i18n';
 import { lookOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
-import { balanceTeams, discovery } from './sim/systems/versus';
+import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
@@ -160,10 +160,10 @@ function startGame() {
     const maps = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
     const pick = (): VersusOption => ({
       mode: Math.random() < 0.5 ? 'ffa' : 'team',
-      rule: (['score', 'score', 'rounds', 'king', 'capture'] as const)[Math.floor(Math.random() * 5)],
+      rule: (['score', 'score', 'rounds', 'king', 'capture', 'gungame'] as const)[Math.floor(Math.random() * 6)],
       map: maps[Math.floor(Math.random() * maps.length)],
     });
-    const fix = (o: VersusOption): VersusOption => (o.rule === 'capture' ? { ...o, mode: 'team' } : o);
+    const fix = (o: VersusOption): VersusOption => (o.rule === 'capture' ? { ...o, mode: 'team' } : o.rule === 'gungame' ? { ...o, mode: 'ffa' } : o);
     const a = fix(pick());
     let b = fix(pick());
     while (b.map === a.map && b.mode === a.mode && b.rule === a.rule) b = fix(pick());
@@ -437,9 +437,15 @@ function startGame() {
     const s = view();
     saveRunLog(buildRunLog(s));
     const result = summary(s);
+    // gun game goes on to the next map once someone has made it through the ladder
+    const gunNext = s.versus?.rule === 'gungame' ? { mode: 'ffa' as const, rule: 'gungame' as const, map: DISCOVERY_MAPS[(DISCOVERY_MAPS.indexOf(s.map.id) + 1) % DISCOVERY_MAPS.length] } : null;
     const again =
-      role === 'solo' && s.versus
+      role === 'solo' && s.versus && gunNext && !settings.versusDiscovery
+        ? { label: t('versus.next', { what: describe(gunNext) }), action: () => ((settings.versusMap = gunNext.map), newVersusGame()) }
+        : role === 'solo' && s.versus
         ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : t('menu.playAgain'), action: () => newVersusGame() }
+        : role === 'host' && s.versus && gunNext && !lanDiscovery
+        ? { label: t('versus.next', { what: describe(gunNext) }), action: () => lanActions.startVersus(gunNext) }
         : role === 'host' && s.versus && lanDiscovery
         ? { label: t('versus.next', { what: describe(discovery(discoveryStep)) }), action: () => lanActions.startDiscovery() }
         : role === 'host'

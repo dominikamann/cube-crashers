@@ -334,6 +334,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'raceEnd':
     case 'versusEnd':
       return one('gameWon');
+    case 'gunLevel':
+      return one('cardPicked', 1.2);
     case 'pvpKill':
       return one('enemyKilled', 0.7);
     case 'versusRound':

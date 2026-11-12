@@ -30,7 +30,7 @@ export interface Settings {
   quickMap: string;
   /** versus: free for all or teams, score race or last cube standing, the map and how many bots */
   versusMode: 'ffa' | 'team';
-  versusRule: 'score' | 'rounds' | 'king' | 'capture';
+  versusRule: 'score' | 'rounds' | 'king' | 'capture' | 'gungame';
   /** versus: monster hordes join in */
   versusChaos: boolean;
   /** versus: discovery, a rotation through every mode instead of one fixed match */
@@ -534,7 +534,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         choose(
           t('setup.rule'),
-          (['score', 'rounds', 'king', 'capture'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
+          (['score', 'rounds', 'king', 'capture', 'gungame'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
           settings.versusRule,
           v => {
             settings.versusRule = v;
@@ -561,7 +561,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (lan) {
         // on the LAN: start this match now, or put it to the vote next to a surprise card
-        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusMode, rule: settings.versusRule, map: settings.versusMap, chaos: settings.versusChaos });
+        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: settings.versusMap, chaos: settings.versusChaos });
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);
@@ -571,7 +571,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         return;
       }
       choose(t('setup.players'), [{ label: t('menu.onePlayer'), value: 1 as const }, { label: t('menu.twoPlayers'), value: 2 as const }], settings.localPlayers, v => (settings.localPlayers = v));
-      if (mode === 'versus' && settings.localPlayers === 2 && (settings.versusMode === 'team' || settings.versusRule === 'capture')) {
+      if (mode === 'versus' && settings.localPlayers === 2 && settings.versusRule !== 'gungame' && (settings.versusMode === 'team' || settings.versusRule === 'capture')) {
         choose(t('setup.split'), [{ label: t('setup.together'), value: true }, { label: t('setup.against'), value: false }], settings.splitTogether, v => (settings.splitTogether = v));
       }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
