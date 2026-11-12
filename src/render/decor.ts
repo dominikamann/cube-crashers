@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
-import { glowMat, lambert } from './pool';
+import { glowMat, InstancedPool, lambert } from './pool';
 import { DecalBuilder, PropBuilder, hash } from './props';
 
 export interface DecorContext {
@@ -18,8 +18,22 @@ export interface DecorContext {
 
 export interface Decor {
   group: THREE.Group;
-  /** blinking lights, flickering signs and swaying flags */
+  /** blinking lights, flickering signs, swaying flags and grass, rising bubbles */
   update(time: number, glow: number): void;
+}
+
+/** one instance of a moving piece (grass, kelp, LEDs, bubbles), refilled into its pool every frame */
+interface Piece {
+  pool: InstancedPool;
+  x: number;
+  y: number;
+  z: number;
+  sx: number;
+  sy: number;
+  sz: number;
+  /** sways from the foot, blinks, or rises and fades */
+  move: 'sway' | 'blink' | 'rise';
+  phase: number;
 }
 
 interface Spot {
@@ -39,8 +53,10 @@ const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 /**
  * Theme decoration: benches and lamps on the plaza, lollipops in the factory, signs and cables in the
- * neon city, banners around the arena, vents and antennas on the roof. Everything stands next to a
- * wall or on top of one, never on a path, pad or spawn, and it is merged into a few meshes.
+ * neon city, banners around the arena, vents and antennas on the roof, ferns and tall grass in the
+ * jungle, blinking racks in the server farm, coral and kelp in the sunken arcade. Everything stands
+ * next to a wall or on top of one, never on a path, pad or spawn, and it is merged into a few meshes;
+ * only what moves (grass, kelp, LEDs, bubbles) is drawn as instances that are refilled each frame.
  */
 export function buildDecor(ctx: DecorContext): Decor {
   const { map, look, tileOf, wallTopY } = ctx;
@@ -50,6 +66,15 @@ export function buildDecor(ctx: DecorContext): Decor {
   const flags: { mesh: THREE.Object3D; yaw: number; phase: number }[] = [];
   const flames: THREE.MeshStandardMaterial[] = [];
   const breathers: THREE.MeshStandardMaterial[] = [];
+  const spinners: { mesh: THREE.Object3D; speed: number }[] = [];
+  const pools: InstancedPool[] = [];
+  const pieces: Piece[] = [];
+  const unit = new THREE.BoxGeometry(1, 1, 1);
+  const pool = (mat: THREE.Material, shadows = false) => {
+    const p = new InstancedPool(group, unit, mat, 256, shadows);
+    pools.push(p);
+    return p;
+  };
   // the minigame maps stay clean: nothing in the maze, on the track or in the lane
   if (['maze', 'race', 'lane'].includes(map.id)) return { group, update() {} };
 
@@ -60,8 +85,9 @@ export function buildDecor(ctx: DecorContext): Decor {
   /** the wall run through a tile is at most `w` wide and `d` long: a pillar, not a building */
   const pillar = (tx: number, tz: number, w: number, d: number) => {
     const run = (ox: number, oz: number) => {
+      // outside the map everything counts as wall: stop at the edge
       let n = 1;
-      while (isWall(tx + ox * n, tz + oz * n)) n++;
+      while (n <= 8 && isWall(tx + ox * n, tz + oz * n)) n++;
       return n - 1;
     };
     return run(1, 0) + run(-1, 0) + 1 <= w && run(0, 1) + run(0, -1) + 1 <= d;
@@ -115,6 +141,13 @@ export function buildDecor(ctx: DecorContext): Decor {
     flickers.push({ mat, base, seed });
     return mat;
   };
+  /** a ladder up the wall face behind a spot: two rails and rungs, from the floor to the block's top */
+  const ladder = (s: Spot, rail: THREE.Material, rung: THREE.Material) => {
+    const h = wallTopY(s.tx - Math.round(Math.sin(s.yaw)), s.tz - Math.round(Math.cos(s.yaw))) + 0.12;
+    props.at(s.x, 0, s.z, s.yaw);
+    for (const x of [-0.18, 0.18]) props.box(0.06, h, 0.06, rail, x, h / 2, -0.24);
+    for (let y = 0.25; y < h; y += 0.3) props.box(0.4, 0.05, 0.05, rung, 0, y, -0.24);
+  };
   /** a flag hanging from a pole: its own mesh, so it can sway */
   const flag = (x: number, y: number, z: number, yaw: number, mat: THREE.Material, w: number, h: number) => {
     const g = new THREE.BoxGeometry(w, h, 0.05);
@@ -132,6 +165,10 @@ export function buildDecor(ctx: DecorContext): Decor {
     const lamp = glowMat(0xffe9a8, 1.6), screen = glowMat(0x2bf0ff, 1.2);
     breathers.push(screen);
     for (const s of edgeSpots(0.17, 0)) {
+      if (s.r > 0.94) {
+        ladder(s, metal, wood);
+        continue;
+      }
       props.at(s.x, 0, s.z, s.yaw);
       // trees are the plaza's signature: a third of everything standing around
       const k = Math.max(0, Math.floor(s.r * 9) - 2);
@@ -216,6 +253,10 @@ export function buildDecor(ctx: DecorContext): Decor {
     const screen = flicker(0x9ff6ff, 1.2, 4);
     const streetLamp = glowMat(0xfff1c4, 1.8);
     for (const s of edgeSpots(0.14, 5)) {
+      if (s.r > 0.94) {
+        ladder(s, steel, metal);
+        continue;
+      }
       props.at(s.x, 0, s.z, s.yaw);
       const k = Math.floor(s.r * 6);
       const glow = signs[Math.floor(hash(s.tx * 5, s.tz) * 3)];
@@ -354,6 +395,10 @@ export function buildDecor(ctx: DecorContext): Decor {
     // along the roof's edge (the glitch rim) and next to the vents
     const rim = edgeSpots(0.06, 9, t => t === Tile.Hazard);
     for (const s of [...rim, ...edgeSpots(0.2, 11)]) {
+      if (s.r > 0.9 && tileOf(s.tx - Math.round(Math.sin(s.yaw)), s.tz - Math.round(Math.cos(s.yaw))) === Tile.Wall) {
+        ladder(s, metal, rust);
+        continue;
+      }
       props.at(s.x, 0, s.z, s.yaw);
       const k = Math.floor(s.r * 5);
       if (k === 0) {
@@ -376,6 +421,169 @@ export function buildDecor(ctx: DecorContext): Decor {
     }
   }
 
+  else if (look === 'jungle') {
+    const leafA = lambert(0x3fae4a), leafB = lambert(0x2f8a3c), fern = lambert(0x4fbf5a), bark = lambert(0x6b4e32), stone = lambert(0x8a8f84), stoneDark = lambert(0x6c7168);
+    const capRed = lambert(0xe04a3a), capTan = lambert(0xd9b07a), stem = lambert(0xf2e8d8), vine = lambert(0x3f9a38), flower = glowMat(0xff6ab0, 0.6);
+    const blade = pool(lambert(0x5fbf4a)), bladeDark = pool(lambert(0x3f9a38));
+    // tall grass: three blades per tile, taller than a monster (the sim hides monsters standing in it)
+    for (const g of map.grass ?? []) {
+      for (let k = 0; k < 3; k++) {
+        const h = hash(g.x * 3 + k, g.z);
+        pieces.push({ pool: k % 2 ? blade : bladeDark, x: g.x - 0.3 + k * 0.3, y: 0.55 + h * 0.2, z: g.z + (h - 0.5) * 0.5, sx: 0.12, sy: 1.1 + h * 0.4, sz: 0.12, move: 'sway', phase: g.x + g.z * 0.7 + k });
+      }
+    }
+    // a crown of leaves on every trunk block, and vines down some faces
+    for (const c of ctx.wallTiles) {
+      if (onBorder(c.tx, c.tz)) continue;
+      const h = hash(c.tx, c.tz);
+      props.at(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
+      props.box(1.6, 0.9, 1.6, h > 0.5 ? leafA : leafB, 0, 1.05 + h * 0.6, 0);
+      if (h > 0.7) props.box(1, 0.7, 1, leafA, 0, 1.85 + h * 0.3, 0);
+      for (const [ox, oz] of DIRS) {
+        if (isWall(c.tx + ox, c.tz + oz) || hash(c.tx * 5 + ox, c.tz * 3 + oz) > 0.35) continue;
+        const len = 0.5 + hash(c.tz, c.tx * 9) * 0.6;
+        props.box(0.08, len, 0.08, vine, ox * 0.53 + (oz ? 0.25 : 0), -len / 2 + 0.05, oz * 0.53 + (ox ? -0.2 : 0));
+      }
+    }
+    for (const s of edgeSpots(0.2, 13)) {
+      props.at(s.x, 0, s.z, s.yaw);
+      const k = Math.floor(s.r * 6);
+      if (k < 2) {
+        // a fern: four flat fronds fanning out
+        for (let i = 0; i < 4; i++) props.box(0.7, 0.05, 0.22, fern, 0.2, 0.3 + i * 0.03, 0, i * (Math.PI / 2) + 0.4);
+        props.box(0.1, 0.3, 0.1, bark, 0, 0.15, 0);
+      } else if (k === 2) {
+        // mushrooms
+        props.box(0.12, 0.3, 0.12, stem, -0.15, 0.15, 0.1).box(0.4, 0.14, 0.4, capRed, -0.15, 0.36, 0.1).box(0.08, 0.04, 0.08, stem, -0.22, 0.45, 0.02);
+        props.box(0.08, 0.2, 0.08, stem, 0.2, 0.1, -0.1).box(0.26, 0.1, 0.26, capTan, 0.2, 0.24, -0.1);
+      } else if (k === 3) {
+        props.box(0.6, 0.4, 0.5, stone, -0.1, 0.2, 0, 0.3).box(0.34, 0.26, 0.3, stoneDark, 0.28, 0.13, 0.12, 0.8);
+      } else if (k === 4) {
+        // a fallen branch with a few leaves
+        props.box(1.2, 0.14, 0.14, bark, 0, 0.07, 0, 0.25).box(0.2, 0.1, 0.4, bark, 0.3, 0.1, 0.2, 0.3).box(0.3, 0.12, 0.3, leafA, -0.4, 0.2, 0.1);
+      } else {
+        for (let i = 0; i < 3; i++) props.box(0.06, 0.3, 0.06, vine, -0.2 + i * 0.2, 0.15, (i % 2) * 0.15).box(0.14, 0.14, 0.14, flower, -0.2 + i * 0.2, 0.36, (i % 2) * 0.15);
+      }
+    }
+  } else if (look === 'servers') {
+    const slot = lambert(0x1c2238), cable = lambert(0x23283a), steel = lambert(0x4d5873), dark = lambert(0x161a2a), blue = lambert(0x2b4e9a), red = lambert(0xe03a3a), white = lambert(0xe8ecf4);
+    const ledGreen = pool(glowMat(0x3bff8a, 1.4)), ledBlue = pool(glowMat(0x2bb8ff, 1.4)), ledAmber = pool(glowMat(0xffb020, 1.2));
+    const screen = flicker(0x7fd8ff, 1.1, 6), coolant = glowMat(0x2bf0ff, 0.9), warn = blink(0xffb020, 2.5, 0);
+    breathers.push(coolant);
+    // the long faces of every rack get a column of drive slots with blinking lights
+    for (const c of ctx.wallTiles) {
+      if (onBorder(c.tx, c.tz)) continue;
+      for (const side of [-1, 1]) {
+        if (isWall(c.tx, c.tz + side)) continue;
+        const z = c.tz + 0.5 + side * 0.51;
+        for (let row = 0; row < 3; row++) {
+          const y = 0.25 + row * 0.32;
+          props.at(c.tx + 0.5, y, z).box(0.8, 0.22, 0.04, slot, 0, 0, 0);
+          const h = hash(c.tx * 5 + row, c.tz * 3 + side);
+          pieces.push({ pool: h < 0.6 ? ledGreen : h < 0.85 ? ledBlue : ledAmber, x: c.tx + 0.2 + h * 0.5, y, z: z + side * 0.03, sx: 0.07, sy: 0.07, sz: 0.04, move: 'blink', phase: h * 40 + row });
+        }
+      }
+    }
+    // bundles of cable along the floor of the aisles
+    for (const c of ctx.floorTiles) {
+      if (hash(c.tx, c.tz * 11) < 0.93) continue;
+      props.at(c.tx + 0.5, 0, c.tz + 0.5).box(0.9, 0.06, 0.12, cable, 0, 0.04, 0).box(0.5, 0.05, 0.1, cable, 0.1, 0.09, 0.08);
+    }
+    for (const s of edgeSpots(0.12, 15)) {
+      if (s.r > 0.93) {
+        ladder(s, steel, white);
+        continue;
+      }
+      props.at(s.x, 0, s.z, s.yaw);
+      const k = Math.floor(s.r * 5);
+      if (k === 0) {
+        // a console on a stand, screen tilted toward the aisle
+        props.box(0.5, 0.9, 0.3, steel, 0, 0.45, -0.1).box(0.7, 0.5, 0.08, dark, 0, 1.1, 0.02).box(0.6, 0.4, 0.03, screen, 0, 1.1, 0.07);
+      } else if (k === 1) {
+        // coolant drums with a glowing level band
+        for (const sx of [-0.22, 0.22]) props.box(0.36, 0.6, 0.36, blue, sx, 0.3, 0, Math.PI / 4).box(0.38, 0.06, 0.38, coolant, sx, 0.2, 0, Math.PI / 4);
+      } else if (k === 2) {
+        // a shipping crate for a server, lid propped
+        props.box(0.8, 0.5, 0.6, steel, 0, 0.25, 0).box(0.82, 0.06, 0.62, dark, 0, 0.53, 0).box(0.1, 0.3, 0.1, white, -0.3, 0.15, 0.31).box(0.1, 0.3, 0.1, white, 0.3, 0.15, 0.31);
+      } else if (k === 3) {
+        props.box(0.16, 0.5, 0.16, red, 0, 0.25, -0.15).box(0.08, 0.1, 0.08, dark, 0, 0.55, -0.15).box(0.3, 0.06, 0.1, dark, 0, 0.1, -0.22);
+      } else {
+        // a cable spool
+        props.box(0.6, 0.1, 0.6, dark, 0, 0.05, 0, Math.PI / 4).box(0.4, 0.36, 0.4, cable, 0, 0.28, 0, Math.PI / 4).box(0.6, 0.1, 0.6, dark, 0, 0.51, 0, Math.PI / 4);
+      }
+    }
+    // cooling fans and cable trays on the racks, warning lights on the core
+    for (const s of rimSpots(0.18, 15)) {
+      props.at(s.x, topY(s), s.z, s.yaw);
+      if (s.r < 0.5) {
+        props.box(0.8, 0.12, 0.8, dark, 0, 0.06, 0).box(0.7, 0.04, 0.7, steel, 0, 0.13, 0);
+        const g = new THREE.BoxGeometry(0.6, 0.03, 0.08);
+        const blades = new THREE.Mesh(g, white);
+        blades.position.set(s.x, topY(s) + 0.16, s.z);
+        group.add(blades);
+        spinners.push({ mesh: blades, speed: 6 + s.r * 8 });
+      } else {
+        props.box(1, 0.08, 0.3, steel, 0, 0.14, 0).box(0.06, 0.14, 0.06, steel, -0.4, 0.06, 0).box(0.06, 0.14, 0.06, steel, 0.4, 0.06, 0).box(0.9, 0.08, 0.2, cable, 0, 0.22, 0);
+      }
+    }
+    for (const s of topSpots(1, 15)) {
+      props.at(s.x, topY(s), s.z, s.yaw);
+      props.box(0.5, 0.5, 0.5, dark, 0, 0.25, 0).box(0.3, 0.6, 0.3, coolant, 0, 0.3, 0).box(0.14, 0.14, 0.14, warn, 0, 0.72, 0);
+    }
+  } else if (look === 'underwater') {
+    const coralMats = [lambert(0xff6a8a), lambert(0xffa23b), lambert(0xb15cff), lambert(0x2bd4d4)];
+    const sand = lambert(0xe8d8aa), shell = lambert(0xfff2e0), star = lambert(0xff8a4a), wood = lambert(0x5a4030), gold = glowMat(0xffd34a, 0.5), iron = lambert(0x4a5058), cab = lambert(0x2a2a44), dead = lambert(0x1a1a24);
+    const anemone = glowMat(0xff6ab0, 0.8);
+    breathers.push(anemone, gold);
+    const kelp = pool(lambert(0x2f9a5a)), kelpLight = pool(lambert(0x4fc07a));
+    const bubble = pool(new THREE.MeshBasicMaterial({ color: 0xcff6ff, transparent: true, opacity: 0.55 }));
+    // coral grows on the reefs; kelp in the kelp beds and a strand here and there; bubbles from the sea bed
+    for (const c of ctx.wallTiles) {
+      if (onBorder(c.tx, c.tz)) continue;
+      props.at(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
+      for (let k = 0; k < 3; k++) {
+        const h = hash(c.tx * 3 + k, c.tz * 7);
+        props.box(0.22, 0.4 + h * 0.4, 0.22, coralMats[Math.floor(h * coralMats.length)], -0.3 + h * 0.6, 0.2 + k * 0.1 + h * 0.2, -0.2 + hash(c.tz, c.tx + k) * 0.4, h * 2);
+      }
+    }
+    for (let tz = 1; tz < map.h - 1; tz++) {
+      for (let tx = 1; tx < map.w - 1; tx++) {
+        const t = tileOf(tx, tz), h = hash(tx, tz);
+        if (t === Tile.Hazard || (t === Tile.Floor && h > 0.975)) {
+          for (let k = 0; k < (t === Tile.Hazard ? 2 : 1); k++) {
+            const c = hash(tx + k * 13, tz);
+            pieces.push({ pool: c > 0.5 ? kelp : kelpLight, x: tx + 0.25 + c * 0.5, y: 0.9 + c * 0.5, z: tz + 0.5, sx: 0.14, sy: 1.8 + c, sz: 0.14, move: 'sway', phase: tx * 0.5 + tz + k });
+          }
+        }
+        if (t !== Tile.Wall && h > 0.985) for (let k = 0; k < 3; k++) pieces.push({ pool: bubble, x: tx + 0.5, y: 0, z: tz + 0.5, sx: 0.12, sy: 0.12, sz: 0.12, move: 'rise', phase: h * 10 + k * 1.3 });
+      }
+    }
+    for (const s of edgeSpots(0.2, 17)) {
+      props.at(s.x, 0, s.z, s.yaw);
+      const k = Math.floor(s.r * 6);
+      if (k === 0) {
+        // a starfish: five arms
+        for (let i = 0; i < 5; i++) props.box(0.5, 0.08, 0.14, star, 0.15, 0.04, 0, i * (Math.PI * 2 / 5));
+      } else if (k === 1) {
+        // a clam, half open
+        props.box(0.5, 0.14, 0.44, shell, 0, 0.07, 0).box(0.5, 0.1, 0.44, shell, 0, 0.26, -0.12).box(0.3, 0.1, 0.1, anemone, 0, 0.16, 0.05);
+      } else if (k === 2) {
+        // a treasure chest with the lid up
+        props.box(0.7, 0.4, 0.5, wood, 0, 0.2, 0).box(0.72, 0.06, 0.52, iron, 0, 0.2, 0).box(0.7, 0.1, 0.5, wood, 0, 0.62, -0.3).box(0.5, 0.1, 0.3, gold, 0, 0.42, 0);
+      } else if (k === 3) {
+        // a sunken arcade cabinet, keeled over, screen dead
+        props.box(0.7, 1.3, 0.6, cab, 0, 0.55, 0, 0.3).box(0.5, 0.5, 0.05, dead, 0, 0.8, 0.31, 0.3).box(0.2, 0.3, 0.2, coralMats[1], 0.3, 1.3, 0.1);
+      } else if (k === 4) {
+        // anemones in a cluster
+        for (let i = 0; i < 5; i++) props.box(0.1, 0.3 + hash(i, s.tx) * 0.2, 0.1, anemone, -0.25 + hash(s.tz, i) * 0.5, 0.15, -0.2 + hash(i, s.tz) * 0.4);
+        props.box(0.5, 0.1, 0.4, sand, 0, 0.05, 0);
+      } else {
+        // an old anchor against the rock
+        props.box(0.08, 1.0, 0.08, iron, 0, 0.5, -0.2).box(0.7, 0.08, 0.08, iron, 0, 0.15, -0.2).box(0.2, 0.2, 0.08, iron, 0, 1.05, -0.2, Math.PI / 4);
+      }
+    }
+  }
+
   props.build(group);
   if (!decals.empty) group.add(decals.build(new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1 })));
   // materials made here but merged away still need freeing with the world: group.traverse covers the meshes
@@ -393,6 +601,22 @@ export function buildDecor(ctx: DecorContext): Decor {
       for (const m of breathers) m.emissiveIntensity = (1 + 0.2 * Math.sin(time * 3)) * glow;
       for (const m of flames) m.emissiveIntensity = (1.5 + 0.5 * Math.sin(time * 9) * Math.sin(time * 5.3)) * Math.min(glow, 1.4);
       for (const f of flags) f.mesh.rotation.y = f.yaw + Math.sin(time * 1.8 + f.phase) * 0.18;
+      for (const s of spinners) s.mesh.rotation.y = time * s.speed;
+      for (const p of pools) p.begin();
+      for (const p of pieces) {
+        if (p.move === 'sway') {
+          // bend from the foot: the top moves, the foot stays
+          const lean = Math.sin(time * 1.6 + p.phase) * 0.12;
+          p.pool.addScaled(p.x + lean * p.sy * 0.5, p.y, p.z, 0, p.sx, p.sy, p.sz, undefined, 0, -lean);
+        } else if (p.move === 'blink') {
+          if (Math.sin(time * 3 + p.phase) > -0.2 || Math.floor(time * 9 + p.phase) % 7 !== 0) p.pool.addScaled(p.x, p.y, p.z, 0, p.sx, p.sy, p.sz);
+        } else {
+          const t = (time * 0.35 + p.phase) % 1;
+          const size = p.sx * (0.6 + t);
+          p.pool.addScaled(p.x + Math.sin(time * 3 + p.phase) * 0.15, 0.2 + t * 5, p.z, 0, size, size, size);
+        }
+      }
+      for (const p of pools) p.end();
     },
   };
 }

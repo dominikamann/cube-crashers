@@ -99,6 +99,41 @@ function wallSideTexture(look: string): THREE.CanvasTexture {
       g.fillRect(31, 44, 2, 20);
       g.fillStyle = 'rgba(80,60,30,0.08)';
       for (let i = 0; i < 24; i++) g.fillRect(Math.floor(hash(i, 7) * 62), Math.floor(hash(7, i) * 62), 2, 2);
+    } else if (look === 'jungle') {
+      // bark: dark vertical streaks and a knot
+      g.fillStyle = '#f4ede2';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#c9b8a0';
+      for (let i = 0; i < 9; i++) g.fillRect(3 + i * 7 + Math.floor(hash(i, 2) * 3), Math.floor(hash(2, i) * 20), 2, 40 + Math.floor(hash(i, 5) * 24));
+      g.fillStyle = '#a8927a';
+      g.fillRect(22, 26, 10, 7);
+      g.fillStyle = '#f4ede2';
+      g.fillRect(25, 28, 4, 3);
+      g.fillStyle = '#b8a890';
+      g.fillRect(0, 58, 64, 6);
+    } else if (look === 'servers') {
+      // a rack's end panel: a dark frame with vent slits
+      g.fillStyle = '#e4e8f2';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#b4bacc';
+      g.fillRect(0, 0, 3, 64);
+      g.fillRect(61, 0, 3, 64);
+      g.fillRect(0, 0, 64, 3);
+      g.fillRect(0, 58, 64, 6);
+      g.fillStyle = '#8a90a8';
+      for (let y = 10; y < 52; y += 6) g.fillRect(12, y, 40, 2);
+    } else if (look === 'underwater') {
+      // reef rock: rounded blotches, lighter and darker, with a sandy foot
+      g.fillStyle = '#eef0ee';
+      g.fillRect(0, 0, 64, 64);
+      for (let i = 0; i < 14; i++) {
+        g.fillStyle = hash(i, 11) > 0.5 ? '#d8dcd8' : '#fafbfa';
+        g.beginPath();
+        g.ellipse(hash(i, 1) * 64, hash(1, i) * 56, 6 + hash(i, 3) * 8, 4 + hash(3, i) * 6, hash(i, 9) * 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.fillStyle = '#d9cfae';
+      g.fillRect(0, 56, 64, 8);
     } else if (look === 'rooftop') {
       // riveted metal with louvre slits
       g.fillStyle = '#f2f3f7';
@@ -170,6 +205,47 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
       g.moveTo(x + px * 0.2, y + px * (0.3 + 0.4 * hash(tx, 5)));
       g.lineTo(x + px * 0.8, y + px * (0.3 + 0.4 * hash(tz, 5)));
       g.stroke();
+    }
+    return;
+  }
+  if (look === 'jungle') {
+    // grass: mottled, with tufts and the odd patch of earth
+    g.fillStyle = 'rgba(20,60,20,0.1)';
+    for (let k = 0; k < 10; k++) g.fillRect(x + Math.floor(hash(tx + k, tz * 5) * (px - 3)), y + Math.floor(hash(tz + k * 7, tx) * (px - 4)), 2, 3);
+    g.fillStyle = 'rgba(255,255,255,0.14)';
+    for (let k = 0; k < 5; k++) g.fillRect(x + Math.floor(hash(tx * 3 + k, tz) * (px - 3)), y + Math.floor(hash(tz * 3 + k, tx) * (px - 4)), 2, 3);
+    if (h < 0.07) {
+      g.fillStyle = 'rgba(90,60,30,0.22)';
+      g.beginPath();
+      g.ellipse(x + px * hash(tx, 2), y + px * hash(tz, 2), px * 0.45, px * 0.3, hash(tx, tz) * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+    return;
+  }
+  if (look === 'servers') {
+    // raised floor panels: a strong seam, a screw in each corner, a perforated tile now and then
+    g.fillStyle = 'rgba(10,14,30,0.35)';
+    g.fillRect(x, y, px, 2);
+    g.fillRect(x, y, 2, px);
+    g.fillStyle = 'rgba(255,255,255,0.25)';
+    for (const [cx, cy] of [[4, 4], [px - 6, 4], [4, px - 6], [px - 6, px - 6]]) g.fillRect(x + cx, y + cy, 2, 2);
+    if (h < 0.1) {
+      g.fillStyle = 'rgba(10,14,30,0.3)';
+      for (let k = 5; k < px - 4; k += 4) for (let j = 5; j < px - 4; j += 4) g.fillRect(x + k, y + j, 2, 2);
+    }
+    return;
+  }
+  if (look === 'underwater') {
+    // the sea bed: sand ripples and the odd shell
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    for (let k = 3; k < px; k += 7) g.fillRect(x, y + k + Math.floor(hash(tx, k) * 3), px, 2);
+    g.fillStyle = 'rgba(80,60,30,0.08)';
+    for (let k = 0; k < 8; k++) g.fillRect(x + Math.floor(hash(tx + k, tz * 5) * (px - 2)), y + Math.floor(hash(tz + k * 7, tx) * (px - 2)), 2, 2);
+    if (h < 0.05) {
+      g.fillStyle = 'rgba(255,245,230,0.7)';
+      g.beginPath();
+      g.arc(x + px * (0.3 + 0.4 * hash(tx, 3)), y + px * (0.3 + 0.4 * hash(tz, 3)), px * 0.12, 0, Math.PI);
+      g.fill();
     }
     return;
   }
@@ -335,6 +411,41 @@ function glitchTexture(): THREE.CanvasTexture {
     g.moveTo(9, 8);
     g.lineTo(23, 22);
     g.stroke();
+  }, true);
+}
+
+/** the jungle's swamp: murky green water with a few bubbles and a reed */
+function swampTexture(): THREE.CanvasTexture {
+  return canvasTexture(32, 32, g => {
+    const shades = ['#2f5a3a', '#3a6a44', '#2a5236', '#345f40'];
+    for (let y = 0; y < 32; y += 4) for (let x = 0; x < 32; x += 4) {
+      g.fillStyle = shades[Math.floor(hash(x * 3 + 2, y * 5 + 1) * shades.length)];
+      g.fillRect(x, y, 4, 4);
+    }
+    g.fillStyle = '#6fa070';
+    for (let i = 0; i < 4; i++) {
+      const x = Math.floor(hash(i, 4) * 28), y = Math.floor(hash(4, i) * 28);
+      g.fillRect(x, y, 3, 3);
+      g.fillRect(x + 1, y + 1, 1, 1);
+    }
+    g.fillStyle = '#1f3f28';
+    g.fillRect(24, 6, 2, 14);
+    g.fillRect(23, 4, 4, 3);
+  }, true);
+}
+
+/** the sea's kelp beds: dark green with pale fronds */
+function kelpBedTexture(): THREE.CanvasTexture {
+  return canvasTexture(32, 32, g => {
+    g.fillStyle = '#1f5a44';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#2a7054';
+    for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) if (hash(x + 1, y + 3) > 0.6) g.fillRect(x, y, 2, 2);
+    g.fillStyle = '#5fbf8a';
+    for (let i = 0; i < 5; i++) {
+      const x = Math.floor(hash(i, 6) * 30);
+      for (let y = 4 + Math.floor(hash(6, i) * 10); y < 30; y += 3) g.fillRect(x + ((y >> 2) & 1), y, 2, 2);
+    }
   }, true);
 }
 
@@ -614,7 +725,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.LowWall, [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
 
   // ---- glitch floor and boost tiles
-  const glitchTex = glitchTexture();
+  // the hazard tiles are glitch floor everywhere except where the map says otherwise: the jungle's
+  // swamp and the sea's kelp beds hurt just the same, but look like water
+  const glitchy = look !== 'jungle' && look !== 'underwater';
+  const glitchTex = look === 'jungle' ? swampTexture() : look === 'underwater' ? kelpBedTexture() : glitchTexture();
   const glitchMat = glowMat(0xffffff, 0.6);
   glitchMat.map = glitchTex;
   glitchMat.emissiveMap = glitchTex;
@@ -878,11 +992,16 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         });
       }
       const glow = Math.min(theme.glow, 1.4);
-      glitchMat.emissiveIntensity = (0.55 + 0.25 * Math.sin(time * 5)) * glow;
-      // glitchy flicker: now and then a short bright burst
-      const step = Math.floor(time * 10);
-      if (step !== glitchStep) glitchStep = step;
-      if (hash(glitchStep, 3) > 0.85) glitchMat.emissiveIntensity *= 1.8;
+      if (glitchy) {
+        glitchMat.emissiveIntensity = (0.55 + 0.25 * Math.sin(time * 5)) * glow;
+        // glitchy flicker: now and then a short bright burst
+        const step = Math.floor(time * 10);
+        if (step !== glitchStep) glitchStep = step;
+        if (hash(glitchStep, 3) > 0.85) glitchMat.emissiveIntensity *= 1.8;
+      } else {
+        // water only shimmers
+        glitchMat.emissiveIntensity = (0.25 + 0.06 * Math.sin(time * 2)) * glow;
+      }
       boostMat.emissiveIntensity = (0.45 + 0.25 * Math.abs(Math.sin(time * 3))) * glow;
       // 2.5 tiles per second, like the sim
       beltTex.offset.y = (time * 2.5) % 1;
