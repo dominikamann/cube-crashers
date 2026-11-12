@@ -118,6 +118,4 @@ Let the community add content without touching the core game:
 
 ## Quality of life
 
-- Key and button rebinding.
-- Colour-blind friendly palette for nests, glitch floor and enemy shots.
 - Photo mode.

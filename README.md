@@ -638,7 +638,8 @@ docs/         gameplay GIF and screenshots
 - [ ] Daily Run: the same seed for everyone each day, with its own best list
 - [ ] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
 - [ ] Replay of the last seconds (kill cam)
-- [ ] Key rebinding
+- [ ] Key rebinding: a Controls page, click an action and press the new key
+- [ ] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing
