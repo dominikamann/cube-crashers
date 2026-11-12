@@ -173,11 +173,11 @@ function loadMark(): Promise<HTMLImageElement> {
 }
 
 /** a quiet floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
-function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: LogoSpot, px: number) {
+function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550') {
   const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
   const markH = h * 0.78, markW = markH * (img.width / img.height);
   g.save();
-  g.globalAlpha = 0.32;
+  g.globalAlpha = alpha;
   {
     const size = Math.round(h * 0.42);
     g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
@@ -188,7 +188,7 @@ function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: Log
     const total = markW + gap + amann + labs;
     const left = x + (w - total) / 2;
     g.drawImage(img, left, y + (h - markH) / 2, markW, markH);
-    g.fillStyle = '#2a2550';
+    g.fillStyle = ink;
     g.textBaseline = 'middle';
     g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     g.fillText('Amann', left + markW + gap, y + h / 2);
@@ -338,10 +338,28 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       .then(img => {
         if (disposed) return;
         const g = (floorTex.image as HTMLCanvasElement).getContext('2d')!;
-        for (const spot of spots) paintLogo(g, img, spot, px);
+        for (const spot of spots) if (spot.kind === 'floor') paintLogo(g, img, spot, px);
         floorTex.needsUpdate = true;
+        for (const spot of spots) if (spot.kind === 'wall') addToScene(wallLogo(img, spot));
       })
       .catch(() => {});
+  }
+  /** a logo on the side of a run of wall blocks: a see-through decal just in front of the face */
+  function wallLogo(img: HTMLImageElement, spot: Extract<LogoSpot, { kind: 'wall' }>): THREE.Mesh {
+    const h = 0.8, res = 128;
+    const tex = canvasTexture(spot.w * res, h * res, g => paintLogo(g, img, { tx: 0, tz: 0, w: spot.w, h }, res, 0.85, '#ffffff'), false);
+    const geo = new THREE.PlaneGeometry(spot.w, h);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
+    disposables.push(tex, geo, mat);
+    const mid = (spot.w - 1) / 2;
+    const cx = spot.tx + 0.5 + (spot.along === 'x' ? mid : 0), cz = spot.tz + 0.5 + (spot.along === 'z' ? mid : 0);
+    // halfway up the lowest block's visible face (the race track's rails are low)
+    const top = map.id === 'race' ? 0.5 : WALL_HEIGHT - 0.4;
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(cx + spot.facing.x * 0.505, Math.min(0.5, top / 2), cz + spot.facing.z * 0.505);
+    if (top < h) m.scale.setScalar(top / h);
+    m.rotation.y = Math.atan2(spot.facing.x, spot.facing.z);
+    return m;
   }
   const floorGeo = (() => {
     const pos: number[] = [], uv: number[] = [], col: number[] = [], idx: number[] = [];
