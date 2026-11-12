@@ -18,6 +18,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   towerUpgrade: { type: 'towerUpgrade', padId: 0, level: 2, playerId: 0 },
   towerDone: { type: 'towerDone', padId: 0, level: 1 },
   raceLap: { type: 'raceLap', playerId: 0, lap: 1 },
+  countdown: { type: 'countdown', n: 3 },
   pvpKill: { type: 'pvpKill', killerId: 0, victimId: 1 },
   gunLevel: { type: 'gunLevel', playerId: 0, level: 1, weapon: 'candyCannon' },
   railFired: { type: 'railFired', from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },

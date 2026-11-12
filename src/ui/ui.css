@@ -290,7 +290,8 @@ body.split .card { width: 110px; }
 .tip-box.fade { opacity: 0; }
 
 .screen.settings { gap: 14px; background: rgba(20, 16, 50, 0.78); justify-content: safe center; overflow-y: auto; }
-.settings-card { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px 22px; width: min(620px, calc(100vw - 32px)); padding: 18px 24px 20px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
+.settings-columns { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 16px; }
+.settings-card { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 9px 18px; width: min(600px, calc(100vw - 32px)); padding: 14px 20px 16px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
 .settings-section { grid-column: 1 / -1; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); padding-top: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding-bottom: 6px; }
 .settings-version { font-size: 11px; color: rgba(255, 255, 255, 0.75); }
 .settings-note { grid-column: 2; margin-top: -8px; font-size: 8px; line-height: 1.6; opacity: 0.7; }

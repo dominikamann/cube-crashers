@@ -469,8 +469,6 @@ export interface VersusState {
   roundBreakUntil: number;
   round: number;
   nextCrateAt: number;
-  /** the match opens with a countdown: nothing moves before this tick (5 4 3 2 1 GO!) */
-  startsAt?: number;
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;
@@ -538,6 +536,8 @@ export type SimEvent =
   | { type: 'upgradeDenied'; padId: number; reason: 'coins' | 'maxLevel' | 'building' | 'notOnPad'; playerId: number }
   | { type: 'towerUpgrade'; padId: number; level: number; playerId: number }
   | { type: 'raceLap'; playerId: number; lap: number }
+  /** the opening countdown: 5 4 3 2 1, then 0 for GO! */
+  | { type: 'countdown'; n: number }
   | { type: 'pvpKill'; killerId: number | null; victimId: number }
   | { type: 'gunLevel'; playerId: number; level: number; weapon: WeaponKind }
   | { type: 'versusRound'; winner: number | null; round: number }
@@ -621,6 +621,8 @@ export type SimEvent =
 
 export interface SimState {
   tick: number;
+  /** the opening countdown: ticks left before GO; the game's clock stands still meanwhile */
+  countdown?: number;
   seed: number;
   difficulty: Difficulty;
   run: RunState;

@@ -224,10 +224,11 @@ export class HostSession {
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
     this.running(true);
-    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))), countdown: true };
+    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
       versus,
+      countdown: true,
       players: this.lobby.length,
       ids: this.lobby.map(p => p.id),
       names: this.lobby.map(p => p.name),
@@ -316,6 +317,7 @@ export class HostSession {
       mode,
       unlocked,
       difficulty,
+      countdown: true,
       players: humans.length,
       ids: humans.map(p => p.id),
       names: humans.map(p => p.name),

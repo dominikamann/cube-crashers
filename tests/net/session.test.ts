@@ -38,6 +38,12 @@ describe('LAN session', () => {
     const { hub, host, a, b } = setup();
     host.start(42, 'high');
     hub.flush();
+    // a LAN game opens with the countdown too; the clients see it in the snapshots
+    expect(host.sim!.countdown).toBeGreaterThan(0);
+    host.step([]);
+    hub.flush();
+    expect(a.view!.countdown).toBe(host.sim!.countdown);
+    host.sim!.countdown = 0;
     expect(a.status).toBe('playing');
     expect(a.view!.seed).toBe(42);
     expect(a.view!.difficulty).toBe('high');
@@ -58,6 +64,7 @@ describe('LAN session', () => {
   it('applies a jump once even when it arrives with several inputs in one tick', () => {
     const { hub, host, a } = setup();
     host.start(1, 'medium');
+    host.sim!.countdown = 0;
     hub.flush();
     a.sendInput([{ type: 'jump', playerId: 1 }]);
     a.sendInput([]);

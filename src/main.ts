@@ -617,7 +617,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined, countdown: true } });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }
@@ -638,8 +638,8 @@ function startGame() {
     const first = mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
     solo = dailyRun
       ? // the same run for everyone today: fixed seed and difficulty, every weapon
-        createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors })
-      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
+        createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, countdown: true })
+      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, countdown: !params.has('capture') });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }

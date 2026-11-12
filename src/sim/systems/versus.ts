@@ -9,8 +9,6 @@ import { spawnHorde } from './hordes';
 import { explode } from './combat';
 
 export const VERSUS = {
-  /** the countdown that opens a match */
-  countdownTicks: 5 * TICK_RATE,
   /** score race: back in the game this long after going down */
   respawnTicks: 3 * TICK_RATE,
   /** safe for a moment after (re)spawning */
@@ -169,9 +167,7 @@ function equip(p: Player, s?: SimState): void {
 }
 
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
-export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>, countdown = false): void {
-  // a countdown first (5 4 3 2 1 GO!): every timer of the match starts after it
-  const wait = countdown ? VERSUS.countdownTicks : 0;
+export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>): void {
   // capture the cube needs two teams; gun game is everyone for themselves
   if (rule === 'capture') mode = 'team';
   if (rule === 'gungame') mode = 'ffa';
@@ -182,8 +178,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     mode,
     rule,
     limit: VERSUS.limit[mode],
-    endsAt: s.tick + wait + VERSUS.minutes[mode] * 60 * TICK_RATE,
-    startsAt: countdown ? s.tick + wait : undefined,
+    endsAt: s.tick + VERSUS.minutes[mode] * 60 * TICK_RATE,
     scores: {},
     teamScores: [0, 0],
     roundWins: {},

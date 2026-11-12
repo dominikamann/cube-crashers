@@ -1,3 +1,4 @@
+import { FLOORS } from '../sim/config/floors';
 import { inZone } from '../sim/systems/nests';
 import { RACE, raceSeconds } from '../sim/systems/race';
 import { LANE } from '../sim/systems/lane';
@@ -54,6 +55,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const introHint = el('div', 'versus-intro-hint', intro);
   const introCount = el('div', 'versus-intro-count', intro);
   let introShown = '';
+  let goUntil = 0;
   let padMode: string | null = null;
   const top = el('div', 'hud-top', layer);
 
@@ -465,14 +467,29 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       const vs = s.versus;
-      // the countdown, then GO! for a moment
-      const toGo = vs?.startsAt !== undefined ? (vs.startsAt - s.tick) / TICK_RATE : -9;
-      intro.style.display = vs && toGo > -1 ? '' : 'none';
-      if (vs && toGo > -1) {
-        introRule.textContent = t(`versus.${vs.rule}` as 'versus.score');
-        introMode.textContent = vs.rule === 'capture' || vs.rule === 'gungame' ? (vs.chaos ? t('versus.chaosCard') : '') : `${t(`versus.${vs.mode}` as 'versus.ffa')}${vs.chaos ? ` ${t('versus.chaosCard')}` : ''}`;
-        introHint.textContent = t(`versus.${vs.rule}Hint` as 'versus.scoreHint');
-        const shown = toGo > 0 ? String(Math.ceil(toGo)) : t('versus.go');
+      // the countdown that opens a game (what is played, then 5 4 3 2 1 GO!), and GO! for a moment after it
+      const counting = (s.countdown ?? 0) > 0;
+      if (counting) goUntil = performance.now() + 900;
+      const showIntro = counting || performance.now() < goUntil;
+      intro.style.display = showIntro ? '' : 'none';
+      if (showIntro) {
+        const mode = s.run.mode;
+        const floorName = t(FLOORS[s.map.id]?.name as 'floor.plaza');
+        const level = t(`difficulty.${s.difficulty}` as 'difficulty.medium');
+        if (vs) {
+          introRule.textContent = t(`versus.${vs.rule}` as 'versus.score');
+          introMode.textContent = [vs.rule === 'capture' || vs.rule === 'gungame' ? '' : t(`versus.${vs.mode}` as 'versus.ffa'), floorName, vs.chaos ? t('versus.chaosCard') : ''].filter(Boolean).join(' · ');
+          introHint.textContent = t(`versus.${vs.rule}Hint` as 'versus.scoreHint');
+        } else if (mode === 'bossrush') {
+          introRule.textContent = t('bossrush.title');
+          introMode.textContent = `${level} · ${floorName}`;
+          introHint.textContent = t('bossrush.sub');
+        } else {
+          introRule.textContent = t(mode === 'run' ? 'mode.run' : mode === 'endless' ? 'mode.endless' : 'mode.quick');
+          introMode.textContent = mode === 'run' ? t('intro.floor', { level, n: s.run.floor + 1, of: s.run.floors.length, name: floorName }) : `${level} · ${floorName}`;
+          introHint.textContent = t(mode === 'run' ? 'mode.runHint' : mode === 'endless' ? 'mode.endlessHint' : 'mode.quickHint');
+        }
+        const shown = counting ? String(Math.ceil(s.countdown! / TICK_RATE)) : t('versus.go');
         if (shown !== introShown) {
           introShown = shown;
           introCount.textContent = shown;
@@ -481,8 +498,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           void introCount.offsetWidth;
           introCount.classList.add('pop');
         }
-        intro.classList.toggle('going', toGo <= 0);
-      }
+        intro.classList.toggle('going', !counting);
+      } else introShown = '';
       if (vs) {
         const left = Math.max(0, Math.ceil((vs.endsAt - s.tick) / TICK_RATE));
         const time = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;

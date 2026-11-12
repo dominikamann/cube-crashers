@@ -29,7 +29,7 @@ import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/t
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
 import { handleEmote } from './systems/emotes';
-import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, VersusMode, VersusRule, WeaponKind } from './types';
+import { TICK_RATE, type Command, type Difficulty, type Intent, type Player, type RunMode, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % MAX_PLAYERS): Player {
   return {
@@ -98,7 +98,9 @@ export interface SimOptions {
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
   /** versus (PvP): free for all or teams, score race or last cube standing */
-  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1>; countdown?: boolean };
+  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> };
+  /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
+  countdown?: boolean;
   /** unlocked items (profile ids); leave out to allow everything */
   unlocked?: string[];
   /** LAN: the player ids and lobby colours, in lobby order */
@@ -106,6 +108,9 @@ export interface SimOptions {
   names?: string[];
   colors?: number[];
 }
+
+/** the countdown that opens a game: 5 4 3 2 1 GO! */
+export const COUNTDOWN_TICKS = 5 * TICK_RATE;
 
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
@@ -166,8 +171,9 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
   }
-  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.countdown ?? false);
+  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams);
   else setupFloor(s);
+  if (opts.countdown) s.countdown = COUNTDOWN_TICKS;
   return s;
 }
 
@@ -227,9 +233,12 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
     }
   }
-  if (s.versus?.startsAt !== undefined && s.tick < s.versus.startsAt) {
-    // the countdown before a versus match: everyone waits at the start
-    s.tick++;
+  if ((s.countdown ?? 0) > 0) {
+    // the countdown before the game: everyone waits at the start and the game's clock stands still, so every
+    // timer (alarm, match time, race clock) starts at GO
+    if (s.countdown! % TICK_RATE === 0) s.events.push({ type: 'countdown', n: s.countdown! / TICK_RATE });
+    s.countdown!--;
+    if (s.countdown === 0) s.events.push({ type: 'countdown', n: 0 });
     return;
   }
   if (s.run.stage === 'shop') {

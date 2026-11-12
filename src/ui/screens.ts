@@ -49,6 +49,8 @@ export interface Settings {
   versusDiscovery: boolean;
   /** set once discovery became the versus default */
   discoveryDefault?: boolean;
+  /** High became everyone's graphics once (Ultra had grown too heavy for most machines) */
+  graphicsHighDefault?: boolean;
   versusMap: string;
   /** versus on this computer: players in the match, bots fill up the rest */
   versusSize: number;
@@ -116,6 +118,8 @@ export function loadSettings(): Settings {
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
+    // once for everyone: back to High (choosing Ultra again afterwards sticks)
+    if (!loaded.graphicsHighDefault) loaded = { ...loaded, graphics: 'high', graphicsHighDefault: true };
   } catch {
     // storage unavailable: use defaults
   }
@@ -452,10 +456,18 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   function settingsScreen() {
     show('settings', s => {
       text(s, 'h2', '', t('settings.title'));
-      // one card: a label on the left, its control on the right
-      const card = document.createElement('div');
-      card.className = 'settings-card';
-      s.append(card);
+      // two cards side by side (one above the other on a narrow screen), so nothing needs scrolling:
+      // the game on the left; sound, you and about on the right. In each a label on the left, its control on the right
+      const columns = document.createElement('div');
+      columns.className = 'settings-columns';
+      s.append(columns);
+      const cards = [0, 1].map(() => {
+        const c = document.createElement('div');
+        c.className = 'settings-card';
+        columns.append(c);
+        return c;
+      });
+      let card = cards[1];
       const row = (label: string) => {
         text(card, 'div', 'settings-label', label);
         const cell = document.createElement('div');
@@ -463,7 +475,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         card.append(cell);
         return cell;
       };
-      const section = (label: string) => text(card, 'div', 'settings-section', label);
+      const section = (label: string, column: 0 | 1 = 1) => {
+        card = cards[column];
+        return text(card, 'div', 'settings-section', label);
+      };
       const chips = <V,>(label: string, items: { label: string; value: V }[], get: () => V, set: (v: V) => void) => {
         const cell = row(label);
         cell.classList.add('chips');
@@ -501,7 +516,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         row(t(key === 'music' ? 'settings.music' : 'settings.sfx')).append(input);
       }
 
-      section(t('settings.gameplay'));
+      // graphics sit with the sound on the right, where there is room for all four
+      chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
+      section(t('settings.gameplay'), 0);
       const keys = row(t('settings.keys'));
       const change = document.createElement('button');
       change.className = 'chip small';
@@ -513,7 +530,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       keys.append(change);
       chips(t('settings.mouse'), [0.5, 1, 1.5, 2, 3].map(v => ({ label: `${v}×`, value: v })), () => settings.mouseSensitivity, v => (settings.mouseSensitivity = v));
       chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
-      chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
       chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
       chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
