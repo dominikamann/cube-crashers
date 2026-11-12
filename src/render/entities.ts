@@ -84,8 +84,6 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // eyes that glow red the moment before an attack
   const angryEyes = new InstancedPool(scene, unit, redEyeMat, 256, false);
   const redEyes = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.18, 0.06), redEyeMat, 64, false);
-  const jetMat = lambert(0xd0d4e0);
-  const jetItems = new InstancedPool(scene, new THREE.BoxGeometry(0.55, 0.7, 0.3), jetMat, 8);
   const jetGlowMat = glowMat(0xff9f2e, 2);
   const jetGlow = new InstancedPool(scene, new THREE.BoxGeometry(0.4, 0.12, 0.4), jetGlowMat, 8, false);
   const gumMat = new THREE.MeshStandardMaterial({ color: 0xff7fc8, transparent: true, opacity: 0.45, roughness: 0.2, depthWrite: false });
@@ -209,14 +207,14 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       eyeMat.color.setHex(night > 0.5 ? 0xffffff : 0xfff27a);
       eyeMat.emissive.copy(eyeMat.color);
-      eyeMat.emissiveIntensity = 2.5 * theme.glow;
+      eyeMat.emissiveIntensity = 1.3 * Math.min(theme.glow, 1.5);
       boomerangMat.emissiveIntensity = 1.5 * theme.glow;
       boltMat.emissiveIntensity = 3 * theme.glow;
       eyes.begin();
       pupils.begin();
       plates.begin();
       const heads = new Set(s.boss?.worms.map(w => w[0]) ?? []);
-      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
+      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -337,7 +335,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
-      for (const p of [eyes, pupils, plates, angryEyes, partsLit, partsGlow]) p.end();
+      for (const p of [eyes, pupils, plates, angryEyes]) p.end();
       // forget monsters that are gone
       if (bornAt.size > 600) {
         const alive = new Set(s.enemies.map(e => e.id));
@@ -397,14 +395,39 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       blastFills.end();
       for (const j of s.jetpacks) {
-        jetItems.add(j.pos.x, 0.7 + Math.sin(time * 3 + j.id) * 0.12, j.pos.z, time * 1.5);
-        jetGlow.add(j.pos.x, 0.12, j.pos.z, time * 1.5, 1 + 0.15 * Math.sin(time * 6));
+        // a little jetpack built from cubes: it floats, turns slowly, its burners flicker and sparks rise from the pad
+        const rot = time * 1.2 + j.id, c = Math.cos(rot), sn = Math.sin(rot);
+        const y0 = 0.95 + Math.sin(time * 3 + j.id) * 0.12;
+        const put = (pool: InstancedPool, lx: number, ly: number, lz: number, w: number, h: number, d: number, color: number) =>
+          pool.addScaled(j.pos.x + lx * c + lz * sn, y0 + ly, j.pos.z - lx * sn + lz * c, rot, w, h, d, color);
+        const flick = 0.1 + 0.1 * Math.abs(Math.sin(time * 23 + j.id));
+        for (const side of [-1, 1]) {
+          put(partsLit, side * 0.17, 0, 0, 0.2, 0.55, 0.2, 0xd0d4e0);
+          put(partsLit, side * 0.17, 0.32, 0, 0.16, 0.1, 0.16, 0xff5a5f);
+          put(partsLit, side * 0.17, -0.33, 0, 0.14, 0.12, 0.14, 0x2a2a35);
+          put(partsLit, side * 0.34, 0.05, 0.03, 0.14, 0.22, 0.04, 0xff5a5f);
+          put(partsLit, side * 0.1, 0.05, -0.12, 0.05, 0.42, 0.04, 0x8a5a2b);
+          put(partsGlow, side * 0.17, -0.42 - flick / 2, 0, 0.1, flick, 0.1, 0xff9f2e);
+          put(partsGlow, side * 0.17, -0.41 - flick / 4, 0, 0.05, flick / 2, 0.05, 0xfff2a0);
+        }
+        put(partsLit, 0, 0.02, 0, 0.16, 0.36, 0.16, 0x444455);
+        put(partsGlow, 0, 0.12, -0.09, 0.07, 0.07, 0.03, 0x2bf0ff);
+        // the pad underneath, and sparks spiralling up from it
+        jetGlow.add(j.pos.x, 0.08, j.pos.z, time * 1.5, 1.3 + 0.15 * Math.sin(time * 6));
+        for (let i = 0; i < 5; i++) {
+          const t = (time * 0.6 + i / 5 + j.id * 0.13) % 1;
+          const a = time * 2 + (i * Math.PI * 2) / 5;
+          const size = 0.07 * (1 - t);
+          partsGlow.addScaled(j.pos.x + Math.cos(a) * 0.45, 0.15 + t * 1.5, j.pos.z + Math.sin(a) * 0.45, a, size, size, size, i % 2 ? 0xff9f2e : 0xfff2a0);
+        }
       }
       for (const b of s.bubbles) {
         const left = Math.max(0, b.popAt - s.tick);
         gums.add(b.pos.x, 0.9, b.pos.z, 0, 2.5 * (1 + (left < 30 ? 0.12 * Math.sin(time * 40) : 0.04 * Math.sin(time * 4))));
       }
-      jetGlowMat.emissiveIntensity = 2 * Math.min(theme.glow, 1.4);
+      partsLit.end();
+      partsGlow.end();
+      jetGlowMat.emissiveIntensity = 1.2 * Math.min(theme.glow, 1.4);
       for (const p of extra) p.end();
 
       coins.begin();

@@ -80,9 +80,9 @@ export const THEMES: { day: Theme; night: Theme } = {
     laneEdgeIntensity: 3,
     glow: 2.2,
     pointLights: 1,
-    bloomStrength: 0.45,
+    bloomStrength: 0.3,
     bloomRadius: 0.15,
-    bloomThreshold: 0.6,
+    bloomThreshold: 0.72,
   },
 };
 

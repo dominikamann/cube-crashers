@@ -1021,6 +1021,8 @@ function applyDemo(sim: SimState) {
       });
     });
   }
+  // ?demo=jetpack: a jetpack lying right next to the player (to look at it)
+  if (params.get('demo') === 'jetpack') sim.jetpacks.push({ id: sim.nextId++, pos: { x: sim.players[0].pos.x + 2, z: sim.players[0].pos.z - 1 } });
   if (params.get('demo') === 'nest') {
     // straight into a hold: next to a planted nest, with a crate opened beside it
     const nest = sim.nests[0];

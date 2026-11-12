@@ -29,21 +29,49 @@ export interface Actors {
 function makePlayer(color: number) {
   const root = new THREE.Group();
   const body = new THREE.Group();
-  const suit = lambert(PLAYER_COLORS[color % PLAYER_COLORS.length]);
+  const hue = PLAYER_COLORS[color % PLAYER_COLORS.length];
+  const suit = lambert(hue);
+  const trim = lambert(new THREE.Color(hue).lerp(new THREE.Color(0xffffff), 0.45).getHex());
   const skin = lambert(0xffd2a8);
   const dark = lambert(0x2a2a50);
-  body.add(box(0.22, 0.4, 0.22, dark, -0.13, 0.2, 0));
-  body.add(box(0.22, 0.4, 0.22, dark, 0.13, 0.2, 0));
-  body.add(box(0.6, 0.6, 0.4, suit, 0, 0.7, 0));
-  body.add(box(0.16, 0.5, 0.16, suit, -0.4, 0.7, 0));
-  body.add(box(0.16, 0.5, 0.16, suit, 0.4, 0.7, 0));
-  body.add(box(0.46, 0.46, 0.46, skin, 0, 1.25, 0));
-  body.add(box(0.48, 0.12, 0.08, glowMat(0x2bf0ff, 1.5), 0, 1.3, -0.24));
-  body.add(box(0.5, 0.14, 0.5, lambert(0x6b3a1e), 0, 1.5, 0));
+  const white = lambert(0xc4c9d8);
+  // legs swing from the hip, each with a boot
+  const leg = (x: number) => {
+    const g = new THREE.Group();
+    g.add(box(0.2, 0.3, 0.2, dark, 0, -0.15, 0), box(0.23, 0.14, 0.3, white, 0, -0.35, -0.04));
+    g.position.set(x, 0.42, 0);
+    body.add(g);
+    return g;
+  };
+  const legL = leg(-0.13), legR = leg(0.13);
+  // the suit: chest with an emblem, a belt with a buckle, shoulder pads, a small pack
+  body.add(box(0.6, 0.5, 0.38, suit, 0, 0.72, 0));
+  body.add(box(0.62, 0.08, 0.4, dark, 0, 0.47, 0), box(0.12, 0.08, 0.03, glowMat(0xffcf3a, 0.8), 0, 0.47, -0.2));
+  body.add(box(0.2, 0.06, 0.03, white, 0, 0.84, -0.195), box(0.06, 0.2, 0.03, white, 0, 0.77, -0.195));
+  body.add(box(0.22, 0.12, 0.3, trim, -0.4, 0.96, 0), box(0.22, 0.12, 0.3, trim, 0.4, 0.96, 0));
+  body.add(box(0.36, 0.34, 0.12, dark, 0, 0.74, 0.25));
+  // arms hang from the shoulder, with gloves; the right one holds the blaster out in front
+  const arm = (x: number) => {
+    const g = new THREE.Group();
+    g.add(box(0.15, 0.34, 0.15, suit, 0, -0.2, 0), box(0.17, 0.12, 0.17, white, 0, -0.42, 0));
+    g.position.set(x, 0.92, 0);
+    body.add(g);
+    return g;
+  };
+  const armL = arm(-0.4), armR = arm(0.4);
+  armR.rotation.x = 1.25;
+  // the head: a face under a helmet with a glowing visor, a stripe and an antenna
+  body.add(box(0.44, 0.4, 0.44, skin, 0, 1.24, 0), box(0.14, 0.03, 0.02, dark, 0, 1.11, -0.225));
+  body.add(box(0.5, 0.2, 0.5, suit, 0, 1.47, 0), box(0.5, 0.32, 0.14, suit, 0, 1.3, 0.2));
+  body.add(box(0.1, 0.22, 0.52, white, 0, 1.475, 0));
+  body.add(box(0.48, 0.12, 0.08, glowMat(0x2bf0ff, 1.5), 0, 1.31, -0.23));
+  body.add(box(0.04, 0.2, 0.04, dark, 0.18, 1.66, 0.1), box(0.08, 0.08, 0.08, glowMat(0xff5a5f, 1.4), 0.18, 1.79, 0.1));
   // the blaster arm always points at the crosshair
   const gun = new THREE.Group();
-  gun.add(box(0.14, 0.14, 0.7, lambert(0x444455), 0, 0, -0.45));
-  gun.add(box(0.1, 0.1, 0.12, glowMat(0xfff27a, 1.4), 0, 0, -0.84));
+  gun.add(box(0.14, 0.16, 0.6, lambert(0x444455), 0.3, 0, -0.5));
+  gun.add(box(0.08, 0.14, 0.1, lambert(0x2a2a35), 0.3, -0.12, -0.3));
+  gun.add(box(0.16, 0.05, 0.3, glowMat(0x2bf0ff, 1.2), 0.3, 0.1, -0.5));
+  gun.add(box(0.1, 0.1, 0.12, glowMat(0xfff27a, 1.4), 0.3, 0, -0.84));
   gun.position.y = 0.8;
   root.add(body, gun);
 
@@ -82,7 +110,7 @@ function makePlayer(color: number) {
   glint.position.y = 0.05;
   glint.visible = false;
   root.add(glint);
-  return { root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
+  return { color, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
 const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
@@ -325,6 +353,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
     let v = players.get(p.id);
+    // a new suit colour (teams): a new model
+    if (v && v.color !== p.color) {
+      scene.remove(v.root, v.light);
+      disposeTree(v.root);
+      v = undefined;
+    }
     if (!v) {
       v = makePlayer(p.color);
       scene.add(v.root, v.light);
@@ -352,6 +386,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.lastZ = p.pos.z;
     const moving = !driving && p.air === 0 && !p.flying && moved;
     v.body.position.y = moving && !down ? Math.abs(Math.sin(time * 14)) * 0.06 : 0;
+    // legs and the free arm swing with the steps; sitting in a kart the legs point forward, in the air they trail
+    const swing = moving && !down ? Math.sin(time * 14) * 0.75 : 0;
+    const rest = driving ? 1.3 : p.flying || p.air > 0 ? -0.35 : 0;
+    v.legL.rotation.x = rest + swing;
+    v.legR.rotation.x = rest - swing;
+    v.armL.rotation.x = -swing * 0.8 + (p.air > 0 ? -1.2 : 0);
     v.body.rotation.z = down ? Math.PI / 2 : 0;
     if (down) v.body.position.y = 0.25;
     v.body.scale.setScalar(driving ? 0.8 : 1);
@@ -378,9 +418,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.paddle.rotation.x = 1.5 * (1 - down * down);
       v.swatter.position.y = 0.85 - 0.75 * down;
     }
-    v.light.intensity = 4 * theme.pointLights;
-    v.light.position.set(v.root.position.x, 1.6, v.root.position.z);
-    setGlow(v.root, theme.glow);
+    // a soft light above the head (not inside it), and the suit's own lights kept low: at night a player
+    // must not turn into a white blob
+    v.light.intensity = 1.4 * theme.pointLights;
+    v.light.position.set(v.root.position.x, v.root.position.y + 2.8, v.root.position.z);
+    setGlow(v.root, Math.min(theme.glow, 1.1));
   }
 
   function updateTower(t: Tower, v: ReturnType<typeof makeTower> & { built: number }, theme: Theme, time: number) {
