@@ -2,7 +2,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/dominikamann/cube-crashers?label=version&color=ff2bd6)](https://github.com/dominikamann/cube-crashers/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
-[![Play in the browser](https://img.shields.io/badge/play-in%20the%20browser-fa5c5c?logo=itchdotio&logoColor=white)](https://amannlabs.itch.io/cube-crashers)
+[![Try it in the browser](https://img.shields.io/badge/try%20it-in%20the%20browser-fa5c5c?logo=itchdotio&logoColor=white)](https://amannlabs.itch.io/cube-crashers)
 ![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
 ![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
@@ -58,7 +58,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
   </tr>
 </table>
 
-Runs on **Windows and macOS**, and [in the browser](https://amannlabs.itch.io/cube-crashers). Free and open source (MIT).
+Runs on **Windows and macOS**; a [browser version](https://amannlabs.itch.io/cube-crashers) lets you try it first. Free and open source (MIT).
 
 ---
 
@@ -90,11 +90,12 @@ Runs on **Windows and macOS**, and [in the browser](https://amannlabs.itch.io/cu
 
 ## Download and install
 
-**No install needed:** [play in the browser on itch.io](https://amannlabs.itch.io/cube-crashers), alone, in
-split screen or online. LAN parties need the desktop app.
-
-For the desktop app, get the latest version from the
+**Recommended: the desktop app.** It is the full game, with LAN parties, every online server and the best
+performance. Get the latest version from the
 **[Releases page](https://github.com/dominikamann/cube-crashers/releases/latest)** (or from the itch.io page).
+
+**Just want a quick look?** [Play in the browser on itch.io](https://amannlabs.itch.io/cube-crashers) without
+installing anything: alone, in split screen or online on servers that take browser players.
 
 ### macOS
 
