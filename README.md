@@ -226,6 +226,15 @@ the whole team.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
+- **Keys → Change keys** opens the **Controls** page: every keyboard action with its key. Click an action (or pick it
+  and press `Enter`), then press the new key. If another action had that key, the two swap. *Reset to defaults*
+  brings back the standard keys. `Esc` and `P` always pause and cannot be changed; the mouse buttons and the
+  controller keep theirs. All hints in the game (build pad, build menu, emote bar, tips) name your keys.
+- **Colour-blind mode** (off by default): nothing important relies on telling red from green any more. Teams are
+  orange ▲ against blue ● with the shape over every player, on the minimap and in the team names; health bars run
+  from light blue to dark orange and get darker as health drops; monster shots are violet and bigger than your
+  yellow bolts; angry eyes and warning lanes and rings blink hard; the glitch floor shows a thick yellow "no" sign.
+  It switches at once, also in a paused match.
 - **Controls** are listed at the bottom of the settings screen, and **About** shows the version you have installed.
 - **Credits** (title screen): who made the game.
 
@@ -398,6 +407,9 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
+
+These are the default keys: change them under *Settings → Keys → Change keys*. The arrow keys, right `Shift` and
+the number pad keep working alongside your keys unless you give them another job.
 
 ### Controller (Xbox and other standard pads)
 
@@ -670,8 +682,8 @@ docs/         gameplay GIF and screenshots
 - [x] Daily Run: the same seed for everyone each day, with its own best list
 - [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
 - [x] Replay of the last seconds (kill cam)
-- [ ] Key rebinding: a Controls page, click an action and press the new key
-- [ ] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
+- [x] Key rebinding: a Controls page, click an action and press the new key
+- [x] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing
