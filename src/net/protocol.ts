@@ -13,8 +13,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 3: versus, votes, team wishes, gun game, the host's view setting (0.4.0).
  * 0.4.1 added the server-list probe and ready flags without breaking 0.4.0, so it stayed 3.
  * 4: up to 10 players, new monsters, weapons, towers and events, emotes, Coin-Op Chaos (0.5.0).
+ * 5: three new worlds, Boss Rush, new monsters, the Kraken's grab, ladders, a changed Candy Factory (0.5.1).
  */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

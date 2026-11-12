@@ -1015,7 +1015,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       // 2.5 tiles per second, like the sim
       beltTex.offset.y = (time * 2.5) % 1;
       wallSide.emissiveIntensity = 0.35 * glow;
-      decor.update(time, glow);
+      // hidden on low graphics: nothing to animate
+      if (decor.group.visible) decor.update(time, glow);
 
       const activePads = new Set(s.players.filter(p => p.downUntil === null).map(p => padAt(s, p.pos)).filter(id => id !== null));
       const occupied = new Set(s.towers.map(t => t.padId));

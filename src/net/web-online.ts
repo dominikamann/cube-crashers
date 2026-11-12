@@ -26,16 +26,24 @@ export interface Socket {
 }
 export type OpenSocket = (url: string) => Socket;
 
-/** Connects to a server; the promise fails when nobody answers. */
-export function connectWeb(url: string, open: OpenSocket): Promise<Transport> {
+/** Connects to a server; the promise fails when nobody answers within `timeoutMs` (like the desktop app's 4 s). */
+export function connectWeb(url: string, open: OpenSocket, timeoutMs = 4000): Promise<Transport> {
   return new Promise((resolve, reject) => {
     const ws = open(url);
     let opened = false;
     let closed = false;
+    const timer = setTimeout(() => {
+      if (opened) return;
+      closed = true;
+      ws.close();
+      reject(new Error('connect'));
+    }, timeoutMs);
     let onMessage: (from: number, data: string) => void = () => {};
     let onClose: () => void = () => {};
     ws.onopen = () => {
+      if (closed) return;
       opened = true;
+      clearTimeout(timer);
       resolve({
         send: (_to, data) => {
           if (!closed) ws.send(data);
@@ -50,6 +58,7 @@ export function connectWeb(url: string, open: OpenSocket): Promise<Transport> {
     ws.onmessage = e => onMessage(0, String(e.data));
     ws.onclose = () => {
       closed = true;
+      clearTimeout(timer);
       if (opened) onClose();
       else reject(new Error('connect'));
     };

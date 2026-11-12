@@ -30,7 +30,8 @@ export const DEFAULT_BINDINGS: Readonly<Bindings> = Object.freeze({
 export const WEAPON_ACTIONS = ['weapon1', 'weapon2', 'weapon3', 'weapon4', 'weapon5', 'weapon6'] as const;
 
 /** Escape and P always pause; the Meta (Cmd) keys belong to the system */
-const RESERVED = new Set(['Escape', 'KeyP', 'MetaLeft', 'MetaRight']);
+// besides the pause keys: keys the browser acts on itself (Ctrl+W closes the tab, F5 reloads, Tab moves the focus)
+const RESERVED = new Set(['Escape', 'KeyP', 'MetaLeft', 'MetaRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'Tab', 'Backspace']);
 
 /** keys that always work too, unless the player bound them to something else:
  *  the arrows walk, right Shift dashes, the number pad picks weapons */
@@ -44,7 +45,7 @@ const EXTRA: Record<string, Action> = {
 };
 
 export function canBind(code: string): boolean {
-  return /^[A-Za-z0-9]+$/.test(code) && !RESERVED.has(code);
+  return /^[A-Za-z0-9]+$/.test(code) && !RESERVED.has(code) && !/^F\d{1,2}$/.test(code);
 }
 
 /** Puts `action` on `code`. An action that had that key gets the old key of `action`, so nothing is left without one. */

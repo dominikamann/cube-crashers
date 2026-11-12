@@ -1,3 +1,4 @@
+import { browserStore } from './profile';
 import { TICK_RATE, type KillCategory, type PerkKind, type SimState, type WeaponKind } from './sim/types';
 
 /** A small record of one run, used to see how the game is actually played. Never leaves the machine. */
@@ -87,9 +88,9 @@ declare global {
 export function saveRunLog(log: RunLog): void {
   const json = JSON.stringify(log, null, 2);
   try {
-    const runs: RunLog[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+    const runs: RunLog[] = JSON.parse(browserStore().getItem(STORAGE_KEY) ?? '[]');
     runs.push(log);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(runs.slice(-KEEP)));
+    browserStore().setItem(STORAGE_KEY, JSON.stringify(runs.slice(-KEEP)));
   } catch {
     // storage unavailable
   }

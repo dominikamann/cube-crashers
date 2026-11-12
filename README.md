@@ -170,7 +170,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | Floor | Theme | What happens | Then |
 |---|---|---|---|
 | 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
-| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
+| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
 
@@ -519,6 +519,11 @@ Hits from up close (within 3 tiles) deal **50 % more damage**.
 | **Bubblegum Bazooka** | Traps monsters in a huge gum bubble that pops after 3 seconds. |
 | **Leaf Blower 3000** | Blows hordes away and slams them into walls. Blows coins toward you. |
 | **Pizza Cutter** | A spinning saw that bounces off walls and cuts through everything. |
+
+### Ladders
+
+Every world (apart from the minigames) has a few ladders against the blocks. Walk into the wall at one and
+you **climb onto the block**, the same perch the jetpack lands you on. Walk off the edge to drop down.
 
 ### Jetpack
 

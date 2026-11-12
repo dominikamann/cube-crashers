@@ -101,6 +101,35 @@ describe('under water', () => {
     expect(s.boss!.grab).toBeFalsy();
   });
 
+  it('a dash breaks its grip only when a dash charge is left', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    const p = s.players[0];
+    p.invulnUntil = 1e9;
+    const k = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    k.speed = 0;
+    p.pos = { x: k.pos.x, z: k.pos.z + 7 };
+    p.dashCharges = 0;
+    p.dashRecharge = 10_000;
+    grabPlayer(s, p);
+    stepSim(s, [{ type: 'dash', playerId: p.id }]);
+    stepSim(s, []);
+    expect(s.boss!.grab?.playerId).toBe(p.id);
+  });
+
+  it('when the Kraken dies it lets go of the player it holds', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    const p = s.players[0];
+    p.invulnUntil = 1e9;
+    const k = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    k.speed = 0;
+    p.pos = { x: k.pos.x, z: k.pos.z + 7 };
+    grabPlayer(s, p);
+    k.hp = 0;
+    stepSim(s, []);
+    expect(s.boss).toBeNull();
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'krakenRelease', playerId: p.id }));
+  });
+
   it('the Kraken lashes out with its tentacles and sends fish and sharks', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
     expect(s.boss?.kind).toBe('kraken');

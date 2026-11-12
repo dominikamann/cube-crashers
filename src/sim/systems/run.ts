@@ -81,6 +81,9 @@ export function enterFloor(s: SimState, index: number): void {
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;
+    // off any wall top or ladder of the floor before
+    p.perched = false;
+    p.climb = null;
     // a jetpack is only for the floor it was found on
     p.jetpack = false;
     p.jetFuel = 0;

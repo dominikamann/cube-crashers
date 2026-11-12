@@ -30,6 +30,8 @@ describe('key bindings', () => {
     expect(canBind('Escape')).toBe(false);
     expect(canBind('KeyP')).toBe(false);
     expect(canBind('KeyF')).toBe(true);
+    // keys the browser acts on itself (Ctrl+W closes the tab, F5 reloads, Tab moves the focus)
+    for (const code of ['ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'Tab', 'Backspace', 'F1', 'F5', 'F12']) expect(canBind(code), code).toBe(false);
     expect(assignKey(DEFAULT_BINDINGS, 'use', 'Escape').bindings).toEqual(DEFAULT_BINDINGS);
   });
 

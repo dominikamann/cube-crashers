@@ -31,6 +31,13 @@ async function server(web: boolean) {
 }
 
 describe('online games from a web page', () => {
+  it('joining gives up when the server never finishes the handshake', async () => {
+    let closed = false;
+    const silent: OpenSocket = () => ({ send() {}, close: () => void (closed = true), onopen: null, onmessage: null, onclose: null, onerror: null });
+    await expect(connectWeb('wss://never.example.org', silent, 50)).rejects.toThrow();
+    expect(closed).toBe(true);
+  });
+
   it('an https page opens encrypted connections, an http page plain ones', () => {
     expect(socketUrl('play.example.org:443', true)).toBe('wss://play.example.org:443');
     expect(socketUrl('10.0.0.5:47800', false)).toBe('ws://10.0.0.5:47800');

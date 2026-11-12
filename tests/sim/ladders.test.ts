@@ -4,6 +4,7 @@ import { ladders } from '../../src/sim/map/ladders';
 import { perchable } from '../../src/sim/map/perch';
 import { Tile } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
+import { enterFloor } from '../../src/sim/systems/run';
 import { move } from './helpers';
 
 describe('ladders', () => {
@@ -39,5 +40,16 @@ describe('ladders', () => {
     expect(p.climb).toBeFalsy();
     expect(p.perched).toBe(true);
     expect(perchable(def.map, p.pos.x, p.pos.z)).toBe(true);
+  });
+
+  it('a climb under way does not carry over to the next floor', () => {
+    const s = createSim(FLOORS.floor01.map, 3, { mode: 'run', players: 1 });
+    const p = s.players[0];
+    const l = ladders(s.map)[0];
+    p.climb = { ticks: 10, top: { ...l.top } };
+    p.perched = true;
+    enterFloor(s, 1);
+    expect(p.climb).toBeFalsy();
+    expect(p.perched).toBeFalsy();
   });
 });

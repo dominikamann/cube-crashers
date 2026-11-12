@@ -235,7 +235,9 @@ function drag(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
     b.grab = null;
     if (p) s.events.push({ type: 'krakenRelease', playerId: p.id });
   };
-  if (!p || !kraken || p.downUntil !== null || s.tick >= g.until || p.dashTicks > 0 || intents?.get(p.id)?.dash) return free();
+  // a dash only breaks free with a charge left to dash with
+  const dashing = p !== undefined && (p.dashTicks > 0 || (intents?.get(p.id)?.dash === true && p.dashCharges > 0));
+  if (!p || !kraken || p.downUntil !== null || s.tick >= g.until || dashing) return free();
   const d = dist(p.pos, kraken.pos);
   if (d <= kraken.radius + PLAYER_RADIUS + 0.3) return free();
   const step = Math.min(BOSS.grabSpeed * DT, d - kraken.radius - PLAYER_RADIUS);
@@ -257,6 +259,7 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
   if (living.length === 0) {
+    if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos } });
     dropCoins(s, b.lastPos, BOSS.deathCoins);
     s.boss = null;

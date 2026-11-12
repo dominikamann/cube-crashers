@@ -34,13 +34,21 @@ export interface Store {
  * The browser's storage. Where the browser keeps it locked (private windows, the game embedded in
  * another page) even asking for it throws: then progress only lasts this session.
  */
-export function browserStore(open: () => Store = () => window.localStorage): Store {
+export function browserStore(open: () => Store = () => globalThis.localStorage): Store {
   try {
-    return open();
+    const store = open();
+    if (store) return store;
   } catch {
-    const data = new Map<string, string>();
-    return { getItem: key => data.get(key) ?? null, setItem: (key, value) => void data.set(key, value) };
+    // locked
   }
+  // one fallback for the whole game, so the title screen sees what the game recorded
+  return (fallback ??= memoryStore());
+}
+let fallback: Store | null = null;
+
+function memoryStore(): Store {
+  const data = new Map<string, string>();
+  return { getItem: key => data.get(key) ?? null, setItem: (key, value) => void data.set(key, value) };
 }
 
 const KEY = 'cube-crashers.profile';

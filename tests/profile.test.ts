@@ -21,6 +21,8 @@ describe('profile', () => {
     expect(loadProfile(store).tickets).toBe(3);
     const real = memory();
     expect(browserStore(() => real)).toBe(real);
+    // the whole game shares one fallback: the title screen sees the scores the game recorded
+    expect(browserStore()).toBe(browserStore());
   });
 
   it('starts with nothing unlocked', () => {

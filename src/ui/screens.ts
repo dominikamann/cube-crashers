@@ -62,14 +62,14 @@ const TIP_COUNT = 16;
 const FP_TIP_KEY = 'cube-crashers.fpTipSeen';
 const seen = (key: string) => {
   try {
-    return localStorage.getItem(key) === '1';
+    return browserStore().getItem(key) === '1';
   } catch {
     return false;
   }
 };
 const markSeen = (key: string) => {
   try {
-    localStorage.setItem(key, '1');
+    browserStore().setItem(key, '1');
   } catch {
     // storage unavailable: the tip comes back next time
   }
@@ -103,7 +103,7 @@ export function withDefaults<T extends { name: string; color: number | null }>(s
 export function loadSettings(): Settings {
   let loaded: Settings = { ...DEFAULTS };
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = browserStore().getItem(SETTINGS_KEY);
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
@@ -126,7 +126,7 @@ export function loadSettings(): Settings {
 
 export function saveSettings(s: Settings): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    browserStore().setItem(SETTINGS_KEY, JSON.stringify(s));
   } catch {
     // storage unavailable: settings only last for this session
   }
@@ -136,7 +136,7 @@ export function saveSettings(s: Settings): void {
 export function recordScore(score: number, difficulty: Difficulty | 'endless' | 'bossrush'): number[] {
   let all: Partial<Record<Difficulty | 'endless' | 'bossrush', number[]>> = {};
   try {
-    const raw = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '{}');
+    const raw = JSON.parse(browserStore().getItem(SCORES_KEY) ?? '{}');
     // version 0.1 kept a single list: it becomes the Medium list
     if (Array.isArray(raw)) all = { medium: raw.filter(x => typeof x === 'number') };
     else if (raw) all = raw;
@@ -146,7 +146,7 @@ export function recordScore(score: number, difficulty: Difficulty | 'endless' | 
   const scores = [...(all[difficulty] ?? []), score].sort((a, b) => b - a).slice(0, 5);
   all[difficulty] = scores;
   try {
-    localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+    browserStore().setItem(SCORES_KEY, JSON.stringify(all));
   } catch {
     // storage unavailable
   }
