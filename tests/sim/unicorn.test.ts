@@ -42,3 +42,25 @@ describe('the unicorn', () => {
     expect(s.vehicleRespawns.some(r => r.kind === 'unicorn')).toBe(false);
   });
 });
+
+describe('ramming rivals in versus', () => {
+  it('a unicorn or kart at speed knocks a rival back and hurts them', async () => {
+    const { createSim } = await import('../../src/sim/sim');
+    const { floorNeon } = await import('../../src/sim/config/floor-neon');
+    for (const kind of ['unicorn', 'kart'] as const) {
+      const s = createSim(floorNeon, 3, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' } });
+      const [me, rival] = s.players;
+      s.vehicles = [];
+      me.pos = { x: 33.5, z: 18.5 };
+      rival.pos = { x: 35.2, z: 18.5 };
+      rival.invulnUntil = 0;
+      const v = addVehicle(s, kind, { ...me.pos }, 0);
+      v.driverId = me.id;
+      me.vehicleId = v.id;
+      v.vel = { x: 9, z: 0 };
+      const hp = rival.hp;
+      for (let i = 0; i < 20; i++) stepSim(s, [{ type: 'move', playerId: me.id, dir: { x: 1, z: 0 } }]);
+      expect(rival.hp, kind).toBeLessThan(hp);
+    }
+  });
+});

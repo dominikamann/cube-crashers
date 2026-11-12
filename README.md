@@ -344,7 +344,7 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 | `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
 | `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |
-| `--difficulty <level>` | Co-op: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
+| `--difficulty <level>` | Co-op floors, and how well the versus bots play: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
 | `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
 | `--countdown <seconds>` | Wait this long for players before a match | 30 |
 | `--monsters` | Monster hordes join versus matches | off |
@@ -405,7 +405,8 @@ Once it is merged, every game shows it the next time the list is opened.
 ## Versus: players against players
 
 From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
-Blaster; crates with weapons, karts and a jetpack lie around. Up to 10 players, bots fill up.
+Blaster; crates with weapons, karts and a jetpack lie around. Up to 10 players, bots fill up. Pick how well the
+bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (sharp and instant).
 
 | Rule | How it works |
 |---|---|
@@ -507,7 +508,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Candy Cannon** | Spread of candy pellets. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
-| **Disco Ball** | Zaps the nearest monsters around you. |
+| **Disco Ball** | Zaps the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |

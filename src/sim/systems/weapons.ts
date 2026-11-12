@@ -2,11 +2,11 @@ import { PLAYER_RADIUS } from '../config/balance';
 import { coinOpRule, pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
 import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MINE, RAIL, SWATTER, SWORD, WEAPONS, YOYO, levelMul } from '../config/weapons';
-import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_WALKER, hasLos, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
 import { hitMany, isBossBody } from './combat';
-import { fireRare } from './rare';
+import { airborne, fireRare } from './rare';
 
 function rotate(v: Vec2, rad: number): Vec2 {
   const c = Math.cos(rad), si = Math.sin(rad);
@@ -170,9 +170,16 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       return true;
     }
     case 'discoBall': {
-      const hits = nearestEnemies(s, p.pos, DISCO.range, DISCO.targets + (w.level - 1));
-      if (hits.length === 0) return false;
+      // light beams to the nearest monsters (and rivals in versus) in sight; with nobody in reach it still
+      // flashes, so you see it went off
+      const n = DISCO.targets + (w.level - 1);
+      const hits = nearestEnemies(s, p.pos, DISCO.range, n);
       hitMany(s, hits, damage, w.kind, p.id);
+      const near = rivals(s, p.id)
+        .filter(r => !airborne(r) && dist(r.pos, p.pos) <= DISCO.range && hasLos(s.map, p.pos, r.pos))
+        .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))
+        .slice(0, Math.max(0, n - hits.length));
+      for (const r of near) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
       return true;
     }
     case 'bananaMine': {

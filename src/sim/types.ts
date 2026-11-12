@@ -410,6 +410,8 @@ export interface Vehicle {
   spot: number;
   /** a race kart: its driver cannot get out and it never runs out of fuel */
   locked?: boolean;
+  /** versus: when each rival it rammed can be rammed again (by player id) */
+  rammedUntil?: Record<number, number>;
 }
 
 export interface Powerup {

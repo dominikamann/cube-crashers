@@ -1,4 +1,6 @@
-import { carryingCube } from './versus';
+import { carryingCube, pvpDamage, rivals } from './versus';
+import { damagePlayer } from './player';
+import { airborne } from './rare';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
@@ -177,6 +179,16 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
     if (v.kind === 'unicorn') v.hp -= KART.ramCostSmall;
     damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
+  }
+  // versus: a kart or unicorn at speed runs rivals over too (not those flying or up on a wall)
+  for (const r of rivals(s, driver.id)) {
+    if (r.vehicleId !== null || airborne(r) || r.perched || dist(r.pos, v.pos) > stats.radius + PLAYER_RADIUS) continue;
+    v.rammedUntil ??= {};
+    if (s.tick < (v.rammedUntil[r.id] ?? 0)) continue;
+    v.rammedUntil[r.id] = s.tick + KART.ramCooldownTicks;
+    moveCircle(s.map, r.pos, (v.vel.x / speed) * 1.2, (v.vel.z / speed) * 1.2, PLAYER_RADIUS, BLOCKS_WALKER);
+    damagePlayer(s, r, pvpDamage(stats.ramDamage), 'other', driver.id);
+    s.events.push({ type: 'kartRam', pos: { ...r.pos } });
   }
 }
 

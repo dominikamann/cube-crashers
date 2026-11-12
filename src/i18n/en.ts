@@ -189,6 +189,7 @@ export const en = {
   'lane.end': 'Cabinet saved: {pct}% · +{coins} coins',
   'lane.lost': 'The cabinet is wrecked!',
   'lane.leak': 'The cabinet takes a hit!',
+  'setup.bots': 'Bots',
   'race.hud': 'Lap {lap}/{laps} · {time}',
   'race.next': '{medal}: finish within {time}',
   'race.lap': 'Lap {lap}!',

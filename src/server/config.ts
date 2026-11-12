@@ -111,7 +111,7 @@ export const HELP = `Cube Crashers dedicated server
   --mode <mode>        ${SERVER_MODES.join(' | ')} (default discovery)
   --map <arena>        versus always on this arena: ${DISCOVERY_MAPS.join(', ')} (default: a new one each match)
   --teams              red against blue (score, king, rounds, coinop); capture is always teams
-  --difficulty <level> co-op: ${DIFFICULTIES.join(', ')} (default medium)
+  --difficulty <level> co-op floors and versus bots: ${DIFFICULTIES.join(', ')} (default medium)
   --bots <0-${MAX_PLAYERS}>         versus: bots fill every match up to this many players (default 4)
   --view <view>        both | fp (first person only) | top (from above only) (default both)
   --countdown <secs>   wait this long for players before a match (default 30)

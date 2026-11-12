@@ -346,7 +346,7 @@ function startGame() {
       } else if (role === 'host') {
         // the lobby's bots play on the host
         if (host!.sim?.versus && mode === 'playing') {
-          if (lanBots.length === 0) lanBots = host!.lobby.filter(p => p.bot).map(p => createVersusBot(p.id));
+          if (lanBots.length === 0) lanBots = host!.lobby.filter(p => p.bot).map(p => createVersusBot(p.id, settings.versusBots));
           for (const b of lanBots) cmds = [...cmds, ...b(host!.sim)];
         }
         host!.step(cmds);
@@ -618,7 +618,7 @@ function startGame() {
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
     solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined } });
-    versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
+    versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }
   /** the date of the Daily Run being played, or null */

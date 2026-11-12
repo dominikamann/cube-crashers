@@ -81,7 +81,8 @@ export class DedicatedServer {
     } else {
       const option = this.next();
       this.host.startVersus(option, this.seed);
-      this.bots = this.host.lobby.filter(p => p.bot).map(p => createVersusBot(p.id));
+      // --difficulty: how hard the co-op floors are, and how well the bots play in versus
+      this.bots = this.host.lobby.filter(p => p.bot).map(p => createVersusBot(p.id, this.cfg.difficulty));
       this.log(`${option.rule} on ${option.map} started with ${this.humans()} player(s) and ${this.bots.length} bot(s)`);
     }
   }

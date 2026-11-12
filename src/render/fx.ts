@@ -298,14 +298,19 @@ export function createFx(scene: THREE.Scene): Fx {
               addShake(0.12);
             }
             if (e.weapon === 'discoBall') {
-              const from = { x: e.pos.x + Math.cos(time * 2.5) * 1.2, z: e.pos.z + Math.sin(time * 2.5) * 1.2 };
-              const near = s.enemies
-                .map(x => ({ x, d: Math.hypot(x.pos.x - e.pos.x, x.pos.z - e.pos.z) }))
-                .filter(o => o.d <= 5.5)
+              const colors = [0xff4dd2, 0x4dd2ff, 0xffe14a];
+              // a glittering flash just in front of the shooter: seen from above and in first person alike
+              const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
+              const front = who ? { x: e.pos.x + who.aim.x * 1.4, z: e.pos.z + who.aim.z * 1.4 } : e.pos;
+              burst(front, 1.3, 14, colors, 3.5, 0.08, 0.35);
+              // light beams to everything it reached: monsters, and rivals in versus
+              const from = { x: e.pos.x + Math.cos(time * 2.5) * 0.8, z: e.pos.z + Math.sin(time * 2.5) * 0.8 };
+              const near = [...s.enemies.map(x => x.pos), ...s.players.filter(p => p !== who && s.versus).map(p => p.pos)]
+                .map(pos => ({ pos, d: Math.hypot(pos.x - e.pos.x, pos.z - e.pos.z) }))
+                .filter(o => o.d <= 7.5)
                 .sort((a, b) => a.d - b.d)
                 .slice(0, 8);
-              const colors = [0xff4dd2, 0x4dd2ff, 0xffe14a];
-              near.forEach((o, i) => beam(from, 1.5, o.x.pos, 0.4, colors[i % colors.length], 0.14));
+              near.forEach((o, i) => beam(from, 1.1, o.pos, 0.6, colors[i % colors.length], 0.18));
             }
             break;
         }
