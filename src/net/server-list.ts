@@ -2,11 +2,13 @@ import builtIn from '../../servers.json';
 import { parseMessage, type ServerInfo } from './protocol';
 
 /**
- * The online server list. The shared list lives in servers.json on GitHub (loaded by the desktop app) (anyone can add a server with a
+ * The online server list. The shared list lives in servers.json on GitHub (anyone can add a server with a
  * pull request); the game loads it while the list is open, falls back to the copy it was built with, and adds
  * the servers the player entered. Every server is asked who it is every few seconds.
  */
 export const DEFAULT_PORT = 47800;
+/** where a server's web address listens when it names no port: https, i.e. a TLS proxy in front of it */
+export const WEB_PORT = 443;
 /** how often each server is asked again while the list is open */
 export const PROBE_EVERY_MS = 10_000;
 /** how often the shared list is loaded again while the list is open */
@@ -32,24 +34,28 @@ export interface ServerRow {
 }
 
 /** "host", "host:port" or "[v6]:port" → "host:port" with the default port; null when it is not an address */
-export function normalizeAddress(raw: string): string | null {
+export function normalizeAddress(raw: string, defaultPort = DEFAULT_PORT): string | null {
   const s = raw.trim();
   if (s.length === 0 || s.length > 255) return null;
   const m = /^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9.-]+)(?::(\d{1,5}))?$/.exec(s);
   if (!m) return null;
-  const port = m[2] === undefined ? DEFAULT_PORT : Number(m[2]);
+  const port = m[2] === undefined ? defaultPort : Number(m[2]);
   if (port < 1 || port > 65535) return null;
   return `${m[1]}:${port}`;
 }
 
-/** reads servers.json: { "servers": [{ "name": "…", "address": "host:port" }] }; broken entries are skipped */
-export function parseServerList(json: unknown): ServerListEntry[] {
+/**
+ * reads servers.json: { "servers": [{ "name": "…", "address": "host:port", "web": "host" }] }; broken entries
+ * are skipped. `web`: the list for a web page, i.e. only the servers with a web address, reached there.
+ */
+export function parseServerList(json: unknown, web = false): ServerListEntry[] {
   const list = json && typeof json === 'object' ? (json as { servers?: unknown }).servers : null;
   if (!Array.isArray(list)) return [];
   const out: ServerListEntry[] = [];
   for (const e of list.slice(0, MAX_SERVERS)) {
     if (!e || typeof e !== 'object') continue;
-    const address = typeof (e as { address?: unknown }).address === 'string' ? normalizeAddress((e as { address: string }).address) : null;
+    const raw = web ? (e as { web?: unknown }).web : (e as { address?: unknown }).address;
+    const address = typeof raw === 'string' ? normalizeAddress(raw, web ? WEB_PORT : DEFAULT_PORT) : null;
     if (!address) continue;
     const name = (e as { name?: unknown }).name;
     out.push({ name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 40) : address, address });
@@ -97,6 +103,8 @@ export interface ServerBrowserDeps {
   /** asks one server who it is: its raw answer and the round trip, or null */
   probe(address: string): Promise<{ data: string; ms: number } | null>;
   own(): string[];
+  /** the game runs on a web page: list the servers' web addresses */
+  web?: boolean;
   protocol: number;
   onUpdate(rows: ServerRow[]): void;
   /** for tests; returns a cancel function */
@@ -110,7 +118,7 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
     const id = setTimeout(fn, ms);
     return () => clearTimeout(id);
   });
-  const fallback = deps.builtIn ?? parseServerList(builtIn);
+  const fallback = deps.builtIn ?? parseServerList(builtIn, deps.web);
   let entries: ServerListEntry[] = fallback;
   let listAt = -Infinity;
   let elapsed = 0;
@@ -128,7 +136,7 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
     if (elapsed - listAt >= LIST_EVERY_MS) {
       listAt = elapsed;
       const json = await deps.fetchList().catch(() => null);
-      const fresh = parseServerList(json);
+      const fresh = parseServerList(json, deps.web);
       // an unreachable GitHub keeps the last list (or the built-in one)
       if (json !== null) entries = fresh;
       if (!current()) return;

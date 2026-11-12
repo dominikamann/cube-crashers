@@ -10,8 +10,21 @@ export interface Lan {
   /** reports the games it finds, again and again, until the returned stop function is called */
   discover(cb: (games: JoinEntry[]) => void): () => void;
   join(target: string): Promise<Transport>;
-  /** internet servers: only the desktop app can reach them */
-  online?: { probe(address: string): Promise<{ data: string; ms: number } | null>; fetchList(): Promise<unknown> };
+  /** internet servers the way the desktop app reaches them; the browser has its own (web-online.ts) */
+  online?: Online;
+}
+
+/** How this build reaches servers on the internet. */
+export interface Online {
+  /** a web page that may only open encrypted connections: servers are reached at their web address */
+  web: boolean;
+  /** the port of an address the player types without one */
+  defaultPort: number;
+  /** asks a server who it is: its raw answer and the round trip, or null */
+  probe(address: string): Promise<{ data: string; ms: number } | null>;
+  /** the shared list from GitHub as JSON, or null */
+  fetchList(): Promise<unknown>;
+  join(address: string): Promise<Transport>;
 }
 
 function devRelayLan(): Lan {
@@ -35,7 +48,7 @@ function devRelayLan(): Lan {
   };
 }
 
-/** null when neither the desktop app nor the dev server is there to carry LAN games */
+/** null when neither the desktop app nor the dev server is there to carry LAN games (the game on a web page) */
 export async function createLan(): Promise<Lan | null> {
   if (window.cubeCrashers?.lan) {
     const { electronLan } = await import('./electron-lan');

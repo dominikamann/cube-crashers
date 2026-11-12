@@ -293,8 +293,9 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 
 ## Online Multiplayer and dedicated servers
 
-**Playing:** click **Online Multiplayer** on the title screen (desktop app). The list shows the servers from
-the shared [`servers.json`](servers.json) and the ones you added yourself:
+**Playing:** click **Online Multiplayer** on the title screen. The list shows the servers from the shared
+[`servers.json`](servers.json) and the ones you added yourself. It works in the desktop app and in the
+browser; in the browser the list only has the servers that [take browser players](#let-players-from-the-browser-join):
 
 - Servers you can join come first (most real players first), with their mode, ping and who is on them,
   bots counted apart: *10/10 players (6 bots)*. A real player who joins takes a bot's place.
@@ -340,6 +341,7 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 | `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
 | `--countdown <seconds>` | Wait this long for players before a match | 30 |
 | `--monsters` | Monster hordes join versus matches | off |
+| `--web` | Players from the browser version may join (see [below](#let-players-from-the-browser-join)) | off |
 | `--config <file>` | Read the options from a JSON file | `./server.json` if it exists |
 
 Every option also works as an environment variable (`CC_MODE=gungame`, `CC_BOTS=6`, …), handy with Docker.
@@ -356,14 +358,35 @@ restart the container; with Node: download the new `cube-crashers-server.mjs` fr
 To play over the internet, **open the port (TCP 47800) in your router** and forward it to the computer
 running the server. Players on your own network can use its local address.
 
+### Let players from the browser join
+
+The game also runs in the browser. A web page served over https may only open encrypted connections, so
+browser players cannot reach port 47800 directly. Two steps open your server to them:
+
+1. Start the server with **`--web`** (or `CC_WEB=1`). Without it the server turns away every connection
+   that comes from a web page.
+2. Put a **TLS proxy** with a domain name in front of it. With [Caddy](https://caddyserver.com) that is a
+   `Caddyfile` of three lines; Caddy fetches the certificate by itself (the domain must point to your
+   server and ports 80 and 443 must be open):
+
+   ```
+   play.example.org {
+       reverse_proxy localhost:47800
+   }
+   ```
+
+Browser players then add `play.example.org` under **Add a server** (without a port the browser uses 443).
+Players with the desktop app keep using port 47800, on the same server and in the same matches.
+
 ### Get your server into the list
 
-Open a pull request that adds it to [`servers.json`](servers.json):
+Open a pull request that adds it to [`servers.json`](servers.json). `address` is where the desktop app
+connects; `web` is the address for browser players, if your server takes them (leave it out otherwise):
 
 ```json
 {
   "servers": [
-    { "name": "Gun Club", "address": "play.example.org:47800" }
+    { "name": "Gun Club", "address": "play.example.org:47800", "web": "play.example.org" }
   ]
 }
 ```
@@ -677,6 +700,9 @@ Dev shortcuts (append to the URL):
 - **LAN:** the host runs the simulation; clients send their commands and receive snapshots (`src/net/`). In the
   desktop app the main process runs a WebSocket server and UDP discovery (`electron/lan.cjs`); in the browser a
   dev relay in the Vite server does the same job.
+- **Online in the browser:** a web page cannot host or search the LAN, but it joins dedicated servers by
+  itself (`src/net/web-online.ts`): `wss://` to the server's web address from an https page, `ws://` to the
+  game port from an http page.
 - Balancing lives in data tables in `src/sim/config/`.
 
 ```

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buyUnlock, claimBonus, defaultProfile, loadProfile, rewardForRun, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
+import { browserStore, buyUnlock, claimBonus, defaultProfile, loadProfile, rewardForRun, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
 
 function memory(initial: Record<string, string> = {}) {
   const data = { ...initial };
@@ -11,6 +11,18 @@ function memory(initial: Record<string, string> = {}) {
 }
 
 describe('profile', () => {
+  it('a browser that keeps its storage locked does not stop the game: progress lasts for the session', () => {
+    const store = browserStore(() => {
+      throw new Error('SecurityError');
+    });
+    const p = loadProfile(store);
+    p.tickets = 3;
+    saveProfile(store, p);
+    expect(loadProfile(store).tickets).toBe(3);
+    const real = memory();
+    expect(browserStore(() => real)).toBe(real);
+  });
+
   it('starts with nothing unlocked', () => {
     const p = loadProfile(memory());
     expect(p).toEqual(defaultProfile());

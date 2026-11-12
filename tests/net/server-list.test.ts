@@ -11,6 +11,10 @@ describe('server addresses', () => {
     expect(normalizeAddress('play.example.org:5000')).toBe('play.example.org:5000');
     expect(normalizeAddress('[::1]:5000')).toBe('[::1]:5000');
   });
+  it('takes another default port (a web address listens on 443)', () => {
+    expect(normalizeAddress('play.example.org', 443)).toBe('play.example.org:443');
+    expect(normalizeAddress('play.example.org:8443', 443)).toBe('play.example.org:8443');
+  });
   it('turns away anything that is not a host and port', () => {
     for (const bad of ['', 'ws://x:1', 'a b', 'host:0', 'host:70000', 'host:12ab', 'x'.repeat(300), 'host/path']) expect(normalizeAddress(bad)).toBeNull();
   });
@@ -29,6 +33,14 @@ describe('the server list file', () => {
       { name: 'Official 1', address: 'eu.example.org:47800' },
       { name: '1.2.3.4:9', address: '1.2.3.4:9' },
     ]);
+  });
+  it('for a web page: only the servers with a web address, reached there', () => {
+    const json = { servers: [{ name: 'Both', address: 'eu.example.org', web: 'play.example.org' }, { name: 'App only', address: '1.2.3.4' }, { name: 'Odd port', web: 'x.example.org:8443' }, { name: 'bad', address: 'a', web: 'no way' }] };
+    expect(parseServerList(json, true)).toEqual([
+      { name: 'Both', address: 'play.example.org:443' },
+      { name: 'Odd port', address: 'x.example.org:8443' },
+    ]);
+    expect(parseServerList(json).map(e => e.address)).toEqual(['eu.example.org:47800', '1.2.3.4:47800', 'a:47800']);
   });
   it('anything else is an empty list', () => {
     expect(parseServerList(null)).toEqual([]);

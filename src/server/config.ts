@@ -22,6 +22,8 @@ export interface ServerConfig {
   countdown: number;
   /** versus: monster hordes join in */
   monsters: boolean;
+  /** players from the browser version may join (they reach the server through a TLS proxy) */
+  web: boolean;
 }
 
 /** how the lobby introduces the server; teams = red against blue can happen, so team wishes matter */
@@ -33,7 +35,7 @@ export function serverIdentity(c: ServerConfig): { name: string; mode: ServerMod
 const DIFFICULTIES: Difficulty[] = ['ultraLow', 'low', 'medium', 'high', 'ultraHigh'];
 
 export function defaultConfig(): ServerConfig {
-  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false };
+  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, web: false };
 }
 
 /** name of the setting, its flag and environment variable, and how to read it */
@@ -48,6 +50,7 @@ const FIELDS: { key: keyof ServerConfig; flag: boolean }[] = [
   { key: 'view', flag: false },
   { key: 'countdown', flag: false },
   { key: 'monsters', flag: true },
+  { key: 'web', flag: true },
 ];
 
 const envName = (key: string) => `CC_${key.toUpperCase()}`;
@@ -96,6 +99,7 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
   if (raw.view !== undefined) c.view = oneOf('view', raw.view, VIEW_MODES);
   if (raw.countdown !== undefined) c.countdown = int('countdown', raw.countdown, 3, 600);
   if (raw.monsters !== undefined) c.monsters = bool(raw.monsters);
+  if (raw.web !== undefined) c.web = bool(raw.web);
   if (raw.map !== undefined && raw.map !== null && raw.map !== '') c.map = oneOf('map', raw.map, DISCOVERY_MAPS);
   return c;
 }
@@ -112,6 +116,7 @@ export const HELP = `Cube Crashers dedicated server
   --view <view>        both | fp (first person only) | top (from above only) (default both)
   --countdown <secs>   wait this long for players before a match (default 30)
   --monsters           versus: monster hordes join in
+  --web                let players from the browser version join (needs a TLS proxy, see the README)
   --config <file>      read settings from a JSON file (default ./server.json if it exists)
 
 Every option also works as an environment variable: CC_MODE=gungame, CC_BOTS=6, ...

@@ -114,6 +114,15 @@ describe('desktop LAN server', () => {
     expect(page.state.open).toBe(false);
   });
 
+  it('a dedicated server started with --web lets the browser version in', async () => {
+    const { host } = await quietHost({ web: true });
+    const page = raw(host.port, { origin: 'https://html-classic.itch.zone' });
+    const app = raw(host.port);
+    await wait(150);
+    expect(page.state.open).toBe(true);
+    expect(app.state.open).toBe(true);
+  });
+
   it('accepts at most 14 connections (10 players and room to turn more away)', async () => {
     const { host } = await quietHost();
     const conns = Array.from({ length: 17 }, () => raw(host.port));

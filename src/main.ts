@@ -16,6 +16,8 @@ import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
 import { PROTOCOL_VERSION, type LobbyPlayer } from './net/protocol';
 import { createServerBrowser } from './net/server-list';
+import type { Transport } from './net/transport';
+import { webOnline } from './net/web-online';
 import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
 import { buildRunLog, saveRunLog } from './runlog';
@@ -23,7 +25,7 @@ import { floor01 } from './sim/config/floor01';
 import { FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
-import { loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
+import { browserStore, loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
 import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
@@ -38,6 +40,7 @@ import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, t
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 const randomSeed = () => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
 
 if (params.has('sound')) {
@@ -61,8 +64,9 @@ function startGame() {
   const useLabel = (i: number) => (padFamily(rawPads()[i]?.id ?? '') === 'playstation' ? '\u25A1' : 'X');
   const padTouched = (g: PadSnapshot) => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.3);
   const settings = loadSettings();
-  const profile = loadProfile(window.localStorage);
-  const storeProfile = () => saveProfile(window.localStorage, profile);
+  const store = browserStore();
+  const profile = loadProfile(store);
+  const storeProfile = () => saveProfile(store, profile);
   const forced = params.get('graphics');
   if (forced === 'low' || forced === 'medium' || forced === 'high' || forced === 'ultra') settings.graphics = forced;
 
@@ -285,11 +289,11 @@ function startGame() {
       versus: () => newVersusGame(),
       host: () => void hostGame(),
       join: () => void openJoinList(),
-      // only the desktop app reaches servers on the internet
-      online: window.cubeCrashers?.lan ? () => void openOnline() : undefined,
+      online: () => void openOnline(),
       resume,
       mainMenu: toTitle,
-      quit: () => window.close(),
+      // a web page cannot close itself
+      quit: window.cubeCrashers ? () => window.close() : undefined,
       settingsChanged: applySettings,
       click: () => ensureAudio().mixer.play('uiClick'),
     },
@@ -507,7 +511,7 @@ function startGame() {
       credits: s.credits,
       nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
       nests: s.nests.length,
-      best: dailyRun ? recordDaily(localStorage, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.run.mode === 'bossrush' ? 'bossrush' : s.difficulty),
+      best: dailyRun ? recordDaily(store, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.run.mode === 'bossrush' ? 'bossrush' : s.difficulty),
       daily: dailyRun ?? undefined,
       tickets: earnTickets(s),
       unlocked: newUnlocks,
@@ -638,7 +642,7 @@ function startGame() {
 
   async function ensureLan(): Promise<Lan | null> {
     lan ??= await createLan();
-    if (!lan) screens.notice(t('net.noLan'));
+    if (!lan) screens.notice(t('net.noLan'), screens.lanMenu);
     return lan;
   }
 
@@ -675,16 +679,15 @@ function startGame() {
   /** the online server list: the shared one from GitHub plus the player's own, checked every few seconds */
   async function openOnline() {
     lan ??= await createLan();
-    const online = lan?.online;
-    if (!online) {
-      screens.notice(t('net.noLan'));
-      return;
-    }
+    // the desktop app connects for the game; on a web page the browser does it itself
+    const online = lan?.online ?? webOnline();
     const stop = () => browser.stop();
     const view = screens.online({
+      web: online.web,
+      defaultPort: online.defaultPort,
       join: address => {
         stop();
-        void joinGame(address);
+        void joinGame(address, online.join);
       },
       add: address => {
         if (!settings.servers.includes(address)) settings.servers = [address, ...settings.servers].slice(0, 50);
@@ -705,17 +708,18 @@ function startGame() {
       fetchList: () => online.fetchList(),
       probe: address => online.probe(address),
       own: () => settings.servers,
+      web: online.web,
       protocol: PROTOCOL_VERSION,
       onUpdate: rows => view.update(rows),
     });
     browser.start();
   }
 
-  async function joinGame(target: string) {
+  async function joinGame(target: string, join: (target: string) => Promise<Transport> = t => lan!.join(t)) {
     stopDiscovery?.();
     stopDiscovery = null;
     try {
-      const transport = await lan!.join(target);
+      const transport = await join(target);
       leaveLan(false);
       role = 'client';
       setSplit(false);
@@ -900,8 +904,9 @@ function startGame() {
 
   addEventListener('keydown', e => {
     padActive = false;
-    // Space (and the jump key) would scroll or press a focused button
-    if (e.code === 'Space' || (mode === 'playing' && e.code === settings.bindings.jump)) e.preventDefault();
+    // Space (and the jump key) would scroll or press a focused button; in a game the arrow keys and
+    // their neighbours would scroll the page the game is embedded in
+    if (e.code === 'Space' || (mode === 'playing' && (e.code === settings.bindings.jump || SCROLL_KEYS.has(e.code)))) e.preventDefault();
     // repeats of a held key are let through, so keys still held after a pause work again;
     // the keyboard only counts the first press for one-off actions
     if (e.code === 'Escape' || e.code === 'KeyP') {

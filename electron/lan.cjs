@@ -26,6 +26,7 @@ function startHost({
   admitMs = ADMIT_MS,
   heartbeatMs = HEARTBEAT_MS,
   maxPerSecond = MAX_MESSAGES_PER_SECOND,
+  web = false,
 }) {
   return new Promise((resolve, reject) => {
     const peers = new Map();
@@ -33,7 +34,9 @@ function startHost({
       port,
       maxPayload: MAX_CLIENT_BYTES,
       // the game's own client sends no Origin header; browsers always do, so web pages are kept out
-      verifyClient: info => !info.origin && peers.size < maxPeers,
+      // (a LAN game must not be reachable from any page the host has open). A dedicated server
+      // started with --web takes players from the browser version too.
+      verifyClient: info => (web || !info.origin) && peers.size < maxPeers,
     });
     wss.on('error', reject);
     wss.on('connection', ws => {

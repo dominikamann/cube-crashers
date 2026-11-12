@@ -19,6 +19,13 @@ describe('dedicated server settings', () => {
     expect(parseConfig(['--bots', '0'], env, file)).toMatchObject({ name: 'From file', mode: 'capture', bots: 0, map: 'neon' });
   });
 
+  it('--web opens the server to players in the browser; off unless asked for', () => {
+    expect(defaultConfig().web).toBe(false);
+    expect(parseConfig(['--web'], {}, null).web).toBe(true);
+    expect(parseConfig([], { CC_WEB: '1' }, null).web).toBe(true);
+    expect(parseConfig([], {}, { web: true }).web).toBe(true);
+  });
+
   it('says clearly what is wrong', () => {
     expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, discovery, gungame/);
     expect(() => parseConfig(['--map', 'mars'], {}, null)).toThrow(/map.*neon/);

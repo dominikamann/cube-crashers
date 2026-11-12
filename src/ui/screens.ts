@@ -11,7 +11,7 @@ import { FLOORS, RUN_FLOORS } from '../sim/config/floors';
 import { TOWERS } from '../sim/config/towers';
 import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
-import { buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
+import { browserStore, buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
@@ -191,16 +191,21 @@ export interface ScreenActions {
   daily(): void;
   /** every boss in a row */
   bossRush(): void;
-  /** the online server list; missing where only the desktop app can go online */
-  online?: () => void;
+  /** the online server list */
+  online(): void;
   resume(): void;
   mainMenu(): void;
-  quit(): void;
+  /** missing where the game cannot close itself (a web page) */
+  quit?: () => void;
   settingsChanged(s: Settings): void;
   click(): void;
 }
 
 export interface OnlineHandlers {
+  /** on a web page: only servers that take browser players are listed */
+  web: boolean;
+  /** the port of an address typed without one */
+  defaultPort: number;
   join(address: string): void;
   /** a server the player typed in (already checked to be an address) */
   add(address: string): void;
@@ -253,7 +258,10 @@ export interface Screens {
   lobbyCountdown(server: ServerStatus): void;
   /** the list of games found on the network; call again to refresh */
   joinList(games: JoinEntry[], canEnterAddress: boolean, lan: LanActions): void;
-  notice(text: string): void;
+  /** `back`: a Back button to where the player came from instead of one to the main menu */
+  notice(text: string, back?: () => void): void;
+  /** the LAN party page: host or join */
+  lanMenu(): void;
   hide(): void;
   readonly visible: boolean;
 }
@@ -745,12 +753,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         box.className = 'daily-box';
         text(box, 'div', 'setup-label', t('daily.title'));
         text(box, 'p', 'mode-hint', t('daily.sub', { date }));
-        let best: number[] = [];
-        try {
-          best = dailyBest(localStorage, date);
-        } catch {
-          // storage unavailable
-        }
+        const best = dailyBest(browserStore(), date);
         text(box, 'p', 'daily-best', best.length ? t('daily.best', { list: best.join(' · ') }) : t('daily.none'));
         const b = button(box, t('daily.play'), actions.daily);
         b.classList.add('small');
@@ -803,7 +806,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         row.className = 'row2';
         s.append(row);
         button(row, t('menu.lan'), lanScreen);
-        if (actions.online) button(row, t('menu.online'), actions.online);
+        button(row, t('menu.online'), actions.online);
         const row2 = document.createElement('div');
         row2.className = 'row2';
         s.append(row2);
@@ -812,7 +815,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const foot = document.createElement('div');
         foot.className = 'foot';
         s.append(foot);
-        for (const [label_, icon, fn, cls] of [[t('menu.settings'), ICONS.settings, settingsScreen, ''], [t('menu.credits'), ICONS.credits, creditsScreen, ''], [t('menu.quit'), ICONS.quit, actions.quit, 'quit']] as [string, string, () => void, string][]) {
+        for (const [label_, icon, fn, cls] of [[t('menu.settings'), ICONS.settings, settingsScreen, ''], [t('menu.credits'), ICONS.credits, creditsScreen, ''], [t('menu.quit'), ICONS.quit, actions.quit, 'quit']] as [string, string, (() => void) | undefined, string][]) {
+          if (!fn) continue;
           const b = button(foot, label_, fn);
           b.classList.add('small');
           if (cls) b.classList.add(cls);
@@ -1014,7 +1018,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       let list: HTMLElement;
       show('', s => {
         text(s, 'h2', '', t('menu.online'));
-        text(s, 'p', 'credits-small', t('online.intro'));
+        text(s, 'p', 'credits-small', t(h.web ? 'online.introWeb' : 'online.intro'));
         list = document.createElement('div');
         list.className = 'server-list txt';
         s.append(list);
@@ -1026,10 +1030,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'textfield';
-        input.placeholder = '10.12.3.23:47800';
+        input.placeholder = h.web ? 'play.example.org' : '10.12.3.23:47800';
         const error = text(s, 'p', 'server-error', '');
         const add = () => {
-          const address = normalizeAddress(input.value);
+          const address = normalizeAddress(input.value, h.defaultPort);
           if (!address) {
             error.textContent = t('online.badAddress');
             return;
@@ -1119,12 +1123,15 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(s, t('menu.back'), lan.leave);
       });
     },
-    notice(textValue) {
+    notice(textValue, goBack) {
+      if (goBack) back = goBack;
       show('', s => {
         text(s, 'p', '', textValue);
-        button(s, t('menu.mainMenu'), actions.mainMenu, true);
+        if (goBack) button(s, t('menu.back'), goBack, true);
+        else button(s, t('menu.mainMenu'), actions.mainMenu, true);
       });
     },
+    lanMenu: lanScreen,
     hide() {
       layer.innerHTML = '';
     },

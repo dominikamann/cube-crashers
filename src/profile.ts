@@ -25,9 +25,22 @@ export interface Profile {
 export const BONUSES = { credits: 1, sponsor: 10 } as const;
 export type BonusId = keyof typeof BONUSES;
 
-interface Store {
+export interface Store {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+}
+
+/**
+ * The browser's storage. Where the browser keeps it locked (private windows, the game embedded in
+ * another page) even asking for it throws: then progress only lasts this session.
+ */
+export function browserStore(open: () => Store = () => window.localStorage): Store {
+  try {
+    return open();
+  } catch {
+    const data = new Map<string, string>();
+    return { getItem: key => data.get(key) ?? null, setItem: (key, value) => void data.set(key, value) };
+  }
 }
 
 const KEY = 'cube-crashers.profile';

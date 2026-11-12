@@ -44,6 +44,7 @@ async function main() {
     onPeer: (peer, joined) => onPeer(peer, joined),
     // the players plus plenty of room for server-list probes (short-lived) and for telling more that it is full
     maxPeers: MAX_PLAYERS + 56,
+    web: cfg.web,
   }).catch(err => {
     console.error(`error: cannot listen on port ${cfg.port} (${(err as Error).message})`);
     process.exit(1);
@@ -62,6 +63,7 @@ async function main() {
 
   log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.mode}, port ${net.port}`);
   log(`players join with this computer's address and port ${net.port} (open it in your router to play over the internet)`);
+  if (cfg.web) log('players in the browser are welcome too: they need wss://, so put a TLS proxy in front (see the README)');
 
   // a fixed step like the game's own loop; catches up after a hiccup, but never more than a few steps
   let last = performance.now();

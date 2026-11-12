@@ -1,4 +1,5 @@
 import type { Lan } from './lan';
+import { DEFAULT_PORT } from './server-list';
 import type { Transport } from './transport';
 
 /** The part of the desktop app's preload bridge that carries LAN games (see electron/preload.cjs). */
@@ -48,9 +49,19 @@ function bridgeTransport(bridge: LanBridge): Transport {
 }
 
 export function electronLan(bridge: LanBridge): Lan {
+  const join = async (address: string) => {
+    const t = bridgeTransport(bridge);
+    try {
+      await bridge.join(address);
+    } catch (err) {
+      t.close();
+      throw err;
+    }
+    return t;
+  };
   return {
     canEnterAddress: true,
-    online: { probe: address => bridge.probe(address), fetchList: () => bridge.serverList() },
+    online: { web: false, defaultPort: DEFAULT_PORT, probe: address => bridge.probe(address), fetchList: () => bridge.serverList(), join },
     async host(name) {
       const t = bridgeTransport(bridge);
       try {
@@ -71,15 +82,6 @@ export function electronLan(bridge: LanBridge): Lan {
         void bridge.stopDiscovery();
       };
     },
-    async join(address) {
-      const t = bridgeTransport(bridge);
-      try {
-        await bridge.join(address);
-      } catch (err) {
-        t.close();
-        throw err;
-      }
-      return t;
-    },
+    join,
   };
 }
