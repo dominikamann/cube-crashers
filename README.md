@@ -67,6 +67,7 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
 - [Playing together on the LAN](#playing-together-on-the-lan)
+- [Online Multiplayer and dedicated servers](#online-multiplayer-and-dedicated-servers)
 - [Versus: players against players](#versus-players-against-players)
 - [First-person view](#first-person-view)
 - [Controls](#controls)
@@ -252,6 +253,82 @@ Up to **8 players** on the same network (Wi-Fi or cable), all with the desktop a
 
 Technical details: the host's game runs the match and sends the state to everyone 30 times per second over
 TCP port **47800**; games are announced via UDP broadcast on port **47801**. Only the local network is used.
+
+---
+
+## Online Multiplayer and dedicated servers
+
+**Playing:** click **Online Multiplayer** on the title screen (desktop app). The list shows the servers from
+the shared [`servers.json`](servers.json) and the ones you added yourself:
+
+- Servers you can join come first (most players first), with their mode, players and ping.
+- Servers on another version say so (e.g. *other version (v0.4.3)*), offline ones are greyed out at the end.
+- **Add a server**: type its address, e.g. `10.12.3.23` or `play.example.org:47800`. It is remembered on
+  your computer; the ✕ removes it again.
+- The list is loaded from GitHub while it is open and every server is asked again every 10 seconds, so new
+  servers show up without a new release of the game.
+
+On a server you land in its lobby. The next match starts after a countdown, or right away once everyone
+clicked **I am ready**. After a match the results show for a few seconds, then everyone is back in the lobby
+for the next one (Gun Game and the other rules move on to a new arena each time).
+
+### Run your own server
+
+The server is a small program without graphics. Pick one way:
+
+**Docker** (recommended):
+
+```bash
+docker run -d --name cube-crashers -p 47800:47800 --restart unless-stopped \
+  ghcr.io/dominikamann/cube-crashers-server --name "My Server" --mode gungame
+```
+
+**Node.js 20 or newer**: download `cube-crashers-server.mjs` from the
+[latest release](https://github.com/dominikamann/cube-crashers/releases/latest) and run
+
+```bash
+node cube-crashers-server.mjs --name "My Server" --mode discovery
+```
+
+**From the source code**: `npm install`, then `npm run server -- --mode score --teams`.
+
+| Option | What it does | Default |
+|---|---|---|
+| `--name <text>` | Name in the server list | Cube Crashers Server |
+| `--port <number>` | Port the server listens on | 47800 |
+| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `score`, `king`, `rounds`, `capture` or `coop` (the Tower Run) | discovery |
+| `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
+| `--teams` | Red against Blue for `score`, `king`, `rounds` (`capture` is always teams) | off |
+| `--bots <0-8>` | Bots fill every versus match up to this many players | 4 |
+| `--difficulty <level>` | Co-op: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
+| `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
+| `--countdown <seconds>` | Wait this long for players before a match | 30 |
+| `--monsters` | Monster hordes join versus matches | off |
+| `--config <file>` | Read the options from a JSON file | `./server.json` if it exists |
+
+Every option also works as an environment variable (`CC_MODE=gungame`, `CC_BOTS=6`, …), handy with Docker.
+A config file looks like this:
+
+```json
+{ "name": "Gun Club", "mode": "gungame", "bots": 6, "view": "fp" }
+```
+
+To play over the internet, **open the port (TCP 47800) in your router** and forward it to the computer
+running the server. Players on your own network can use its local address.
+
+### Get your server into the list
+
+Open a pull request that adds it to [`servers.json`](servers.json):
+
+```json
+{
+  "servers": [
+    { "name": "Gun Club", "address": "play.example.org:47800" }
+  ]
+}
+```
+
+Once it is merged, every game shows it the next time the list is opened.
 
 ---
 
@@ -553,7 +630,7 @@ docs/         gameplay GIF and screenshots
 - [x] Neon Highway
 - [x] Versus for up to 8 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
 - [x] First-person view as a switch (and the default for versus)
-- [ ] Dedicated server and online play with a server list
+- [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
 - [ ] Key rebinding
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
