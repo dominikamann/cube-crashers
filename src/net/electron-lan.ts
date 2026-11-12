@@ -6,6 +6,10 @@ export interface LanBridge {
   host(name: string): Promise<void>;
   join(address: string): Promise<void>;
   discover(): Promise<void>;
+  /** online: asks a server who it is */
+  probe(address: string): Promise<{ data: string; ms: number } | null>;
+  /** online: the shared server list from GitHub, or null */
+  serverList(): Promise<unknown>;
   stopDiscovery(): Promise<void>;
   send(to: number | 'all', data: string): void;
   kick(peer: number): void;
@@ -46,6 +50,7 @@ function bridgeTransport(bridge: LanBridge): Transport {
 export function electronLan(bridge: LanBridge): Lan {
   return {
     canEnterAddress: true,
+    online: { probe: address => bridge.probe(address), fetchList: () => bridge.serverList() },
     async host(name) {
       const t = bridgeTransport(bridge);
       try {

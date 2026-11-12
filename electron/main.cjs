@@ -136,6 +136,28 @@ ipcMain.handle('lan:discover', event => {
   discovery = lan.startDiscovery({ onGames: games => emit({ type: 'games', games }) });
 });
 
+// ---------- online server list ----------
+
+// the shared list lives on GitHub, so a new server needs no new release of the game
+const SERVER_LIST_URL = 'https://raw.githubusercontent.com/dominikamann/cube-crashers/main/servers.json';
+
+ipcMain.handle('lan:serverList', async event => {
+  if (!fromGame(event)) return null;
+  try {
+    const res = await fetch(SERVER_LIST_URL, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.length < 200_000 ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('lan:probe', (event, address) => {
+  if (!fromGame(event) || typeof address !== 'string' || !/^[A-Za-z0-9.:[\]-]{1,260}$/.test(address)) return null;
+  return lan.probe(address);
+});
+
 ipcMain.handle('lan:stopDiscovery', event => {
   if (!fromGame(event)) return;
   discovery?.stop();

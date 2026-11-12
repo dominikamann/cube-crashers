@@ -12,6 +12,22 @@ afterEach(() => {
 });
 
 describe('desktop LAN server', () => {
+  it('probes a server for the online list: its answer and the round trip, or null when nobody is there', async () => {
+    const host = await lan.startHost({
+      port: 0,
+      onMessage: (from: number, data: string) => data.includes('"info"') && host.send(from, '{"type":"info","name":"S"}'),
+      onPeer: () => {},
+    });
+    cleanup.push(() => host.stop());
+    const answer = await lan.probe(`127.0.0.1:${host.port}`);
+    expect(answer.data).toBe('{"type":"info","name":"S"}');
+    expect(answer.ms).toBeGreaterThanOrEqual(0);
+    const port = host.port;
+    host.stop();
+    await wait(50);
+    expect(await lan.probe(`127.0.0.1:${port}`, 500)).toBeNull();
+  });
+
   it('relays messages between a host and two clients', async () => {
     const got: string[] = [];
     const host = await lan.startHost({ port: 0, onMessage: (from: number, data: string) => got.push(`host<${from}:${data}`), onPeer: (peer: number, joined: boolean) => got.push(`peer ${peer} ${joined}`) });

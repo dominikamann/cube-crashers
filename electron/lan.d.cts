@@ -13,4 +13,5 @@ export function startHost(opts: {
   maxPeers?: number;
 }): Promise<HostServer>;
 export function connect(address: string, opts: { onMessage: (from: number, data: string) => void; onClose: () => void }): Promise<{ send(data: string): void; close(): void }>;
+export function probe(address: string, timeoutMs?: number): Promise<{ data: string; ms: number } | null>;
 export const GAME_PORT: number;

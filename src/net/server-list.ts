@@ -2,11 +2,10 @@ import builtIn from '../../servers.json';
 import { parseMessage, type ServerInfo } from './protocol';
 
 /**
- * The online server list. The shared list lives in servers.json on GitHub (anyone can add a server with a
+ * The online server list. The shared list lives in servers.json on GitHub (loaded by the desktop app) (anyone can add a server with a
  * pull request); the game loads it while the list is open, falls back to the copy it was built with, and adds
  * the servers the player entered. Every server is asked who it is every few seconds.
  */
-export const SERVER_LIST_URL = 'https://raw.githubusercontent.com/dominikamann/cube-crashers/main/servers.json';
 export const DEFAULT_PORT = 47800;
 /** how often each server is asked again while the list is open */
 export const PROBE_EVERY_MS = 10_000;

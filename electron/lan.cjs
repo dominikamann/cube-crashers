@@ -121,6 +121,34 @@ function connect(address, { onMessage, onClose }) {
   });
 }
 
+/**
+ * Asks a server who it is (for the online server list): its first answer and the round trip in ms,
+ * or null when it does not answer in time.
+ */
+function probe(address, timeoutMs = 3000) {
+  const target = address.includes(':') ? address : `${address}:${GAME_PORT}`;
+  return new Promise(resolve => {
+    let done = false;
+    const finish = result => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      ws.terminate();
+      resolve(result);
+    };
+    const ws = new WebSocket(`ws://${target}`, { maxPayload: 4096, handshakeTimeout: timeoutMs });
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    let sent = 0;
+    ws.on('open', () => {
+      sent = Date.now();
+      ws.send(JSON.stringify({ type: 'info' }));
+    });
+    ws.on('message', raw => finish({ data: String(raw).slice(0, 4096), ms: Date.now() - sent }));
+    ws.on('close', () => finish(null));
+    ws.on('error', () => finish(null));
+  });
+}
+
 /** Broadcast addresses of all IPv4 network interfaces (plus the global one). */
 function broadcastAddresses() {
   const out = new Set(['255.255.255.255']);
@@ -186,4 +214,4 @@ function startDiscovery({ port = BEACON_PORT, expireMs = 3000, onGames }) {
   };
 }
 
-module.exports = { startHost, connect, startBeacon, startDiscovery, GAME_PORT, BEACON_PORT };
+module.exports = { startHost, connect, probe, startBeacon, startDiscovery, GAME_PORT, BEACON_PORT };

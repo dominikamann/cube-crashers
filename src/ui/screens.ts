@@ -1,6 +1,7 @@
 import { APP_VERSION } from '../version';
 import { t } from '../i18n';
-import type { LobbyPlayer, LobbyVote, VersusOption as VersusChoice } from '../net/protocol';
+import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
+import { normalizeAddress, type ServerRow } from '../net/server-list';
 import { PLAYER_COLORS } from '../render/actors';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
@@ -41,6 +42,8 @@ export interface Settings {
   versusMap: string;
   /** versus on this computer: players in the match, bots fill up the rest */
   versusSize: number;
+  /** online servers the player added by address (host:port) */
+  servers: string[];
 }
 
 const TIP_COUNT = 16;
@@ -67,7 +70,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [] };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -92,6 +95,7 @@ export function loadSettings(): Settings {
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
+    loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
   } catch {
@@ -166,11 +170,21 @@ export interface ScreenActions {
   versus(): void;
   host(): void;
   join(): void;
+  /** the online server list; missing where only the desktop app can go online */
+  online?: () => void;
   resume(): void;
   mainMenu(): void;
   quit(): void;
   settingsChanged(s: Settings): void;
   click(): void;
+}
+
+export interface OnlineHandlers {
+  join(address: string): void;
+  /** a server the player typed in (already checked to be an address) */
+  add(address: string): void;
+  remove(address: string): void;
+  back(): void;
 }
 
 export interface JoinEntry {
@@ -193,6 +207,8 @@ export interface LanActions {
   startDiscovery(): void;
   /** wish for red, blue or no preference (null) */
   chooseTeam(team: 0 | 1 | null): void;
+  /** on a dedicated server: ready for the next match */
+  setReady(ready: boolean): void;
   /** back to the lobby from the versus page */
   backToLobby(): void;
   vote(choice: 0 | 1): void;
@@ -209,7 +225,9 @@ export interface Screens {
   pause(): void;
   result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
-  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null): void;
+  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null): void;
+  /** the online server list; update() fills it in as servers answer */
+  online(h: OnlineHandlers): { update(rows: ServerRow[]): void };
   /** the list of games found on the network; call again to refresh */
   joinList(games: JoinEntry[], canEnterAddress: boolean, lan: LanActions): void;
   notice(text: string): void;
@@ -253,6 +271,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     return e;
   }
 
+  const modeName = (m: ServerMode | 'lan') => (m === 'coop' || m === 'lan' ? t(`server.mode.${m}`) : t(`versus.${m}` as 'versus.score'));
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   const nextDiff = (d: Difficulty) => DIFFICULTIES[(DIFFICULTIES.indexOf(d) + 1) % DIFFICULTIES.length];
   /** a kill source as players know it: weapon, rare weapon, tower or move */
@@ -622,7 +641,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         row.className = 'row2';
         s.append(row);
         button(row, t('menu.lan'), lanScreen);
-        button(row, t('menu.unlocks'), unlocksScreen);
+        if (actions.online) button(row, t('menu.online'), actions.online);
+        const row2 = document.createElement('div');
+        row2.className = 'row2';
+        s.append(row2);
+        button(row2, t('menu.unlocks'), unlocksScreen);
         tipBox(s);
         const foot = document.createElement('div');
         foot.className = 'foot';
@@ -690,9 +713,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(row, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    lobby(players, difficulty, isHost, me, lan, vote) {
+    lobby(players, difficulty, isHost, me, lan, vote, server) {
       show('', s => {
         text(s, 'h2', '', t('lobby.title', { n: players.length }));
+        if (server) text(s, 'p', 'lobby-server', t('lobby.server', { name: server.name, mode: modeName(server.mode) }));
         const list = document.createElement('div');
         list.className = 'lobby txt';
         for (const p of players) {
@@ -700,9 +724,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           row.className = 'lobby-row';
           const swatch = document.createElement('i');
           swatch.style.background = hex(p.color);
-          row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}`));
-          // team wish: everyone sets their own, the others see it
-          if (!p.bot) {
+          row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}${p.ready ? ' \u2713' : ''}`));
+          // team wish: everyone sets their own, the others see it (not on a server that never plays teams)
+          const teams = !server || (server.mode !== 'gungame' && server.mode !== 'coop');
+          if (!p.bot && teams) {
             const wish = document.createElement('button');
             wish.className = `chip small team-wish${p.team === 0 ? ' red' : p.team === 1 ? ' blue' : ''}`;
             wish.textContent = p.team === 0 ? t('versus.red') : p.team === 1 ? t('versus.blue') : t('lobby.teamAuto');
@@ -795,12 +820,108 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             viewRow.append(c);
           }
           s.append(viewRow);
+        } else if (server) {
+          // a dedicated server starts by itself: the countdown, and a button to say you are ready
+          if (server.mode === 'coop') text(s, 'p', '', diffLabel(difficulty));
+          text(s, 'p', 'lobby-countdown', server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
+          const ready = !!players.find(p => p.id === me)?.ready;
+          const b = button(s, ready ? t('lobby.isReady') : t('lobby.ready'), () => lan.setReady(!ready), !ready);
+          if (ready) b.classList.add('on');
+          text(s, 'p', 'credits-small', t('lobby.readyHint'));
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));
         }
         button(s, t('lobby.leave'), lan.leave);
       });
+    },
+    online(h) {
+      // Escape leaves through the same door as Back (which stops the checking)
+      back = h.back;
+      let list: HTMLElement;
+      show('', s => {
+        text(s, 'h2', '', t('menu.online'));
+        text(s, 'p', 'credits-small', t('online.intro'));
+        list = document.createElement('div');
+        list.className = 'server-list txt';
+        s.append(list);
+        text(list, 'p', 'blinking', t('online.checking'));
+        // add a server by address: it is remembered on this computer
+        const row = document.createElement('div');
+        row.className = 'server-add';
+        text(row, 'span', 'setup-label', t('online.addLabel'));
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'textfield';
+        input.placeholder = '10.12.3.23:47800';
+        const error = text(s, 'p', 'server-error', '');
+        const add = () => {
+          const address = normalizeAddress(input.value);
+          if (!address) {
+            error.textContent = t('online.badAddress');
+            return;
+          }
+          error.textContent = '';
+          input.value = '';
+          h.add(address);
+        };
+        input.addEventListener('keydown', e => {
+          e.stopPropagation();
+          if (e.key === 'Enter') add();
+        });
+        row.append(input);
+        const addBtn = button(row, t('online.add'), add);
+        addBtn.classList.add('small');
+        s.insertBefore(row, error);
+        button(s, t('menu.back'), h.back);
+      });
+      return {
+        update(rows) {
+          list.replaceChildren();
+          if (rows.length === 0) text(list, 'p', '', t('online.empty'));
+          for (const r of rows) {
+            const el = document.createElement('div');
+            el.className = `server-row ${r.status}`;
+            const name = document.createElement('div');
+            name.className = 'server-name';
+            name.textContent = r.name;
+            if (r.own) {
+              const tag = document.createElement('span');
+              tag.className = 'server-tag';
+              tag.textContent = t('online.yours');
+              name.append(tag);
+            }
+            const sub = document.createElement('div');
+            sub.className = 'server-sub';
+            const bits =
+              r.status === 'checking' ? [t('online.checking')]
+              : r.status === 'offline' ? [t('online.offline'), r.address]
+              : r.status === 'incompatible' ? [t('online.otherVersion', { v: r.info!.version }), r.address]
+              : [modeName(r.info!.mode), t('online.players', { n: r.info!.players, max: r.info!.max }), t('online.ping', { ms: r.ping ?? 0 }), ...(r.info!.playing ? [t('online.running')] : [])];
+            sub.textContent = bits.join(' · ');
+            const info = document.createElement('div');
+            info.className = 'server-info';
+            info.append(name, sub);
+            el.append(info);
+            if (r.status === 'online') {
+              const b = button(el, t('online.join'), () => h.join(r.address), true);
+              b.classList.add('small');
+            }
+            if (r.own) {
+              const x = document.createElement('button');
+              x.className = 'server-remove';
+              x.title = t('online.remove');
+              x.textContent = '\u2715';
+              x.addEventListener('click', () => {
+                actions.click();
+                h.remove(r.address);
+              });
+              el.append(x);
+            }
+            list.append(el);
+          }
+        },
+      };
     },
     joinList(games, canEnterAddress, lan) {
       show('', s => {

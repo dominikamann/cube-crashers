@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('cubeCrashers', {
     host: name => ipcRenderer.invoke('lan:host', name),
     join: address => ipcRenderer.invoke('lan:join', address),
     discover: () => ipcRenderer.invoke('lan:discover'),
+    probe: address => ipcRenderer.invoke('lan:probe', address),
+    serverList: () => ipcRenderer.invoke('lan:serverList'),
     stopDiscovery: () => ipcRenderer.invoke('lan:stopDiscovery'),
     send: (to, data) => ipcRenderer.send('lan:send', to, data),
     kick: peer => ipcRenderer.send('lan:kick', peer),

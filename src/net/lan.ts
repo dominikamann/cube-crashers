@@ -10,6 +10,8 @@ export interface Lan {
   /** reports the games it finds, again and again, until the returned stop function is called */
   discover(cb: (games: JoinEntry[]) => void): () => void;
   join(target: string): Promise<Transport>;
+  /** internet servers: only the desktop app can reach them */
+  online?: { probe(address: string): Promise<{ data: string; ms: number } | null>; fetchList(): Promise<unknown> };
 }
 
 function devRelayLan(): Lan {

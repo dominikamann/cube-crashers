@@ -13,7 +13,8 @@ import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
-import type { LobbyPlayer } from './net/protocol';
+import { PROTOCOL_VERSION, type LobbyPlayer } from './net/protocol';
+import { createServerBrowser } from './net/server-list';
 import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
 import { buildRunLog, saveRunLog } from './runlog';
@@ -137,6 +138,10 @@ function startGame() {
       host.startVersus(option, Number(params.get('seed')) || randomSeed());
       enterPlay();
     },
+    setReady: (ready: boolean) => {
+      client?.setReady(ready);
+      lastLobby = '';
+    },
     chooseTeam: (team: 0 | 1 | null) => {
       if (host) host.setTeamWish(0, team);
       else client?.chooseTeam(team);
@@ -255,6 +260,8 @@ function startGame() {
       versus: () => newVersusGame(),
       host: () => void hostGame(),
       join: () => void openJoinList(),
+      // only the desktop app reaches servers on the internet
+      online: window.cubeCrashers?.lan ? () => void openOnline() : undefined,
       resume,
       mainMenu: toTitle,
       quit: () => window.close(),
@@ -607,6 +614,45 @@ function startGame() {
     });
   }
 
+  /** the online server list: the shared one from GitHub plus the player's own, checked every few seconds */
+  async function openOnline() {
+    lan ??= await createLan();
+    const online = lan?.online;
+    if (!online) {
+      screens.notice(t('net.noLan'));
+      return;
+    }
+    const stop = () => browser.stop();
+    const view = screens.online({
+      join: address => {
+        stop();
+        void joinGame(address);
+      },
+      add: address => {
+        if (!settings.servers.includes(address)) settings.servers = [address, ...settings.servers].slice(0, 50);
+        saveSettings(settings);
+        browser.refresh();
+      },
+      remove: address => {
+        settings.servers = settings.servers.filter(a => a !== address);
+        saveSettings(settings);
+        browser.refresh();
+      },
+      back: () => {
+        stop();
+        screens.title();
+      },
+    });
+    const browser = createServerBrowser({
+      fetchList: () => online.fetchList(),
+      probe: address => online.probe(address),
+      own: () => settings.servers,
+      protocol: PROTOCOL_VERSION,
+      onUpdate: rows => view.update(rows),
+    });
+    browser.start();
+  }
+
   async function joinGame(target: string) {
     stopDiscovery?.();
     stopDiscovery = null;
@@ -675,11 +721,13 @@ function startGame() {
       enterPlay();
       return;
     }
+    // a dedicated server goes back to its lobby by itself after the results
+    if (mode === 'over' && client.server && client.status === 'lobby') showLobby();
     if (mode === 'lobby' && !running) {
-      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote]);
+      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote, client.server]);
       if (key === lastLobby) return;
       lastLobby = key;
-      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote);
+      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server);
     }
   }
 
