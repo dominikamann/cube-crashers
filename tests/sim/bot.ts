@@ -1,4 +1,4 @@
-import { buildFlowField, flowDir } from '../../src/sim/map/flowfield';
+import { buildFlowField, towerTiles, flowDir } from '../../src/sim/map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos } from '../../src/sim/map/tilemap';
 import { padAt } from '../../src/sim/systems/towers';
 import { RACE_CHECKPOINTS } from '../../src/sim/config/floor-race';
@@ -97,10 +97,11 @@ export function createBot(): (s: SimState) => Command[] {
     else if (nest) goal = nest.pos;
     else goal = s.map.spawn;
 
-    const key = `${Math.floor(goal.x)},${Math.floor(goal.z)}`;
+    // towers are solid: the way round them (rebuilt when one goes up or down)
+    const key = `${Math.floor(goal.x)},${Math.floor(goal.z)}:${s.towers.length}`;
     if (key !== fieldKey || !field) {
       fieldKey = key;
-      field = buildFlowField(s.map, [goal], BLOCKS_ENEMY);
+      field = buildFlowField(s.map, [goal], BLOCKS_ENEMY, towerTiles(s));
     }
 
     let move = { x: 0, z: 0 };

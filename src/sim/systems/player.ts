@@ -1,3 +1,4 @@
+import { TOWER_SOLID_RADIUS } from '../config/towers';
 import {
   BOOST_FACTOR,
   BOOST_TICKS,
@@ -20,7 +21,7 @@ import {
 } from '../config/balance';
 import { JETPACK } from '../config/rare';
 import { BLOCKS_AIR, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { DT, type HurtSource, type Intent, type Player, type SimState } from '../types';
+import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2 } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
@@ -128,6 +129,35 @@ function pushOutOfBosses(s: SimState, p: Player): void {
   }
 }
 
+/** towers are solid: walking players are kept at arm's length (close enough to build, repair and upgrade) */
+function pushOutOfTowers(s: SimState, p: Player, move: Vec2 | null): void {
+  if (p.flying) return;
+  for (const t of s.towers) {
+    const dx = p.pos.x - t.pos.x, dz = p.pos.z - t.pos.z;
+    const d = Math.hypot(dx, dz);
+    const edge = TOWER_SOLID_RADIUS + PLAYER_RADIUS;
+    if (d >= edge) continue;
+    const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
+    // slide round it instead of stopping dead: the part of the step that went in turns into a step along its
+    // side, the way the player was heading; straight at it, the side that is open (a wall may be on the other)
+    const tx = -nz, tz = nx;
+    const along = move ? move.x * tx + move.z * tz : 0;
+    const slide = Math.min(edge - d, 0.15);
+    // always back on the edge: close enough to build, repair and upgrade from there
+    const at = (side: number, step: number) => {
+      const ox = nx * edge + tx * side * step, oz = nz * edge + tz * side * step;
+      const ol = Math.hypot(ox, oz);
+      return { x: t.pos.x + (ox / ol) * edge, z: t.pos.z + (oz / ol) * edge };
+    };
+    // look a good way round before choosing: a side that is open for a step but walled in after does not count
+    const open = (side: number) => isFree(s.map, at(side, 0.6), PLAYER_RADIUS, BLOCKS_WALKER);
+    const want = Math.abs(along) > 0.05 ? Math.sign(along) : 1;
+    const side = open(want) || !open(-want) ? want : -want;
+    const out = at(side, slide);
+    p.pos = isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER) ? out : nearestFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER);
+  }
+}
+
 function updateOne(s: SimState, p: Player, it: Intent): void {
   if (p.downUntil !== null) {
     if (s.tick < p.downUntil) return;
@@ -208,6 +238,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     }
 
     pushOutOfBosses(s, p);
+    pushOutOfTowers(s, p, p.dashTicks > 0 ? p.dashDir : moveDir ?? null);
 
     if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying && s.run.stage !== 'maze') {
       p.air = JUMP_TICKS;

@@ -10,10 +10,16 @@ export const BUILD_RADIUS = 1.2;
 
 /** The pad the position is standing on, or null. */
 export function padAt(s: SimState, pos: Vec2): number | null {
+  // the nearest one: pads can sit two tiles apart, and a solid tower keeps you off the middle of yours
+  let best: number | null = null, bestD = BUILD_RADIUS;
   for (const pad of s.map.pads) {
-    if (dist(pad.pos, pos) <= BUILD_RADIUS) return pad.id;
+    const d = dist(pad.pos, pos);
+    if (d <= bestD) {
+      best = pad.id;
+      bestD = d;
+    }
   }
-  return null;
+  return best;
 }
 
 export function tryBuild(s: SimState, playerId: number, padId: number, kind: TowerKind): void {

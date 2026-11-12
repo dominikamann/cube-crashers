@@ -2,7 +2,8 @@ import type { Vec2 } from '../types';
 import type { Blocks, FloorMap } from './tilemap';
 
 /** Walking distance (in tiles, 4-connected) from every tile to the nearest target; -1 where unreachable. */
-export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks): Int16Array {
+/** `solid`: extra tiles to go round (tower tiles, for bots: players cannot walk through towers) */
+export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks, solid?: ReadonlySet<number>): Int16Array {
   const field = new Int16Array(m.w * m.h).fill(-1);
   const queue: number[] = [];
   const seed = (tx: number, tz: number) => {
@@ -40,7 +41,7 @@ export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks): In
     if (tz > 0) visit(i - m.w);
     if (tz < m.h - 1) visit(i + m.w);
     function visit(j: number) {
-      if (field[j] !== -1 || blocks(m.tiles[j])) return;
+      if (field[j] !== -1 || blocks(m.tiles[j]) || solid?.has(j)) return;
       field[j] = next;
       queue.push(j);
     }
@@ -73,4 +74,9 @@ export function flowDir(m: FloorMap, field: Int16Array, pos: Vec2): Vec2 {
   const dx = bx + 0.5 - pos.x, dz = bz + 0.5 - pos.z;
   const d = Math.hypot(dx, dz) || 1;
   return { x: dx / d, z: dz / d };
+}
+
+/** the tiles under towers, for flow fields of things that cannot walk through them */
+export function towerTiles(s: { map: FloorMap; towers: { pos: Vec2 }[] }): Set<number> {
+  return new Set(s.towers.map(t => Math.floor(t.pos.z) * s.map.w + Math.floor(t.pos.x)));
 }

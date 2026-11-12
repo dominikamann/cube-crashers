@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
+import { padAt } from '../../src/sim/systems/towers';
 import type { Command, TowerKind } from '../../src/sim/types';
 import { GATE_PAD, padAtPos, quietSim, rel, run } from './helpers';
 import { ENEMIES } from '../../src/sim/config/enemies';
@@ -20,6 +21,31 @@ function onPad(coins: number) {
 }
 
 describe('building', () => {
+  it('next to two pads you are on the nearer one', () => {
+    const s = quietSim();
+    const pads = s.map.pads;
+    const pair = pads.flatMap(a => pads.filter(b => b.id > a.id && Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z) <= 2).map(b => [a, b] as const))[0];
+    expect(pair).toBeDefined();
+    const [a, b] = pair;
+    const nearB = { x: b.pos.x + (a.pos.x - b.pos.x) * 0.45, z: b.pos.z + (a.pos.z - b.pos.z) * 0.45 };
+    expect(padAt(s, nearB)).toBe(b.id);
+  });
+
+  it('a tower is solid: you cannot walk into it, but you can still work on it from beside it', () => {
+    const { s, p, pad } = onPad(500);
+    stepSim(s, [build(PAD, 'laser')]);
+    run(s, BUILD_TICKS + 2, () => [{ type: 'hold', playerId: 0 }]);
+    // the builder is nudged off the middle; walking back into the tower does not get them in
+    run(s, 2);
+    const out = { x: (p.pos.x - pad.x) / Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z), z: (p.pos.z - pad.z) / Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z) };
+    run(s, 30, () => [{ type: 'move', playerId: 0, dir: { x: -out.x, z: -out.z } }]);
+    expect(Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z)).toBeGreaterThanOrEqual(0.85);
+    expect(Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z)).toBeLessThan(1.2);
+    const level = s.towers[0].level;
+    stepSim(s, [{ type: 'upgrade', playerId: 0, padId: PAD }]);
+    expect(s.towers[0].upgrading || s.towers[0].level > level).toBe(true);
+  });
+
   it('builds a laser tower on an empty pad and takes the coins', () => {
     const { s, p } = onPad(TOWERS.laser.cost);
     stepSim(s, [build(PAD, 'laser')]);

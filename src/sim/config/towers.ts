@@ -43,3 +43,6 @@ export function towerStats(kind: TowerKind, level: number): TowerDef {
 export const POPCORN_FLIGHT = 0.8;
 export const POPCORN_RADIUS = 2;
 export const FROST_SLOW_SECONDS = 2;
+
+/** towers are solid: players stay this far from the middle (plus their own radius), still inside BUILD_RADIUS */
+export const TOWER_SOLID_RADIUS = 0.5;

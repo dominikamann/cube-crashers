@@ -1,5 +1,5 @@
 import { WEAPONS } from '../sim/config/weapons';
-import { buildFlowField, flowDir } from '../sim/map/flowfield';
+import { buildFlowField, towerTiles, flowDir } from '../sim/map/flowfield';
 import { BLOCKS_WALKER, hasLos } from '../sim/map/tilemap';
 import { rivals } from '../sim/systems/versus';
 import type { Command, SimState, Vec2 } from '../sim/types';
@@ -31,7 +31,7 @@ export function createVersusBot(id: number): (s: SimState) => Command[] {
     const key = `${Math.floor(goal.x)},${Math.floor(goal.z)}`;
     if (key !== fieldKey || !field || tick % 30 === 0) {
       fieldKey = key;
-      field = buildFlowField(s.map, [goal], BLOCKS_WALKER);
+      field = buildFlowField(s.map, [goal], BLOCKS_WALKER, towerTiles(s));
     }
     // close by: walk straight onto it (crates and cards need you right on top of them)
     if (d(goal, pos) < 1.5) return { x: goal.x - pos.x, z: goal.z - pos.z };
