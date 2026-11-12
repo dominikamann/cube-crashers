@@ -30,6 +30,19 @@ b.fill(3, 20, 52, 52, 'L');
 b.fill(8, 10, 30, 32, '~').fill(59, 61, 37, 39, '~').fill(56, 58, 8, 9, '~');
 b.fill(15, 18, 14, 14, '=').fill(51, 54, 55, 55, '=').fill(39, 42, 4, 4, '=').fill(60, 63, 28, 28, '=');
 
+// candy machines: 3×3 blocks in the corners of the outer halls, cover in the big open floors (the middle hall
+// with its conveyor loop and the hall you start in stay open). Each sits inside one 4×4 patch of the grid, so
+// the whole block has the same height (walls come in a few heights by 4×4 patch)
+const MACHINE_AT: Record<number, number[]> = { 1: [5, 17], 25: [28, 41], 47: [49, 61] };
+for (const [x0, z0] of [[1, 1], [25, 1], [47, 1], [1, 25], [47, 25], [1, 47], [47, 47]]) {
+  for (const x of MACHINE_AT[x0])
+    for (const z of MACHINE_AT[z0]) {
+      // the crate in the lower right hall's corner stays reachable
+      if (x === 49 && z === 49) continue;
+      b.fill(x, x + 2, z, z + 2, '#');
+    }
+}
+
 b.put('S', [35, 61]).put('E', [35, 66]);
 b.put('N', [11, 11], [35, 11], [58, 11], [11, 35], [58, 35], [11, 58], [58, 58]);
 b.autoNestSurroundings();

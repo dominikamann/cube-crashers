@@ -266,6 +266,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       const sinceRoar = time - bossRoarTime;
       const bossCue = sinceRoar < BOSS.warnTicks / TICK_RATE ? 1 : sinceRoar < BOSS.warnTicks / TICK_RATE + 0.4 ? 2 : 0;
+      // King Rex leans back into the roar slowly and comes out of it slowly: at boss size a sudden tilt swings the whole screen
+      const roarSeconds = BOSS.warnTicks / TICK_RATE;
+      const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
         // King Rex is a T-Rex grown to boss size
@@ -304,8 +307,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
         // lean into a run or a charge, rear back before one; a hit makes it wobble; a tank sways under its weight
         // a T-Rex throws its head back for the roar
-        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? -0.22 : e.kind === 'trex' && attack === 2 ? 0.15 : 0;
-        const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * 0.05 : 0);
+        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
+        const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * (boss ? 0.02 : 0.05) : 0);
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
         const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;

@@ -28,6 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
+import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
@@ -161,6 +162,19 @@ function pushOutOfTowers(s: SimState, p: Player, move: Vec2 | null): void {
   }
 }
 
+/** Walking into the wall at a ladder starts the climb up it. */
+function startClimb(s: SimState, p: Player, dir: Vec2): boolean {
+  const ladder = ladderAt(s.map, p.pos.x, p.pos.z);
+  if (!ladder) return false;
+  const tx = ladder.top.x - p.pos.x, tz = ladder.top.z - p.pos.z;
+  const d = Math.hypot(tx, tz) || 1;
+  if ((dir.x * tx + dir.z * tz) / d < 0.6) return false;
+  p.climb = { ticks: CLIMB_TICKS, top: { ...ladder.top } };
+  // step onto the ladder, against the wall
+  p.pos = { x: ladder.tx + 0.5 + (tx / d) * 0.25, z: ladder.tz + 0.5 + (tz / d) * 0.25 };
+  return true;
+}
+
 function updateOne(s: SimState, p: Player, it: Intent): void {
   if (p.downUntil !== null) {
     if (s.tick < p.downUntil) return;
@@ -168,6 +182,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     p.hp = p.maxHp;
     p.pos = { ...p.safePoint };
     p.perched = false;
+    p.climb = null;
     p.invulnUntil = s.tick + RESPAWN_INVULN_TICKS;
     s.events.push({ type: 'playerRespawn', playerId: p.id });
   }
@@ -209,7 +224,17 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
   const turbo = coinOpRule(s) === 'turbo' ? VERSUS.turbo : 1;
 
   // vehicles move their driver (see vehicles.ts)
-  if (flying && moveDir) {
+  if (p.climb) {
+    // up the ladder, hand over hand; at the top you stand on the wall
+    p.flying = false;
+    if (--p.climb.ticks <= 0) {
+      p.pos = { ...p.climb.top };
+      p.perched = true;
+      p.climb = null;
+    }
+  } else if (p.vehicleId === null && !flying && !p.perched && moveDir && p.dashTicks === 0 && p.air === 0 && startClimb(s, p, moveDir)) {
+    // just took hold of a ladder
+  } else if (flying && moveDir) {
     const speed = PLAYER_SPEED * JETPACK.speedFactor * (1 + 0.12 * p.perks.speed) * turbo * Math.min(len, 1);
     // over everything, but never past the outer wall of the map
     p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));

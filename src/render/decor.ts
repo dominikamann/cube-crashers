@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
+import { ladders } from '../sim/map/ladders';
 import { glowMat, InstancedPool, lambert } from './pool';
 import { DecalBuilder, PropBuilder, hash } from './props';
 
@@ -18,6 +19,8 @@ export interface DecorContext {
 
 export interface Decor {
   group: THREE.Group;
+  /** the ladders: part of the game, so they stay when the decoration is turned off */
+  ladders: THREE.Group;
   /** blinking lights, flickering signs, swaying flags and grass, rising bubbles */
   update(time: number, glow: number): void;
 }
@@ -49,6 +52,19 @@ interface Spot {
 }
 
 const Q = Math.PI / 2;
+/** an edge spot sits 0.22 toward its wall, so the wall face is 0.28 behind it: nothing reaches further back */
+const AGAINST_WALL = -0.27;
+/** rails and rungs of the climbable ladders in each world */
+const LADDER_COLORS: Record<string, [number, number]> = {
+  plaza: [0x5a6378, 0xb07a3e],
+  candy: [0xff6fa8, 0xfff4f8],
+  neon: [0x454a66, 0x2c2a4a],
+  arena: [0x6b4a2a, 0xb08a5a],
+  rooftop: [0x3a3f52, 0x6a4a3a],
+  jungle: [0x5a3d22, 0x8a6236],
+  servers: [0x454a66, 0xf4f4ff],
+  underwater: [0x4a5656, 0x7a8a7a],
+};
 const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 /**
@@ -76,7 +92,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     return p;
   };
   // the minigame maps stay clean: nothing in the maze, on the track or in the lane
-  if (['maze', 'race', 'lane'].includes(map.id)) return { group, update() {} };
+  if (['maze', 'race', 'lane'].includes(map.id)) return { group, ladders: new THREE.Group(), update() {} };
 
   const isWall = (tx: number, tz: number) => tileOf(tx, tz) === Tile.Wall;
   const isFloor = (tx: number, tz: number) => tileOf(tx, tz) === Tile.Floor;
@@ -93,11 +109,15 @@ export function buildDecor(ctx: DecorContext): Decor {
     return run(1, 0) + run(-1, 0) + 1 <= w && run(0, 1) + run(0, -1) + 1 <= d;
   };
 
+  // the ladders are part of the game (you climb them), so they stand where the sim says, with nothing else there
+  const ladderList = ladders(map);
+  const onLadder = (tx: number, tz: number) => ladderList.some(l => l.tx === tx && l.tz === tz);
+
   /** floor tiles that touch a wall (or hazard, for roof edges), thinned out by `density`, facing away from it */
   function edgeSpots(density: number, salt: number, against: (t: Tile) => boolean = t => t === Tile.Wall): Spot[] {
     const out: Spot[] = [];
     for (const c of ctx.floorTiles) {
-      if (hash(c.tx * 13 + salt, c.tz * 5) > density || !clear(c.tx, c.tz)) continue;
+      if (hash(c.tx * 13 + salt, c.tz * 5) > density || !clear(c.tx, c.tz) || onLadder(c.tx, c.tz)) continue;
       const dir = DIRS.find(([ox, oz]) => against(tileOf(c.tx + ox, c.tz + oz)));
       if (!dir) continue;
       const [ox, oz] = dir;
@@ -111,6 +131,11 @@ export function buildDecor(ctx: DecorContext): Decor {
     for (const c of ctx.wallTiles) {
       if (onBorder(c.tx, c.tz) || hash(c.tx * 29 + salt, c.tz * 31) > density) continue;
       if (!DIRS.every(([ox, oz]) => isWall(c.tx + ox, c.tz + oz))) continue;
+      // and the blocks all round are as tall: whatever stands here may reach over the tile's edge without
+      // ending up inside a taller neighbour
+      let level = true;
+      for (let oz = -1; oz <= 1; oz++) for (let ox = -1; ox <= 1; ox++) if (isWall(c.tx + ox, c.tz + oz) && wallTopY(c.tx + ox, c.tz + oz) !== wallTopY(c.tx, c.tz)) level = false;
+      if (!level) continue;
       out.push({ tx: c.tx, tz: c.tz, x: c.tx + 0.5, z: c.tz + 0.5, yaw: Math.floor(hash(c.tx, c.tz * 7 + salt) * 4) * Q, r: hash(c.tz * 3 + salt, c.tx * 19) });
     }
     return out;
@@ -142,11 +167,11 @@ export function buildDecor(ctx: DecorContext): Decor {
     return mat;
   };
   /** a ladder up the wall face behind a spot: two rails and rungs, from the floor to the block's top */
-  const ladder = (s: Spot, rail: THREE.Material, rung: THREE.Material) => {
+  const ladder = (into: PropBuilder, s: Spot, rail: THREE.Material, rung: THREE.Material) => {
     const h = wallTopY(s.tx - Math.round(Math.sin(s.yaw)), s.tz - Math.round(Math.cos(s.yaw))) + 0.12;
-    props.at(s.x, 0, s.z, s.yaw);
-    for (const x of [-0.18, 0.18]) props.box(0.06, h, 0.06, rail, x, h / 2, -0.24);
-    for (let y = 0.25; y < h; y += 0.3) props.box(0.4, 0.05, 0.05, rung, 0, y, -0.24);
+    into.at(s.x, 0, s.z, s.yaw);
+    for (const x of [-0.18, 0.18]) into.box(0.06, h, 0.06, rail, x, h / 2, -0.24);
+    for (let y = 0.25; y < h; y += 0.3) into.box(0.4, 0.05, 0.05, rung, 0, y, -0.24);
   };
   /** a flag hanging from a pole: its own mesh, so it can sway */
   const flag = (x: number, y: number, z: number, yaw: number, mat: THREE.Material, w: number, h: number) => {
@@ -165,17 +190,15 @@ export function buildDecor(ctx: DecorContext): Decor {
     const lamp = glowMat(0xffe9a8, 1.6), screen = glowMat(0x2bf0ff, 1.2);
     breathers.push(screen);
     for (const s of edgeSpots(0.17, 0)) {
-      if (s.r > 0.94) {
-        ladder(s, metal, wood);
-        continue;
-      }
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       // trees are the plaza's signature: a third of everything standing around
       const k = Math.max(0, Math.floor(s.r * 9) - 2);
       if (k === 0) {
-        // a tree in a planter: a trunk and three layers of leaves, taller than a player
-        props.box(0.6, 0.3, 0.6, pot, 0, 0.15, 0).box(0.2, 0.95, 0.2, wood, 0, 0.75, 0);
-        props.box(1.05, 0.55, 1.05, leafA, 0, 1.4, 0).box(0.78, 0.5, 0.78, leafB, 0.05, 1.9, -0.03).box(0.45, 0.4, 0.45, leafA, 0, 2.32, 0.04);
+        // a tree in a planter: a trunk and three layers of leaves, taller than a player. It stands in the middle of
+        // its tile (the spot leans 0.22 toward the wall) and its crown stays inside the tile, clear of the wall
+        const c = 0.24;
+        props.box(0.6, 0.3, 0.6, pot, 0, 0.15, c).box(0.2, 0.95, 0.2, wood, 0, 0.75, c);
+        props.box(0.9, 0.55, 0.9, leafA, 0, 1.4, c).box(0.68, 0.5, 0.68, leafB, 0.05, 1.9, c - 0.03).box(0.4, 0.4, 0.4, leafA, 0, 2.32, c + 0.04);
       } else if (k === 1) {
         props.box(0.12, 1.6, 0.12, metal, 0, 0.8, 0).box(0.32, 0.22, 0.32, lamp, 0, 1.7, 0).box(0.4, 0.05, 0.4, dark, 0, 1.84, 0);
       } else if (k === 2) {
@@ -208,7 +231,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     const red = lambert(0xff4d6d), white = lambert(0xfff8fb), choc = lambert(0x6b4030), stick = lambert(0xfff4ee), cream = lambert(0xfff0f6);
     const pastels = [pink, mint, lemon, lilac, sky];
     for (const s of edgeSpots(0.18, 3)) {
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 5);
       const a = pastels[Math.floor(hash(s.tx, s.tz * 3) * 5)], b = pastels[Math.floor(hash(s.tz, s.tx * 5) * 5)];
       if (k === 0) {
@@ -238,6 +261,22 @@ export function buildDecor(ctx: DecorContext): Decor {
       else if (k === 1) for (let i = 0; i < 3; i++) props.box(0.26, 0.26, 0.26, white, -0.26 + i * 0.26, 0.13 + (i === 1 ? 0.26 : 0), 0);
       else props.box(0.4, 0.4, 0.4, pastels[Math.floor(s.r * 25) % 5], 0, 0.2, 0, Math.PI / 4);
     }
+    // the candy machines in the halls (3×3 blocks): a gumball machine on top, a glass dome full of sweets
+    const glass = new THREE.MeshStandardMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.35, roughness: 0.1 });
+    for (const c of ctx.wallTiles) {
+      if (onBorder(c.tx, c.tz)) continue;
+      let solid = true;
+      for (let oz = -1; oz <= 1 && solid; oz++) for (let ox = -1; ox <= 1; ox++) if (!isWall(c.tx + ox, c.tz + oz)) solid = false;
+      // the middle of a machine: walled all round, but floor two tiles out on every side
+      if (!solid || !DIRS.every(([ox, oz]) => !isWall(c.tx + ox * 2, c.tz + oz * 2))) continue;
+      const y = wallTopY(c.tx, c.tz), r = hash(c.tx * 5, c.tz * 7), a = pastels[Math.floor(r * 5)];
+      props.at(c.tx + 0.5, y, c.tz + 0.5, Math.floor(r * 4) * Q);
+      props.box(2.7, 0.14, 2.7, white, 0, 0.07, 0).box(1.3, 0.5, 1.3, a, 0, 0.39, 0).box(0.3, 0.2, 0.12, choc, 0, 0.35, 0.68);
+      props.box(1.2, 1.0, 1.2, glass, 0, 1.14, 0).box(0.6, 0.18, 0.6, red, 0, 1.73, 0).box(0.16, 0.2, 0.16, red, 0, 1.92, 0);
+      for (let i = 0; i < 14; i++) props.box(0.24, 0.24, 0.24, [red, ...pastels][Math.floor(hash(i, c.tx + c.tz) * 6)], -0.38 + hash(c.tx, i) * 0.76, 0.78 + hash(i * 3, c.tz) * 0.6 * (i < 9 ? 0.5 : 1), -0.38 + hash(c.tz, i * 7) * 0.76);
+      // a lollipop sign on a corner and a candy-cane stripe round the base
+      props.box(0.08, 1.0, 0.08, stick, 1.05, 0.6, 1.05).box(0.5, 0.5, 0.1, pastels[(Math.floor(r * 5) + 2) % 5], 1.05, 1.25, 1.05).box(0.25, 0.25, 0.12, white, 1.05, 1.25, 1.05, Math.PI / 4);
+    }
     // sprinkles across the halls
     const sprinkle = [0xff8fc8, 0x7fe0c8, 0xfff07a, 0xc49bff, 0x8fd8ff, 0xff4d6d];
     for (const c of ctx.floorTiles) {
@@ -253,11 +292,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     const screen = flicker(0x9ff6ff, 1.2, 4);
     const streetLamp = glowMat(0xfff1c4, 1.8);
     for (const s of edgeSpots(0.14, 5)) {
-      if (s.r > 0.94) {
-        ladder(s, steel, metal);
-        continue;
-      }
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 6);
       const glow = signs[Math.floor(hash(s.tx * 5, s.tz) * 3)];
       if (k === 0) {
@@ -304,7 +339,8 @@ export function buildDecor(ctx: DecorContext): Decor {
         let n = 1;
         while (n < 7 && !isWall(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) n++;
         if (n >= 7 || n < 2 || !isWall(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) continue;
-        const y = Math.min(wallTopY(c.tx, c.tz), wallTopY(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) + 0.4;
+        // strung above the taller of the two roofs, so neither end disappears into a wall
+        const y = Math.max(wallTopY(c.tx, c.tz), wallTopY(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) + 0.4;
         props.at(c.tx + 0.5 + ox * (n + 1) / 2, y, c.tz + 0.5 + oz * (n + 1) / 2, ox ? Q : 0);
         props.box(0.03, 0.03, n + 1, dark, 0, 0, 0).box(0.03, 0.03, n + 1, dark, 0.2, -0.08, 0);
         props.box(0.5, 0.08, 0.5, dark, 0, -0.02, 0).box(0.1, 0.1, 0.1, blink(0xffd34a, 0.6, n), 0, -0.1, 0);
@@ -333,7 +369,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     flames.push(flame);
     const flood = glowMat(0xfff4d6, 1.6);
     for (const s of edgeSpots(0.15, 7)) {
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 4);
       if (k === 0) {
         // barrels with iron hoops
@@ -395,11 +431,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     // along the roof's edge (the glitch rim) and next to the vents
     const rim = edgeSpots(0.06, 9, t => t === Tile.Hazard);
     for (const s of [...rim, ...edgeSpots(0.2, 11)]) {
-      if (s.r > 0.9 && tileOf(s.tx - Math.round(Math.sin(s.yaw)), s.tz - Math.round(Math.cos(s.yaw))) === Tile.Wall) {
-        ladder(s, metal, rust);
-        continue;
-      }
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 5);
       if (k === 0) {
         // a solar panel on a tilted frame
@@ -436,9 +468,13 @@ export function buildDecor(ctx: DecorContext): Decor {
     for (const c of ctx.wallTiles) {
       if (onBorder(c.tx, c.tz)) continue;
       const h = hash(c.tx, c.tz);
+      // the crown spreads over the neighbouring tiles: it sits above the tallest trunk block next to it, so it
+      // never cuts into one
+      let rise = 0;
+      for (let oz = -1; oz <= 1; oz++) for (let ox = -1; ox <= 1; ox++) if (isWall(c.tx + ox, c.tz + oz)) rise = Math.max(rise, wallTopY(c.tx + ox, c.tz + oz) - wallTopY(c.tx, c.tz));
       props.at(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
-      props.box(1.6, 0.9, 1.6, h > 0.5 ? leafA : leafB, 0, 1.05 + h * 0.6, 0);
-      if (h > 0.7) props.box(1, 0.7, 1, leafA, 0, 1.85 + h * 0.3, 0);
+      props.box(1.6, 0.9, 1.6, h > 0.5 ? leafA : leafB, 0, 1.05 + h * 0.6 + rise, 0);
+      if (h > 0.7) props.box(1, 0.7, 1, leafA, 0, 1.85 + h * 0.3 + rise, 0);
       for (const [ox, oz] of DIRS) {
         if (isWall(c.tx + ox, c.tz + oz) || hash(c.tx * 5 + ox, c.tz * 3 + oz) > 0.35) continue;
         const len = 0.5 + hash(c.tz, c.tx * 9) * 0.6;
@@ -446,7 +482,7 @@ export function buildDecor(ctx: DecorContext): Decor {
       }
     }
     for (const s of edgeSpots(0.2, 13)) {
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 6);
       if (k < 2) {
         // a fern: four flat fronds fanning out
@@ -490,11 +526,7 @@ export function buildDecor(ctx: DecorContext): Decor {
       props.at(c.tx + 0.5, 0, c.tz + 0.5).box(0.9, 0.06, 0.12, cable, 0, 0.04, 0).box(0.5, 0.05, 0.1, cable, 0.1, 0.09, 0.08);
     }
     for (const s of edgeSpots(0.12, 15)) {
-      if (s.r > 0.93) {
-        ladder(s, steel, white);
-        continue;
-      }
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 5);
       if (k === 0) {
         // a console on a stand, screen tilted toward the aisle
@@ -559,7 +591,7 @@ export function buildDecor(ctx: DecorContext): Decor {
       }
     }
     for (const s of edgeSpots(0.2, 17)) {
-      props.at(s.x, 0, s.z, s.yaw);
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 6);
       if (k === 0) {
         // a starfish: five arms
@@ -585,11 +617,21 @@ export function buildDecor(ctx: DecorContext): Decor {
   }
 
   props.build(group);
+  const [railColor, rungColor] = LADDER_COLORS[look] ?? LADDER_COLORS.plaza;
+  const rail = lambert(railColor), rung = lambert(rungColor);
+  const ladderProps = new PropBuilder();
+  const ladderGroup = new THREE.Group();
+  for (const l of ladderList) {
+    const ox = Math.sign(Math.round(l.top.x - (l.tx + 0.5))), oz = Math.sign(Math.round(l.top.z - (l.tz + 0.5)));
+    ladder(ladderProps, { tx: l.tx, tz: l.tz, x: l.tx + 0.5 + ox * 0.22, z: l.tz + 0.5 + oz * 0.22, yaw: Math.atan2(-ox, -oz), r: 0 }, rail, rung);
+  }
+  ladderProps.build(ladderGroup);
   if (!decals.empty) group.add(decals.build(new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1 })));
   // materials made here but merged away still need freeing with the world: group.traverse covers the meshes
 
   return {
     group,
+    ladders: ladderGroup,
     update(time, glow) {
       for (const b of blinkers) b.mat.emissiveIntensity = (Math.sin(time * b.speed + b.phase) > 0.3 ? 1 : 0.08) * b.base * glow;
       const step = Math.floor(time * 12);

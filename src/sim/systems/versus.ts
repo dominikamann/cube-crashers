@@ -237,6 +237,7 @@ function startRound(s: SimState): void {
   for (const p of s.players) {
     equip(p, s);
     p.perched = false;
+    p.climb = null;
     p.vehicleId = null;
     p.downUntil = null;
     p.reviveUntil = null;
@@ -282,6 +283,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   p.dashTicks = 0;
   p.combo = 0;
   p.perched = false;
+  p.climb = null;
   if (v.rule === 'rounds') {
     p.downUntil = Number.MAX_SAFE_INTEGER;
     return;

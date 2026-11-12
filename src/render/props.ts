@@ -9,11 +9,35 @@ export class PropBuilder {
   private parts = new Map<THREE.Material, THREE.BufferGeometry[]>();
   private readonly m = new THREE.Matrix4();
   private readonly frame = new THREE.Matrix4();
+  /** the boxes of the prop being built, when it stands against a wall (see `at`) */
+  private prop: { geos: THREE.BufferGeometry[]; x: number; z: number; yaw: number; back: number } | null = null;
 
-  /** where the following boxes go: their local offsets are turned by `yaw` and moved to (x, y, z) */
-  at(x: number, y: number, z: number, yaw = 0): this {
+  /**
+   * Where the following boxes go: their local offsets are turned by `yaw` and moved to (x, y, z). With `back`,
+   * the prop stands against a wall behind it (local -z): once it is complete it is pushed forward until nothing
+   * reaches further back than `back`, so no corner of it disappears into the wall.
+   */
+  at(x: number, y: number, z: number, yaw = 0, back?: number): this {
+    this.settle();
     this.frame.makeRotationY(yaw).setPosition(x, y, z);
+    if (back !== undefined) this.prop = { geos: [], x, z, yaw, back };
     return this;
+  }
+
+  private settle(): void {
+    const p = this.prop;
+    this.prop = null;
+    if (!p || p.geos.length === 0) return;
+    // how far the prop reaches back, along its own z axis
+    const ax = Math.sin(p.yaw), az = Math.cos(p.yaw);
+    let min = Infinity;
+    for (const g of p.geos) {
+      const pos = g.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) min = Math.min(min, (pos.getX(i) - p.x) * ax + (pos.getZ(i) - p.z) * az);
+    }
+    if (min >= p.back) return;
+    const push = p.back - min;
+    for (const g of p.geos) g.translate(ax * push, 0, az * push);
   }
 
   /** a box of `w` × `h` × `d` with its centre at the local offset (ox, oy, oz), optionally turned around its own y axis */
@@ -25,11 +49,13 @@ export class PropBuilder {
     let list = this.parts.get(mat);
     if (!list) this.parts.set(mat, (list = []));
     list.push(g);
+    this.prop?.geos.push(g);
     return this;
   }
 
   /** one mesh per material, added to `group`; the source boxes are freed */
   build(group: THREE.Object3D, shadows = true): THREE.Mesh[] {
+    this.settle();
     const meshes: THREE.Mesh[] = [];
     for (const [mat, list] of this.parts) {
       const merged = mergeGeometries(list, false);

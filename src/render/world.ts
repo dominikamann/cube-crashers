@@ -871,6 +871,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const keepClear = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.flatMap(n => [n.pos, ...n.entries]), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
   const decor = buildDecor({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
   addToScene(decor.group);
+  addToScene(decor.ladders);
 
   // Kart Rally: a chequered start/finish line with an arch, glowing gates at the other checkpoints
   if (map.id === 'race') {

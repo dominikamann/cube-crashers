@@ -175,6 +175,8 @@ export interface Player {
   flying: boolean;
   /** standing on top of a wall block (landed there with the jetpack) */
   perched?: boolean;
+  /** climbing a ladder: ticks left until you stand on the wall top at `top` */
+  climb?: { ticks: number; top: Vec2 } | null;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
   /** downed in a team game: can be helped up until this tick */

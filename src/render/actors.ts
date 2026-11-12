@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import { jumpTicks } from '../sim/systems/versus';
 import { wallTop } from './world';
+import { CLIMB_TICKS } from '../sim/map/ladders';
 import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
@@ -411,10 +412,15 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const jump = p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
     // landed on top of a wall block with the jetpack
-    const perch = p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0;
+    // or on the way up a ladder: up the rungs, then over the top
+    const climbed = p.climb ? 1 - p.climb.ticks / CLIMB_TICKS : 0;
+    const perch = p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : p.climb ? wallTop(s.map, p.climb.top.x, p.climb.top.z) * Math.min(1, climbed * 1.2) : 0;
+    const over = p.climb ? Math.max(0, climbed - 0.8) / 0.2 : 0;
     // on a unicorn you sit up on its back
     const mount = driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'unicorn' ? 0.95 : 0.35;
-    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? mount : 0), p.pos.z);
+    const x = p.climb ? p.pos.x + (p.climb.top.x - p.pos.x) * over : p.pos.x;
+    const z = p.climb ? p.pos.z + (p.climb.top.z - p.pos.z) * over : p.pos.z;
+    v.root.position.set(x, perch + jump + fly + (driving ? mount : 0), z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
@@ -434,7 +440,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const moved = Math.hypot(p.pos.x - v.lastX, p.pos.z - v.lastZ) > 0.001;
     v.lastX = p.pos.x;
     v.lastZ = p.pos.z;
-    const moving = !driving && p.air === 0 && !p.flying && moved;
+    const moving = (!driving && p.air === 0 && !p.flying && moved) || !!p.climb;
     v.body.position.y = moving && !down ? Math.abs(Math.sin(time * 14)) * 0.06 : 0;
     // legs and the free arm swing with the steps; sitting in a kart the legs point forward, in the air they trail
     const swing = moving && !down ? Math.sin(time * 14) * 0.75 : 0;
