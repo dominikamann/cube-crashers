@@ -508,6 +508,9 @@ announced first.
 | **Bomber** | Runs at you and blows up. Shoot it first and it explodes among its friends. | Blinking fuse, red ring |
 | **Rammer** | Charges in a straight line; stunned when it hits a wall. Step aside. | Red lane on the ground |
 | **Glitch Swarmer** | Small and weak, flies over walls during the shaft ride. | – |
+| **Shielder** | Holds a shield in front: shots from the front do little. Get behind it, or throw a bomb or hotdog over it. | Silver shield |
+| **Healer** | Stays back and mends the monsters around it. Take it out first. | Green cross, green sparkles |
+| **Teleporter** | Shimmers, then blinks right next to you. | It flickers before it blinks |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |

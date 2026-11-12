@@ -6,7 +6,22 @@ export const DT = 1 / TICK_RATE;
 
 export type Vec2 = { x: number; z: number };
 
-export type EnemyKind = 'blob' | 'hunter' | 'tank' | 'splitter' | 'splitling' | 'shooter' | 'bomber' | 'rammer' | 'swarmer' | 'megaBlock' | 'wormSegment' | 'ghost';
+export type EnemyKind =
+  | 'blob'
+  | 'hunter'
+  | 'tank'
+  | 'splitter'
+  | 'splitling'
+  | 'shooter'
+  | 'bomber'
+  | 'rammer'
+  | 'swarmer'
+  | 'megaBlock'
+  | 'wormSegment'
+  | 'ghost'
+  | 'shielder'
+  | 'healer'
+  | 'teleporter';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -509,6 +524,10 @@ export type SimEvent =
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'railFired'; from: Vec2; to: Vec2 }
   | { type: 'magnetPull'; from: Vec2; to: Vec2 }
+  /** a healer mended the monsters at these spots */
+  | { type: 'enemyHealed'; pos: Vec2; targets: Vec2[] }
+  /** a teleporter vanished at `from` and appeared at `to` */
+  | { type: 'enemyBlink'; from: Vec2; to: Vec2 }
   /** a tesla coil's lightning: from the coil through every monster it jumped to */
   | { type: 'teslaChain'; points: Vec2[] }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }

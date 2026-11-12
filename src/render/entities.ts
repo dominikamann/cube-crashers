@@ -17,6 +17,9 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   wormSegment: { w: 0.95, h: 0.85, d: 0.95, day: 0x7b4fd1, night: 0x8f63ff, eyeY: 0.6, eyeX: 0.22, eye: 0.16 },
   swarmer: { w: 0.6, h: 0.3, d: 0.45, day: 0xb15cff, night: 0xd08cff, eyeY: 0.2, eyeX: 0.1, eye: 0.09 },
   ghost: { w: 0.8, h: 0.9, d: 0.8, day: 0xff4fd8, night: 0xff4fd8, eyeY: 0.6, eyeX: 0.18, eye: 0.16 },
+  shielder: { w: 0.75, h: 0.85, d: 0.6, day: 0x6f7d8c, night: 0x9fb2c8, eyeY: 0.6, eyeX: 0.16, eye: 0.12 },
+  healer: { w: 0.55, h: 0.75, d: 0.55, day: 0x5fd38a, night: 0x7fffb0, eyeY: 0.55, eyeX: 0.12, eye: 0.12 },
+  teleporter: { w: 0.55, h: 0.7, d: 0.55, day: 0x7a5cff, night: 0xa98cff, eyeY: 0.5, eyeX: 0, eye: 0.2 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -49,6 +52,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const eliteRings = new InstancedPool(scene, new THREE.RingGeometry(0.85, 1, 20).rotateX(-Math.PI / 2), eliteMat, 32, false);
   const hornMat = glowMat(0xffe14a, 1.2);
   const horns = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.16, 0.5), hornMat, 64);
+  // the shielder's shield, and the healer's green cross
+  const shields = new InstancedPool(scene, new THREE.BoxGeometry(1.0, 0.95, 0.12), lambert(0xd8dde8), 128);
+  const crosses = new InstancedPool(scene, new THREE.BoxGeometry(0.42, 0.13, 0.13), glowMat(0x5fff9a, 1.4), 256, false);
   const fuseMat = glowMat(0xffe14a, 3);
   const fuses = new InstancedPool(scene, new THREE.BoxGeometry(0.12, 0.3, 0.12), fuseMat, 64, false);
   // telegraphs: where a rammer will charge, where a bomber will blow, where a shooter aims
@@ -188,7 +194,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       pupils.begin();
       plates.begin();
       const heads = new Set(s.boss?.worms.map(w => w[0]) ?? []);
-      const extra = [bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
+      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetItems, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -208,7 +214,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const maze = s.run.maze;
         const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;
         const blinkOut = scared && maze!.powerUntil - s.tick < 120 && Math.floor(time * 8) % 2 === 0;
-        const tint = flashing ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
+        // a teleporter about to blink flickers
+        const blinking = e.kind === 'teleporter' && winding && Math.floor(time * 20) % 2 === 0;
+        const tint = flashing || blinking ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
@@ -242,6 +250,15 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         if (e.kind === 'shooter' && e.state === 'windup') {
           tmpFrom.set(e.pos.x, 0.06, e.pos.z);
           lanes.addStretched(tmpFrom, yaw, 0.12, 8);
+        }
+        if (e.kind === 'shielder') {
+          const fx = Math.sin(yaw), fz = Math.cos(yaw);
+          shields.add(e.pos.x + fx * (l.d / 2 + 0.12) * scale, y, e.pos.z + fz * (l.d / 2 + 0.12) * scale, yaw, scale);
+        }
+        if (e.kind === 'healer') {
+          const top = y + (l.h / 2) * scale + 0.25;
+          crosses.add(e.pos.x, top, e.pos.z, time * 2, scale);
+          crosses.add(e.pos.x, top, e.pos.z, time * 2 + Math.PI / 2, scale);
         }
         if (e.kind === 'tank') plates.add(e.pos.x, y + (l.h / 2) * scale - 0.05, e.pos.z, yaw, scale);
         const ey = y - (l.h / 2 - l.eyeY) * scale;

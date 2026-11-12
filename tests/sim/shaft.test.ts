@@ -35,9 +35,12 @@ describe('shaft ride', () => {
     const swarmers = s.enemies.filter(e => e.kind === 'swarmer');
     expect(swarmers.length).toBeGreaterThan(3);
     const p = s.players[0];
-    const before = Math.min(...swarmers.map(e => Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)));
+    // on average they close in (the nearest one may already be touching the player)
+    const mean = (list: typeof swarmers) => list.reduce((n, e) => n + Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z), 0) / list.length;
+    const ids = new Set(swarmers.map(e => e.id));
+    const before = mean(swarmers);
     run(s, 30);
-    const after = Math.min(...s.enemies.filter(e => e.kind === 'swarmer').map(e => Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)));
+    const after = mean(s.enemies.filter(e => ids.has(e.id)));
     expect(after).toBeLessThan(before);
   });
 

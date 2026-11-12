@@ -1,8 +1,8 @@
-import { ALARM_SPEED_STEP, BOMBER, CROWD_CONTACT_SHARE, FLOW_REBUILD_TICKS, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, CROWD_CONTACT_SHARE, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
 import { damageEnemy, explode } from './combat';
@@ -89,6 +89,37 @@ function shoot(s: SimState, e: Enemy): void {
   s.events.push({ type: 'enemyShot', pos: { ...e.pos } });
 }
 
+/** A teleporter's shimmer is over: it appears right beside the nearest player. */
+function blink(s: SimState, e: Enemy, players: Player[]): void {
+  e.state = 'move';
+  e.cooldownUntil = s.tick + TELEPORTER.cooldownTicks;
+  const target = nearestPlayer(players, e.pos);
+  if (!target) return;
+  const { p } = target;
+  // beside the player, on the side it came from
+  const away = unit(p.pos, e.pos);
+  const side = e.id % 2 === 0 ? 1 : -1;
+  const spot = { x: p.pos.x + (away.x - away.z * side) * TELEPORTER.beside * 0.7, z: p.pos.z + (away.z + away.x * side) * TELEPORTER.beside * 0.7 };
+  const to = nearestFree(s.map, spot, e.radius, BLOCKS_ENEMY);
+  s.events.push({ type: 'enemyBlink', from: { ...e.pos }, to: { ...to } });
+  e.pos = { ...to };
+  e.dir = unit(e.pos, p.pos);
+}
+
+/** A healer mends the hurt monsters around it (not itself, not bosses). */
+function heal(s: SimState, e: Enemy): void {
+  if (s.tick < e.cooldownUntil) return;
+  e.cooldownUntil = s.tick + HEALER.everyTicks;
+  const healed: Vec2[] = [];
+  for (const o of s.enemies) {
+    if (o === e || o.hp <= 0 || o.hp >= o.maxHp || o.kind === 'megaBlock' || o.kind === 'wormSegment' || o.kind === 'ghost') continue;
+    if (dist(o.pos, e.pos) > HEALER.radius + o.radius) continue;
+    o.hp = Math.min(o.maxHp, o.hp + o.maxHp * HEALER.share);
+    healed.push({ ...o.pos });
+  }
+  if (healed.length > 0) s.events.push({ type: 'enemyHealed', pos: { ...e.pos }, targets: healed });
+}
+
 /** Moves a charging rammer and resolves what it runs into. */
 function charge(s: SimState, e: Enemy, players: Player[]): void {
   const step = RAMMER.speed * DT;
@@ -149,6 +180,16 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
     case 'rammer':
       if (los && d < RAMMER.range && s.tick >= e.cooldownUntil) {
         startWindup(s, e, p.pos, RAMMER.windupTicks, 'windup');
+        return still;
+      }
+      return chase;
+    case 'healer':
+      // stays behind the others: backs off when a player comes close
+      if (los && d < HEALER.keepAway) return { dir: unit(p.pos, e.pos), factor: 1 };
+      return !los || d > HEALER.keepAway + 2 ? chase : still;
+    case 'teleporter':
+      if (los && d >= TELEPORTER.min && d <= TELEPORTER.max && s.tick >= e.cooldownUntil) {
+        startWindup(s, e, p.pos, TELEPORTER.windupTicks, 'windup');
         return still;
       }
       return chase;
@@ -223,6 +264,8 @@ export function updateEnemies(s: SimState): void {
         shoot(s, e);
         e.cooldownUntil = s.tick + SHOOTER.cooldownTicks;
         e.state = 'move';
+      } else if (e.state === 'windup' && e.kind === 'teleporter') {
+        blink(s, e, players);
       } else if (e.state === 'windup' && e.kind === 'rammer') {
         e.state = 'charge';
         e.chargeLeft = RAMMER.distance;
@@ -232,6 +275,7 @@ export function updateEnemies(s: SimState): void {
     }
 
     const isHeld = held(s, e);
+    if (e.kind === 'healer' && !isHeld) heal(s, e);
     if (e.state === 'charge' && !isHeld) {
       charge(s, e, players);
       continue;

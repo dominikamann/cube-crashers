@@ -11,7 +11,7 @@ export const LANE = {
   ticks: 90 * TICK_RATE,
   coreHp: 100,
   /** how much of the cabinet a monster takes when it gets there */
-  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15, swarmer: 3 } as Partial<Record<EnemyKind, number>>,
+  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15, swarmer: 3, shielder: 10, healer: 6, teleporter: 8 } as Partial<Record<EnemyKind, number>>,
   waveTicks: 4.5 * TICK_RATE,
   /** a minigame should keep you busy on any difficulty: waves never shrink below this share */
   minScale: 0.85,
@@ -30,10 +30,13 @@ const FLAVOURS: EnemyKind[][] = [
   ['tank', 'blob', 'blob', 'blob'],
   ['rammer', 'hunter', 'swarmer'],
   ['bomber', 'blob', 'splitter'],
+  ['shielder', 'shielder', 'blob'],
+  ['healer', 'tank', 'blob', 'blob'],
+  ['teleporter', 'hunter', 'blob'],
 ];
 
 /** what a wave is made of: more and tougher monsters as the defence goes on, in a mix (heaviest last) */
-function wave(n: number): EnemyKind[] {
+export function laneWave(n: number): EnemyKind[] {
   const flavour = FLAVOURS[n % FLAVOURS.length];
   const size = 6 + Math.floor(n * 1.2);
   const out: EnemyKind[] = [];
@@ -112,7 +115,7 @@ export function updateLane(s: SimState): void {
   const elapsed = LANE.ticks - (s.run.stageUntil - s.tick);
   if (elapsed % LANE.waveTicks === 0) {
     const n = lane.waves++;
-    const kinds = wave(n);
+    const kinds = laneWave(n);
     // fewer on easy settings, but never just the first few (that used to leave only blobs)
     const count = Math.max(3, Math.round(kinds.length * Math.max(LANE.minScale, hordeScale(s))));
     for (let i = 0; i < count && s.enemies.length < ENEMY_CAP; i++) {

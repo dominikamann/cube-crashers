@@ -262,7 +262,7 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
 export const MAX_COIN_STREAK_STEPS = 12;
 const SEMITONE = 1.059;
 
-const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer' };
+const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter' };
 
 export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];
@@ -291,6 +291,10 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'railFired':
       // the zap itself comes with the shot; this is the crack where the beam ends
       return one('enemyHit', 0.6);
+    case 'enemyHealed':
+      return one('coin', 0.6);
+    case 'enemyBlink':
+      return one('jetpackPicked', 1.6);
     case 'teslaChain':
       return one('tower_tesla');
     case 'magnetPull':

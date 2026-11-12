@@ -14,6 +14,9 @@ export const HORDE_COMPS: Record<string, HordeComp> = {
   boomSquad: [{ kind: 'bomber', count: 4 }, { kind: 'blob', count: 6 }],
   ramCrew: [{ kind: 'rammer', count: 2 }, { kind: 'hunter', count: 4 }],
   mixed: [{ kind: 'blob', count: 6 }, { kind: 'splitter', count: 3 }, { kind: 'shooter', count: 2 }],
+  shieldLine: [{ kind: 'shielder', count: 4 }, { kind: 'shooter', count: 2 }, { kind: 'blob', count: 3 }],
+  fieldMedic: [{ kind: 'healer', count: 2 }, { kind: 'tank', count: 1 }, { kind: 'blob', count: 6 }],
+  blinkers: [{ kind: 'teleporter', count: 4 }, { kind: 'hunter', count: 3 }],
 };
 
 export function spawnHorde(s: SimState, pos: Vec2, comp: HordeComp, opts: { rush?: boolean; eliteChance?: number } = {}): Horde {

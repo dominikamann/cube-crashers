@@ -1,4 +1,4 @@
-import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
@@ -89,7 +89,14 @@ export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSour
     return;
   }
   const close = dist(owner.pos, e.pos) <= CLOSE_RANGE + e.radius;
-  damageEnemy(s, e, base * (close ? CLOSE_BONUS : 1), source, ownerId);
+  let amount = base * (close ? CLOSE_BONUS : 1);
+  // a shielder's shield takes most of what comes from the front
+  if (e.kind === 'shielder') {
+    const dx = owner.pos.x - e.pos.x, dz = owner.pos.z - e.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 1e-6 && (dx * e.dir.x + dz * e.dir.z) / d >= Math.cos((SHIELDER.halfArcDeg * Math.PI) / 180)) amount *= SHIELDER.front;
+  }
+  damageEnemy(s, e, amount, source, ownerId);
 }
 
 export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number): void {

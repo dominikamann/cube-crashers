@@ -23,6 +23,12 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   swarmer: { hp: 6, speed: 4, radius: 0.3, coins: 1, score: 10, contactDamage: 8 },
   // Glitch Maze: chases, cannot be hurt by weapons (there are none), only crashed while powered up
   ghost: { hp: 9999, speed: 3.4, radius: 0.4, coins: 0, score: 50, contactDamage: 0 },
+  // carries a shield in front: shots from the front do little, from behind or from above (blasts) in full
+  shielder: { hp: 40, speed: 1.7, radius: 0.45, coins: 3, score: 35, contactDamage: 15 },
+  // stays back and mends the monsters around it: take it out first
+  healer: { hp: 24, speed: 1.9, radius: 0.35, coins: 3, score: 40, contactDamage: 5 },
+  // shimmers, then blinks right next to you
+  teleporter: { hp: 18, speed: 2.2, radius: 0.35, coins: 2, score: 30, contactDamage: 14 },
   megaBlock: { hp: 1800, speed: 1.3, radius: 1.6, coins: 0, score: 2000, contactDamage: 40 },
   // moved by the boss system
   wormSegment: { hp: 80, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },

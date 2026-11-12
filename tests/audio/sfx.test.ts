@@ -22,6 +22,8 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   gunLevel: { type: 'gunLevel', playerId: 0, level: 1, weapon: 'candyCannon' },
   railFired: { type: 'railFired', from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
   magnetPull: { type: 'magnetPull', from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
+  enemyHealed: { type: 'enemyHealed', pos: { x: 0, z: 0 }, targets: [{ x: 1, z: 0 }] },
+  enemyBlink: { type: 'enemyBlink', from: { x: 0, z: 0 }, to: { x: 1, z: 0 } },
   teslaChain: { type: 'teslaChain', points: [{ x: 0, z: 0 }, { x: 2, z: 0 }] },
   cubeTaken: { type: 'cubeTaken', team: 1, playerId: 0 },
   cubeDropped: { type: 'cubeDropped', team: 1, pos: { x: 0, z: 0 } },

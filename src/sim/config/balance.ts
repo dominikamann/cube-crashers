@@ -53,6 +53,12 @@ export const ROAM_SPEED_FACTOR = 0.6;
 export const WANDER_RANGE = 25;
 export const ALARM_SPEED_STEP = 0.05;
 
+/** shots from within this angle of a shielder's front only do `front` of their damage */
+export const SHIELDER = { halfArcDeg: 70, front: 0.2 };
+/** a healer mends monsters within `radius` by `share` of their health every `everyTicks`; it keeps `keepAway` from players */
+export const HEALER = { radius: 3.5, share: 0.12, everyTicks: 60, keepAway: 5 };
+/** a teleporter blinks to a player between `min` and `max` tiles away that it can see */
+export const TELEPORTER = { min: 3, max: 10, windupTicks: 45, cooldownTicks: 300, beside: 1.3 };
 export const SHOOTER = { min: 5, max: 7, fireRange: 8, windupTicks: 24, cooldownTicks: 132, bulletSpeed: 6, damage: 10 };
 export const BOMBER = { trigger: 1.6, fuseTicks: 36, radius: 2, player: 25, enemy: 30, tower: 20, deathRadius: 1.8 };
 export const RAMMER = { range: 9, windupTicks: 48, speed: 14, distance: 12, damage: 30, towerDamage: 20, stunTicks: 90, hitStunTicks: 45, cooldownTicks: 180 };
