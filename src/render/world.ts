@@ -29,6 +29,16 @@ function hash(tx: number, tz: number): number {
   return n - Math.floor(n);
 }
 
+/** how tall the wall block at a tile is (blocks come in a few heights, by 4x4 patch; the race has low rails) */
+function wallHeight(map: FloorMap, tx: number, tz: number): number {
+  return map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)];
+}
+
+/** the top of the wall block under a point: where someone who landed on it stands */
+export function wallTop(map: FloorMap, x: number, z: number): number {
+  return wallHeight(map, Math.floor(x), Math.floor(z)) - 0.4;
+}
+
 function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void, pixelated: boolean): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = w;
@@ -428,7 +438,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   wallTop.color.setScalar(1.12);
   // the race track's walls are low guard rails, so the whole circuit stays in view
   // elsewhere the blocks come in three heights (by 4x4 patch), so in first person you cannot see over all of them
-  const wallH = (tx: number, tz: number) => (map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)]);
+  const wallH = (tx: number, tz: number) => wallHeight(map, tx, tz);
   const wallTopY = (tx: number, tz: number) => wallH(tx, tz) - 0.4;
   const walls = layer(t => t === Tile.Wall, [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
 

@@ -28,6 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy } from './combat';
 import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
+import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
 
@@ -165,6 +166,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     p.downUntil = null;
     p.hp = p.maxHp;
     p.pos = { ...p.safePoint };
+    p.perched = false;
     p.invulnUntil = s.tick + RESPAWN_INVULN_TICKS;
     s.events.push({ type: 'playerRespawn', playerId: p.id });
   }
@@ -211,6 +213,17 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     // over everything, but never past the outer wall of the map
     p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
     p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
+  } else if (p.perched && p.vehicleId === null && !flying) {
+    // on top of a wall: walk along it; step off the edge and you drop to the floor
+    if (moveDir) {
+      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * turbo * Math.min(len, 1);
+      p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
+      p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
+    }
+    if (!perchable(s.map, p.pos.x, p.pos.z)) {
+      p.perched = false;
+      if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = nearestFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER);
+    }
   } else if (p.vehicleId === null && !flying) {
     if (it.dash && p.dashCharges > 0 && p.dashTicks === 0 && p.air === 0) {
       p.dashCharges--;

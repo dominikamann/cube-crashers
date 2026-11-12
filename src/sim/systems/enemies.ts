@@ -147,7 +147,7 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     e.cooldownUntil = s.tick + RAMMER.cooldownTicks;
   };
   for (const p of players) {
-    if (airborne(p) || s.tick < p.invulnUntil) continue;
+    if (airborne(p) || p.perched || s.tick < p.invulnUntil) continue;
     if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
     damagePlayer(s, p, RAMMER.damage, 'rammer');
     moveCircle(s.map, p.pos, e.dir.x * 1.5, e.dir.z * 1.5, PLAYER_RADIUS, BLOCKS_WALKER);
@@ -251,7 +251,8 @@ function flySwarmer(s: SimState, e: Enemy, players: Player[]): void {
 /** Monsters touching a player hurt: the strongest in full, every further one only in part, so a crowd is not instant death. */
 function contactDamage(s: SimState, players: Player[]): void {
   for (const p of players) {
-    if (airborne(p) || p.vehicleId !== null) continue;
+    // up on a wall the monsters cannot reach you
+    if (airborne(p) || p.vehicleId !== null || p.perched) continue;
     let strongest = 0, total = 0;
     for (const e of s.enemies) {
       if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;

@@ -56,7 +56,7 @@ describe('jetpack', () => {
     expect(s.events.some(e => e.type === 'stomp')).toBe(true);
   });
 
-  it('puts the player on free floor when the fuel runs out above a wall', () => {
+  it('when the fuel runs out above a block, the player lands on top of it', () => {
     const s = withJetpack(8);
     const p = s.players[0];
     p.pos = { x: 43.4, z: 60.5 };
@@ -64,7 +64,8 @@ describe('jetpack', () => {
     expect(events).toContainEqual({ type: 'jetpackEmpty', playerId: 0 });
     expect(p.flying).toBe(false);
     expect(p.jetFuel).toBeLessThan(JETPACK.fuelTicks / 10);
-    expect(isFree(s.map, p.pos, 0.4, BLOCKS_WALKER), `${p.pos.x},${p.pos.z}`).toBe(true);
+    expect(p.perched).toBe(true);
+    expect(isFree(s.map, p.pos, 0.4, BLOCKS_WALKER), `${p.pos.x},${p.pos.z}`).toBe(false);
   });
 
   it('a tap of Space still jumps; holding it takes off', () => {

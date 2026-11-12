@@ -467,6 +467,10 @@ Lies somewhere on the map now and then. Pick it up and **hold Space** to fly ove
 monsters. The tank lasts about 5 seconds of flight and fills up again on the ground; you keep the jetpack
 for the rest of the floor.
 
+Let go of Space above a block inside the arena and you **land on top of it**: monsters cannot reach you up
+there and the tank fills up again. Walk off the edge to drop down. Shots still hit you, so in versus it is a
+breather, not a fortress. (The outer walls of the map do not count.)
+
 ### Perks
 
 **Speed**, **Extra Dash**, **Magnet**, **Coin Bonus**, **Regeneration**, **Big Stomp**.

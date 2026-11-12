@@ -9,14 +9,14 @@ describe('blendTheme', () => {
 
   it('interpolates numbers and colours', () => {
     const mid = blendTheme(THEMES.day, THEMES.night, 0.5);
-    expect(mid.bloomStrength).toBeCloseTo(0.35);
-    expect(mid.bloomThreshold).toBeCloseTo(0.775);
+    expect(mid.bloomStrength).toBeCloseTo(0.275);
+    expect(mid.bloomThreshold).toBeCloseTo(0.835);
     const r = (c: number) => (c >> 16) & 255;
     expect(r(mid.background)).toBe(Math.round((r(THEMES.day.background) + r(THEMES.night.background)) / 2));
   });
 
   it('uses the agreed bloom values and a non-black night', () => {
     expect(THEMES.day).toMatchObject({ bloomStrength: 0.25, bloomRadius: 0.15, bloomThreshold: 0.95 });
-    expect(THEMES.night).toMatchObject({ bloomStrength: 0.45, bloomRadius: 0.15, bloomThreshold: 0.6, background: 0x1a1840 });
+    expect(THEMES.night).toMatchObject({ bloomStrength: 0.3, bloomRadius: 0.15, bloomThreshold: 0.72, background: 0x1a1840 });
   });
 });

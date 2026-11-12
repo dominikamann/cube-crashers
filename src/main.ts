@@ -1021,6 +1021,18 @@ function applyDemo(sim: SimState) {
       });
     });
   }
+  // ?demo=perch: standing on top of the nearest block in the arena (jetpack landing)
+  if (params.get('demo') === 'perch') {
+    void import('./sim/map/perch').then(m => {
+      const p = sim.players[0];
+      let best: { x: number; z: number } | null = null;
+      for (let tz = 1; tz < sim.map.h - 1; tz++)
+        for (let tx = 1; tx < sim.map.w - 1; tx++)
+          if (m.perchable(sim.map, tx + 0.5, tz + 0.5) && (!best || Math.hypot(tx + 0.5 - p.pos.x, tz + 0.5 - p.pos.z) < Math.hypot(best.x - p.pos.x, best.z - p.pos.z))) best = { x: tx + 0.5, z: tz + 0.5 };
+      if (!best) return;
+      Object.assign(p, { pos: best, perched: true, jetpack: true, jetFuel: 300 });
+    });
+  }
   // ?demo=jetpack: a jetpack lying right next to the player (to look at it)
   if (params.get('demo') === 'jetpack') sim.jetpacks.push({ id: sim.nextId++, pos: { x: sim.players[0].pos.x + 2, z: sim.players[0].pos.z - 1 } });
   if (params.get('demo') === 'nest') {

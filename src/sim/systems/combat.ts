@@ -5,7 +5,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { BUBBLE_WAND, HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { pvpDamage, rivals } from './versus';
-import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
+import { DT, type DamageSource, type Enemy, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
@@ -136,6 +136,19 @@ export function removeDead(s: SimState): void {
 
 const owner = (id: number) => (id >= 0 ? id : undefined);
 
+/** A shot ran into a wall block: whoever stands on top of it right there is hit (monster shots, or a rival's in versus). */
+function hitPerched(s: SimState, p: Projectile): void {
+  const near = (pl: Player) => pl.perched && pl.downUntil === null && s.tick >= pl.invulnUntil && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING + 0.3;
+  if (p.hostile) {
+    const victim = s.players.find(near);
+    if (victim) damagePlayer(s, victim, p.damage, 'shot');
+    return;
+  }
+  if (!s.versus || p.ownerId < 0) return;
+  const rival = rivals(s, p.ownerId).find(near);
+  if (rival) damagePlayer(s, rival, pvpDamage(p.damage), 'shot', p.ownerId);
+}
+
 export function updateProjectiles(s: SimState): void {
   const keep = [];
   for (const p of s.projectiles) {
@@ -221,6 +234,8 @@ export function updateProjectiles(s: SimState): void {
       }
       if (s.tick >= p.until) continue;
     } else if (s.tick >= p.until || tileAt(s.map, p.pos.x, p.pos.z) === Tile.Wall) {
+      // a shot that reaches a wall can still hit someone standing on top of it
+      if (s.tick < p.until) hitPerched(s, p);
       continue;
     }
 

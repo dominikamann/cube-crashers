@@ -168,6 +168,8 @@ export interface Player {
   lastDamageAt: number;
   jetFuel: number;
   flying: boolean;
+  /** standing on top of a wall block (landed there with the jetpack) */
+  perched?: boolean;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
   /** downed in a team game: can be helped up until this tick */

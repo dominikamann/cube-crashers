@@ -1,4 +1,5 @@
 import { carryingCube } from './versus';
+import { perchable } from '../map/perch';
 import { PLAYER_RADIUS } from '../config/balance';
 import { JETPACK, RARE } from '../config/rare';
 import { BLOCKS_WALKER, hasLos, isFree, Tile, tileAt } from '../map/tilemap';
@@ -156,6 +157,7 @@ export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boole
   const canFly = wantsToFly && !carryingCube(s, p) && p.jetpack && p.jetFuel > 0 && (p.flying || p.flyHold >= JETPACK.takeoffTicks) && p.vehicleId === null && p.downUntil === null;
   if (canFly) {
     p.flying = true;
+    p.perched = false;
     p.air = 0;
     p.jetFuel = Math.max(0, p.jetFuel - 1);
     if (p.jetFuel === 0) s.events.push({ type: 'jetpackEmpty', playerId: p.id });
@@ -167,6 +169,12 @@ export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boole
     return false;
   }
   p.flying = false;
+  // over a block in the arena: land on top of it (a place to catch your breath); anywhere else, the nearest floor
+  if (perchable(s.map, p.pos.x, p.pos.z)) {
+    p.perched = true;
+    s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
+    return false;
+  }
   if (!isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)) p.pos = landingSpot(s, p.pos);
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius: JETPACK.landRadius });
   for (const e of targets(s)) {

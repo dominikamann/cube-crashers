@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import { jumpTicks } from '../sim/systems/versus';
+import { wallTop } from './world';
 import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
@@ -370,7 +371,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const length = jumpTicks(s);
     const jump = p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
-    v.root.position.set(p.pos.x, jump + fly + (driving ? 0.35 : 0), p.pos.z);
+    // landed on top of a wall block with the jetpack
+    const perch = p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0;
+    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? 0.35 : 0), p.pos.z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
