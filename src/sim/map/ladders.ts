@@ -1,4 +1,5 @@
 import type { Vec2 } from '../types';
+import { logoClear } from './logo-spots';
 import { perchable } from './perch';
 import { Tile, type FloorMap } from './tilemap';
 
@@ -34,10 +35,13 @@ export function ladders(m: FloorMap): Ladder[] {
     const keepClear = [m.spawn, m.elevator, ...m.pads.map(p => p.pos), ...m.nestSpots.flatMap(n => [n.pos, ...n.entries]), ...m.vehicleSpots, ...m.powerSpots, ...m.crateSpots];
     const tile = (tx: number, tz: number) => (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h ? Tile.Wall : m.tiles[tz * m.w + tx]);
     const candidates: (Ladder & { r: number })[] = [];
+    const logo = logoClear(m);
     for (let tz = 1; tz < m.h - 1; tz++)
       for (let tx = 1; tx < m.w - 1; tx++) {
         if (tile(tx, tz) !== Tile.Floor) continue;
         if (keepClear.some(p => Math.abs(p.x - (tx + 0.5)) < 2.6 && Math.abs(p.z - (tz + 0.5)) < 2.6)) continue;
+        // never in front of the AmannLabs logo
+        if (logo.has(tz * m.w + tx)) continue;
         for (const [ox, oz] of DIRS) {
           // the wall behind it is a block you can stand on, and its top is more than one tile deep or wide
           const wx = tx + ox, wz = tz + oz;

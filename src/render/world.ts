@@ -8,7 +8,7 @@ import { COLOR_BLIND, isColorBlind, NORMAL } from './palette';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
 import { MAZE_CUBES } from '../sim/config/floor-maze';
-import { logoSpots, type LogoSpot } from './logo-spots';
+import { logoSpots, type LogoSpot } from '../sim/map/logo-spots';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
 import { buildDecor } from './decor';
@@ -463,7 +463,10 @@ function loadMark(): Promise<HTMLImageElement> {
   return markImage;
 }
 
-/** a quiet floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
+/** the looks whose floor is dark: the logo's lettering is light there */
+const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
+
+/** a floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
 function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550') {
   const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
   const markH = h * 0.78, markW = markH * (img.width / img.height);
@@ -593,7 +596,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       .then(img => {
         if (disposed) return;
         const g = (floorTex.image as HTMLCanvasElement).getContext('2d')!;
-        for (const spot of spots) if (spot.kind === 'floor') paintLogo(g, img, spot, px);
+        // clearly readable: light lettering on the dark floors, dark on the light ones
+        const ink = DARK_FLOORS.has(look) ? '#ffffff' : '#2a2550';
+        for (const spot of spots) if (spot.kind === 'floor') paintLogo(g, img, spot, px, 0.62, ink);
         floorTex.needsUpdate = true;
         for (const spot of spots) if (spot.kind === 'wall') addToScene(wallLogo(img, spot));
       })

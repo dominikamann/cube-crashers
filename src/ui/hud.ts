@@ -46,7 +46,7 @@ const isFinalFloor = (s: SimState) => (s.run.mode === 'run' || s.run.mode === 'b
 const bossLabel = (kind: string) => t(`boss.${kind}` as 'boss.worm');
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
-  const layer = el('div', 'ui-layer hud', root);
+  const layer = el('div', 'ui-layer hud ui-scaled', root);
   let padMode: string | null = null;
   const top = el('div', 'hud-top', layer);
 

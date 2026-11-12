@@ -11,7 +11,7 @@ export interface BuildMenu {
 
 export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) => void): BuildMenu {
   const layer = document.createElement('div');
-  layer.className = 'ui-layer';
+  layer.className = 'ui-layer ui-scaled';
   const wrap = document.createElement('div');
   wrap.className = 'build';
   layer.append(wrap);

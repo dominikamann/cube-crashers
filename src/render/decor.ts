@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
 import { ladders } from '../sim/map/ladders';
+import { logoClear } from '../sim/map/logo-spots';
 import { glowMat, InstancedPool, lambert } from './pool';
 import { DecalBuilder, PropBuilder, hash } from './props';
 
@@ -74,7 +75,11 @@ const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
  * next to a wall or on top of one, never on a path, pad or spawn, and it is merged into a few meshes;
  * only what moves (grass, kelp, LEDs, bubbles) is drawn as instances that are refilled each frame.
  */
-export function buildDecor(ctx: DecorContext): Decor {
+export function buildDecor(input: DecorContext): Decor {
+  // the AmannLabs logos stay free: nothing is placed on, over or in front of them
+  const logo = logoClear(input.map);
+  const free = (c: { tx: number; tz: number }) => !logo.has(c.tz * input.map.w + c.tx);
+  const ctx: DecorContext = { ...input, floorTiles: input.floorTiles.filter(free), wallTiles: input.wallTiles.filter(free) };
   const { map, look, tileOf, wallTopY } = ctx;
   const group = new THREE.Group();
   const blinkers: { mat: THREE.MeshStandardMaterial; base: number; speed: number; phase: number }[] = [];
@@ -339,6 +344,8 @@ export function buildDecor(ctx: DecorContext): Decor {
         let n = 1;
         while (n < 7 && !isWall(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) n++;
         if (n >= 7 || n < 2 || !isWall(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) continue;
+        // not across a logo
+        if (Array.from({ length: n + 2 }, (_, i) => ({ tx: c.tx + ox * i, tz: c.tz + oz * i })).some(t => !free(t))) continue;
         // strung above the taller of the two roofs, so neither end disappears into a wall
         const y = Math.max(wallTopY(c.tx, c.tz), wallTopY(c.tx + ox * (n + 1), c.tz + oz * (n + 1))) + 0.4;
         props.at(c.tx + 0.5 + ox * (n + 1) / 2, y, c.tz + 0.5 + oz * (n + 1) / 2, ox ? Q : 0);
@@ -458,7 +465,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     const capRed = lambert(0xe04a3a), capTan = lambert(0xd9b07a), stem = lambert(0xf2e8d8), vine = lambert(0x3f9a38), flower = glowMat(0xff6ab0, 0.6);
     const blade = pool(lambert(0x5fbf4a)), bladeDark = pool(lambert(0x3f9a38));
     // tall grass: three blades per tile, taller than a monster (the sim hides monsters standing in it)
-    for (const g of map.grass ?? []) {
+    for (const g of (map.grass ?? []).filter(g => free({ tx: Math.floor(g.x), tz: Math.floor(g.z) }))) {
       for (let k = 0; k < 3; k++) {
         const h = hash(g.x * 3 + k, g.z);
         pieces.push({ pool: k % 2 ? blade : bladeDark, x: g.x - 0.3 + k * 0.3, y: 0.55 + h * 0.2, z: g.z + (h - 0.5) * 0.5, sx: 0.12, sy: 1.1 + h * 0.4, sz: 0.12, move: 'sway', phase: g.x + g.z * 0.7 + k });
@@ -581,6 +588,7 @@ export function buildDecor(ctx: DecorContext): Decor {
     for (let tz = 1; tz < map.h - 1; tz++) {
       for (let tx = 1; tx < map.w - 1; tx++) {
         const t = tileOf(tx, tz), h = hash(tx, tz);
+        if (!free({ tx, tz })) continue;
         if (t === Tile.Hazard || (t === Tile.Floor && h > 0.975)) {
           for (let k = 0; k < (t === Tile.Hazard ? 2 : 1); k++) {
             const c = hash(tx + k * 13, tz);

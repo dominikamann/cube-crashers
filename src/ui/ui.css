@@ -24,6 +24,8 @@ html, body {
 #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
 
 .ui-layer { position: fixed; inset: 0; pointer-events: none; }
+/* menus, HUD and result screens grow with big screens (a TV, a 4K monitor): laid out for about 1280 x 760 */
+.ui-scaled { zoom: var(--ui-zoom, 1); }
 .ui-layer button, .ui-layer input, .ui-layer .card { pointer-events: auto; }
 
 .txt { text-shadow: 3px 3px 0 var(--shadow); }

@@ -268,7 +268,7 @@ export interface Screens {
 
 export function createScreens(root: HTMLElement, actions: ScreenActions, settings: Settings, profile: Profile, saveProfile: () => void): Screens {
   const layer = document.createElement('div');
-  layer.className = 'ui-layer';
+  layer.className = 'ui-layer ui-scaled';
   root.append(layer);
   let back: () => void = () => {};
 

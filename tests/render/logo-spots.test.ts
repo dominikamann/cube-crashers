@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FLOORS } from '../../src/sim/config/floors';
 import { Tile } from '../../src/sim/map/tilemap';
-import { logoSpots } from '../../src/render/logo-spots';
+import { logoSpots } from '../../src/sim/map/logo-spots';
 
 describe('AmannLabs logos', () => {
   let walls = 0, maps = 0;

@@ -13,6 +13,7 @@ import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
+import { uiZoom } from './ui/scale';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
 import { PROTOCOL_VERSION, type LobbyPlayer } from './net/protocol';
@@ -42,6 +43,10 @@ document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
+// the interface grows with big screens (see ui/scale.ts)
+const applyUiZoom = () => document.documentElement.style.setProperty('--ui-zoom', String(uiZoom(innerWidth, innerHeight)));
+applyUiZoom();
+addEventListener('resize', applyUiZoom);
 const randomSeed = () => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
 
 if (params.has('sound')) {
@@ -1074,6 +1079,17 @@ function applyDemo(sim: SimState) {
           if (m.perchable(sim.map, tx + 0.5, tz + 0.5) && (!best || Math.hypot(tx + 0.5 - p.pos.x, tz + 0.5 - p.pos.z) < Math.hypot(best.x - p.pos.x, best.z - p.pos.z))) best = { x: tx + 0.5, z: tz + 0.5 };
       if (!best) return;
       Object.assign(p, { pos: best, perched: true, jetpack: true, jetFuel: 300 });
+    });
+  }
+  // ?demo=logo: standing just below the AmannLabs floor logo (&logo=wall: in front of the wall one)
+  if (params.get('demo') === 'logo') {
+    void import('./sim/map/logo-spots').then(m => {
+      const spot = m.logoSpots(sim.map).find(s => s.kind === (params.get('logo') === 'wall' ? 'wall' : 'floor'));
+      if (!spot) return;
+      const p = sim.players[0];
+      if (spot.kind === 'floor') p.pos = { x: spot.tx + spot.w / 2, z: spot.tz + spot.h + 1.5 };
+      else p.pos = { x: spot.tx + 0.5 + (spot.along === 'x' ? spot.w / 2 : 0) + spot.facing.x * 3, z: spot.tz + 0.5 + (spot.along === 'z' ? spot.w / 2 : 0) + spot.facing.z * 3 };
+      sim.enemies = [];
     });
   }
   // ?demo=unicorn: a unicorn right next to the player

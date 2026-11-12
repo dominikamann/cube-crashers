@@ -1,5 +1,5 @@
-import { Tile, type FloorMap } from '../sim/map/tilemap';
-import type { Vec2 } from '../sim/types';
+import { Tile, type FloorMap } from './tilemap';
+import type { Vec2 } from '../types';
 
 /**
  * Where an AmannLabs logo goes, in tiles. 'floor': painted on a w x h patch of floor.
@@ -25,14 +25,21 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
   for (const ch of map.id) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const pick = <T>(list: T[], salt: number): T | undefined => list[(Math.imul(seed ^ salt, 0x9e3779b1) >>> 0) % list.length];
 
+  const grass = new Set((map.grass ?? []).map(g => Math.floor(g.z) * map.w + Math.floor(g.x)));
   const floors: LogoSpot[] = [];
+  // best: plain floor all round it too, so no tree crown or wall-side prop reaches over it, and no tall grass
+  const open: LogoSpot[] = [];
   for (let tz = 0; tz + SIZE.h <= map.h; tz++)
     for (let tx = 0; tx + SIZE.w <= map.w; tx++) {
       let ok = true;
-      for (let z = tz; z < tz + SIZE.h && ok; z++) for (let x = tx; x < tx + SIZE.w && ok; x++) ok = at(x, z) === Tile.Floor;
-      if (ok && !points.some(p => p.x >= tx - 1 && p.x <= tx + SIZE.w + 1 && p.z >= tz - 1 && p.z <= tz + SIZE.h + 1)) floors.push({ kind: 'floor', tx, tz, ...SIZE });
+      for (let z = tz; z < tz + SIZE.h && ok; z++) for (let x = tx; x < tx + SIZE.w && ok; x++) ok = at(x, z) === Tile.Floor && !grass.has(z * map.w + x);
+      if (!ok || points.some(p => p.x >= tx - 1 && p.x <= tx + SIZE.w + 1 && p.z >= tz - 1 && p.z <= tz + SIZE.h + 1)) continue;
+      floors.push({ kind: 'floor', tx, tz, ...SIZE });
+      let ring = true;
+      for (let z = tz - 1; z <= tz + SIZE.h && ring; z++) for (let x = tx - 1; x <= tx + SIZE.w && ring; x++) ring = at(x, z) === Tile.Floor;
+      if (ring) open.push({ kind: 'floor', tx, tz, ...SIZE });
     }
-  const floor = pick(floors, 0x51ed);
+  const floor = pick(open.length ? open : floors, 0x51ed);
   if (!floor) return [];
 
   const walls: LogoSpot[] = [];
@@ -51,4 +58,31 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
   const south = walls.filter(w => w.kind === 'wall' && w.facing.z === 1);
   const wall = pick(south.length ? south : walls, 0xa11);
   return wall ? [floor, wall] : [floor];
+}
+
+/**
+ * The tiles to leave free around the logos (as tz * w + tx): the floor stamp and the tiles round it, and the
+ * wall run with the floor in front of it, a tile wider on each side. No decoration or ladder goes there.
+ */
+const clearCache = new WeakMap<FloorMap, Set<number>>();
+export function logoClear(map: FloorMap): Set<number> {
+  let out = clearCache.get(map);
+  if (out) return out;
+  out = new Set<number>();
+  const add = (x: number, z: number) => {
+    if (x >= 0 && z >= 0 && x < map.w && z < map.h) out!.add(z * map.w + x);
+  };
+  for (const s of logoSpots(map)) {
+    if (s.kind === 'floor') {
+      for (let z = s.tz - 1; z <= s.tz + s.h; z++) for (let x = s.tx - 1; x <= s.tx + s.w; x++) add(x, z);
+    } else {
+      for (let i = -1; i <= s.w; i++) {
+        const x = s.tx + (s.along === 'x' ? i : 0), z = s.tz + (s.along === 'z' ? i : 0);
+        // the wall itself (nothing on its top edge either) and two tiles of floor in front
+        for (let d = 0; d <= 2; d++) add(x + s.facing.x * d, z + s.facing.z * d);
+      }
+    }
+  }
+  clearCache.set(map, out);
+  return out;
 }
