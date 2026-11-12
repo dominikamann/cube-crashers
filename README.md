@@ -12,7 +12,9 @@
 **A fast voxel action game for one to eight players.** Fight your way up a tower, floor by floor. Hordes of
 retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
 the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
-Crash Kart and plough through the pixels. Play alone or with up to seven friends on your LAN.
+Crash Kart and plough through the pixels. Play alone or with up to seven friends on your LAN, together
+against the monsters or against each other in **Versus**: score races, King of the Cube, Capture the Cube,
+Gun Game, from above or in **first person** like a classic shooter.
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
@@ -63,6 +65,8 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
 - [Playing together on the LAN](#playing-together-on-the-lan)
+- [Versus: players against players](#versus-players-against-players)
+- [First-person view](#first-person-view)
 - [Controls](#controls)
 - [Weapons, rare weapons, jetpack, perks, towers, kart, power-ups](#weapons-rare-weapons-jetpack-perks-towers-kart-power-ups)
 - [Monsters](#monsters)
@@ -117,6 +121,7 @@ See [Development](#development). You need Node.js 20 or newer.
    - **Tower Run**: the full game over five floors.
    - **Single floor**: one map of your choice, a short game. Every floor, both bosses and the three
      minigames (Kart Rally, Lane Defense, Glitch Maze) are there to pick.
+   - **Versus**: players against players, with bots to fill up (see [Versus](#versus-players-against-players)).
    - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
 
    Set the **difficulty** with the arrows below.
@@ -223,7 +228,12 @@ Up to **8 players** on the same network (Wi-Fi or cable), all with the desktop a
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
 2. Click **LAN party → Host LAN game**. Your game shows up on the network automatically.
-3. Pick the **difficulty** in the lobby, wait for your friends, click **Start**.
+3. In the lobby:
+   - **Co-op**: **Co-op run** starts the Tower Run together; the difficulty sits right next to it.
+   - **Versus**: **Versus…** opens the match setup (start it right away or **Let everyone vote** between two
+     matches for 30 seconds). **N players with bots** fills every match up with bots; friends who join take
+     a bot's place.
+   - **View**: *Both* (everyone switches with V), *First person* only or *Top view* only, for everyone.
 
 **Everyone else joins:**
 1. Enter a name in *Settings* as well.
@@ -243,19 +253,49 @@ TCP port **47800**; games are announced via UDP broadcast on port **47801**. Onl
 
 ---
 
+## Versus: players against players
+
+From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
+Blaster; crates with weapons, karts and a jetpack lie around. Up to 8 players, bots fill up.
+
+| Rule | How it works |
+|---|---|
+| **Score Race** | Respawn after 3 seconds. First to 15 kills (teams: 30) wins, or the most after 5 minutes. |
+| **Last Cube Standing** | No respawn within a round; the last one (or team) standing wins it. 4 rounds win the match. |
+| **King of the Cube** | A glowing zone moves around the map. A point per second while you hold it alone. |
+| **Capture the Cube** | Red vs Blue. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. |
+| **Gun Game** | One weapon at a time: every kill moves you up the ladder (Blaster → Candy Cannon → Hotdog → Boomerang → Pixel Rail → Bomb → Disco Ball → Laser Sword → **Fly Swatter**). A kill with the swatter wins, then the next match moves to a new map. Getting swatted costs you a step. |
+
+- **Free for all** or **Red vs Blue** (teams are evened out; on the LAN everyone can wish for a team).
+- **Monsters roam too**: hordes join the fight now and then.
+- **Discovery**: a new match every time, through every rule, teams and free for all taking turns, a new map,
+  now and then monsters. The default.
+- Towers have an owner and fire at rivals, but only at a third of their strength.
+
+## First-person view
+
+Press **V** (controller: **View**) to switch between the view from above and first person. Versus starts in
+first person. The mouse turns and tilts the view (it is captured; **Esc** pauses and frees it), on a controller
+the right stick. **W** walks where you look. You see your weapon in hand; hotdogs and bombs land where the
+crosshair meets the ground, with a marker. In a kart you sit behind the wheel, on a hoverboard you see its nose.
+Health bars over monsters and other players show at a glance whether you hit.
+
+---
+
 ## Controls
 
 | Input | Action |
 |---|---|
 | Mouse | Aim (crosshair on the ground) |
 | Left mouse button (hold) | Fire the selected weapon |
-| `W` `A` `S` `D` / arrow keys | Move: `W` is up the screen, the mouse only aims. Prefer it like in Counter-Strike? *Settings → W walks toward the crosshair* (on foot only; karts always steer by the screen). |
+| `W` `A` `S` `D` / arrow keys | Move: `W` is up the screen, the mouse only aims (*Settings → Walking* switches to "toward the crosshair"). In first person `W` walks where you look. |
+| `V` | First person on / off (mouse turns and tilts the view) |
 | `1`–`6` / mouse wheel | Select a weapon |
 | `Q` | Select the rare weapon (when you have one) |
 | `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
-| `E` (tap) | Get in / out of a kart |
-| `E` (hold) | Plant a charge · help a teammate up · build, finish, repair or upgrade a tower (menu: `1`–`3`) |
+| `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`3` to choose), hold to build it right away |
+| `E` (hold) | Plant a charge · help a teammate up · finish or repair a tower |
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `Z` | Zoom out / in |
@@ -269,15 +309,16 @@ stick to choose, **A** to confirm, **B** to go back).
 | Button | Action |
 |---|---|
 | Left stick | Move |
-| Right stick | Aim; the view slides ahead the further you push (all the way also fires) |
+| Right stick | Aim; the view slides ahead the further you push (all the way also fires). In first person: turn and tilt |
+| `View` (Back) | First person on / off |
 | `R3` (press the right stick) | Zoom out / in |
 | `RT` | Fire |
 | `A` | Jump; hold to fly with a jetpack |
 | `B` | Dash · close the build menu |
-| `X` | Like `E`: tap for the kart, hold to plant, build, repair, help up |
+| `X` | Like `E`: kart, open the towers on a pad and build the selected one, hold to plant, repair, help up |
 | `Y` | Rare weapon |
-| `LB` / `RB` | Previous / next weapon |
-| D-pad | Build menu: ◀ Laser, ▲ Popcorn, ▶ Frost (or the upgrade) · shop: buy offers 1–4 |
+| `LB` / `RB` | Previous / next weapon · in the build menu: choose the tower |
+| D-pad | Build menu: ◀ ▶ choose the tower · shop: buy offers 1–4 |
 | `Start` | Pause |
 
 PlayStation pads (PS4, PS5) and other standard controllers work the same way; the hints then show □ instead
@@ -309,6 +350,8 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Disco Ball** | Zaps the nearest monsters around you. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
+| **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
+| **Fly Swatter** | A huge slap right in front of you: very strong, very short. The knife of this game. |
 
 Hits from up close (within 3 tiles) deal **50 % more damage**.
 
@@ -324,7 +367,8 @@ Hits from up close (within 3 tiles) deal **50 % more damage**.
 ### Jetpack
 
 Lies somewhere on the map now and then. Pick it up and **hold Space** to fly over walls, glitch floor and
-monsters. The tank lasts about 5 seconds of flight, then it is gone.
+monsters. The tank lasts about 5 seconds of flight and fills up again on the ground; you keep the jetpack
+for the rest of the floor.
 
 ### Perks
 
@@ -332,9 +376,11 @@ monsters. The tank lasts about 5 seconds of flight, then it is gone.
 
 ### Towers
 
-Stand on a pad, **hold E**, pick a tower with **1–3**. You pay right away, then a scaffold goes up: keep
-**holding E** for about 2.5 seconds until the tower stands. If you let go, it stays half-built and you can
-finish it later. A tower only fires once it is finished.
+Stand on a pad and press **E** (controller: **X**): the towers open with the first one selected. Choose with
+the mouse wheel, **1–3** or ◀ ▶, press **E** again to build it, or simply keep holding **E** to build the
+selected one right away. You pay right away, then a scaffold goes up: keep **holding E** for about 2.5 seconds
+until the tower stands. If you let go, it stays half-built and you can finish it later. A tower only fires
+once it is finished. Towers are solid: you walk round them, and work on them from right beside them.
 
 | Tower | Cost | Upgrade to level 2 / 3 | What it does |
 |---|---|---|---|
@@ -342,7 +388,7 @@ finish it later. A tower only fires once it is finished.
 | **Frost Machine** | 50 | 50 / 75 | Slows monsters to half speed. |
 | **Popcorn Mortar** | 60 | 60 / 90 | Lobs shells that hit everything in an area. |
 
-- **Upgrade:** hold E on a finished tower and press **1**. Each level gives +50 % damage and health, +1 range
+- **Upgrade:** press E next to a finished tower and E again. Each level gives +50 % damage and health, +1 range
   and fires faster. The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
   meanwhile. Gold marks on the base show the level.
 - **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
@@ -503,11 +549,12 @@ docs/         gameplay GIF and screenshots
 - [x] Controller support and local split screen
 - [x] A different minigame between the floors: Kart Rally, Lane Defense, Glitch Maze
 - [x] Neon Highway
-- [ ] Versus on the LAN (up to 8): free for all, teams, arena or with monsters, King of the Cube, bots
-- [ ] First-person view as a switch
+- [x] Versus for up to 8 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
+- [x] First-person view as a switch (and the default for versus)
+- [ ] Dedicated server and online play with a server list
 - [ ] Key rebinding
-- [ ] German translation
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
+- [ ] German translation
 
 ## Contributing
 
