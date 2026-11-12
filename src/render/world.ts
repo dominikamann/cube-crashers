@@ -9,6 +9,9 @@ import { LANE_CORE } from '../sim/config/floor-lane';
 import { MAZE_CUBES } from '../sim/config/floor-maze';
 import { logoSpots, type LogoSpot } from './logo-spots';
 import markUrl from './amannlabs-mark.png';
+import { hash } from './props';
+import { buildDecor } from './decor';
+import { floorDef } from '../sim/config/floors';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -19,14 +22,10 @@ const WALL_STEPS = [1, 1, 1.45, 1.9];
 
 export interface World {
   update(s: SimState, theme: Theme, time: number): void;
+  /** low graphics: the decoration stays off, so weak machines only draw the tiles */
+  setDetail(low: boolean): void;
   /** removes everything this world added to the scene */
   dispose(): void;
-}
-
-/** deterministic 0..1 per tile, for small visual variation */
-function hash(tx: number, tz: number): number {
-  const n = Math.sin(tx * 127.1 + tz * 311.7) * 43758.5453;
-  return n - Math.floor(n);
 }
 
 /** how tall the wall block at a tile is (blocks come in a few heights, by 4x4 patch; the race has low rails) */
@@ -55,22 +54,192 @@ function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D
   return tex;
 }
 
-/** wall sides: stone courses, seams at the tile edges and a darker plinth at the bottom */
-function wallSideTexture(): THREE.CanvasTexture {
+/** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof */
+function wallSideTexture(look: string): THREE.CanvasTexture {
   return canvasTexture(64, 64, g => {
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, 64, 64);
-    g.fillStyle = '#eef0f6';
-    g.fillRect(0, 21, 64, 1);
-    g.fillRect(0, 42, 64, 1);
-    g.fillStyle = '#dfe2ec';
-    g.fillRect(0, 0, 1, 64);
-    g.fillRect(63, 0, 1, 64);
-    g.fillStyle = '#ffffff';
-    g.fillRect(0, 52, 64, 1);
-    g.fillStyle = '#a9adbd';
-    g.fillRect(0, 53, 64, 11);
+    if (look === 'candy') {
+      // a cream wall with a wavy icing drip along the top and a few dots
+      g.fillStyle = '#f6eef3';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.lineTo(64, 0);
+      for (let x = 64; x >= 0; x -= 8) g.lineTo(x, 10 + (x % 16 === 0 ? 6 : 0));
+      g.closePath();
+      g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.9)';
+      for (let i = 0; i < 6; i++) g.fillRect(4 + Math.floor(hash(i, 3) * 56), 24 + Math.floor(hash(3, i) * 34), 3, 3);
+      g.fillStyle = '#d9c9d6';
+      g.fillRect(0, 60, 64, 4);
+    } else if (look === 'neon') {
+      // dark panel seams; the windows live in the emissive map
+      g.fillStyle = '#eceaf4';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#c9c6dc';
+      g.fillRect(0, 31, 64, 2);
+      g.fillRect(0, 0, 2, 64);
+      g.fillRect(62, 0, 2, 64);
+      g.fillStyle = '#a5a2bd';
+      g.fillRect(0, 56, 64, 8);
+      g.fillStyle = '#5a566e';
+      for (let y = 0; y < 2; y++) for (let x = 0; x < 3; x++) g.fillRect(8 + x * 18, 8 + y * 30, 12, 14);
+    } else if (look === 'arena') {
+      // big sandstone blocks, offset per course
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#d9cbb0';
+      g.fillRect(0, 20, 64, 2);
+      g.fillRect(0, 42, 64, 2);
+      g.fillRect(31, 0, 2, 20);
+      g.fillRect(10, 22, 2, 20);
+      g.fillRect(48, 22, 2, 20);
+      g.fillRect(31, 44, 2, 20);
+      g.fillStyle = 'rgba(80,60,30,0.08)';
+      for (let i = 0; i < 24; i++) g.fillRect(Math.floor(hash(i, 7) * 62), Math.floor(hash(7, i) * 62), 2, 2);
+    } else if (look === 'rooftop') {
+      // riveted metal with louvre slits
+      g.fillStyle = '#f2f3f7';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#b9bccb';
+      for (let y = 14; y < 50; y += 8) g.fillRect(10, y, 44, 2);
+      g.fillStyle = '#d4d6e2';
+      g.fillRect(0, 0, 2, 64);
+      g.fillRect(62, 0, 2, 64);
+      g.fillStyle = '#9ea2b5';
+      for (const [x, y] of [[4, 4], [58, 4], [4, 58], [58, 58]]) g.fillRect(x, y, 3, 3);
+      g.fillRect(0, 60, 64, 4);
+    } else {
+      g.fillStyle = '#eef0f6';
+      g.fillRect(0, 21, 64, 1);
+      g.fillRect(0, 42, 64, 1);
+      g.fillStyle = '#dfe2ec';
+      g.fillRect(0, 0, 1, 64);
+      g.fillRect(63, 0, 1, 64);
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 52, 64, 1);
+      g.fillStyle = '#a9adbd';
+      g.fillRect(0, 53, 64, 11);
+    }
   }, false);
+}
+
+/** the neon city's windows: a few lit warm or cool, the rest dark, so the blocks read as buildings at night */
+function windowTexture(): THREE.CanvasTexture {
+  return canvasTexture(64, 64, g => {
+    g.fillStyle = '#000000';
+    g.fillRect(0, 0, 64, 64);
+    for (let y = 0; y < 2; y++) {
+      for (let x = 0; x < 3; x++) {
+        const h = hash(x * 3 + 1, y * 5 + 2);
+        if (h < 0.62) continue;
+        g.fillStyle = h < 0.86 ? '#ffd27a' : '#7fe8ff';
+        g.fillRect(9 + x * 18, 10 + y * 30, 10, 10);
+      }
+    }
+  }, true);
+}
+
+/**
+ * One floor tile's surface, by look: pavers with cracks and drains on the plaza, glazed tiles in the
+ * factory, asphalt in the city and on the track, sand in the arena, tar paper on the roof, carpet in
+ * the arcade. Grey only: the theme colour comes from the vertices.
+ */
+function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, tz: number, x: number, y: number, px: number): void {
+  const soft = look === 'candy';
+  const asphalt = look === 'neon' || look === 'race';
+  const v = Math.round((asphalt ? 222 : look === 'arena' ? 230 : 226) + hash(tx * 3, tz * 7) * (look === 'arena' ? 10 : 14));
+  g.fillStyle = `rgb(${v},${v},${v})`;
+  g.fillRect(x, y, px, px);
+  const h = hash(tx * 17, tz * 23);
+  if (look === 'arena') {
+    // sand: no grout, lots of grain, the odd darker patch and drag mark
+    g.fillStyle = 'rgba(80,60,30,0.08)';
+    for (let k = 0; k < 14; k++) g.fillRect(x + Math.floor(hash(tx + k, tz * 5) * (px - 2)), y + Math.floor(hash(tz + k * 7, tx) * (px - 2)), 2, 2);
+    if (h < 0.08) {
+      g.fillStyle = 'rgba(80,60,30,0.09)';
+      g.beginPath();
+      g.ellipse(x + px * hash(tx, 2), y + px * hash(tz, 2), px * 0.5, px * 0.3, hash(tx, tz) * 3, 0, Math.PI * 2);
+      g.fill();
+    } else if (h < 0.13) {
+      g.strokeStyle = 'rgba(80,60,30,0.16)';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(x + px * 0.2, y + px * (0.3 + 0.4 * hash(tx, 5)));
+      g.lineTo(x + px * 0.8, y + px * (0.3 + 0.4 * hash(tz, 5)));
+      g.stroke();
+    }
+    return;
+  }
+  if (look === 'lane') {
+    // arcade carpet: a dotted pattern, no seams
+    g.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let k = 0; k < px; k += 6) for (let j = 0; j < px; j += 6) g.fillRect(x + k + ((j / 6) % 2) * 3, y + j, 2, 2);
+    return;
+  }
+  if (look === 'maze') {
+    g.fillStyle = 'rgba(255,255,255,0.12)';
+    g.fillRect(x, y, px, 1);
+    g.fillRect(x, y, 1, px);
+    return;
+  }
+  // bevel: light top/left edge, dark grout right/bottom (softer on the glazed candy tiles, none on asphalt)
+  if (!asphalt) {
+    g.fillStyle = soft ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.7)';
+    g.fillRect(x, y, px, 2);
+    g.fillRect(x, y, 2, px);
+  }
+  g.fillStyle = asphalt ? 'rgba(20,20,40,0.22)' : soft ? 'rgba(90,50,80,0.12)' : 'rgba(40,40,60,0.16)';
+  g.fillRect(x, y + px - 2, px, 2);
+  g.fillRect(x + px - 2, y, 2, px);
+  if (look === 'rooftop' && tz % 3 === 0) {
+    // the seam between two rolls of tar paper
+    g.fillStyle = 'rgba(20,20,40,0.3)';
+    g.fillRect(x, y, px, 3);
+  }
+  // speckles
+  g.fillStyle = asphalt ? 'rgba(255,255,255,0.08)' : 'rgba(40,40,60,0.07)';
+  for (let k = 0; k < (asphalt || look === 'rooftop' ? 10 : 7); k++) g.fillRect(x + 3 + Math.floor(hash(tx + k, tz * 5) * (px - 6)), y + 3 + Math.floor(hash(tz + k * 7, tx) * (px - 6)), 2, 2);
+  if (soft) {
+    // a glossy highlight on some tiles
+    if (h < 0.12) {
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.beginPath();
+      g.ellipse(x + px * 0.3, y + px * 0.3, px * 0.16, px * 0.1, -0.6, 0, Math.PI * 2);
+      g.fill();
+    }
+    return;
+  }
+  if (h < 0.035) {
+    // a small crack
+    g.strokeStyle = 'rgba(40,40,60,0.28)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    let cx = x + px * (0.2 + 0.6 * hash(tx, 1)), cy = y + px * 0.15;
+    g.moveTo(cx, cy);
+    for (let k = 0; k < 4; k++) {
+      cx += (hash(k, tx) - 0.5) * px * 0.4;
+      cy += px * 0.18;
+      g.lineTo(cx, cy);
+    }
+    g.stroke();
+  } else if (h < 0.045 && look !== 'race') {
+    // drain cover
+    g.fillStyle = 'rgba(60,60,80,0.35)';
+    g.beginPath();
+    g.arc(x + px / 2, y + px / 2, px * 0.3, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let k = -2; k <= 2; k++) g.fillRect(x + px / 2 - px * 0.18, y + px / 2 + k * px * 0.08, px * 0.36, 1.5);
+  } else if (look === 'rooftop' && h > 0.96) {
+    // a puddle
+    g.fillStyle = 'rgba(255,255,255,0.16)';
+    g.beginPath();
+    g.ellipse(x + px * 0.5, y + px * 0.5, px * 0.4, px * 0.26, hash(tx, tz) * 3, 0, Math.PI * 2);
+    g.fill();
+  }
 }
 
 /** jump-over barriers: yellow and dark diagonal stripes */
@@ -237,6 +406,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   for (let tz = 0; tz < map.h; tz++) {
     for (let tx = 0; tx < map.w; tx++) cells.push({ tx, tz, tile: map.tiles[tz * map.w + tx] });
   }
+  // the floor's look picks the surfaces and the decoration (the shaft and unknown maps look like the plaza)
+  const look = floorDef(map.id)?.theme ?? 'plaza';
   const o = new THREE.Object3D();
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const added: THREE.Object3D[] = [];
@@ -270,45 +441,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const px = Math.max(16, Math.min(48, Math.floor(4096 / Math.max(map.w, map.h))));
   const floorTiles = cells.filter(c => c.tile === Tile.Floor);
   const floorTex = canvasTexture(map.w * px, map.h * px, g => {
-    for (const c of floorTiles) {
-      const x = c.tx * px, y = c.tz * px;
-      const v = Math.round(226 + hash(c.tx * 3, c.tz * 7) * 14);
-      g.fillStyle = `rgb(${v},${v},${v})`;
-      g.fillRect(x, y, px, px);
-      // bevel: light top/left edge, dark grout right/bottom
-      g.fillStyle = 'rgba(255,255,255,0.7)';
-      g.fillRect(x, y, px, 2);
-      g.fillRect(x, y, 2, px);
-      g.fillStyle = 'rgba(40,40,60,0.16)';
-      g.fillRect(x, y + px - 2, px, 2);
-      g.fillRect(x + px - 2, y, 2, px);
-      // speckles
-      g.fillStyle = 'rgba(40,40,60,0.07)';
-      for (let k = 0; k < 7; k++) g.fillRect(x + 3 + Math.floor(hash(c.tx + k, c.tz * 5) * (px - 6)), y + 3 + Math.floor(hash(c.tz + k * 7, c.tx) * (px - 6)), 2, 2);
-      const h = hash(c.tx * 17, c.tz * 23);
-      if (h < 0.035) {
-        // a small crack
-        g.strokeStyle = 'rgba(40,40,60,0.28)';
-        g.lineWidth = 1.5;
-        g.beginPath();
-        let cx = x + px * (0.2 + 0.6 * hash(c.tx, 1)), cy = y + px * 0.15;
-        g.moveTo(cx, cy);
-        for (let k = 0; k < 4; k++) {
-          cx += (hash(k, c.tx) - 0.5) * px * 0.4;
-          cy += px * 0.18;
-          g.lineTo(cx, cy);
-        }
-        g.stroke();
-      } else if (h < 0.045) {
-        // drain cover
-        g.fillStyle = 'rgba(60,60,80,0.35)';
-        g.beginPath();
-        g.arc(x + px / 2, y + px / 2, px * 0.3, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.35)';
-        for (let k = -2; k <= 2; k++) g.fillRect(x + px / 2 - px * 0.18, y + px / 2 + k * px * 0.08, px * 0.36, 1.5);
-      }
-    }
+    for (const c of floorTiles) paintFloorTile(g, look, c.tx, c.tz, c.tx * px, c.tz * px, px);
     // soft contact shadows next to walls and barriers
     const blocks = (tx: number, tz: number) => {
       const t = tileOf(tx, tz);
@@ -431,9 +564,16 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     }
     wallGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   }
-  const wallSideTex = wallSideTexture();
+  const wallSideTex = wallSideTexture(look);
   disposables.push(wallSideTex, wallGeo);
   const wallSide = new THREE.MeshLambertMaterial({ map: wallSideTex, vertexColors: true });
+  // the neon city's blocks are buildings: lit windows on every side
+  if (look === 'neon') {
+    const windows = windowTexture();
+    disposables.push(windows);
+    wallSide.emissiveMap = windows;
+    wallSide.emissive.setHex(0xffffff);
+  }
   const wallTop = new THREE.MeshLambertMaterial({ vertexColors: true });
   wallTop.color.setScalar(1.12);
   // the race track's walls are low guard rails, so the whole circuit stays in view
@@ -610,56 +750,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     return { id: p.id, glow };
   });
 
-  // ---- decoration: planters, lamps, crates and old cabinets along the walls, never on the paths;
-  // vents, air conditioners and plants on the wall tops
-  const props = new THREE.Group();
+  // ---- decoration: theme props along the walls and on the wall tops, never on the paths (see decor.ts)
   const keepClear = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.flatMap(n => [n.pos, ...n.entries]), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
-  const leafA = lambert(0x4caf50), leafB = lambert(0x3e9d47), pot = lambert(0xb5653a), metal = lambert(0x5a6378), wood = lambert(0xb07a3e), cab = lambert(0x6b5bb8);
-  const light = lambert(0xe6e8ef), dark = lambert(0x3a3f52);
-  const lampGlow = glowMat(0xffe9a8, 1.6), screenGlow = glowMat(0x2bf0ff, 1.2);
-  // the minigame maps stay clean: no clutter in the maze, on the track or in the lane
-  const decorate = !['maze', 'race', 'lane'].includes(map.id);
-  for (const c of decorate ? floorTiles : []) {
-    let walls_ = 0;
-    for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (isWall(c.tx + ox, c.tz + oz)) walls_++;
-    if (walls_ < 1 || hash(c.tx * 13, c.tz * 5) > 0.07) continue;
-    if (keepClear.some(p => Math.abs(p.x - (c.tx + 0.5)) < 2.6 && Math.abs(p.z - (c.tz + 0.5)) < 2.6)) continue;
-    const g = new THREE.Group();
-    const kind = Math.floor(hash(c.tx * 7, c.tz * 11) * 4);
-    if (kind === 0) {
-      // a tree in a planter: a trunk and three layers of leaves, taller than a player
-      g.add(box(0.6, 0.3, 0.6, pot, 0, 0.15, 0), box(0.2, 0.95, 0.2, wood, 0, 0.75, 0));
-      g.add(box(1.05, 0.55, 1.05, leafA, 0, 1.4, 0), box(0.78, 0.5, 0.78, leafB, 0.05, 1.9, -0.03), box(0.45, 0.4, 0.45, leafA, 0, 2.32, 0.04));
-    } else if (kind === 1) {
-      g.add(box(0.12, 1.6, 0.12, metal, 0, 0.8, 0), box(0.32, 0.22, 0.32, lampGlow, 0, 1.7, 0));
-    } else if (kind === 2) {
-      g.add(box(0.55, 0.45, 0.55, wood, 0, 0.23, 0), box(0.4, 0.35, 0.4, wood, 0.1, 0.63, -0.05));
-    } else {
-      g.add(box(0.6, 1.1, 0.5, cab, 0, 0.55, 0), box(0.45, 0.32, 0.05, screenGlow, 0, 0.78, 0.26));
-    }
-    g.position.set(c.tx + 0.5, 0, c.tz + 0.5);
-    g.rotation.y = Math.floor(hash(c.tz, c.tx * 3) * 4) * (Math.PI / 2);
-    props.add(g);
-  }
-  for (const c of decorate ? walls.list : []) {
-    if (c.tx <= 0 || c.tz <= 0 || c.tx >= map.w - 1 || c.tz >= map.h - 1) continue;
-    let inner = true;
-    for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!isWall(c.tx + ox, c.tz + oz)) inner = false;
-    if (!inner || hash(c.tx * 29, c.tz * 31) > 0.12) continue;
-    const g = new THREE.Group();
-    const kind = Math.floor(hash(c.tz * 3, c.tx * 19) * 3);
-    if (kind === 0) {
-      g.add(box(0.7, 0.4, 0.55, light, 0, 0.2, 0), box(0.4, 0.04, 0.4, dark, 0, 0.42, 0));
-    } else if (kind === 1) {
-      g.add(box(0.16, 0.5, 0.16, metal, -0.2, 0.25, 0), box(0.16, 0.35, 0.16, metal, 0.15, 0.18, 0.15), box(0.26, 0.06, 0.26, dark, -0.2, 0.52, 0));
-    } else {
-      g.add(box(0.8, 0.22, 0.4, pot, 0, 0.11, 0), box(0.7, 0.25, 0.32, leafA, 0, 0.32, 0));
-    }
-    g.position.set(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
-    g.rotation.y = Math.floor(hash(c.tx, c.tz * 7) * 4) * (Math.PI / 2);
-    props.add(g);
-  }
-  addToScene(props);
+  const decor = buildDecor({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
+  addToScene(decor.group);
 
   // Kart Rally: a chequered start/finish line with an arch, glowing gates at the other checkpoints
   if (map.id === 'race') {
@@ -792,8 +886,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       boostMat.emissiveIntensity = (0.45 + 0.25 * Math.abs(Math.sin(time * 3))) * glow;
       // 2.5 tiles per second, like the sim
       beltTex.offset.y = (time * 2.5) % 1;
-      lampGlow.emissiveIntensity = 1.6 * glow;
-      screenGlow.emissiveIntensity = (1 + 0.2 * Math.sin(time * 3)) * glow;
+      wallSide.emissiveIntensity = 0.35 * glow;
+      decor.update(time, glow);
 
       const activePads = new Set(s.players.filter(p => p.downUntil === null).map(p => padAt(s, p.pos)).filter(id => id !== null));
       const occupied = new Set(s.towers.map(t => t.padId));
@@ -805,6 +899,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
       padMat.emissiveIntensity = (0.5 + 0.15 * Math.sin(time * 2)) * Math.min(theme.glow, 1.3);
       padMatActive.emissiveIntensity = 1.4 * Math.min(theme.glow, 1.3);
+    },
+    setDetail(low) {
+      decor.group.visible = !low;
     },
     dispose() {
       disposed = true;

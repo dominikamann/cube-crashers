@@ -257,6 +257,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         // a new floor: rebuild the static world and jump the camera to the new spawn
         world.dispose();
         world = createWorld(scene, s.map);
+        world.setDetail(quality === 'low');
         actors.setMap(s.map);
         mapId = s.map.id;
         for (const v of views) {
@@ -429,6 +430,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     setQuality(q) {
       if (q === quality) return;
       quality = q;
+      world.setDetail(q === 'low');
       fx.setParticleScale(QUALITY[q].particles);
       buildComposer();
     },
