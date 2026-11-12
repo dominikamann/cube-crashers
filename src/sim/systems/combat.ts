@@ -19,6 +19,15 @@ export function isBossBody(s: SimState, e: Enemy): boolean {
   return e.kind === 'megaBlock' || e.kind === 'wormSegment' || e.kind === 'kraken' || (s.boss !== null && s.boss.enemyId === e.id);
 }
 
+/**
+ * How close a player's centre can get to a solid boss body. The Mega Block is a cube: half its diagonal is more
+ * than its radius, so players are kept outside its corners, where first person would look into the hollow model.
+ */
+export function solidEdge(s: SimState, e: Enemy): number {
+  const reach = e.kind === 'megaBlock' ? 2.6 : e.kind === 'trex' && s.boss?.enemyId === e.id ? 2.3 : 0;
+  return Math.max(e.radius + PLAYER_RADIUS * 0.6, reach);
+}
+
 export function comboMult(p: Player): number {
   return Math.min(COMBO_MAX_MULT, 1 + Math.floor(p.combo / COMBO_STEP));
 }

@@ -68,6 +68,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     // built from many small cubes, each a slightly different shade
     const body = voxelBody(k, l.w, l.h, l.d);
     mat.vertexColors = body.geometry.hasAttribute('color');
+    // the big ones are drawn from both sides: a camera that ends up inside one sees its walls, not through it
+    if (k === 'megaBlock' || k === 'kraken' || k === 'trex') mat.side = THREE.DoubleSide;
     bodyMats.set(k, mat);
     bodies.set(k, new InstancedPool(scene, body.geometry, mat, k === 'megaBlock' || k === 'trex' || k === 'croc' ? 16 : 128));
     // where the face is: the eyes sit on the body's surface there

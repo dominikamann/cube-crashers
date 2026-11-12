@@ -5,7 +5,7 @@ import { buildFlowField, flowDir } from '../map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
-import { damageEnemy, explode, isBossBody } from './combat';
+import { damageEnemy, explode, isBossBody, solidEdge } from './combat';
 import { aloft, held } from './rare';
 import { hpScale } from './coop';
 import { damagePlayer } from './player';
@@ -270,7 +270,8 @@ function contactDamage(s: SimState, players: Player[]): void {
     let strongest = 0, total = 0;
     for (const e of s.enemies) {
       if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;
-      if (dist(p.pos, e.pos) >= e.radius + PLAYER_RADIUS) continue;
+      // a solid boss bites whoever stands at its edge (players cannot get closer than that)
+      if (dist(p.pos, e.pos) >= Math.max(e.radius + PLAYER_RADIUS, isBossBody(s, e) ? solidEdge(s, e) + 0.15 : 0)) continue;
       const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
       total += dps;
       strongest = Math.max(strongest, dps);

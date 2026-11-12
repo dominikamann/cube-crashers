@@ -156,6 +156,23 @@ describe('solid bosses', () => {
     expect(Math.hypot(p.pos.x - boss.pos.x, p.pos.z - boss.pos.z)).toBeGreaterThan(boss.radius);
   });
 
+  it('the Mega Block keeps you outside its corners too (in first person you never look inside it), and touching it still hurts', () => {
+    const s = createSim(floor01, 3, { mode: 'run' });
+    s.run.floors[2] = 'arena';
+    enterFloor(s, 2);
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    boss.speed = 0;
+    const p = s.players[0];
+    p.invulnUntil = 0;
+    // walking into a corner of the block: half its diagonal is 2.26
+    p.pos = { x: boss.pos.x + 1.4, z: boss.pos.z + 1.4 };
+    const hp = p.hp;
+    stepSim(s, []);
+    expect(Math.hypot(p.pos.x - boss.pos.x, p.pos.z - boss.pos.z)).toBeGreaterThan(2.5);
+    stepSim(s, []);
+    expect(p.hp).toBeLessThan(hp);
+  });
+
   it('nor inside the Kraken', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
     s.run.floors[2] = 'underwater';

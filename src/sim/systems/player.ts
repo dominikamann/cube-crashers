@@ -24,7 +24,7 @@ import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2
 export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
-import { comboMult, damageEnemy, wormShare } from './combat';
+import { comboMult, damageEnemy, solidEdge, wormShare } from './combat';
 import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
@@ -126,7 +126,7 @@ function pushOutOfBosses(s: SimState, p: Player): void {
     if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && s.boss?.enemyId !== e.id) || e.hp <= 0) continue;
     const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz);
-    const edge = e.radius + PLAYER_RADIUS * 0.6;
+    const edge = solidEdge(s, e);
     if (d >= edge) continue;
     // dead centre: push toward the player's facing so they come out somewhere
     const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
