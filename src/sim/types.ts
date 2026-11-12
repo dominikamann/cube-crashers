@@ -43,7 +43,7 @@ export type WeaponKind =
 export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
-export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
+export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush';
 export type BossKind = 'megaBlock' | 'worm' | 'rex';
 export type VersusMode = 'ffa' | 'team';
@@ -578,6 +578,7 @@ export type SimEvent =
   | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
   | { type: 'powerupPicked'; kind: PowerupKind; playerId: number }
   | { type: 'kartEnter'; playerId: number }
+  | { type: 'unicornAppeared'; pos: Vec2 }
   | { type: 'kartRam'; pos: Vec2 }
   | { type: 'kartJump'; pos: Vec2 }
   | { type: 'kartLand'; pos: Vec2 }
@@ -627,6 +628,8 @@ export interface SimState {
   nextPowerupAt: number;
   jetpacks: JetpackItem[];
   nextJetpackAt: number;
+  /** when the game next rolls for a unicorn to turn up */
+  nextUnicornAt?: number;
   bubbles: Bubble[];
   credits: number;
   alarm: { level: number; nextAt: number };

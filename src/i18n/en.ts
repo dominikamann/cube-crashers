@@ -153,6 +153,7 @@ export const en = {
   'boss.megaBlock': 'Mega Block',
   'boss.worm': 'Segment Worm',
   'boss.rex': 'King Rex',
+  'toast.unicorn': 'A unicorn appeared! Ride it with E',
   'bossrush.title': 'Boss Rush',
   'bossrush.sub': 'Every boss in a row: Mega Block, Segment Worm, King Rex. A shop between them, at the difficulty set above.',
   'bossrush.play': 'Start the Boss Rush',

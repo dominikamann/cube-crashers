@@ -27,6 +27,9 @@ interface Beam {
 
 const MAX_PARTICLES = 3000;
 
+/** the colours of the unicorn's trail */
+const RAINBOW = [0xff5a5f, 0xffa23b, 0xffe14a, 0x3bd16f, 0x3d8bfd, 0xb15cff];
+
 export const POWERUP_COLOR: Record<PowerupKind, number> = {
   magnet: 0xff4d6d,
   rapid: 0xffe14a,
@@ -148,6 +151,11 @@ export function createFx(scene: THREE.Scene): Fx {
 
   return {
     update(s, events, theme, dt, time) {
+      // a galloping unicorn leaves a rainbow behind it
+      for (const v of s.vehicles) {
+        if (v.kind !== 'unicorn' || Math.hypot(v.vel.x, v.vel.z) < 3 || Math.floor(time * 30) % 2 !== 0) continue;
+        burst({ x: v.pos.x - v.vel.x * 0.06, z: v.pos.z - v.vel.z * 0.06 }, 0.5, 2, RAINBOW, 0.6, 0.11, 0.2);
+      }
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {

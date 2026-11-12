@@ -434,6 +434,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'comboUp':
             bump(combo);
             break;
+          case 'unicornAppeared':
+            toast(t('toast.unicorn'), 'good');
+            break;
           case 'jetpackPicked':
             if (e.playerId === p.id) toast(t('toast.jetpack'), 'good');
             break;

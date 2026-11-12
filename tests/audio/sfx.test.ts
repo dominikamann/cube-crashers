@@ -31,6 +31,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   cubeCaptured: { type: 'cubeCaptured', team: 0, playerId: 0 },
   kingMoved: { type: 'kingMoved', pos: { x: 0, z: 0 } },
   coinOpRule: { type: 'coinOpRule', rule: 'turbo' },
+  unicornAppeared: { type: 'unicornAppeared', pos: { x: 0, z: 0 } },
   emote: { type: 'emote', playerId: 0, emote: 'gg' },
   versusRound: { type: 'versusRound', winner: 0, round: 1 },
   versusEnd: { type: 'versusEnd', winners: [0] },

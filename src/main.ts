@@ -209,6 +209,8 @@ function startGame() {
   // first person in a vehicle: a cockpit frame (kart, roller) or the nose of the board along the bottom
   const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 120" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 104 L172 104 M100 104 L100 160" stroke="#2a2550" stroke-width="16"/><circle cx="100" cy="104" r="16" fill="#ff2bd6"/></svg>`;
   const BOARD_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M120 100 Q130 40 200 28 Q270 40 280 100 Z" fill="#2bf0ff" opacity="0.9"/><path d="M140 100 Q150 52 200 42 Q250 52 260 100" fill="none" stroke="#1d1a33" stroke-width="5"/></svg>`;
+  // riding a unicorn in first person: its white neck, ears, a rainbow mane and the golden horn in front of you
+  const UNICORN_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M150 100 Q160 50 200 40 Q240 50 250 100 Z" fill="#f6f4ff"/><path d="M168 46 L176 20 L186 44 Z M214 44 L224 20 L232 46 Z" fill="#f6f4ff" stroke="#c9b8ff" stroke-width="2"/><path d="M196 42 L200 0 L206 42 Z" fill="#ffd84a" stroke="#fff6c8" stroke-width="1.5"/><path d="M160 100 Q166 66 184 52" fill="none" stroke="#ff5a5f" stroke-width="6"/><path d="M168 100 Q172 70 188 56" fill="none" stroke="#ffe14a" stroke-width="5"/><path d="M176 100 Q178 76 192 60" fill="none" stroke="#3d8bfd" stroke-width="5"/></svg>`;
   const cockpits = hudRoots.map(root => {
     const c = document.createElement('div');
     c.className = 'fp-cockpit';
@@ -223,7 +225,7 @@ function startGame() {
     const kind = on && p?.vehicleId != null ? (s.vehicles.find(v => v.id === p.vehicleId)?.kind ?? '') : '';
     const c = cockpits[i];
     c.el.style.display = kind ? '' : 'none';
-    if (kind && kind !== c.kind) c.el.innerHTML = kind === 'hoverboard' ? BOARD_FRAME : KART_FRAME;
+    if (kind && kind !== c.kind) c.el.innerHTML = kind === 'hoverboard' ? BOARD_FRAME : kind === 'unicorn' ? UNICORN_FRAME : KART_FRAME;
     c.kind = kind;
   };
   /** the mouse is captured in first person so it can turn the view */
@@ -1034,6 +1036,8 @@ function applyDemo(sim: SimState) {
       Object.assign(p, { pos: best, perched: true, jetpack: true, jetFuel: 300 });
     });
   }
+  // ?demo=unicorn: a unicorn right next to the player
+  if (params.get('demo') === 'unicorn') void import('./sim/systems/vehicles').then(m => m.addVehicle(sim, 'unicorn', { x: sim.players[0].pos.x + 2, z: sim.players[0].pos.z - 1 }, 0));
   // ?demo=jetpack: a jetpack lying right next to the player (to look at it)
   if (params.get('demo') === 'jetpack') sim.jetpacks.push({ id: sim.nextId++, pos: { x: sim.players[0].pos.x + 2, z: sim.players[0].pos.z - 1 } });
   if (params.get('demo') === 'nest') {

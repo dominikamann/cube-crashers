@@ -203,6 +203,35 @@ function makeKart(kind: VehicleKind = 'kart') {
     root.add(body);
     return { root, body, yaw: 0 };
   }
+  if (kind === 'unicorn') {
+    // a white voxel unicorn: golden horn, a mane and a tail in rainbow colours, four legs that gallop
+    const coat = lambert(0xf6f4ff), hoof = lambert(0xc9b8ff);
+    body.add(box(0.62, 0.55, 1.25, coat, 0, 0.95, 0.05));
+    body.add(box(0.36, 0.5, 0.36, coat, 0, 1.3, -0.55), box(0.38, 0.36, 0.6, coat, 0, 1.55, -0.78), box(0.28, 0.2, 0.2, lambert(0xffc8e0), 0, 1.47, -1.07));
+    body.add(box(0.08, 0.08, 0.04, lambert(0x2a2a50), -0.16, 1.62, -0.96), box(0.08, 0.08, 0.04, lambert(0x2a2a50), 0.16, 1.62, -0.96));
+    body.add(box(0.07, 0.14, 0.07, coat, -0.12, 1.79, -0.62), box(0.07, 0.14, 0.07, coat, 0.12, 1.79, -0.62));
+    const horn = new THREE.Group();
+    horn.add(box(0.1, 0.1, 0.22, glowMat(0xffd84a, 1.1), 0, 0, 0), box(0.07, 0.07, 0.18, glowMat(0xffe98a, 1.1), 0, 0.02, -0.17), box(0.04, 0.04, 0.12, glowMat(0xfff6c8, 1.2), 0, 0.04, -0.3));
+    horn.position.set(0, 1.78, -0.92);
+    horn.rotation.x = 0.55;
+    body.add(horn);
+    const rainbow = [0xff5a5f, 0xffa23b, 0xffe14a, 0x3bd16f, 0x3d8bfd, 0xb15cff];
+    rainbow.forEach((c, i) => body.add(box(0.12, 0.16, 0.14, lambert(c), 0, 1.68 - i * 0.07, -0.5 + i * 0.13)));
+    const tail = new THREE.Group();
+    rainbow.forEach((c, i) => tail.add(box(0.14, 0.1, 0.12, lambert(c), 0, -i * 0.09, i * 0.06)));
+    tail.position.set(0, 1.08, 0.7);
+    body.add(tail);
+    const legs: THREE.Group[] = [];
+    for (const [x, z] of [[-0.2, -0.42], [0.2, -0.42], [-0.2, 0.48], [0.2, 0.48]]) {
+      const leg = new THREE.Group();
+      leg.add(box(0.16, 0.5, 0.16, coat, 0, -0.25, 0), box(0.18, 0.12, 0.2, hoof, 0, -0.55, 0));
+      leg.position.set(x, 0.72, z);
+      body.add(leg);
+      legs.push(leg);
+    }
+    root.add(body);
+    return { root, body, yaw: 0, legs, tail };
+  }
   if (kind === 'hoverboard') {
     // a glowing board floating above the ground
     body.add(box(0.9, 0.12, 1.6, lambert(0x2bd4d4), 0, 0.45, 0), box(0.7, 0.05, 1.3, glowMat(0x2bf0ff, 3), 0, 0.37, 0), box(0.3, 0.1, 0.25, glowMat(0xff2bd6, 2), 0, 0.5, 0.8));
@@ -373,7 +402,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
     // landed on top of a wall block with the jetpack
     const perch = p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0;
-    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? 0.35 : 0), p.pos.z);
+    // on a unicorn you sit up on its back
+    const mount = driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'unicorn' ? 0.95 : 0.35;
+    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? mount : 0), p.pos.z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
@@ -470,6 +501,16 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.root.position.set(k.pos.x, hop, k.pos.z);
     v.root.rotation.y = v.yaw;
     v.body.rotation.x = k.air > 0 ? -0.25 : 0;
+    if ('legs' in v && v.legs) {
+      // a gallop: front and back legs swing in pairs, faster the faster it runs; the tail streams behind
+      const pace = Math.min(1, speed / 8);
+      const step = time * (6 + speed * 1.4);
+      v.legs.forEach((leg, i) => (leg.rotation.x = Math.sin(step + (i < 2 ? 0 : Math.PI) + (i % 2) * 0.6) * 0.8 * pace));
+      v.tail!.rotation.x = 0.4 + pace * 0.8 + Math.sin(time * 9) * 0.1;
+      v.body.position.y = Math.abs(Math.sin(step)) * 0.12 * pace;
+      setGlow(v.root, theme.glow);
+      return;
+    }
     const hover = k.kind === 'hoverboard' ? 0.25 + Math.sin(time * 4 + k.id) * 0.08 : 0;
     v.body.position.y = hover + (k.driverId === null ? Math.sin(time * 3 + k.id) * 0.03 : Math.sin(time * 40) * 0.015 * Math.min(1, speed / 6));
     setGlow(v.root, theme.glow);
