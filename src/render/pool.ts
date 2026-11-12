@@ -65,6 +65,18 @@ export class InstancedPool {
     this.count++;
   }
 
+  /** Like add(), but scaled per axis (squash and stretch). */
+  addScaled(x: number, y: number, z: number, rotY: number, sx: number, sy: number, sz: number, color?: number, rotX = 0, rotZ = 0): void {
+    this.add(x, y, z, rotY, 1, color, rotX, rotZ);
+    tmp.position.set(x, y, z);
+    // turn first, then lean (rotX) and tilt (rotZ) in the body's own frame
+    tmp.rotation.set(rotX, rotY, rotZ, 'YXZ');
+    tmp.scale.set(sx, sy, sz);
+    tmp.updateMatrix();
+    tmp.rotation.order = 'XYZ';
+    this.mesh.setMatrixAt(this.count - 1, tmp.matrix);
+  }
+
   /** A unit-length (along +z) instance stretched to `length`, starting at `from`. */
   addBeam(from: THREE.Vector3, yaw: number, pitch: number, length: number): void {
     this.add(from.x, from.y, from.z, yaw, 1, undefined, pitch);

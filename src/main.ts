@@ -1007,6 +1007,18 @@ function applyDemo(sim: SimState) {
   const floorParam = Number(params.get('floor'));
   if (floorParam > 0 && sim.run.mode === 'run') void import('./sim/systems/run').then(m => m.enterFloor(sim, Math.min(floorParam, sim.run.floors.length - 1)));
   if (params.get('demo') === 'shop' && sim.run.mode === 'run') void import('./sim/systems/shop').then(m => m.openShop(sim));
+  // ?demo=zoo: one of every monster in a row in front of the player, crawling slowly (to look at them)
+  if (params.get('demo') === 'zoo') {
+    void import('./sim/systems/enemies').then(m => {
+      const kinds = ['blob', 'hunter', 'tank', 'splitter', 'shooter', 'bomber', 'rammer', 'swarmer', 'shielder', 'healer', 'teleporter'] as const;
+      const p = sim.players[0];
+      p.invulnUntil = Number.MAX_SAFE_INTEGER;
+      kinds.forEach((k, i) => {
+        const e = m.spawnEnemy(sim, k, { x: p.pos.x - 5 + i, z: p.pos.z + 3 });
+        e.speed *= 0.15;
+      });
+    });
+  }
   if (params.get('demo') === 'nest') {
     // straight into a hold: next to a planted nest, with a crate opened beside it
     const nest = sim.nests[0];

@@ -24,6 +24,8 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
 const KINDS = Object.keys(ENEMY_LOOK) as EnemyKind[];
+/** monsters that hop: they squash when they land */
+const HOPPERS = new Set<EnemyKind>(['blob', 'splitter', 'splitling', 'healer', 'shielder']);
 
 export interface Entities {
   update(s: SimState, theme: Theme, time: number, events: SimEvent[], frameDt: number): void;
@@ -65,6 +67,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const bossHornMat = glowMat(0xff2bd6, 1.6);
   const bossHorns = new InstancedPool(scene, new THREE.BoxGeometry(0.25, 0.6, 0.25), bossHornMat, 64);
   const redEyeMat = glowMat(0xff2b2b, 1.6);
+  // eyes that glow red the moment before an attack
+  const angryEyes = new InstancedPool(scene, unit, redEyeMat, 256, false);
   const redEyes = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.18, 0.06), redEyeMat, 64, false);
   const jetMat = lambert(0xd0d4e0);
   const jetItems = new InstancedPool(scene, new THREE.BoxGeometry(0.55, 0.7, 0.3), jetMat, 8);
@@ -116,6 +120,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const crateMat = new THREE.MeshStandardMaterial({ map: crateTex, emissive: 0xffffff, emissiveMap: crateTex, emissiveIntensity: 0.35 });
   const crates = new InstancedPool(scene, new THREE.BoxGeometry(0.85, 0.85, 0.85), crateMat, 32);
 
+  /** when each monster was first drawn, for its pop-in */
+  const bornAt = new Map<number, number>();
+  /** 0..1 → a little past 1 and back: the pop-in curve */
+  const popIn = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
   const bob = (id: number, time: number, amp: number) => Math.abs(Math.sin(time * 8 + id * 1.7)) * amp;
 
   const tmpFrom = new THREE.Vector3();
@@ -201,15 +209,32 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       tmpFrom.y = 0.06;
 
       const slowed = (until: number) => until > s.tick;
+      angryEyes.begin();
+      const awake = s.players.filter(p => p.downUntil === null);
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
+        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock';
+        // a new monster pops out of the floor with a little overshoot
+        let born = bornAt.get(e.id);
+        if (born === undefined) bornAt.set(e.id, (born = time));
+        const pop = boss ? 1 : popIn(Math.min(1, (time - born) / 0.3));
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
-        const worn = e.kind === 'wormSegment' || e.kind === 'megaBlock' ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
-        const scale = (e.elite ? 1.4 : 1) * worn;
-        const y = (l.h / 2) * scale + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
+        const scale = (e.elite ? 1.4 : 1) * worn * pop;
+        const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
+        // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
+        const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
+        const squash = HOPPERS.has(e.kind) && !held ? 0.84 + 0.26 * hop : 1;
+        const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
+        const sxz = 1 / Math.sqrt(squash);
+        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : 0;
+        const y = (l.h / 2) * scale * squash + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
+        // lean into a run or a charge, rear back before one; a hit makes it wobble; a tank sways under its weight
+        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : 0;
+        const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + (e.kind === 'tank' && !held ? Math.sin(time * 3 + e.id) * 0.05 : 0);
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
         const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;
@@ -218,7 +243,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const blinking = e.kind === 'teleporter' && winding && Math.floor(time * 20) % 2 === 0;
         const tint = flashing || blinking ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
-        bodies.get(e.kind)!.add(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse, tint);
+        bodies.get(e.kind)!.addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';
@@ -261,18 +286,38 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           crosses.add(e.pos.x, top, e.pos.z, time * 2 + Math.PI / 2, scale);
         }
         if (e.kind === 'tank') plates.add(e.pos.x, y + (l.h / 2) * scale - 0.05, e.pos.z, yaw, scale);
-        const ey = y - (l.h / 2 - l.eyeY) * scale;
+        const ey = y - (l.h / 2 - l.eyeY) * scale * squash;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const front = (l.d / 2 + 0.02) * scale;
+        const front = (l.d / 2 + 0.02) * scale * sxz;
+        // a blink every few seconds; the pupils follow the nearest player
+        const blink = (time + e.id * 0.37) % 4 < 0.12 ? 0.12 : 1;
+        let look = 0;
+        let nearest = Infinity;
+        for (const p of awake) {
+          const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
+          const d = Math.hypot(dx, dz);
+          if (d < nearest && d > 1e-3) {
+            nearest = d;
+            look = Math.max(-1, Math.min(1, (dx * fz - dz * fx) / d));
+          }
+        }
         for (const side of l.eyeX === 0 ? [0] : [-1, 1]) {
           const ox = side * l.eyeX * scale;
           const ex = e.pos.x + fx * front + fz * ox, ez = e.pos.z + fz * front - fx * ox;
-          eyes.add(ex, ey, ez, yaw, l.eye * scale);
-          pupils.add(ex + fx * 0.03, ey - l.eye * 0.15 * scale, ez + fz * 0.03, yaw, l.eye * 0.5 * scale);
+          const size = l.eye * scale;
+          if (winding) angryEyes.addScaled(ex, ey, ez, yaw, size, size * 0.7, size);
+          else eyes.addScaled(ex, ey, ez, yaw, size, size * blink, size);
+          const px = look * l.eye * 0.25 * scale;
+          pupils.addScaled(ex + fx * 0.03 + fz * px, ey - l.eye * 0.15 * scale * blink, ez + fz * 0.03 - fx * px, yaw, size * 0.5, size * 0.5 * blink, size * 0.5);
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
-      for (const p of [eyes, pupils, plates]) p.end();
+      for (const p of [eyes, pupils, plates, angryEyes]) p.end();
+      // forget monsters that are gone
+      if (bornAt.size > 600) {
+        const alive = new Set(s.enemies.map(e => e.id));
+        for (const id of bornAt.keys()) if (!alive.has(id)) bornAt.delete(id);
+      }
       hostileMat.emissiveIntensity = 4 * Math.min(theme.glow, 1.4);
 
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
