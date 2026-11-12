@@ -15,8 +15,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 4: up to 10 players, new monsters, weapons, towers and events, emotes, Coin-Op Chaos (0.5.0).
  * 5: three new worlds, Boss Rush, new monsters, the Kraken's grab, ladders, a changed Candy Factory (0.5.1).
  * 6: an opening countdown, lives per player (out until the next floor), a hidden heart (0.5.3).
+ * 7: Boss Brawl (several bosses at once), Boss Rush and Endless on the LAN and on servers, the Rhino (0.5.4).
  */
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
