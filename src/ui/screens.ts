@@ -718,7 +718,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   /** the versus match the settings describe (the map rotation picks a random arena) */
-  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, null), chaos: settings.versusChaos });
+  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos });
+  /** the arena of the last match started from the lobby (the rotation picks another one) */
+  let lastArena: string | null = null;
+  const startOption = (): VersusChoice => {
+    const o = versusOption();
+    lastArena = o.map;
+    return o;
+  };
 
   /** the page behind a title tile: only the options that mode needs, then Start */
   function setupScreen(mode: 'run' | 'quick' | 'versus' | 'endless', lan?: LanActions) {
@@ -961,7 +968,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     },
     lobby(players, difficulty, isHost, me, lan, vote, server) {
       countdown = null;
-      show('', s => {
+      show('lobby-screen', s => {
         text(s, 'h2', '', t('lobby.title', { n: players.length }));
         if (server) text(s, 'p', 'lobby-server', t('lobby.server', { name: server.name, mode: modeName(server.mode) }));
         const list = document.createElement('div');
@@ -1041,14 +1048,15 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             api.lobby(players, difficulty, isHost, me, lan, vote, server);
           };
           if (settings.lanGame === 'endless' && !profile.unlocked.includes('endless')) settings.lanGame = 'run';
-          const coop = rowOf(t('lobby.coopRow'));
-          chip(coop, t('mode.run'), settings.lanGame === 'run', () => pick('run'));
-          chip(coop, t('bossrush.title'), settings.lanGame === 'bossrush', () => pick('bossrush'));
-          chip(coop, t('brawl.title'), settings.lanGame === 'brawl', () => pick('brawl'));
-          if (profile.unlocked.includes('endless')) chip(coop, t('mode.endless'), settings.lanGame === 'endless', () => pick('endless'));
-          const vs = rowOf(t('lobby.versusRow'));
-          chip(vs, t('mode.versus'), settings.lanGame === 'versus', () => pick('versus'));
+          // one row for every game: the co-op ones and versus
+          const games = rowOf(t('lobby.gameRow'));
+          chip(games, t('mode.run'), settings.lanGame === 'run', () => pick('run'));
+          chip(games, t('bossrush.title'), settings.lanGame === 'bossrush', () => pick('bossrush'));
+          chip(games, t('brawl.title'), settings.lanGame === 'brawl', () => pick('brawl'));
+          if (profile.unlocked.includes('endless')) chip(games, t('mode.endless'), settings.lanGame === 'endless', () => pick('endless'));
+          chip(games, t('mode.versus'), settings.lanGame === 'versus', () => pick('versus'));
           if (settings.lanGame === 'versus') {
+            const vs = rowOf(t('lobby.matchRow'));
             // the match Start will begin, and the page that changes it (rule, map, or a vote)
             const o = versusOption();
             const what = settings.versusDiscovery ? t('versus.discovery') : `${t(`versus.${o.rule}` as 'versus.score')} · ${settings.versusMap === MAP_ROTATION ? t('setup.rotation') : t(FLOORS[o.map].name as 'floor.plaza')}`;
@@ -1094,7 +1102,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           button(foot, t('setup.start'), () => {
             const g = settings.lanGame;
             if (g === 'run') lan.start();
-            else if (g === 'versus') settings.versusDiscovery ? lan.startDiscovery() : lan.startVersus(versusOption());
+            else if (g === 'versus') settings.versusDiscovery ? lan.startDiscovery() : lan.startVersus(startOption());
             else lan.startMode(g);
           }, true);
         }

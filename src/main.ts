@@ -592,7 +592,9 @@ function startGame() {
       dailyRun && role === 'solo'
         ? { label: t('daily.again'), action: () => newSoloGame('run', true) }
         : role === 'solo' && s.versus && gunNext && !settings.versusDiscovery
-        ? { label: t('versus.next', { what: describe(gunNext) }), action: () => (settings.versusMap === MAP_ROTATION || (settings.versusMap = gunNext.map), newVersusGame()) }
+        ? settings.versusMap === MAP_ROTATION
+          ? { label: t('versus.nextMap'), action: () => newVersusGame() }
+          : { label: t('versus.next', { what: describe(gunNext) }), action: () => ((settings.versusMap = gunNext.map), newVersusGame()) }
         : role === 'solo' && s.versus
         ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : settings.versusMap === MAP_ROTATION ? t('versus.nextMap') : t('menu.playAgain'), action: () => newVersusGame() }
         : role === 'host' && s.versus && gunNext && !lanDiscovery

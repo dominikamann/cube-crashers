@@ -85,26 +85,34 @@ describe('the Rhino', () => {
     expect(isBossBody(s, rhino)).toBe(true);
   });
 
-  it('a charge that hits you flings you across the arena', async () => {
-    const { spawnBoss, updateBoss } = await import('../../src/sim/systems/boss');
-    const s = createSim(FLOORS.arena.map, 3, { mode: 'quick' });
-    s.enemies = [];
-    s.boss = null;
-    const p = s.players[0];
-    p.invulnUntil = 1e9;
-    p.pos = { x: s.map.w / 2 - 6, z: s.map.h / 2 };
-    spawnBoss(s, 'rhino', { x: p.pos.x - 1.2, z: p.pos.z });
-    const rhino = s.enemies.find(e => e.id === s.boss!.enemyId)!;
-    rhino.pos = { x: p.pos.x - 1.2, z: p.pos.z };
-    rhino.state = 'charge';
-    rhino.dir = { x: 1, z: 0 };
-    const x = p.pos.x;
-    updateBoss(s);
-    expect(p.pos.x - x).toBeGreaterThan(5);
-    // not twice in the same breath
-    const after = p.pos.x;
-    rhino.pos = { x: p.pos.x - 1.2, z: p.pos.z };
-    updateBoss(s);
-    expect(p.pos.x).toBe(after);
+  it('a charge that hits you hurts and flings you across the arena; jumping over it saves you', async () => {
+    const { spawnBoss } = await import('../../src/sim/systems/boss');
+    const setup = () => {
+      const s = createSim(FLOORS.arena.map, 3, { mode: 'quick' });
+      s.enemies = [];
+      s.boss = null;
+      const p = s.players[0];
+      p.invulnUntil = 0;
+      p.pos = { x: s.map.w / 2 - 6, z: s.map.h / 2 };
+      spawnBoss(s, 'rhino', { x: p.pos.x - 1.3, z: p.pos.z });
+      s.boss!.nextAttackAt = 1e9;
+      const rhino = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+      rhino.pos = { x: p.pos.x - 1.3, z: p.pos.z };
+      rhino.state = 'charge';
+      rhino.dir = { x: 1, z: 0 };
+      rhino.chargeLeft = 6;
+      return { s, p };
+    };
+    const hit = setup();
+    const x = hit.p.pos.x, hp = hit.p.hp;
+    stepSim(hit.s, []);
+    stepSim(hit.s, []);
+    expect(hit.p.pos.x - x).toBeGreaterThan(5);
+    expect(hit.p.hp).toBeLessThan(hp);
+    const dodge = setup();
+    dodge.p.air = 15;
+    const x2 = dodge.p.pos.x;
+    stepSim(dodge.s, []);
+    expect(dodge.p.pos.x - x2).toBeLessThan(1);
   });
 });

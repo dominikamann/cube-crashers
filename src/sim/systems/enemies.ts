@@ -4,7 +4,7 @@ import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
-import { dist } from '../util';
+import { dist, allBosses } from '../util';
 import { damageEnemy, explode, isBossBody, solidEdge } from './combat';
 import { aloft, held } from './rare';
 import { hpScale } from './coop';
@@ -121,6 +121,8 @@ function heal(s: SimState, e: Enemy): void {
 }
 
 /** how this monster charges: the rammer's long run or the crocodile's short lunge */
+/** how far the Rhino's charge throws a player it hits */
+export const RHINO_FLING = 9;
 const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : RAMMER);
 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
@@ -150,7 +152,11 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     if (aloft(s, p) || p.perched || s.tick < p.invulnUntil) continue;
     if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
     damagePlayer(s, p, RAMMER.damage, 'rammer');
-    moveCircle(s.map, p.pos, e.dir.x * 1.5, e.dir.z * 1.5, PLAYER_RADIUS, BLOCKS_WALKER);
+    // the Rhino (a rammer grown to boss size) throws whoever it hits across the arena; in small steps, so a
+    // wall stops the flight
+    const rhino = allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
+    for (let i = 0; i < (rhino ? RHINO_FLING * 2 : 3); i++) moveCircle(s.map, p.pos, e.dir.x * 0.5, e.dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
+    if (rhino) s.events.push({ type: 'kartRam', pos: { ...p.pos } });
     stun(RAMMER.hitStunTicks);
     return;
   }

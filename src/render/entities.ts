@@ -163,7 +163,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const tmpFrom = new THREE.Vector3();
   // a boss roars while its blasts are telegraphed and strikes when they land: the sim only sets the time
   // of the next attack, so the moment it changes is the moment the attack began
-  let bossAttackAt = -1;
+  const bossCues = new Map<number, { attackAt: number; roarTime: number }>();
   let bossRoarTime = -1e9;
 
   // white flash for a moment after a hit
@@ -264,13 +264,23 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       partsGlow.begin();
       const isNight = theme.pointLights > 0.5;
       const awake = s.players.filter(p => p.downUntil === null);
-      if (s.boss && s.boss.nextAttackAt !== bossAttackAt) {
+      // every boss has its own cue (two of them in a brawl), by its body's id
+      const cueOf = new Map<number, number>();
+      for (const b of allBosses(s)) {
+        const key = b.enemyId ?? b.worms[0]?.[0] ?? -1;
+        let c = bossCues.get(key);
         // the first frame of a fight only arms the timer (no roar at spawn)
-        if (bossAttackAt >= 0) bossRoarTime = time;
-        bossAttackAt = s.boss.nextAttackAt;
+        if (!c) bossCues.set(key, (c = { attackAt: b.nextAttackAt, roarTime: -1e9 }));
+        if (b.nextAttackAt !== c.attackAt) {
+          c.roarTime = time;
+          c.attackAt = b.nextAttackAt;
+        }
+        const since = time - c.roarTime;
+        const cue = since < BOSS.warnTicks / TICK_RATE ? 1 : since < BOSS.warnTicks / TICK_RATE + 0.4 ? 2 : 0;
+        for (const id of [b.enemyId, ...b.worms.flat()]) if (id !== null) cueOf.set(id, cue);
+        if (b === allBosses(s)[0]) bossRoarTime = c.roarTime;
       }
       const sinceRoar = time - bossRoarTime;
-      const bossCue = sinceRoar < BOSS.warnTicks / TICK_RATE ? 1 : sinceRoar < BOSS.warnTicks / TICK_RATE + 0.4 ? 2 : 0;
       // King Rex leans back into the roar slowly and comes out of it slowly: at boss size a sudden tilt swings the whole screen
       const roarSeconds = BOSS.warnTicks / TICK_RATE;
       const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
@@ -278,7 +288,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const l = ENEMY_LOOK[e.kind];
         // King Rex is a T-Rex grown to boss size
         const kingRex = allBosses(s).some(b => b.kind === 'rex' && b.enemyId === e.id);
-        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex;
+        const rhinoBoss = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
+        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex || rhinoBoss;
         // in the jungle's tall grass a monster cannot be seen until you are close
         if (grassAt(s, e.pos) && Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z))) > 3.5 && (flashUntil.get(e.id) ?? 0) <= time) continue;
         // a glitch ghost is hard to see from afar: it flickers in and out, jumping about, until it is close
@@ -294,14 +305,13 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
         const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
         // the Rhino: a rammer grown to boss size
-        const rhino = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
-        const scale = (kingRex ? 2.4 : rhino ? 2.2 : e.elite ? 1.4 : 1) * worn * pop;
+        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.2 : e.elite ? 1.4 : 1) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
         // a T-Rex that has just stomped, a boss between its roar and its strike
         const stomped = e.kind === 'trex' && e.cooldownUntil - s.tick > TREX.cooldownTicks - 20;
-        const attack = e.state === 'windup' ? 1 : e.state === 'charge' || stomped ? 2 : boss ? bossCue : 0;
+        const attack = e.state === 'windup' ? 1 : e.state === 'charge' || stomped ? 2 : boss ? (cueOf.get(e.id) ?? 0) : 0;
         // Mega Block rears up on its roar and comes down flat on the stomp
         const squash = HOPPERS.has(e.kind) && !held ? 0.84 + 0.26 * hop : e.kind === 'megaBlock' && attack === 2 ? 0.8 : e.kind === 'megaBlock' && attack === 1 ? 1.1 : 1;
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;

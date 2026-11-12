@@ -394,8 +394,6 @@ export interface BossState {
   lastPos: Vec2;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */
   grab?: { playerId: number; until: number } | null;
-  /** the Rhino: when it last flung each player (by id) */
-  flungAt?: Record<number, number>;
   /** the Mega Block in mid-leap: from where to where, and when it lands */
   leap?: { from: Vec2; to: Vec2; start: number; land: number } | null;
   /** the Kraken: when it next calls a school of fish and sharks */

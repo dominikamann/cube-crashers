@@ -1,5 +1,5 @@
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
-import { ENEMY_CAP, PLAYER_RADIUS, RAMMER } from '../config/balance';
+import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
@@ -48,9 +48,8 @@ export const BOSS = {
   seaCap: 30,
   /** King Rex */
   rexHp: 1600,
-  /** the Rhino: a rammer grown to boss size that charges like mad; a charge that hits flings the player this far */
+  /** the Rhino: a rammer grown to boss size that charges like mad (a charge that hits flings the player, see enemies.ts) */
   rhinoHp: 1500,
-  rhinoFling: 9,
   /** King Rex's roar: the ground cracks in a ring around it */
   roarRadius: 4.5,
 };
@@ -102,7 +101,9 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else {
     const ids: number[] = [];
-    for (let i = 0; i < BOSS.wormSegments; i++) ids.push(spawnEnemy(s, 'wormSegment', { x: centre.x, z: centre.z - i * BOSS.wormSpacing }).id);
+    // (in a brawl the chain is laid toward the middle of the arena, away from the wall behind it)
+    const toMiddle = at && centre.z < s.map.h / 2 ? 1 : -1;
+    for (let i = 0; i < BOSS.wormSegments; i++) ids.push(spawnEnemy(s, 'wormSegment', { x: centre.x, z: centre.z + toMiddle * i * BOSS.wormSpacing }).id);
     // the bar and the phases count from what the segments really have
     b = { kind, maxHp: ids.reduce((sum, id) => sum + (byId(s, id)?.hp ?? 0), 0), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
   }
@@ -164,10 +165,11 @@ function updateBrawl(s: SimState): void {
   // one boss or two, by the dice
   const n = Math.min(br.queue.length, s.rng.next() < 0.5 ? 1 : 2);
   br.wave++;
-  for (let i = 0; i < n; i++) {
-    const side = n === 1 ? 0 : i === 0 ? -1 : 1;
-    spawnBoss(s, br.queue.shift()!, { x: s.map.w / 2 + side * 7, z: s.map.h * 0.35 });
-  }
+  // they come in where the players are not: the spots furthest from anyone
+  const spots = [-7, 0, 7].flatMap(dx => [0.32, 0.68].map(fz => ({ x: s.map.w / 2 + dx, z: s.map.h * fz })));
+  const clear = (q: Vec2) => Math.min(...s.players.map(p => dist(p.pos, q)));
+  spots.sort((a, b) => clear(b) - clear(a));
+  for (let i = 0; i < n; i++) spawnBoss(s, br.queue.shift()!, spots[i]);
 }
 
 function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks): void {
@@ -184,7 +186,7 @@ function attack(s: SimState, b: BossState): void {
     // shockwave lines toward one player (in phase 3 a cross of four)
     const roll = s.rng.next();
     if (boss && b.phase >= 2 && roll > 1 - BOSS.leapChance) {
-      megaLeap(s, s.rng.pick(alive));
+      megaLeap(s, s.rng.pick(alive), b);
     } else if (!boss || roll < BOSS.stompChance) {
       for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
       if (s.towers.length > 0 && s.rng.next() < 0.5) telegraph(s, s.rng.pick(s.towers).pos, BOSS.stompRadius, BOSS.stompDamage);
@@ -211,7 +213,7 @@ function attack(s: SimState, b: BossState): void {
         telegraph(s, { x: kraken.pos.x + Math.cos(a) * BOSS.slapRadius, z: kraken.pos.z + Math.sin(a) * BOSS.slapRadius }, 1.4, BOSS.strikeDamage, 45);
       }
     } else if (kraken && !b.grab && reach.length > 0 && roll < 0.8) {
-      grabPlayer(s, s.rng.pick(reach));
+      grabPlayer(s, s.rng.pick(reach), b);
     } else if (kraken && s.rng.next() < 0.6) {
       for (const p of alive.slice(0, 3)) {
         const d = dist(kraken.pos, p.pos) || 1;
@@ -296,8 +298,7 @@ function resolveWorms(s: SimState, b: BossState): void {
 }
 
 /** The Mega Block jumps at `p`: a big ring warns where it comes down, a moment later it lands there. */
-export function megaLeap(s: SimState, p: Player): void {
-  const b = s.boss;
+export function megaLeap(s: SimState, p: Player, b: BossState | null = s.boss): void {
   const boss = b && b.kind === 'megaBlock' ? byId(s, b.enemyId!) : undefined;
   if (!b || !boss) return;
   b.leap = { from: { ...boss.pos }, to: { ...p.pos }, start: s.tick, land: s.tick + BOSS.leapTicks };
@@ -322,8 +323,7 @@ function leap(s: SimState, b: BossState): void {
 }
 
 /** The Kraken wraps a tentacle round `p` and starts dragging them in. */
-export function grabPlayer(s: SimState, p: Player): void {
-  const b = s.boss;
+export function grabPlayer(s: SimState, p: Player, b: BossState | null = s.boss): void {
   if (!b || b.kind !== 'kraken') return;
   b.grab = { playerId: p.id, until: s.tick + BOSS.grabTicks };
   s.events.push({ type: 'krakenGrab', playerId: p.id });
@@ -368,24 +368,8 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   }
 }
 
-/** The Rhino's charge: whoever it runs into is thrown across the arena, in the direction it was running. */
-function fling(s: SimState, b: BossState): void {
-  const e = byId(s, b.enemyId!);
-  // charging, or stopped this very tick by the hit
-  if (!e || !(e.state === 'charge' || (e.state === 'stunned' && e.stateUntil - s.tick >= RAMMER.hitStunTicks - 2))) return;
-  for (const p of s.players) {
-    if (p.downUntil !== null || p.flying || p.perched || p.vehicleId !== null) continue;
-    if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + 0.5 || s.tick - ((b.flungAt ??= {})[p.id] ?? -1e9) < 90) continue;
-    b.flungAt[p.id] = s.tick;
-    // in small steps, so a wall stops the flight
-    for (let i = 0; i < BOSS.rhinoFling * 2; i++) moveCircle(s.map, p.pos, e.dir.x * 0.5, e.dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
-    s.events.push({ type: 'kartRam', pos: { ...p.pos } });
-  }
-}
-
 function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
   drag(s, b, intents);
-  if (b.kind === 'rhino') fling(s, b);
   leap(s, b);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };

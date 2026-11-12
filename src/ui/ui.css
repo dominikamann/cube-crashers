@@ -471,3 +471,15 @@ body.no-map .mapbox { display: none; }
 .lobby-note { font-size: 10px; align-self: center; padding: 0 6px; }
 .lan-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(640px, calc(100vw - 32px)); }
 .lan-box { border-color: var(--cyan); border-style: solid; background: rgba(0, 0, 0, 0.3); }
+
+/* the lobby is small: players in two columns of slim rows, a short hint, the card, then Leave and Start */
+.screen.lobby-screen { gap: 10px; justify-content: safe center; overflow-y: auto; }
+.screen.lobby-screen h2 { font-size: clamp(16px, 2.4vw, 22px); }
+.screen.lobby-screen .lobby { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; font-size: 10px; min-width: 0; width: min(560px, calc(100vw - 32px)); }
+.screen.lobby-screen .lobby-row { padding: 5px 9px; gap: 8px; border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 8px; background: rgba(16, 13, 42, 0.56); }
+.screen.lobby-screen .lobby-row i { width: 11px; height: 11px; border-width: 1px; flex: none; }
+.screen.lobby-screen .lobby-row .chip { padding: 3px 6px; font-size: 8px; margin-left: auto; }
+.screen.lobby-screen .lobby-hint { font-size: 9px; opacity: 0.8; }
+.screen.lobby-screen .setup-body { width: min(700px, calc(100vw - 32px)); padding: 10px 14px 12px; gap: 7px; }
+.screen.lobby-screen .setup-row { grid-template-columns: 90px minmax(0, 1fr); }
+.screen.lobby-screen .row2 .btn { min-width: 180px; padding: 10px 20px; }
