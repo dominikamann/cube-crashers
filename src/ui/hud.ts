@@ -204,9 +204,13 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       if (p.out) outBanner.textContent = t('hud.outBanner', { name: watching?.name ?? '' });
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
       // (a boss fight needs no line here: the boss bar and the countdown say it, and the box stays small)
-      nestText.textContent = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : '';
+      const nestsLine = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : '';
       const def = floorDef(s.map.id);
-      floorText.textContent = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length, name: def ? t(def.name as 'floor.plaza') : '' }) : '';
+      // nests and floor on one line (the floor's name is in the countdown), so the box stays small
+      const floorLine = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length }) : '';
+      nestText.textContent = [nestsLine, floorLine].filter(Boolean).join(' · ');
+      floorText.textContent = '';
+      void def;
 
       const shop = s.run.stage === 'shop' ? s.run.shop : null;
       shopBox.style.display = shop ? '' : 'none';

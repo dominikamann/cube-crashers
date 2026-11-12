@@ -432,3 +432,10 @@ body.no-map .mapbox { display: none; }
 .score .coins span { position: relative; top: 1px; }
 .boss { top: 10px; line-height: 1; }
 .boss .bar { margin-top: 5px; }
+/* the run box: hearts, one line for nests and floor, and the alarm with its pips on one line */
+.hud-box .sub { text-shadow: 1px 1px 0 rgba(10, 8, 30, 0.7); margin-top: 7px; }
+.alarm-in { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+.alarm-in .sub { margin-top: 0; }
+.alarm { margin-top: 0; gap: 3px; align-items: center; }
+.alarm i { width: 14px; height: 6px; border: none; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
+.alarm i.on { background: var(--red); box-shadow: 0 0 6px rgba(255, 80, 80, 0.7); }

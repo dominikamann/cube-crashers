@@ -211,7 +211,7 @@ export const en = {
   'medal.silver': 'silver',
   'medal.bronze': 'bronze',
   'floor.shaft': 'Elevator Shaft',
-  'hud.floor': 'Floor {n}/{total} · {name}',
+  'hud.floor': 'Floor {n}/{total}',
   'toast.floor': 'Floor {n}: {name}',
   'toast.bought': 'Bought!',
   'shop.title': 'Elevator shop – next: floor {n}',
