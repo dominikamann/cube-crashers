@@ -633,6 +633,11 @@ docs/         gameplay GIF and screenshots
 - [x] Versus for up to 8 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
 - [x] First-person view as a switch (and the default for versus)
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
+- [ ] Emotes and pings, for online play
+- [ ] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
+- [ ] Daily Run: the same seed for everyone each day, with its own best list
+- [ ] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
+- [ ] Replay of the last seconds (kill cam)
 - [ ] Key rebinding
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 

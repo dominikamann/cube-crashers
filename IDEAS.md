@@ -1,7 +1,7 @@
 # Cube Crashers – Ideas
 
 A place for ideas: new floors, game modes, weapons, towers, monsters, bosses, anything. Nothing here is
-planned or promised; it is a pool to pick from.
+planned or promised; it is a pool to pick from. What is planned next is in the README's roadmap.
 
 **Add your own:** open a pull request that adds a line or a short section in the right place below (sign it
 with your GitHub name if you like), or open an issue with the label `idea`. Keep each idea short: what it is,
@@ -31,19 +31,9 @@ into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
 ### Survival Siege
 One big arena, no nests: survive 10 minutes against ever bigger waves. Every minute an elevator brings a shop.
 
-### King of the Zone
-LAN versus mode: one hold zone in the middle of the map moves every 60 seconds. Teams of players score while
-standing in it; monsters attack everyone.
-
 ### Boss Rush
 All bosses one after another, with a shop between each. Separate high score list.
 
-### Daily Run
-One seed per day for everyone: same map, same crates, same rare weapons. Compare scores with friends.
-
-### Coin-Op Chaos
-Fast arcade mode: every 30 seconds a random rule changes (low gravity, double speed, only swords, everything
-explodes, ...).
 
 ---
 
@@ -86,27 +76,19 @@ Play in your own street or town centre:
 
 ## Monsters
 
-- **Shielder**: carries a shield on one side; hit it from behind or let a mortar lob over it.
-- **Healer**: heals monsters around it; glows green.
 - **Coin Thief**: grabs coins from the floor and runs; drops them all when killed.
-- **Teleporter**: blinks next to you after a short shimmer.
 - **Builder**: places small walls that change the paths of the horde.
 - **Glitch Ghost**: walks through walls, only visible when close or in a frost field.
 
 ## Weapons and items
 
-- **Yo-yo Launcher**: throws and pulls back, hits twice.
-- **Bubble Wand**: traps a monster in a bubble that floats away.
 - **Pogo Stick**: rare item, bounce stomps for 30 seconds.
-- **Magnet Glove**: pulls monsters together for a bomb.
 - **Remote Kart**: send an empty kart driving into a horde.
 - **Cardboard Decoy**: monsters attack it instead of you.
 
 ## Towers
 
-- **Bumper**: knocks monsters back like a pinball bumper.
 - **Coin Fountain**: slowly makes coins, but monsters target it first.
-- **Tesla Coil**: chain lightning between monsters close together.
 - **Turret Kart Garage**: repairs karts parked next to it.
 - **Wall Builder**: puts up a temporary low wall across a path.
 
@@ -121,8 +103,6 @@ Play in your own street or town centre:
 ## Multiplayer and couch co-op
 
 - Split screen for 3 and 4 players (2×2).
-- Online play through a relay, not only on the LAN.
-- Emotes and pings ("help!", "nest here", "need coins").
 - Revive mini-game: tap the button in rhythm to help up faster.
 - Shared team upgrades in the shop.
 
@@ -133,13 +113,11 @@ Let the community add content without touching the core game:
 - Plugins as folders with a manifest (name, version, author, license) plus data and scripts.
 - Weapons, towers, monsters and maps are already data tables (`src/sim/config/`), so a plugin would register
   more entries.
-- Open questions: sandboxing plugin scripts, LAN sync (everyone needs the same plugins; the host could send
-  them on join), a plugin browser.
+- Open questions: sandboxing plugin scripts, LAN and server sync (everyone needs the same plugins; the host
+  could send them on join), a plugin browser.
 
 ## Quality of life
 
 - Key and button rebinding.
-- German translation (and more languages).
 - Colour-blind friendly palette for nests, glitch floor and enemy shots.
-- Replays of the last minute (from the deterministic simulation).
 - Photo mode.
