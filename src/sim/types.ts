@@ -44,7 +44,8 @@ export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard';
-export type RunMode = 'run' | 'quick' | 'endless' | 'versus';
+export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush';
+export type BossKind = 'megaBlock' | 'worm' | 'rex';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
@@ -369,7 +370,7 @@ export interface Blast {
 }
 
 export interface BossState {
-  kind: 'megaBlock' | 'worm';
+  kind: BossKind;
   maxHp: number;
   phase: 1 | 2 | 3;
   /** Mega Block: its enemy id */
@@ -590,7 +591,7 @@ export type SimEvent =
   | { type: 'floorStart'; floor: number; mapId: string }
   | { type: 'bought'; playerId: number; offer: number; kind: ShopOffer['kind'] }
   | { type: 'buyDenied'; playerId: number; offer: number }
-  | { type: 'bossSpawn'; kind: 'megaBlock' | 'worm' }
+  | { type: 'bossSpawn'; kind: BossKind }
   | { type: 'bossPhase'; phase: 2 | 3 }
   | { type: 'bossDead'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }

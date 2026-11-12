@@ -356,3 +356,4 @@ body.versus .toast { font-size: clamp(9px, 1.1vw, 13px); opacity: 0.9; }
 body.versus .toast.final { font-size: clamp(11px, 1.5vw, 17px); text-shadow: 2px 2px 0 var(--shadow); animation-duration: 2.6s; }
 .ranking { max-width: calc(100vw - 32px); }
 body.versus .down { top: 130px; transform: translateX(-50%); font-size: 13px; }
+.rush-box { border-color: var(--pink); background: rgba(60, 0, 40, 0.4); }

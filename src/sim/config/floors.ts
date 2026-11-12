@@ -1,5 +1,5 @@
 import type { FloorMap } from '../map/tilemap';
-import type { ThemeId } from '../types';
+import type { BossKind, ThemeId } from '../types';
 import { floor01 } from './floor01';
 import { floorCandy } from './floor-candy';
 import { floorNeon } from './floor-neon';
@@ -15,7 +15,7 @@ export interface FloorDef {
   map: FloorMap;
   theme: ThemeId;
   kind: 'nests' | 'boss' | 'shaft' | 'race' | 'lane' | 'maze';
-  boss?: 'megaBlock' | 'worm';
+  boss?: BossKind;
   /** shown in the HUD */
   name: string;
   /** extra chance for elites in hordes */
@@ -45,6 +45,13 @@ export function runFloors(seed: number): string[] {
   if (seed % 2 === 1) floors[3] = floorHighway.id;
   return floors;
 }
+
+/** Boss Rush: every boss in a row, each on its own arena, with a shop between them */
+export const BOSS_RUSH: { map: string; boss: BossKind }[] = [
+  { map: floorArena.id, boss: 'megaBlock' },
+  { map: floorRooftop.id, boss: 'worm' },
+  { map: floorNeon.id, boss: 'rex' },
+];
 
 export function floorDef(mapId: string): FloorDef | undefined {
   return FLOORS[mapId];

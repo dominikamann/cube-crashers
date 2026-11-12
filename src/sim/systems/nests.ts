@@ -22,7 +22,7 @@ import {
   START_CLEAR_RADIUS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
-import { floorDef } from '../config/floors';
+import { BOSS_RUSH, floorDef } from '../config/floors';
 import { BLOCKS_WALKER, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
@@ -111,11 +111,13 @@ export function setupFloor(s: SimState): void {
     enterRace(s);
     return;
   }
-  if (def?.kind === 'boss') {
+  // Boss Rush: every floor is a boss fight, whatever map it is on
+  const rushBoss = s.run.mode === 'bossrush' ? BOSS_RUSH[s.run.floor]?.boss : undefined;
+  if (def?.kind === 'boss' || rushBoss) {
     // a boss floor: no nests, no rising alarm, just the boss and a few helpers
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     s.nests = [];
-    spawnBoss(s, def.boss!);
+    spawnBoss(s, rushBoss ?? def!.boss!);
     placeStartCrates(s);
     placeStartKarts(s);
     s.nextPowerupAt = s.tick + POWERUP.firstTicks;

@@ -1,6 +1,6 @@
-import { BLOCKS_ENEMY, moveCircle } from '../map/tilemap';
+import { BLOCKS_ENEMY, moveCircle, nearestFree } from '../map/tilemap';
 import { flowDir } from '../map/flowfield';
-import { DT, TICK_RATE, type BossState, type Enemy, type SimState, type Vec2 } from '../types';
+import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
 import { hpScale } from './coop';
 import { dropCoins } from './combat';
@@ -26,6 +26,10 @@ export const BOSS = {
   /** shockwave: blasts in a line, one after another */
   waveLength: 8,
   waveStep: 1.5,
+  /** King Rex */
+  rexHp: 1600,
+  /** King Rex's roar: the ground cracks in a ring around it */
+  roarRadius: 4.5,
 };
 
 const REINFORCEMENTS: Record<2 | 3, HordeComp> = {
@@ -45,11 +49,17 @@ export function bossHp(s: SimState): number {
 }
 
 /** Called when a boss floor is set up: the boss appears in the middle of the arena. */
-export function spawnBoss(s: SimState, kind: 'megaBlock' | 'worm'): void {
-  const centre = { x: s.map.w / 2, z: s.map.h * 0.35 };
+export function spawnBoss(s: SimState, kind: BossKind): void {
+  const centre = nearestFree(s.map, { x: s.map.w / 2, z: s.map.h * 0.35 }, 1.2, BLOCKS_ENEMY);
   let b: BossState;
-  if (kind === 'megaBlock') {
-    const e = spawnEnemy(s, 'megaBlock', centre);
+  if (kind === 'megaBlock' || kind === 'rex') {
+    const e = spawnEnemy(s, kind === 'rex' ? 'trex' : 'megaBlock', centre);
+    if (kind === 'rex') {
+      // King Rex: a T-Rex grown to boss size
+      e.hp = e.maxHp = BOSS.rexHp * hpScale(s);
+      e.radius = 1.3;
+      e.speed *= 1.1;
+    }
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else {
     const ids: number[] = [];
@@ -83,6 +93,17 @@ function attack(s: SimState, b: BossState): void {
         const at = { x: boss.pos.x + dir.x * i * BOSS.waveStep, z: boss.pos.z + dir.z * i * BOSS.waveStep };
         telegraph(s, at, 1.3, BOSS.stompDamage, BOSS.warnTicks + i * 5);
       }
+    }
+  } else if (b.kind === 'rex') {
+    const rex = byId(s, b.enemyId!);
+    // a roar that cracks the ground in a ring around it, or a stomp under every player
+    if (rex && s.rng.next() < 0.45) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        telegraph(s, { x: rex.pos.x + Math.cos(a) * BOSS.roarRadius, z: rex.pos.z + Math.sin(a) * BOSS.roarRadius }, 1.5, BOSS.stompDamage);
+      }
+    } else {
+      for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
     }
   } else {
     // the worm strikes at a player or a tower

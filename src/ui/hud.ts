@@ -41,7 +41,8 @@ export interface ShopActions {
 }
 
 /** the last floor of a run: its boss is the final boss */
-const isFinalFloor = (s: SimState) => s.run.mode === 'run' && s.run.floor === s.run.floors.length - 1;
+const isFinalFloor = (s: SimState) => (s.run.mode === 'run' || s.run.mode === 'bossrush') && s.run.floor === s.run.floors.length - 1;
+const bossLabel = (kind: string) => t(`boss.${kind}` as 'boss.worm');
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud', root);
@@ -327,8 +328,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('toast.nestBack'), 'warn');
             break;
           case 'bossSpawn':
-            if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'final');
-            else toast(t('toast.boss', { name: t(e.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock') }), 'warn');
+            if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: bossLabel(e.kind) }), 'final');
+            else toast(t('toast.boss', { name: bossLabel(e.kind) }), 'warn');
             break;
           case 'mazePower':
             toast(t('maze.power'), 'good');
@@ -493,7 +494,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       layer.classList.toggle('has-bar', !!s.boss || holdBox.style.display === '');
       if (s.boss) {
         bossBox.style.display = '';
-        const name = t(s.boss.kind === 'worm' ? 'boss.worm' : 'boss.megaBlock');
+        const name = bossLabel(s.boss.kind);
         bossName.textContent = isFinalFloor(s) ? t('boss.final', { name }) : name;
         bossBox.classList.toggle('final', isFinalFloor(s));
         bossFill.style.width = `${Math.max(0, bossHp(s) / s.boss.maxHp) * 100}%`;

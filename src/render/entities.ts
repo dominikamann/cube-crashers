@@ -229,7 +229,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const awake = s.players.filter(p => p.downUntil === null);
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
-        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock';
+        // King Rex is a T-Rex grown to boss size
+        const kingRex = s.boss?.kind === 'rex' && s.boss.enemyId === e.id;
+        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || kingRex;
         // a glitch ghost is hard to see from afar: it flickers in and out, jumping about, until it is close
         if (e.kind === 'phantom') {
           const near = Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z)));
@@ -242,7 +244,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const pop = boss ? 1 : popIn(Math.min(1, (time - born) / 0.3));
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
         const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
-        const scale = (e.elite ? 1.4 : 1) * worn * pop;
+        const scale = (kingRex ? 2.4 : e.elite ? 1.4 : 1) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));

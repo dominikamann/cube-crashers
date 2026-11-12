@@ -269,6 +269,7 @@ function startGame() {
     {
       play: () => newSoloGame('run'),
       daily: () => newSoloGame('run', true),
+      bossRush: () => newSoloGame('bossrush'),
       quick: () => newSoloGame('quick'),
       endless: () => newSoloGame('endless'),
       versus: () => newVersusGame(),
@@ -493,7 +494,7 @@ function startGame() {
       credits: s.credits,
       nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
       nests: s.nests.length,
-      best: dailyRun ? recordDaily(localStorage, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.difficulty),
+      best: dailyRun ? recordDaily(localStorage, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.run.mode === 'bossrush' ? 'bossrush' : s.difficulty),
       daily: dailyRun ?? undefined,
       tickets: earnTickets(s),
       unlocked: newUnlocks,
