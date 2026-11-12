@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PadControls, type PadSnapshot } from '../src/input/gamepad';
 import { Keyboard } from '../src/input/keyboard';
+import { aimDistance, EYE_HEIGHT, FP_MAX_AIM } from '../src/input/first-person';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 
@@ -87,5 +88,26 @@ describe('first-person view as a default', () => {
     expect(Math.cos(c.yaw)).toBeCloseTo(-1);
     c.setFirstPerson(false, { x: 0, z: 1 });
     expect(c.firstPerson).toBe(false);
+  });
+});
+
+describe('looking up and down in first person', () => {
+  it('looking down brings the aim point closer, the mouse tilts the view', () => {
+    const s = createSim(floor01, 1);
+    const p = s.players[0];
+    p.aim = { x: 0, z: -1 };
+    const k = new Keyboard();
+    k.setFirstPerson(true, p.aim);
+    const far = aimOf(k.commands(s, 0, 10));
+    k.look(0, 200);
+    const near = aimOf(k.commands(s, 0, 20));
+    expect(p.pos.z - near.z).toBeLessThan(p.pos.z - far.z);
+    expect(p.pos.z - near.z).toBeGreaterThan(1);
+    expect(k.pitch).toBeLessThan(0);
+  });
+
+  it('the aim distance follows where the view meets the ground', () => {
+    expect(aimDistance(-Math.atan(EYE_HEIGHT / 5))).toBeCloseTo(5);
+    expect(aimDistance(0.2)).toBe(FP_MAX_AIM);
   });
 });

@@ -318,9 +318,9 @@ function startGame() {
       // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
-      renderer.setFirstPerson(0, fp0on ? fp0!.yaw : null);
+      renderer.setFirstPerson(0, fp0on ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
       const fp1on = split && padCtl2.firstPerson && view().run.stage !== 'shop';
-      renderer.setFirstPerson(1, fp1on ? padCtl2.yaw : null);
+      renderer.setFirstPerson(1, fp1on ? { yaw: padCtl2.yaw, pitch: padCtl2.pitch } : null);
       fpCross[0].style.display = fp0on && mode === 'playing' ? '' : 'none';
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
       showCockpit(0, fp0on && mode === 'playing', localId());

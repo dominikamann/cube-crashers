@@ -14,6 +14,7 @@ import { createPickups } from './pickups';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
+import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
@@ -52,8 +53,8 @@ export interface GameRenderer {
    * Taken from the screen, not the world, so moving the camera never moves the point under the pointer.
    */
   setMouseLook(view: number, offset: { x: number; y: number } | null): void;
-  /** first person for view `view`, looking along `yaw` (see input/first-person); null = the normal view from above */
-  setFirstPerson(view: number, yaw: number | null): void;
+  /** first person for view `view`, looking along `yaw` tilted by `pitch` (see input/first-person); null = the view from above */
+  setFirstPerson(view: number, look: { yaw: number; pitch: number } | null): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
@@ -69,8 +70,7 @@ const LOOK_AHEAD = 0.45;
 const LOOK_AHEAD_MAX = 3;
 /** camera distance when zoomed out */
 const ZOOM_OUT = 1.5;
-/** first person: eye height above the feet, and a wider lens */
-const FP_EYE = 1.3;
+/** first person: a wider lens (the eye height comes from the input side, so the crosshair meets the aim point) */
 const FP_FOV = 72;
 
 /** Soft vignette and a touch of contrast and saturation: makes the colours pop without blurring anything. */
@@ -148,8 +148,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     wantZoom: number;
     lookAhead: boolean;
     mouseLook: { x: number; y: number } | null;
-    /** first person: the direction the eyes look, or null for the view from above */
-    fpYaw: number | null;
+    /** first person: where the eyes look, or null for the view from above */
+    fp: { yaw: number; pitch: number } | null;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -162,7 +162,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     wantZoom: 1,
     lookAhead: false,
     mouseLook: null,
-    fpYaw: null,
+    fp: null,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -327,18 +327,19 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           ox += v.mouseLook.x * LOOK_AHEAD_MAX;
           oz += v.mouseLook.y * LOOK_AHEAD_MAX;
         }
-        const fov = v.fpYaw === null ? 45 : FP_FOV;
+        const fov = v.fp === null ? 45 : FP_FOV;
         if (v.camera.fov !== fov) {
           v.camera.fov = fov;
           v.camera.updateProjectionMatrix();
         }
-        if (v.fpYaw !== null) {
-          // first person: the eyes sit in the head, straight ahead along the view, no lag
+        if (v.fp !== null) {
+          // first person: the eyes sit in the head, looking along the view, no lag
           const model = actors.playerModel(v.id);
-          const eyeY = (model?.position.y ?? 0) + FP_EYE;
-          const fx = -Math.sin(v.fpYaw), fz = -Math.cos(v.fpYaw);
+          const eyeY = (model?.position.y ?? 0) + EYE_HEIGHT;
+          const c = Math.cos(v.fp.pitch);
+          const fx = -Math.sin(v.fp.yaw) * c, fz = -Math.cos(v.fp.yaw) * c;
           v.camPos.set(p.x, eyeY, p.z);
-          v.camLook.set(p.x + fx * 10, eyeY - 0.9, p.z + fz * 10);
+          v.camLook.set(p.x + fx * 10, eyeY + Math.sin(v.fp.pitch) * 10, p.z + fz * 10);
           v.camera.position.copy(v.camPos).addScaledVector(shake, 0.3);
           v.camera.lookAt(v.camLook);
           return;
@@ -373,7 +374,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         healthBars.face(v.camera, views.map(x => x.id));
         // first person: you do not see the inside of your own head
         // (nor the ground crosshair: the screen has one in the middle)
-        const hidden = v.fpYaw !== null ? [actors.playerModel(v.id), actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
+        // (a lobbed weapon keeps it, as the spot where the throw will land)
+        const me = s.players.find(pl => pl.id === v.id);
+        const lob = me ? ['hotdogSlinger', 'bomb'].includes(me.weapons[me.selected]?.kind ?? '') && !me.rareSelected : false;
+        const hidden = v.fp !== null ? [actors.playerModel(v.id), lob ? undefined : actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
         const shown = hidden.map(o => o.visible);
         for (const o of hidden) o.visible = false;
         v.composer!.render();
@@ -382,7 +386,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         renderer.autoClear = false;
         renderer.render(overlay, v.camera);
         // first person: the weapon in your hand on top of everything
-        if (v.fpYaw !== null) {
+        if (v.fp !== null) {
           viewModel.update(s, v.id, time, frameDt);
           viewModel.render(renderer, v.camera.aspect);
         }
@@ -399,8 +403,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     setMouseLook(view, offset) {
       if (views[view]) views[view].mouseLook = offset;
     },
-    setFirstPerson(view, yaw) {
-      if (views[view]) views[view].fpYaw = yaw;
+    setFirstPerson(view, look) {
+      if (views[view]) views[view].fp = look;
     },
     setLookAhead(view, on) {
       if (views[view]) views[view].lookAhead = on;

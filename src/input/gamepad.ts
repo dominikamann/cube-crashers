@@ -1,7 +1,7 @@
 import { padAt } from '../sim/systems/towers';
 import type { Command, Player, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 import { instantUse } from './context';
-import { FP_AIM, forwardOf, lookOf, PAD_TURN, viewMove, yawOf } from './first-person';
+import { aimDistance, clampPitch, forwardOf, lookOf, PAD_TURN, PITCH_START, viewMove, yawOf } from './first-person';
 import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
 
 /** What we read from a browser Gamepad each frame (kept plain so it can be tested without a DOM). */
@@ -66,6 +66,7 @@ export class PadControls {
   /** first-person view (View button): the right stick turns, the left stick walks where it looks */
   firstPerson = false;
   yaw = 0;
+  pitch = PITCH_START;
   private lastNow: number | null = null;
   /** the highlighted card in the build menu: X builds it */
   selected: TowerKind = DEFAULT_TOWER;
@@ -93,7 +94,10 @@ export class PadControls {
   /** switch first person on or off from outside (versus starts in it), looking along `aim` */
   setFirstPerson(on: boolean, aim: Vec2): void {
     this.firstPerson = on;
-    if (on) this.yaw = yawOf(aim);
+    if (on) {
+      this.yaw = yawOf(aim);
+      this.pitch = PITCH_START;
+    }
   }
 
   onEvents(events: SimEvent[]): void {
@@ -132,17 +136,21 @@ export class PadControls {
     this.lastNow = now;
     if (press(PAD.BACK)) {
       this.firstPerson = !this.firstPerson;
-      if (this.firstPerson && p) this.yaw = yawOf(lookOf(p));
+      if (this.firstPerson && p) {
+        this.yaw = yawOf(lookOf(p));
+        this.pitch = PITCH_START;
+      }
     }
     const move = stick(pad.axes[0] ?? 0, pad.axes[1] ?? 0, DEADZONE);
     if (this.firstPerson) {
       // the right stick turns the view; the left one walks relative to it; RT fires
-      const turn = stick(pad.axes[2] ?? 0, 0, AIM_DEADZONE).x;
-      this.yaw -= turn * PAD_TURN * dt;
+      const look = stick(pad.axes[2] ?? 0, pad.axes[3] ?? 0, AIM_DEADZONE);
+      this.yaw -= look.x * PAD_TURN * dt;
+      this.pitch = clampPitch(this.pitch - look.z * PAD_TURN * 0.4 * dt);
       out.push({ type: 'move', playerId, dir: viewMove(this.yaw, move.x, -move.z) });
-      const f = forwardOf(this.yaw);
+      const f = forwardOf(this.yaw), d = aimDistance(this.pitch);
       this.aimDir = f;
-      if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * FP_AIM, z: p.pos.z + f.z * FP_AIM } });
+      if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d } });
       if ((pad.buttons[PAD.RT]?.value ?? 0) > TRIGGER_FIRE) out.push({ type: 'fire', playerId });
       return this.actions(pad, s, p, playerId, now, out);
     }

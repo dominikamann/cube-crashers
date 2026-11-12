@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
 import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
+import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
 import { zoneTiles } from '../sim/systems/nests';
 import { KART } from '../sim/systems/vehicles';
@@ -558,7 +559,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         r.group.visible = !!p0 && p0.downUntil === null;
         if (!p0) return;
         foci[i].set(p0.pos.x, 0, p0.pos.z);
-        r.group.position.set(p0.aimPoint.x, 0.08, p0.aimPoint.z);
+        // a lobbed weapon lands at the aim point, but never further than its range: show where it lands
+        const held = p0.rareSelected ? undefined : p0.weapons[p0.selected]?.kind;
+        const range = held === 'hotdogSlinger' ? HOTDOG.range : held === 'bomb' ? BOMB.range : Infinity;
+        const ax = p0.aimPoint.x - p0.pos.x, az = p0.aimPoint.z - p0.pos.z;
+        const k = Math.min(1, range / Math.max(0.001, Math.hypot(ax, az)));
+        r.group.position.set(p0.pos.x + ax * k, 0.08, p0.pos.z + az * k);
         r.group.rotation.y = time * 1.5;
         const ready = (p0.weapons[p0.selected]?.cooldown ?? 0) === 0;
         // in split screen the crosshairs wear the suit colours, so nobody aims with the other's

@@ -1,6 +1,6 @@
 import { padAt } from '../sim/systems/towers';
 import { instantUse } from './context';
-import { FP_AIM, forwardOf, lookOf, MOUSE_TURN, viewMove, yawOf } from './first-person';
+import { aimDistance, clampPitch, forwardOf, lookOf, MOUSE_TURN, PITCH_START, viewMove, yawOf } from './first-person';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
 /** the build menu's cards from left to right */
@@ -20,8 +20,9 @@ export class Keyboard {
   steerWithMouse = false;
   /** first-person view (V): the mouse turns the view, W walks where it looks */
   firstPerson = false;
-  /** where the first-person view looks (see forwardOf) */
+  /** where the first-person view looks (see forwardOf), and how far it tilts up (+) or down (-) */
   yaw = 0;
+  pitch = PITCH_START;
   private toggleView = false;
   private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
@@ -80,12 +81,17 @@ export class Keyboard {
   /** switch first person on or off from outside (versus starts in it), looking along `aim` */
   setFirstPerson(on: boolean, aim: Vec2): void {
     this.firstPerson = on;
-    if (on) this.yaw = yawOf(aim);
+    if (on) {
+      this.yaw = yawOf(aim);
+      this.pitch = PITCH_START;
+    }
   }
 
   /** mouse movement while the pointer is captured (first person): turns the view */
-  look(dx: number, _dy: number): void {
-    if (this.firstPerson) this.yaw -= dx * MOUSE_TURN;
+  look(dx: number, dy: number): void {
+    if (!this.firstPerson) return;
+    this.yaw -= dx * MOUSE_TURN;
+    this.pitch = clampPitch(this.pitch - dy * MOUSE_TURN);
   }
   /** where the mouse points on the ground, or null when it is outside the game */
   setAim(point: Vec2 | null): void {
@@ -177,7 +183,10 @@ export class Keyboard {
     if (this.toggleView) {
       this.toggleView = false;
       this.firstPerson = !this.firstPerson;
-      if (this.firstPerson && p) this.yaw = yawOf(lookOf(p));
+      if (this.firstPerson && p) {
+        this.yaw = yawOf(lookOf(p));
+        this.pitch = PITCH_START;
+      }
     }
     if (this.firstPerson) {
       // first person: W walks (and drives) where the view looks, A and D step sideways
@@ -228,8 +237,8 @@ export class Keyboard {
     }
 
     if (this.firstPerson && p) {
-      const f = forwardOf(this.yaw);
-      cmds.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * FP_AIM, z: p.pos.z + f.z * FP_AIM } });
+      const f = forwardOf(this.yaw), d = aimDistance(this.pitch);
+      cmds.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d } });
     } else if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
     if (this.jump) cmds.push({ type: 'jump', playerId });
