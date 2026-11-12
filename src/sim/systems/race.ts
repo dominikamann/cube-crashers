@@ -6,17 +6,19 @@ import { openShop } from './shop';
 import { addVehicle } from './vehicles';
 
 export const RACE = {
-  /** two minutes */
-  ticks: 120 * TICK_RATE,
+  /** the first to drive this many laps wins, and the race ends right then */
+  laps: 5,
+  /** the longest a race may take, in case nobody finishes */
+  maxTicks: 6 * 60 * TICK_RATE,
   /** a wrecked kart is back on the track after this long */
   wreckTicks: 2 * TICK_RATE,
   coinsPerLap: 15,
   winnerBonus: 50,
-  /** playing alone: a medal for the laps driven */
+  /** playing alone: a medal for finishing the laps within this many seconds */
   medals: {
-    gold: { laps: 4, coins: 100 },
-    silver: { laps: 3, coins: 60 },
-    bronze: { laps: 2, coins: 30 },
+    gold: { seconds: 150, coins: 100 },
+    silver: { seconds: 210, coins: 60 },
+    bronze: { seconds: 360, coins: 30 },
   },
   spawnEveryTicks: 4 * TICK_RATE,
   spawnCount: 3,
@@ -40,10 +42,15 @@ function seat(s: SimState, p: Player, at: Vec2): void {
   p.facing = { x: 1, z: 0 };
 }
 
-/** The Kart Rally between two floors: everyone in a kart, two minutes, most laps win. */
+/** seconds since the start of the race */
+export function raceSeconds(s: SimState): number {
+  return (RACE.maxTicks - (s.run.stageUntil - s.tick)) / TICK_RATE;
+}
+
+/** The Kart Rally between two floors: everyone in a kart, the first to drive five laps wins. */
 export function enterRace(s: SimState): void {
   s.run.stage = 'race';
-  s.run.stageUntil = s.tick + RACE.ticks;
+  s.run.stageUntil = s.tick + RACE.maxTicks;
   s.run.race = { laps: {}, next: {}, last: {}, wreckedUntil: {} };
   s.map = floorRace;
   s.theme = 'race';
@@ -113,11 +120,12 @@ export function updateRace(s: SimState): void {
     if (next === 0) {
       race.laps[p.id] = (race.laps[p.id] ?? 0) + 1;
       s.events.push({ type: 'raceLap', playerId: p.id, lap: race.laps[p.id] });
+      if (race.laps[p.id] >= RACE.laps) return finishRace(s, p.id);
     }
   }
 
   // monsters wander onto the track to be rammed or shot
-  const elapsed = RACE.ticks - (s.run.stageUntil - s.tick);
+  const elapsed = RACE.maxTicks - (s.run.stageUntil - s.tick);
   if (elapsed > 0 && elapsed % RACE.spawnEveryTicks === 0 && s.map.waypoints.length > 0) {
     const at = s.rng.pick(s.map.waypoints);
     for (let i = 0; i < RACE.spawnCount && s.enemies.length < ENEMY_CAP; i++) {
@@ -128,28 +136,30 @@ export function updateRace(s: SimState): void {
   if (s.tick >= s.run.stageUntil) finishRace(s);
 }
 
-function finishRace(s: SimState): void {
+/** `finisher`: the player who just drove the last lap; without one the time ran out and the most laps win */
+function finishRace(s: SimState, finisher?: number): void {
   const race = s.run.race!;
   const laps = { ...race.laps };
   let medal: 'gold' | 'silver' | 'bronze' | null = null;
   let winners: number[] = [];
   if (s.players.length === 1) {
     const p = s.players[0];
-    const n = laps[p.id] ?? 0;
-    for (const m of ['gold', 'silver', 'bronze'] as const) {
-      if (n >= RACE.medals[m].laps) {
-        medal = m;
-        p.coins += RACE.medals[m].coins;
-        break;
+    const seconds = raceSeconds(s);
+    if (finisher === p.id) {
+      for (const m of ['gold', 'silver', 'bronze'] as const) {
+        if (seconds <= RACE.medals[m].seconds) {
+          medal = m;
+          p.coins += RACE.medals[m].coins;
+          break;
+        }
       }
     }
   } else {
     const best = Math.max(...s.players.map(p => laps[p.id] ?? 0));
     for (const p of s.players) p.coins += (laps[p.id] ?? 0) * RACE.coinsPerLap;
-    if (best > 0) {
-      winners = s.players.filter(p => (laps[p.id] ?? 0) === best).map(p => p.id);
-      for (const p of s.players) if (winners.includes(p.id)) p.coins += RACE.winnerBonus;
-    }
+    if (finisher !== undefined) winners = [finisher];
+    else if (best > 0) winners = s.players.filter(p => (laps[p.id] ?? 0) === best).map(p => p.id);
+    for (const p of s.players) if (winners.includes(p.id)) p.coins += RACE.winnerBonus;
   }
   s.events.push({ type: 'raceEnd', laps, medal, winners });
   // out of the karts

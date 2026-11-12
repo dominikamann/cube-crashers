@@ -71,7 +71,7 @@ export const PLANT_TICKS = 60;
 export const HOLD_TICKS = 1500;
 /** how fast the hold counter climbs per extra alarm level is unchanged; rush hordes get tougher instead */
 export const HOLD_RADIUS = 6;
-export const RUSH_INTERVAL_TICKS = 300;
+export const RUSH_INTERVAL_TICKS = 450;
 /** from this alarm level on, rushes come from two entries at once */
 export const DOUBLE_RUSH_ALARM = 2;
 export const GUARD_FACTOR = 1.5;
@@ -91,7 +91,7 @@ export const SHARK = { range: 7, windupTicks: 30, speed: 15, distance: 7, damage
 export const ENEMY_CAP = 160;
 
 export const ALARM_MAX = 5;
-export const ALARM_TICKS = 2400;
+export const ALARM_TICKS = 3600;
 export const ALARM_SIZE_STEP = 0.2;
 export const OVERLOAD_RUSH_TICKS = 480;
 

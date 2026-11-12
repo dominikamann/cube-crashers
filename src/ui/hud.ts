@@ -1,5 +1,5 @@
 import { inZone } from '../sim/systems/nests';
-import { RACE } from '../sim/systems/race';
+import { RACE, raceSeconds } from '../sim/systems/race';
 import { LANE } from '../sim/systems/lane';
 import { MAZE } from '../sim/systems/maze';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
@@ -250,7 +250,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         for (let i = 0; i < maxDashCharges(p); i++) el('i', i < p.dashCharges ? 'on' : '', dashRow);
       }
       const kart = p.vehicleId !== null ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
-      kartBox.style.display = kart ? '' : 'none';
+      // the rally's karts never run dry or break down: no gauges there
+      kartBox.style.display = kart && s.run.stage !== 'race' ? '' : 'none';
       if (kart) {
         fuelFill.style.width = `${(kart.fuel / KART.fuelTicks) * 100}%`;
         // race karts never run dry
@@ -496,11 +497,13 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       if (race && !wasRace) toast(t('race.start'), 'final');
       wasRace = !!race;
       if (race) {
-        const left = Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE));
+        const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+        const seconds = raceSeconds(s);
         const done = race.laps[p.id] ?? 0;
-        raceMain.textContent = t('race.hud', { lap: done + 1, time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` });
-        const medal = s.players.length === 1 ? (['bronze', 'silver', 'gold'] as const).find(m => done < RACE.medals[m].laps) : undefined;
-        raceSub.textContent = medal ? t('race.next', { medal: t(`medal.${medal}` as 'medal.gold'), laps: RACE.medals[medal].laps }) : '';
+        raceMain.textContent = t('race.hud', { lap: Math.min(done + 1, RACE.laps), laps: RACE.laps, time: clock(seconds) });
+        // alone: the best medal still in reach, and the time to beat for it
+        const medal = s.players.length === 1 ? (['gold', 'silver', 'bronze'] as const).find(m => seconds <= RACE.medals[m].seconds) : undefined;
+        raceSub.textContent = medal ? t('race.next', { medal: t(`medal.${medal}` as 'medal.gold'), time: clock(RACE.medals[medal].seconds) }) : '';
       }
 
       // the boss bar and the zone bar sit above the weapon bar; hints move up to make room

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
-import { ENEMY_CAP, HOLD_RADIUS, HOLD_TICKS } from '../../src/sim/config/balance';
+import { ENEMY_CAP, HOLD_RADIUS, HOLD_TICKS, RUSH_INTERVAL_TICKS } from '../../src/sim/config/balance';
 import { BLOCKS_WALKER } from '../../src/sim/map/tilemap';
 import { zoneTiles } from '../../src/sim/systems/nests';
 import { createSim, stepSim } from '../../src/sim/sim';
@@ -123,7 +123,9 @@ describe('holding', () => {
 
     s.alarm.level = 2;
     s.enemies = [];
-    run(s, 300);
+    // the nest's own blasts must not knock the holder down while we wait for the next wave
+    s.players[0].invulnUntil = 1e9;
+    run(s, RUSH_INTERVAL_TICKS + 5);
     expect(s.enemies.length).toBeGreaterThanOrEqual(10);
   });
 

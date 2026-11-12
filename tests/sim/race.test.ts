@@ -6,6 +6,7 @@ import { floorCleared } from '../../src/sim/systems/run';
 import { RACE, enterRace } from '../../src/sim/systems/race';
 import type { SimState, Vec2 } from '../../src/sim/types';
 import { run } from './helpers';
+import { spawnEnemy } from '../../src/sim/systems/enemies';
 
 const centre = (i: number): Vec2 => {
   const c = RACE_CHECKPOINTS[i];
@@ -72,25 +73,57 @@ describe('kart rally', () => {
     expect(Math.hypot(again!.pos.x - c.x, again!.pos.z - c.z)).toBeLessThan(3);
   });
 
-  it('ends after two minutes: solo earns a medal in coins, then the elevator shop opens', () => {
+  it('ends as soon as the fifth lap is done: solo earns a medal by the time it took, then the elevator shop opens', () => {
     const s = raceSim();
     const coins = s.players[0].coins;
-    for (let lap = 0; lap < 3; lap++) for (const i of LAP) driveTo(s, 0, i);
-    s.run.stageUntil = s.tick;
-    stepSim(s, []);
-    expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd' }));
-    expect(s.players[0].coins).toBe(coins + RACE.medals.silver.coins);
+    for (let lap = 0; lap < RACE.laps - 1; lap++) for (const i of LAP) driveTo(s, 0, i);
+    expect(s.run.stage).toBe('race');
+    // the fifth lap, finished in silver time
+    s.run.stageUntil = s.tick + RACE.maxTicks - (RACE.medals.gold.seconds + 20) * 60;
+    for (const i of LAP) driveTo(s, 0, i);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd', medal: 'silver' }));
+    expect(s.players[0].coins).toBe(coins + RACE.laps * 0 + RACE.medals.silver.coins);
     expect(s.run.stage).toBe('shop');
   });
 
-  it('with several players the most laps win a bonus', () => {
+  it('with several players the first to drive five laps wins, and the race ends right then', () => {
     const s = raceSim(2);
     const before = s.players.map(p => p.coins);
-    for (const i of LAP) driveTo(s, 0, i);
+    for (const i of LAP) driveTo(s, 1, i);
+    for (let lap = 0; lap < RACE.laps; lap++) for (const i of LAP) driveTo(s, 0, i);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd', winners: [0] }));
+    expect(s.players[0].coins - before[0]).toBe(RACE.laps * RACE.coinsPerLap + RACE.winnerBonus);
+    expect(s.players[1].coins - before[1]).toBe(RACE.coinsPerLap);
+  });
+
+  it('a kart never runs out of fuel in the race', () => {
+    const s = raceSim();
+    const v = s.vehicles[0];
+    v.fuel = 1;
+    v.vel = { x: 8, z: 0 };
+    run(s, 120, () => [{ type: 'move', playerId: 0, dir: { x: 1, z: 0 } }]);
+    expect(s.players[0].vehicleId).toBe(v.id);
+    expect(v.fuel).toBeGreaterThan(0);
+  });
+
+  it('ramming monsters on the track never wrecks the kart: nobody is thrown out mid-race', () => {
+    const s = raceSim();
+    const v = s.vehicles[0];
+    const hp = v.hp;
+    for (let i = 0; i < 40; i++) {
+      spawnEnemy(s, 'tank', { x: v.pos.x + 0.6, z: v.pos.z });
+      v.vel = { x: 8, z: 0 };
+      stepSim(s, [{ type: 'move', playerId: 0, dir: { x: 1, z: 0 } }]);
+    }
+    expect(v.hp).toBe(hp);
+    expect(s.players[0].vehicleId).toBe(v.id);
+  });
+
+  it('nobody finishing: it still ends after the longest a race may take', () => {
+    const s = raceSim();
     s.run.stageUntil = s.tick;
     stepSim(s, []);
-    expect(s.players[0].coins - before[0]).toBe(RACE.coinsPerLap + RACE.winnerBonus);
-    expect(s.players[1].coins - before[1]).toBe(0);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd', medal: null }));
   });
 
   it('can be played on its own as a single floor', () => {
@@ -114,7 +147,7 @@ describe('the rally track', () => {
     const s = createSim(floorRace, 3, { mode: 'quick' });
     const bot = createBot();
     let laps = 0;
-    for (let i = 0; i < RACE.ticks + 5 && s.phase === 'playing'; i++) {
+    for (let i = 0; i < 120 * 60 && s.phase === 'playing'; i++) {
       stepSim(s, bot(s));
       for (const e of s.events) if (e.type === 'raceLap') laps = e.lap;
     }

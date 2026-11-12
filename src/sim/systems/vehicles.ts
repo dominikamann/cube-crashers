@@ -76,7 +76,8 @@ export function placeStartKarts(s: SimState): void {
 /** Damage meant for a driver hits the kart instead. */
 export function damageVehicle(s: SimState, vehicleId: number, amount: number): void {
   const v = s.vehicles.find(x => x.id === vehicleId);
-  if (v) v.hp -= amount;
+  // the rally's karts cannot be wrecked: nobody is thrown out of the race
+  if (v && s.run.stage !== 'race') v.hp -= amount;
 }
 
 function leave(s: SimState, p: Player, v: Vehicle): void {
@@ -172,7 +173,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
-    if (v.kind === 'kart') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
+    if (v.kind === 'kart' && s.run.stage !== 'race') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
     if (v.kind === 'unicorn') v.hp -= KART.ramCostSmall;
     damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
