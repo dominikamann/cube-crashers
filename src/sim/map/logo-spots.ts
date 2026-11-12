@@ -52,11 +52,16 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
           const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
           ok = at(x, z) === Tile.Wall && at(x + facing.x, z + facing.z) === Tile.Floor;
         }
-        if (ok && Math.hypot(tx - floor.tx, tz - floor.tz) > 8) walls.push({ kind: 'wall', tx, tz, w: SIZE.w, along, facing });
+        if (ok) walls.push({ kind: 'wall', tx, tz, w: SIZE.w, along, facing });
       }
+  // the two are spread over the map: the wall logo at least a third of the map's diagonal from the floor one
+  // (where no wall is that far, the furthest there is)
+  const apart = (w: LogoSpot) => Math.hypot(w.tx - floor.tx, w.tz - floor.tz);
+  const far = walls.filter(w => apart(w) >= Math.hypot(map.w, map.h) / 3);
+  const pool = far.length ? far : walls.slice().sort((a, b) => apart(b) - apart(a)).slice(0, 1);
   // a face toward the bottom of the map is seen from above too, not only in first person
-  const south = walls.filter(w => w.kind === 'wall' && w.facing.z === 1);
-  const wall = pick(south.length ? south : walls, 0xa11);
+  const south = pool.filter(w => w.kind === 'wall' && w.facing.z === 1);
+  const wall = pick(south.length ? south : pool, 0xa11);
   return wall ? [floor, wall] : [floor];
 }
 

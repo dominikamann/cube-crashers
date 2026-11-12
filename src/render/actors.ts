@@ -205,7 +205,7 @@ function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; hea
 }
 
 /** the paint of each kart, by its id, so a grid of them is colourful */
-const KART_PAINT = [0xe23b3b, 0x3d8bfd, 0x3bd16f, 0xffa23b, 0xb15cff, 0x2bd4d4, 0xff6ab0, 0xf4f4fa];
+export const KART_PAINT = [0xe23b3b, 0x3d8bfd, 0x3bd16f, 0xffa23b, 0xb15cff, 0x2bd4d4, 0xff6ab0, 0xf4f4fa];
 
 function makeKart(kind: VehicleKind = 'kart', id = 0) {
   const root = new THREE.Group();
@@ -593,11 +593,14 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (speed > 0.5) v.yaw = Math.atan2(-k.vel.x, -k.vel.z);
     if ('steering' in v && v.steering) {
       // the steering wheel and the front wheels follow the turn the kart is making, eased so they do not twitch
-      const st = v as { steer?: number; steerAt?: number };
+      // (a kart turns on the spot: a heading that follows with a little lag, and the wheels are turned by how far
+      // the two are apart, so the turn shows for a moment)
+      const st = v as { steer?: number; steerAt?: number; lagYaw?: number };
       const dt = Math.max(1e-3, Math.min(0.1, time - (st.steerAt ?? time - 1 / 60)));
-      const turn = Math.atan2(Math.sin(v.yaw - yawBefore), Math.cos(v.yaw - yawBefore)) / dt;
-      const want = Math.max(-1, Math.min(1, turn / 3));
-      st.steer = (st.steer ?? 0) + (want - (st.steer ?? 0)) * Math.min(1, dt * 10);
+      const lag = st.lagYaw ?? yawBefore;
+      const off = Math.atan2(Math.sin(v.yaw - lag), Math.cos(v.yaw - lag));
+      st.lagYaw = lag + off * Math.min(1, dt * 5);
+      st.steer = (st.steer ?? 0) + (Math.max(-1, Math.min(1, off / 0.7)) - (st.steer ?? 0)) * Math.min(1, dt * 14);
       st.steerAt = time;
       v.steering.rotation.y = st.steer * 1.5;
       for (const pivot of v.pivots!) pivot.rotation.y = st.steer * 0.5;

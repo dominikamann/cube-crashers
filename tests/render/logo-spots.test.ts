@@ -21,6 +21,8 @@ describe('AmannLabs logos', () => {
         for (let tz = s.tz; tz < s.tz + s.h; tz++) for (let tx = s.tx; tx < s.tx + s.w; tx++) expect(at(tx, tz)).toBe(Tile.Floor);
         for (const p of points) expect(p.x >= s.tx - 1 && p.x <= s.tx + s.w + 1 && p.z >= s.tz - 1 && p.z <= s.tz + s.h + 1).toBe(false);
       }
+      // spread out: the wall logo is far from the floor one
+      for (const s of onWall) expect(Math.hypot(s.tx - onFloor[0].tx, s.tz - onFloor[0].tz), 'apart').toBeGreaterThan(Math.min(map.w, map.h) / 3);
       for (const s of onWall) {
         // a straight run of wall blocks, each with open floor in front of the side the logo is on
         for (let i = 0; i < s.w; i++) {

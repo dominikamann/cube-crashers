@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { KART_PAINT } from './actors';
 import type { SimState, WeaponKind } from '../sim/types';
 import { playerColor } from './palette';
 import { box, glowMat, lambert } from './pool';
@@ -150,15 +151,18 @@ export function createViewModel(): ViewModel {
       const ride = p && p.downUntil === null && p.vehicleId !== null ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
       cockpit.visible = !!ride && (ride.kind === 'kart' || ride.kind === 'roller');
       if (ride && cockpit.visible) {
-        // the wheel follows the turn the kart is making, eased so it does not twitch
+        // a kart turns on the spot, so the wheel shows the turn a moment longer: a heading that follows the real
+        // one with a little lag, and the wheel is turned by how far the two are apart
         const speed = Math.hypot(ride.vel.x, ride.vel.z);
+        // the cockpit has the paint of the kart you sit in (the roller is yellow)
+        cockpitPaint.color.setHex(ride.kind === 'roller' ? 0xffb020 : KART_PAINT[ride.id % KART_PAINT.length]);
         let st = steerOf.get(ride.id);
-        if (!st) steerOf.set(ride.id, (st = { yaw: 0, steer: 0 }));
+        if (!st) steerOf.set(ride.id, (st = { yaw: speed > 0.5 ? Math.atan2(-ride.vel.x, -ride.vel.z) : 0, steer: 0 }));
         const yaw = speed > 0.5 ? Math.atan2(-ride.vel.x, -ride.vel.z) : st.yaw;
-        const turn = Math.atan2(Math.sin(yaw - st.yaw), Math.cos(yaw - st.yaw)) / Math.max(1e-3, frameDt);
-        st.yaw = yaw;
-        st.steer += (Math.max(-1, Math.min(1, turn / 3)) - st.steer) * Math.min(1, frameDt * 10);
-        fpWheel.rotation.z = st.steer * 1.4;
+        const off = Math.atan2(Math.sin(yaw - st.yaw), Math.cos(yaw - st.yaw));
+        st.yaw += off * Math.min(1, frameDt * 5);
+        st.steer += (Math.max(-1, Math.min(1, off / 0.7)) - st.steer) * Math.min(1, frameDt * 14);
+        fpWheel.rotation.z = st.steer * 1.7;
         // the engine shakes it a little at speed
         cockpit.position.y = -0.42 + Math.sin(time * 40) * 0.004 * Math.min(1, speed / 6);
       }
