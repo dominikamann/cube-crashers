@@ -144,4 +144,17 @@ describe('the host decides the view', () => {
     expect(cs[0].viewMode).toBe('fp');
     expect(parseMessage(JSON.stringify({ type: 'start', seed: 1, difficulty: 'medium', players: [{ id: 0, name: 'A', color: 0 }], view: 'sideways' }))).toBeNull();
   });
+
+  it('clients see the match as it goes: scores, the king zone, carried cubes, the coin-op rule', () => {
+    const { hub, host, cs } = lobby(1);
+    host.startVersus({ mode: 'ffa', rule: 'king', map: 'neon' }, 9);
+    hub.flush();
+    const sim = host.sim!;
+    sim.versus!.scores[0] = 7;
+    sim.versus!.king!.pos = { x: 12.5, z: 9.5 };
+    for (let i = 0; i < 4; i++) host.step([]);
+    hub.flush();
+    expect(cs[0].view?.versus?.scores[0]).toBe(7);
+    expect(cs[0].view?.versus?.king?.pos).toEqual({ x: 12.5, z: 9.5 });
+  });
 });
