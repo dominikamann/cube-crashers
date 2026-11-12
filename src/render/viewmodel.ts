@@ -25,6 +25,12 @@ function makeModel(kind: Look): THREE.Group {
       g.add(box(0.035, 0.035, 0.75, glowMat(0xff2bd6, 2.2), 0, 0, -0.45));
       g.rotation.x = 0.55;
       break;
+    case 'flySwatter':
+      g.add(box(0.04, 0.04, 0.5, lambert(0x8a5a2b), 0, 0, -0.2));
+      g.add(box(0.36, 0.03, 0.32, lambert(0x3bd16f), 0, 0, -0.6));
+      for (const o of [-0.11, 0, 0.11]) g.add(box(0.015, 0.04, 0.32, lambert(0x1f8a44), o, 0, -0.6));
+      g.rotation.x = 0.35;
+      break;
     case 'candyCannon':
       g.add(box(0.16, 0.16, 0.5, lambert(0xff7ac8), 0, 0, -0.15));
       g.add(box(0.2, 0.2, 0.06, lambert(0xffffff), 0, 0, -0.42));
@@ -79,7 +85,7 @@ export function createViewModel(): ViewModel {
   hand.add(arm, fist);
   scene.add(hand);
   // a shot: a flash at the muzzle and a tracer from there to the crosshair
-  const flash = box(0.14, 0.14, 0.04, glowMat(0xfff2a0, 4), 0, 0.02, -0.62);
+  const flash = box(0.12, 0.12, 0.04, glowMat(0xfff2a0, 2), 0, 0.02, -0.62);
   flash.visible = false;
   hand.add(flash);
   const tracerGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -8)]);
@@ -124,8 +130,19 @@ export function createViewModel(): ViewModel {
       const bob = Math.sin(time * 11) * 0.018 * walk;
       hand.position.set(0.3 + Math.cos(time * 5.5) * 0.01 * walk, -0.3 + bob - kick * 0.03, -0.62 + kick * 0.09);
       hand.rotation.set(kick * 0.25, -0.12, 0);
+      if (kind === 'laserSword') {
+        // a slash from the right across to the left
+        const t = 1 - kick;
+        hand.rotation.set(-0.2 * Math.sin(Math.PI * t), 0.9 - t * 1.8 * (kick > 0 ? 1 : 0), -0.6 * Math.sin(Math.PI * t) * (kick > 0 ? 1 : 0));
+        hand.position.x = 0.3 - Math.sin(Math.PI * t) * 0.25 * (kick > 0 ? 1 : 0);
+        if (kick === 0) hand.rotation.set(0, -0.12, 0);
+      } else if (kind === 'flySwatter') {
+        // raised, then slammed down
+        hand.rotation.set(kick > 0 ? 1.1 * kick * kick - 0.5 * Math.sin(Math.PI * kick) : 0, -0.12, 0);
+        hand.position.y = -0.3 + bob - (kick > 0 ? Math.sin(Math.PI * kick) * 0.08 : 0);
+      }
       // melee and thrown things have no muzzle
-      const shoots = !['laserSword', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang'].includes(kind);
+      const shoots = !['laserSword', 'flySwatter', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang'].includes(kind);
       flash.visible = shoots && kick > 0.65;
       flash.rotation.z = time * 20;
       tracerMat.opacity = shoots ? Math.max(0, kick - 0.4) * 1.6 : 0;

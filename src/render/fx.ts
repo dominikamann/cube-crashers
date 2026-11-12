@@ -151,9 +151,19 @@ export function createFx(scene: THREE.Scene): Fx {
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {
+            // it falls apart: chunky cubes that bounce away, then a puff of pixel dust
             const l = ENEMY_LOOK[e.kind];
             const big = e.elite ? 50 : e.kind === 'tank' || e.kind === 'rammer' ? 26 : 14;
             burst(e.pos, l.h / 2, big, [l.day, l.night, 0xffffff], e.elite ? 6 : 4, e.kind === 'splitling' ? 0.1 : 0.16);
+            burst(e.pos, l.h * 0.6, Math.round(big * 0.8), [l.day, l.night], 1.6, 0.06, 1.4);
+            break;
+          }
+          case 'enemyHit': {
+            // every hit knocks a few pixels off
+            const en = s.enemies.find(x => x.id === e.id);
+            if (!en) break;
+            const l = ENEMY_LOOK[en.kind];
+            burst(e.pos, l.h * 0.6, Math.max(2, Math.min(8, Math.round(2 + e.amount / 6))), [l.day, l.night], 3, 0.1, 0.7);
             break;
           }
           case 'playerHit':
@@ -241,6 +251,14 @@ export function createFx(scene: THREE.Scene): Fx {
             break;
           }
           case 'shot':
+            if (e.weapon === 'flySwatter') {
+              // KLATSCH: a shock ring where the paddle lands, and a jolt
+              const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
+              const at = who ? { x: e.pos.x + who.aim.x * 1.25, z: e.pos.z + who.aim.z * 1.25 } : e.pos;
+              ring(at, 1.1, [0x3bd16f, 0xffffff]);
+              burst(at, 0.2, 10, [0x3bd16f, 0xb8ffcf], 3, 0.1, 0.6);
+              addShake(0.12);
+            }
             if (e.weapon === 'discoBall') {
               const from = { x: e.pos.x + Math.cos(time * 2.5) * 1.2, z: e.pos.z + Math.sin(time * 2.5) * 1.2 };
               const near = s.enemies

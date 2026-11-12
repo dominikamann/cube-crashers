@@ -14,6 +14,7 @@ import { createPickups } from './pickups';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
+import { createHealthBars } from './health-bars';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -216,6 +217,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const entities = createEntities(scene, overlay);
   const actors = createActors(scene, map);
   const viewModel = createViewModel();
+  const healthBars = createHealthBars(scene);
   const fx = createFx(scene);
   const pickups = createPickups(scene);
 
@@ -289,6 +291,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);
       fx.update(s, events, theme, frameDt, time);
+      healthBars.update(s);
 
       const shake = fx.shake();
       const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -367,6 +370,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           renderer.setScissorTest(true);
         }
         sky.mesh.position.copy(v.camera.position);
+        healthBars.face(v.camera, views.map(x => x.id));
         // first person: you do not see the inside of your own head
         // (nor the ground crosshair: the screen has one in the middle)
         const hidden = v.fpYaw !== null ? [actors.playerModel(v.id), actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];

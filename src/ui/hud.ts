@@ -272,7 +272,12 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       slots.forEach((sl, i) => {
         const w = p.weapons[i];
         sl.slot.classList.toggle('selected', !!w && i === p.selected && !p.rareSelected);
-        if (!w) return;
+        if (!w) {
+          // a weapon that is gone (a versus respawn) leaves an empty slot, not a ready one
+          sl.slot.classList.remove('ready');
+          sl.reload.style.width = '0%';
+          return;
+        }
         const ready = w.cooldown === 0;
         sl.slot.classList.toggle('ready', ready);
         sl.reload.style.width = `${(1 - Math.min(1, w.cooldown / WEAPONS[w.kind].cooldown)) * 100}%`;

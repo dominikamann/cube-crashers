@@ -38,7 +38,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     bodyMats.set(k, mat);
     bodies.set(k, new InstancedPool(scene, new THREE.BoxGeometry(l.w, l.h, l.d), mat));
   }
-  const eyeMat = glowMat(0xfff27a, 2.5);
+  const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
   const pupils = new InstancedPool(scene, unit, pupilMat, 1024, false);
@@ -58,7 +58,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const blastFills = new InstancedPool(scene, new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
   const bossHornMat = glowMat(0xff2bd6, 1.6);
   const bossHorns = new InstancedPool(scene, new THREE.BoxGeometry(0.25, 0.6, 0.25), bossHornMat, 64);
-  const redEyeMat = glowMat(0xff2b2b, 3);
+  const redEyeMat = glowMat(0xff2b2b, 1.6);
   const redEyes = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.18, 0.06), redEyeMat, 64, false);
   const jetMat = lambert(0xd0d4e0);
   const jetItems = new InstancedPool(scene, new THREE.BoxGeometry(0.55, 0.7, 0.3), jetMat, 8);
@@ -72,7 +72,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const peps = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.1, 0.16), pepMat, 64, false);
   const iceMat = new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1, depthWrite: false });
   const ice = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), iceMat, 128, false);
-  const hostileMat = glowMat(0xff3b3b, 4);
+  const hostileMat = glowMat(0xff3b3b, 2.2);
   const hostile = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.28, 0.28), hostileMat, 128, false);
   const bananaMat = lambert(0xffe135);
   const bananas = new InstancedPool(scene, new THREE.BoxGeometry(0.5, 0.16, 0.2), bananaMat, 64);
@@ -81,7 +81,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const bombMat = lambert(0x2a2a35);
   const bombs = new InstancedPool(scene, new THREE.BoxGeometry(0.45, 0.45, 0.45), bombMat, 32);
 
-  const boltMat = glowMat(0xfff27a, 3);
+  const boltMat = glowMat(0xfff27a, 1.6);
   const bolts = new InstancedPool(scene, new THREE.BoxGeometry(0.18, 0.18, 0.5), boltMat, 512, false);
   const candyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x333333, roughness: 0.4 });
   const candies = new InstancedPool(scene, new THREE.BoxGeometry(0.22, 0.22, 0.22), candyMat, 512, false);
@@ -197,7 +197,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const slowed = (until: number) => until > s.tick;
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
-        const scale = e.elite ? 1.4 : 1;
+        // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
+        const worn = e.kind === 'wormSegment' || e.kind === 'megaBlock' ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
+        const scale = (e.elite ? 1.4 : 1) * worn;
         const y = (l.h / 2) * scale + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';

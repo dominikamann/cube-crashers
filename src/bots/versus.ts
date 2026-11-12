@@ -7,7 +7,7 @@ import type { Command, SimState, Vec2 } from '../sim/types';
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /** how far each weapon is worth firing from */
-const REACH: Record<string, number> = { pixelBlaster: 9, laserSword: 2.2, candyCannon: 6, hotdogSlinger: 8, bananaMine: 3, bomb: 7, discoBall: 4, joystickBoomerang: 7 };
+const REACH: Record<string, number> = { pixelBlaster: 9, laserSword: 2.2, candyCannon: 6, hotdogSlinger: 8, bananaMine: 3, bomb: 7, discoBall: 4, joystickBoomerang: 7, flySwatter: 1.6 };
 
 /**
  * A versus opponent: walks to the nearest rival it can reach, keeps a fighting distance, strafes, fires the

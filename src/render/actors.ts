@@ -36,19 +36,32 @@ function makePlayer(color: number) {
   body.add(box(0.16, 0.5, 0.16, suit, -0.4, 0.7, 0));
   body.add(box(0.16, 0.5, 0.16, suit, 0.4, 0.7, 0));
   body.add(box(0.46, 0.46, 0.46, skin, 0, 1.25, 0));
-  body.add(box(0.48, 0.12, 0.08, glowMat(0x2bf0ff, 3), 0, 1.3, -0.24));
+  body.add(box(0.48, 0.12, 0.08, glowMat(0x2bf0ff, 1.5), 0, 1.3, -0.24));
   body.add(box(0.5, 0.14, 0.5, lambert(0x6b3a1e), 0, 1.5, 0));
   // the blaster arm always points at the crosshair
   const gun = new THREE.Group();
   gun.add(box(0.14, 0.14, 0.7, lambert(0x444455), 0, 0, -0.45));
-  gun.add(box(0.1, 0.1, 0.12, glowMat(0xfff27a, 2.5), 0, 0, -0.84));
+  gun.add(box(0.1, 0.1, 0.12, glowMat(0xfff27a, 1.4), 0, 0, -0.84));
   gun.position.y = 0.8;
   root.add(body, gun);
 
-  const sword = new THREE.Mesh(new THREE.RingGeometry(0.75, 1, 24, 1, -Math.PI * 0.39, Math.PI * 0.78).rotateX(-Math.PI / 2), glowMat(0xff3bd6, 3));
-  (sword.material as THREE.Material).side = THREE.DoubleSide;
+  // the sword's slash: a glowing band that sweeps across the front and fades
+  const swordMat = glowMat(0xff3bd6, 2.2);
+  Object.assign(swordMat, { side: THREE.DoubleSide, transparent: true, depthWrite: false });
+  const sword = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 20, 1, -Math.PI * 0.18, Math.PI * 0.36).rotateX(-Math.PI / 2), swordMat);
   sword.visible = false;
   root.add(sword);
+  // the fly swatter: a paddle on a handle that comes down in front of you, flat on the ground
+  const swatter = new THREE.Group();
+  const paddle = new THREE.Group();
+  const mesh = lambert(0x3bd16f);
+  paddle.add(box(0.06, 0.06, 0.9, lambert(0x8a5a2b), 0, 0, -0.45));
+  paddle.add(box(0.95, 0.05, 0.8, mesh, 0, 0, -1.25));
+  for (const o of [-0.3, 0, 0.3]) paddle.add(box(0.03, 0.07, 0.8, lambert(0x1f8a44), o, 0, -1.25));
+  swatter.add(paddle);
+  swatter.position.y = 0.85;
+  swatter.visible = false;
+  root.add(swatter);
   // the light is not part of `root`: root blinks while invulnerable, and a light switching on and off
   // changes the scene's light count, which recompiles every shader
   const light = new THREE.PointLight(0x2bf0ff, 0, 5);
@@ -67,7 +80,7 @@ function makePlayer(color: number) {
   glint.position.y = 0.05;
   glint.visible = false;
   root.add(glint);
-  return { root, body, gun, sword, light, pack, flame, glint, swordT: 1, yaw: 0, lastX: 0, lastZ: 0 };
+  return { root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
 const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
@@ -331,11 +344,23 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.root.visible = !blinking || Math.floor(time * 12) % 2 === 0;
 
     if (v.swordT < 1) {
-      v.swordT += frameDt / 0.16;
+      v.swordT = Math.min(1, v.swordT + frameDt / 0.2);
       v.sword.visible = v.swordT < 1;
-      v.sword.rotation.y = v.yaw + Math.PI + (v.swordT - 0.5) * 0.8;
+      // a fast sweep from right to left across the front (eased out), fading as it goes
+      const sweep = 1 - (1 - v.swordT) ** 3;
+      v.sword.rotation.y = v.yaw + Math.PI + (0.5 - sweep) * 2.4;
       v.sword.scale.setScalar(2.2 + 0.2 * ((p.weapons.find(w => w.kind === 'laserSword')?.level ?? 1) - 1));
       v.sword.position.y = 0.7;
+      v.swordMat.opacity = 1 - v.swordT * v.swordT;
+    }
+    if (v.swatT < 1) {
+      v.swatT = Math.min(1, v.swatT + frameDt / 0.3);
+      v.swatter.visible = v.swatT < 1;
+      v.swatter.rotation.y = v.yaw;
+      // up, then down in a third of the time, flat on the ground for the rest
+      const down = Math.min(1, v.swatT / 0.3);
+      v.paddle.rotation.x = 1.5 * (1 - down * down);
+      v.swatter.position.y = 0.85 - 0.75 * down;
     }
     v.light.intensity = 4 * theme.pointLights;
     v.light.position.set(v.root.position.x, 1.6, v.root.position.z);
@@ -468,10 +493,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         players.delete(id);
       }
       for (const e of events) {
-        if (e.type === 'shot' && e.weapon === 'laserSword') {
+        if (e.type === 'shot' && (e.weapon === 'laserSword' || e.weapon === 'flySwatter')) {
           const shooter = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
           const v = shooter ? players.get(shooter.id) : undefined;
-          if (v) v.swordT = 0;
+          if (v && e.weapon === 'laserSword') v.swordT = 0;
+          if (v && e.weapon === 'flySwatter') v.swatT = 0;
         }
       }
 

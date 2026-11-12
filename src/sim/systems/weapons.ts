@@ -1,7 +1,7 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
-import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWORD, WEAPONS, levelMul } from '../config/weapons';
+import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, SWATTER, SWORD, WEAPONS, levelMul } from '../config/weapons';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
 import { hitEnemy } from './combat';
@@ -49,9 +49,11 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       }
       return true;
     }
-    case 'laserSword': {
-      const radius = SWORD.radius + SWORD.radiusPerLevel * (w.level - 1);
-      const minDot = Math.cos((SWORD.halfArcDeg * Math.PI) / 180);
+    case 'laserSword':
+    case 'flySwatter': {
+      const arc = w.kind === 'flySwatter' ? SWATTER : SWORD;
+      const radius = arc.radius + arc.radiusPerLevel * (w.level - 1);
+      const minDot = Math.cos((arc.halfArcDeg * Math.PI) / 180);
       for (const e of targets(s)) {
         const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
         const d = Math.hypot(dx, dz);

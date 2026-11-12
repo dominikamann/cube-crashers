@@ -15,7 +15,8 @@ export type WeaponKind =
   | 'joystickBoomerang'
   | 'discoBall'
   | 'bananaMine'
-  | 'bomb';
+  | 'bomb'
+  | 'flySwatter';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';

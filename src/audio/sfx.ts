@@ -95,6 +95,12 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 500, attack: 0.002, sustain: 0.01, decay: 0.05, volume: 0.1, lowpass: 900 },
   ],
   shot_bomb: [{ wave: 'sine', freq: 260, freqEnd: 520, attack: 0.01, sustain: 0.12, decay: 0.12, volume: 0.22 }],
+  // a whoosh and a wet KLATSCH
+  shot_flySwatter: [
+    { wave: 'noise', freq: 600, attack: 0.02, sustain: 0.04, decay: 0.05, volume: 0.1, lowpass: 1800 },
+    { wave: 'noise', freq: 2500, attack: 0.001, sustain: 0.02, decay: 0.09, volume: 0.32, lowpass: 5000 },
+    { wave: 'square', freq: 140, freqEnd: 60, attack: 0.001, sustain: 0.02, decay: 0.08, volume: 0.14 },
+  ],
   select: [{ wave: 'square', freq: 700, freqEnd: 1000, attack: 0.001, sustain: 0.015, decay: 0.04, volume: 0.07 }],
   enemyHit: [{ wave: 'square', freq: 220, freqEnd: 170, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
   enemyKilled: [

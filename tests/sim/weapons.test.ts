@@ -114,6 +114,18 @@ describe('weapons', () => {
     expect(back.hp).toBe(TANK);
   });
 
+  it('the fly swatter slaps hard, but only right in front', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.weapons = held('flySwatter');
+    const close = spawnEnemy(s, 'tank', rel(p.pos, 0, -1.2));
+    const far = spawnEnemy(s, 'tank', rel(p.pos, 0, -2.6));
+    stepSim(s, [aimAt(rel(p.pos, 0, -5)), fire]);
+    expect(close.hp).toBe(TANK - dmg('flySwatter') * 1.5);
+    expect(far.hp).toBe(TANK);
+    expect(dmg('flySwatter')).toBeGreaterThan(dmg('laserSword') * 2);
+  });
+
   it('candy cannon fires a spread of 6 pellets', () => {
     const s = quietSim();
     const p = s.players[0];
