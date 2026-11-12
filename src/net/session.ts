@@ -351,7 +351,8 @@ export class HostSession {
     }
     this.events.push(...s.events);
     this.outEvents.push(...s.events);
-    if (s.tick % SNAPSHOT_EVERY_TICKS === 0 || s.phase !== 'playing') {
+    // (during the opening countdown the game's clock stands still: count by the countdown then)
+    if ((s.countdown || s.tick) % SNAPSHOT_EVERY_TICKS === 0 || s.phase !== 'playing') {
       this.sendRaw('all', serializeSnapshot(s, this.outEvents));
       this.outEvents = [];
     }

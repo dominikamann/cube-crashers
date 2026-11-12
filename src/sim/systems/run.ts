@@ -5,7 +5,7 @@ import { CREDIT_BONUS, PAR_SECONDS, TIME_BONUS_PER_SECOND } from '../config/bala
 import { floorDef, FLOORS } from '../config/floors';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type Intent, type RunMode, type SimState } from '../types';
-import { spawnPoint, syncCredits } from './coop';
+import { spawnPoint, backIn } from './coop';
 import { setupFloor } from './nests';
 import { enterShaft } from './shaft';
 import { buy, openShop, shopDone } from './shop';
@@ -27,7 +27,8 @@ export function floorCleared(s: SimState): void {
   const last = !multi || s.run.floor >= s.run.floors.length - 1;
   const seconds = s.tick / TICK_RATE;
   if (last) {
-    s.score += s.credits * CREDIT_BONUS + Math.round(Math.max(0, PAR_SECONDS - seconds) * TIME_BONUS_PER_SECOND);
+    // lives left count as the team's average, so a bigger team does not score more for them
+    s.score += Math.round(s.credits / Math.max(1, s.players.length)) * CREDIT_BONUS + Math.round(Math.max(0, PAR_SECONDS - seconds) * TIME_BONUS_PER_SECOND);
     if (multi) s.score += FLOOR_BONUS;
     s.phase = 'won';
     s.events.push({ type: 'gameWon', score: s.score });
@@ -36,14 +37,9 @@ export function floorCleared(s: SimState): void {
   s.score += FLOOR_BONUS;
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
   // the floor is done: whoever was out is back, with one life, for the game between the floors and the next floor
-  for (const p of s.players) {
-    if (!p.out) continue;
-    p.out = false;
-    p.lives = 1;
-    p.downUntil = null;
-    p.hp = p.maxHp;
-  }
-  syncCredits(s);
+  backIn(s);
+  // a hidden heart nobody found stays behind
+  s.heart = null;
   // Boss Rush: no games in between, just the shop before the next boss
   if (s.run.mode === 'bossrush') {
     openShop(s);
@@ -106,14 +102,10 @@ export function enterFloor(s: SimState, index: number): void {
       p.downUntil = null;
       p.hp = p.maxHp;
     }
-    // whoever was out is back for the new floor, with one life
-    if (p.out) {
-      p.out = false;
-      p.lives = 1;
-    }
     p.invulnUntil = s.tick + 120;
   });
-  syncCredits(s);
+  // whoever went out in the game between the floors is back for the new floor, with one life
+  backIn(s);
   setupFloor(s);
   s.events.push({ type: 'floorStart', floor: index, mapId: s.map.id });
 }

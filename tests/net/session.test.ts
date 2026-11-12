@@ -41,6 +41,7 @@ describe('LAN session', () => {
     // a LAN game opens with the countdown too; the clients see it in the snapshots
     expect(host.sim!.countdown).toBeGreaterThan(0);
     host.step([]);
+    host.step([]);
     hub.flush();
     expect(a.view!.countdown).toBe(host.sim!.countdown);
     host.sim!.countdown = 0;

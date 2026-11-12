@@ -99,6 +99,7 @@ function startGame() {
   // no sound or music from a window nobody sees (minimised, another tab, hidden)
   document.addEventListener('visibilitychange', () => {
     if (!audio) return;
+    audio.mixer.setMuted(document.hidden);
     if (document.hidden) void audio.ctx.suspend();
     else void audio.ctx.resume();
   });
@@ -403,9 +404,8 @@ function startGame() {
       if (replay && (mode !== 'playing' || !s.versus || (me && me.downUntil === null) || !replay.advance(frameDt))) replay = null;
       killBanner.style.display = replay ? '' : 'none';
       // out of lives in a team game: the camera follows a teammate who is still in
-      const meOut = view().players.find(p => p.id === localId())?.out;
-      const watched = meOut ? view().players.find(p => !p.out)?.id ?? localId() : localId();
-      renderer.setViews(replay ? [replay.killerId] : split ? [0, 1] : [watched]);
+      const watch = (id: number) => (view().players.find(p => p.id === id)?.out ? view().players.find(p => !p.out)?.id ?? id : id);
+      renderer.setViews(replay ? [replay.killerId] : split ? [watch(0), watch(1)] : [watch(localId())]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
       // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad

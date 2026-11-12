@@ -111,6 +111,7 @@ export const en = {
   'versus.discovery': 'Discovery',
   'versus.go': 'GO!',
   'hud.out': 'OUT',
+  'hud.downWait': 'Down! A teammate can help you up',
   'toast.out': '{name} is out of lives',
   'toast.heart': '{name} found the hidden heart: a life for everyone!',
   'hud.outBanner': "You're out of lives: watching {name}. The next floor brings you back!",

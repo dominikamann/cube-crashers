@@ -47,7 +47,13 @@ describe('settings defaults', () => {
     expect(loadSettings().colorBlind).toBe(false);
   });
 
-  it('graphics go back to High once for everyone, then the own choice sticks', () => {
+  it('Low and Medium stay as the player chose them', () => {
+    const store = new Map<string, string>([['cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, graphics: 'low' })]]);
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    expect(loadSettings().graphics).toBe('low');
+  });
+
+  it('Ultra goes back to High once, then the own choice sticks', () => {
     const store = new Map<string, string>([['cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, graphics: 'ultra' })]]);
     (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
     const s = loadSettings();

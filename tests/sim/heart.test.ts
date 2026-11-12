@@ -5,6 +5,7 @@ import { perchable } from '../../src/sim/map/perch';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { HEART, heartSpot, placeHiddenHeart } from '../../src/sim/systems/heart';
 import { dist } from '../../src/sim/util';
+import { floorCleared } from '../../src/sim/systems/run';
 
 describe('the hidden heart', () => {
   it('sits on top of a block you have to climb, far from the start, on every nest floor that has ladders', () => {
@@ -23,6 +24,15 @@ describe('the hidden heart', () => {
     expect(seen).toBeGreaterThan(40 * HEART.chance * 0.5);
     expect(seen).toBeLessThan(40 * HEART.chance * 1.6);
     expect(createSim(floor01, 3, { mode: 'quick' }).heart ?? null).toBeNull();
+  });
+
+  it('a heart nobody found is gone when the floor is cleared', () => {
+    const s = createSim(floor01, 3, { mode: 'run' });
+    placeHiddenHeart(s, true);
+    for (const n of s.nests) n.state = 'destroyed';
+    s.enemies = [];
+    floorCleared(s);
+    expect(s.heart ?? null).toBeNull();
   });
 
   it('whoever stands on it gives everyone a life (never more than you start with) and brings back who was out', () => {

@@ -348,7 +348,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       if (p.downUntil !== null && s.phase === 'playing') {
         down.style.display = '';
         // last cube standing: out for the rest of the round
-        down.textContent = s.versus?.rule === 'rounds' ? t('versus.out') : t('hud.down', { s: Math.max(0, Math.ceil((p.downUntil - s.tick) / TICK_RATE)) });
+        // out of lives, or waiting for a teammate's help: no countdown to show
+        const waiting = p.out || p.downUntil > s.tick + 3600;
+        down.textContent = s.versus?.rule === 'rounds' ? t('versus.out') : waiting ? (p.out ? t('hud.out') : t('hud.downWait')) : t('hud.down', { s: Math.max(0, Math.ceil((p.downUntil - s.tick) / TICK_RATE)) });
       } else {
         down.style.display = 'none';
       }

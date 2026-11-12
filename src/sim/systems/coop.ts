@@ -55,11 +55,30 @@ export function loseLife(s: SimState, p: Player): boolean {
   p.reviveProgress = 0;
   p.downUntil = Number.MAX_SAFE_INTEGER;
   s.events.push({ type: 'playerOut', playerId: p.id });
-  if (s.phase === 'playing' && s.players.every(x => x.out)) {
-    s.phase = 'lost';
-    s.events.push({ type: 'gameLost' });
-  }
+  checkAllOut(s);
   return false;
+}
+
+/** The run is lost when nobody is left in the game. */
+function checkAllOut(s: SimState): void {
+  if (s.phase !== 'playing' || s.players.length === 0 || !s.players.every(p => p.out)) return;
+  s.phase = 'lost';
+  s.events.push({ type: 'gameLost' });
+}
+
+/**
+ * Whoever is out comes back into the game with at least `lives` lives (a cleared floor, a new floor, a life
+ * bought in the shop). Lives they were given meanwhile are kept.
+ */
+export function backIn(s: SimState, lives = 1): void {
+  for (const p of s.players) {
+    if (!p.out) continue;
+    p.out = false;
+    p.lives = Math.max(lives, p.lives ?? 0);
+    p.downUntil = null;
+    p.hp = p.maxHp;
+  }
+  syncCredits(s);
 }
 
 /** Back on the feet at the safe point after RESPAWN_TICKS, with fewer coins. */
@@ -129,8 +148,9 @@ export function removePlayer(s: SimState, id: number): void {
   s.players = s.players.filter(x => x.id !== id);
   s.flow = null;
   syncCredits(s);
-  // the one who left may have been the last who could help the others up
+  // the one who left may have been the last who could help the others up, or the last still in the game
   checkTeamWipe(s);
+  checkAllOut(s);
 }
 
 let makePlayer: (id: number, pos: Vec2, name: string, color: number) => Player = () => {

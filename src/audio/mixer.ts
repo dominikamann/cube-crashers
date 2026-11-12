@@ -24,6 +24,8 @@ export class VoiceLimiter {
 
 export interface Mixer {
   play(id: SoundId, pitch?: number, bypassLimiter?: boolean): void;
+  /** no new sounds while the window is hidden */
+  setMuted(on: boolean): void;
   setMusicVolume(v: number): void;
   setSfxVolume(v: number): void;
   readonly musicBus: GainNode;
@@ -64,8 +66,14 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
   const limiter = new VoiceLimiter();
   let jitterSeed = 98765;
 
+  let muted = false;
   return {
+    setMuted(on) {
+      muted = on;
+    },
     play(id, pitch = 1, bypassLimiter = false) {
+      // a hidden window is silent: sounds started now would all go off at once when it comes back
+      if (muted) return;
       const layers = SOUNDS[id];
       const now = ctx.currentTime;
       if (!bypassLimiter && !limiter.tryStart(id, now, soundDuration(layers))) return;

@@ -474,7 +474,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         blastFills.add(b.pos.x, 0.05, b.pos.z, 0, b.radius * Math.max(0.05, (s.tick - b.createdAt) / (b.at - b.createdAt)));
       }
       blastFills.end();
-      if (s.heart) {
+      if (s.heart && s.run.stage === 'floor') {
         // the hidden heart on its wall top: a small red heart of cubes that turns and bobs
         const h = s.heart.pos, rot = time * 1.5, c = Math.cos(rot), sn = Math.sin(rot);
         const y0 = wallTop(s.map, h.x, h.z) + 0.75 + Math.sin(time * 3) * 0.1;

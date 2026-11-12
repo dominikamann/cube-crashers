@@ -6,7 +6,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { damageEnemy } from '../../src/sim/systems/combat';
-import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
+import { addPlayer, backIn, removePlayer } from '../../src/sim/systems/coop';
 import { enterFloor, floorCleared } from '../../src/sim/systems/run';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnHorde } from '../../src/sim/systems/hordes';
@@ -127,6 +127,41 @@ describe('reviving', () => {
     expect(b.lives).toBe(1);
     expect(b.downUntil).toBeNull();
     expect(s.credits).toBe(s.players[0].lives! + 1);
+  });
+
+  it('the run is lost when the last player still in the game leaves', () => {
+    const s = team(2);
+    const [a] = s.players;
+    a.lives = 1;
+    damagePlayer(s, a, 1000);
+    run(s, REVIVE_TICKS + 1);
+    expect(a.out).toBe(true);
+    removePlayer(s, s.players[1].id);
+    expect(s.phase).toBe('lost');
+  });
+
+  it('a life from the shop brings an out player back, and the next floor does not take it away', () => {
+    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const b = s.players[1];
+    b.lives = 0;
+    b.out = true;
+    b.downUntil = Number.MAX_SAFE_INTEGER;
+    backIn(s, 2);
+    expect([b.out, b.lives, b.downUntil]).toEqual([false, 2, null]);
+    enterFloor(s, 1);
+    expect(b.lives).toBe(2);
+  });
+
+  it('the bonus for lives left does not grow with the team: it counts the average', () => {
+    const score = (players: number) => {
+      const s = createSim(floor01, 9, { mode: 'quick', players });
+      for (const n of s.nests) n.state = 'destroyed';
+      s.enemies = [];
+      s.tick = 0;
+      floorCleared(s);
+      return s.score;
+    };
+    expect(score(4)).toBe(score(1));
   });
 
   it('ends the run exactly once when the last players are out', () => {

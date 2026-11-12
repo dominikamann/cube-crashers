@@ -118,8 +118,9 @@ export function loadSettings(): Settings {
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
-    // once for everyone: back to High (choosing Ultra again afterwards sticks)
-    if (!loaded.graphicsHighDefault) loaded = { ...loaded, graphics: 'high', graphicsHighDefault: true };
+    // once: whoever had Ultra goes back to High (choosing Ultra again afterwards sticks); Low and Medium were
+    // chosen for a reason and stay
+    if (!loaded.graphicsHighDefault) loaded = { ...loaded, graphics: loaded.graphics === 'ultra' ? 'high' : loaded.graphics, graphicsHighDefault: true };
   } catch {
     // storage unavailable: use defaults
   }
