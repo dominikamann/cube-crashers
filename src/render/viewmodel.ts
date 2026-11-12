@@ -29,7 +29,8 @@ function makeModel(kind: Look): THREE.Group {
       g.add(box(0.04, 0.04, 0.5, lambert(0x8a5a2b), 0, 0, -0.2));
       g.add(box(0.36, 0.03, 0.32, lambert(0x3bd16f), 0, 0, -0.6));
       for (const o of [-0.11, 0, 0.11]) g.add(box(0.015, 0.04, 0.32, lambert(0x1f8a44), o, 0, -0.6));
-      g.rotation.x = 0.35;
+      // upright: the face of the paddle points to the side it swings toward
+      g.rotation.set(0.2, 0, Math.PI / 2);
       break;
     case 'pixelRail':
       g.add(box(0.1, 0.1, 0.55, lambert(0x2a2550), 0, 0, -0.15));
@@ -160,9 +161,11 @@ export function createViewModel(): ViewModel {
         hand.position.x = 0.3 - Math.sin(Math.PI * t) * 0.25 * (kick > 0 ? 1 : 0);
         if (kick === 0) hand.rotation.set(0, -0.12, 0);
       } else if (kind === 'flySwatter') {
-        // raised, then slammed down
-        hand.rotation.set(kick > 0 ? 1.1 * kick * kick - 0.5 * Math.sin(Math.PI * kick) : 0, -0.12, 0);
-        hand.position.y = -0.3 + bob - (kick > 0 ? Math.sin(Math.PI * kick) * 0.08 : 0);
+        // held upright, then swung flat from the right across to the left
+        const t = 1 - kick;
+        const swinging = kick > 0;
+        hand.rotation.set(0, swinging ? 1.0 - t * 2.2 : -0.12, swinging ? -0.25 * Math.sin(Math.PI * t) : 0);
+        hand.position.x = 0.3 - (swinging ? Math.sin(Math.PI * t) * 0.3 : 0);
       }
       // melee and thrown things have no muzzle
       const shoots = !['laserSword', 'flySwatter', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang', 'magnetGlove', 'yoyoLauncher'].includes(kind);

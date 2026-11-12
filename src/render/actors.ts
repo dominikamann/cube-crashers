@@ -82,7 +82,7 @@ function makePlayer(color: number) {
   const sword = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 20, 1, -Math.PI * 0.18, Math.PI * 0.36).rotateX(-Math.PI / 2), swordMat);
   sword.visible = false;
   root.add(sword);
-  // the fly swatter: a paddle on a handle that comes down in front of you, flat on the ground
+  // the fly swatter: a paddle on a handle, held upright and swung sideways across the front
   const swatter = new THREE.Group();
   const paddle = new THREE.Group();
   const mesh = lambert(0x3bd16f);
@@ -415,11 +415,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (v.swatT < 1) {
       v.swatT = Math.min(1, v.swatT + frameDt / 0.3);
       v.swatter.visible = v.swatT < 1;
-      v.swatter.rotation.y = v.yaw;
-      // up, then down in a third of the time, flat on the ground for the rest
-      const down = Math.min(1, v.swatT / 0.3);
-      v.paddle.rotation.x = 1.5 * (1 - down * down);
-      v.swatter.position.y = 0.85 - 0.75 * down;
+      // a wind-up to the right, then a fast flat sweep across to the left (eased out), the face of the paddle leading
+      const wind = Math.min(1, v.swatT / 0.25);
+      const sweep = v.swatT < 0.25 ? 0 : 1 - (1 - (v.swatT - 0.25) / 0.75) ** 3;
+      v.swatter.rotation.y = v.yaw - 1.0 * wind + 2.2 * sweep;
+      v.paddle.rotation.set(0, 0, Math.PI / 2);
+      v.swatter.position.y = 0.85;
     }
     // a soft light above the head (not inside it), and the suit's own lights kept low: at night a player
     // must not turn into a white blob

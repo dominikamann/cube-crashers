@@ -282,11 +282,11 @@ export function createFx(scene: THREE.Scene): Fx {
             break;
           case 'shot':
             if (e.weapon === 'flySwatter') {
-              // KLATSCH: a shock ring where the paddle lands, and a jolt
+              // KLATSCH: a sweep of green bits across the front, and a jolt
               const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
               const at = who ? { x: e.pos.x + who.aim.x * 1.25, z: e.pos.z + who.aim.z * 1.25 } : e.pos;
-              ring(at, 1.1, [0x3bd16f, 0xffffff]);
-              burst(at, 0.2, 10, [0x3bd16f, 0xb8ffcf], 3, 0.1, 0.6);
+              const side = who ? { x: -who.aim.z, z: who.aim.x } : { x: 1, z: 0 };
+              for (const k of [-0.8, 0, 0.8]) burst({ x: at.x + side.x * k, z: at.z + side.z * k }, 0.85, 4, [0x3bd16f, 0xb8ffcf, 0xffffff], 3, 0.09, 0.3);
               addShake(0.12);
             }
             if (e.weapon === 'discoBall') {
