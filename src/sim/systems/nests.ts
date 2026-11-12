@@ -27,7 +27,7 @@ import { BLOCKS_WALKER, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
-import { spawnBoss } from './boss';
+import { spawnBoss, startBrawl } from './boss';
 import { enterRace } from './race';
 import { enterLane } from './lane';
 import { enterMaze } from './maze';
@@ -114,6 +114,17 @@ export function setupFloor(s: SimState): void {
     // the Kart Rally played on its own
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     enterRace(s);
+    return;
+  }
+  if (s.run.mode === 'brawl') {
+    // Boss Brawl: no nests, no alarm, just the bosses coming in waves
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    s.nests = [];
+    startBrawl(s);
+    placeStartCrates(s);
+    placeStartKarts(s);
+    s.nextPowerupAt = s.tick + POWERUP.firstTicks;
+    s.look = 'day';
     return;
   }
   // Boss Rush: every floor is a boss fight, whatever map it is on

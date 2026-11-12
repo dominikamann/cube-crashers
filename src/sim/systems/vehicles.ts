@@ -4,7 +4,7 @@ import { airborne } from './rare';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
-import { dist } from '../util';
+import { allBosses, dist } from '../util';
 import { damageEnemy, damageInRadius, isBossBody, solidEdge } from './combat';
 
 export const KART = {
@@ -198,7 +198,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
 function keepOutOfBosses(s: SimState, v: Vehicle): void {
   if (v.air > 0) return;
   for (const e of s.enemies) {
-    if (e.hp <= 0 || (e.kind !== 'megaBlock' && e.kind !== 'kraken' && s.boss?.enemyId !== e.id)) continue;
+    if (e.hp <= 0 || (e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id))) continue;
     const dx = v.pos.x - e.pos.x, dz = v.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz), edge = solidEdge(s, e);
     if (d >= edge) continue;

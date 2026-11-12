@@ -47,7 +47,7 @@ export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
-export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush';
+export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
 export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
@@ -653,6 +653,10 @@ export interface SimState {
   towers: Tower[];
   nests: Nest[];
   boss: BossState | null;
+  /** Boss Brawl: every boss in the arena right now (`boss` is the first of them) */
+  bosses?: BossState[];
+  /** Boss Brawl: the bosses still to come, when the next wave enters and when the next shark swims by */
+  brawl?: { queue: BossKind[]; nextAt: number; wave: number; nextSharkAt: number } | null;
   blasts: Blast[];
   vehicles: Vehicle[];
   vehicleRespawns: { spot: number; at: number; kind: VehicleKind }[];

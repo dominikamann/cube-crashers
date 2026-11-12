@@ -327,6 +327,7 @@ function startGame() {
       play: () => newSoloGame('run'),
       daily: () => newSoloGame('run', true),
       bossRush: () => newSoloGame('bossrush'),
+      bossBrawl: () => newSoloGame('brawl'),
       quick: () => newSoloGame('quick'),
       endless: () => newSoloGame('endless'),
       versus: () => newVersusGame(),
@@ -556,7 +557,7 @@ function startGame() {
       credits: s.credits,
       nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
       nests: s.nests.length,
-      best: dailyRun ? recordDaily(store, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.run.mode === 'bossrush' ? 'bossrush' : s.difficulty),
+      best: dailyRun ? recordDaily(store, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.run.mode === 'bossrush' ? 'bossrush' : s.run.mode === 'brawl' ? 'brawl' : s.difficulty),
       daily: dailyRun ?? undefined,
       tickets: earnTickets(s),
       unlocked: newUnlocks,
@@ -678,7 +679,8 @@ function startGame() {
     const names = split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
     // "Single floor" plays the map chosen on the title screen
-    const first = mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
+    // (the Boss Brawl is always in the Mega Block Arena)
+    const first = mode === 'brawl' ? FLOORS.arena.map : mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
     solo = dailyRun
       ? // the same run for everyone today: fixed seed and difficulty, every weapon
         createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, countdown: true })
@@ -1055,7 +1057,7 @@ function startGame() {
     newVersusGame();
     // dev: &view=top keeps the camera above the arena (for recordings)
     if (params.get('view') === 'top') keyboard.setFirstPerson(false, { x: 0, z: -1 });
-  } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : 'quick');
+  } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : params.get('mode') === 'brawl' ? 'brawl' : 'quick');
   if (import.meta.env.DEV && params.has('capture')) {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
     let clock = 0;

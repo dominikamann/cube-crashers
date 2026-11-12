@@ -153,8 +153,8 @@ export function saveSettings(s: Settings): void {
 }
 
 /** Adds a score to the local top 5 of this difficulty and returns the list (highest first). */
-export function recordScore(score: number, difficulty: Difficulty | 'endless' | 'bossrush'): number[] {
-  let all: Partial<Record<Difficulty | 'endless' | 'bossrush', number[]>> = {};
+export function recordScore(score: number, difficulty: Difficulty | 'endless' | 'bossrush' | 'brawl'): number[] {
+  let all: Partial<Record<Difficulty | 'endless' | 'bossrush' | 'brawl', number[]>> = {};
   try {
     const raw = JSON.parse(browserStore().getItem(SCORES_KEY) ?? '{}');
     // version 0.1 kept a single list: it becomes the Medium list
@@ -211,6 +211,8 @@ export interface ScreenActions {
   daily(): void;
   /** every boss in a row */
   bossRush(): void;
+  /** every boss in one arena, one or two at a time */
+  bossBrawl(): void;
   /** the online server list */
   online(): void;
   resume(): void;
@@ -799,6 +801,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const rb = button(rush, t('bossrush.play'), actions.bossRush);
         rb.classList.add('small');
         s.append(rush);
+        // the Boss Brawl: every boss in one arena, one or two at a time
+        const brawl = document.createElement('div');
+        brawl.className = 'daily-box rush-box';
+        text(brawl, 'div', 'setup-label', t('brawl.title'));
+        text(brawl, 'p', 'mode-hint', t('brawl.sub'));
+        const bb = button(brawl, t('brawl.play'), actions.bossBrawl);
+        bb.classList.add('small');
+        s.append(brawl);
       }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
@@ -872,7 +882,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     result(won, r, again) {
       show('result', s => {
         // a won Tower Run gets its own headline: the whole tower is done
-        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && r.mode === 'bossrush' ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
+        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && (r.mode === 'bossrush' || r.mode === 'brawl') ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
         text(s, 'h2', '', title);
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');

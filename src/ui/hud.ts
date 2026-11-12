@@ -1,3 +1,4 @@
+import { allBosses } from '../sim/util';
 import { DIFFICULTY } from '../sim/config/difficulty';
 import { FLOORS } from '../sim/config/floors';
 import { inZone } from '../sim/systems/nests';
@@ -515,6 +516,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           introRule.textContent = t(`versus.${vs.rule}` as 'versus.score');
           introMode.textContent = [vs.rule === 'capture' || vs.rule === 'gungame' ? '' : t(`versus.${vs.mode}` as 'versus.ffa'), floorName, vs.chaos ? t('versus.chaosCard') : ''].filter(Boolean).join(' · ');
           introHint.textContent = t(`versus.${vs.rule}Hint` as 'versus.scoreHint');
+        } else if (mode === 'brawl') {
+          introRule.textContent = t('brawl.title');
+          introMode.textContent = `${level} · ${floorName}`;
+          introHint.textContent = t('brawl.sub');
         } else if (mode === 'bossrush') {
           introRule.textContent = t('bossrush.title');
           introMode.textContent = `${level} · ${floorName}`;
@@ -587,10 +592,12 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       layer.classList.toggle('has-bar', !!s.boss || holdBox.style.display === '');
       if (s.boss) {
         bossBox.style.display = '';
-        const name = bossLabel(s.boss.kind);
+        // a brawl: the bosses of the wave share the bar, with both names
+        const all = allBosses(s);
+        const name = all.map(b => bossLabel(b.kind)).join(' + ');
         bossName.textContent = isFinalFloor(s) ? t('boss.final', { name }) : name;
         bossBox.classList.toggle('final', isFinalFloor(s));
-        bossFill.style.width = `${Math.max(0, bossHp(s) / s.boss.maxHp) * 100}%`;
+        bossFill.style.width = `${Math.max(0, bossHp(s) / all.reduce((n, b) => n + b.maxHp, 0)) * 100}%`;
       } else bossBox.style.display = 'none';
       minimap.update(s, time, p.id);
     },

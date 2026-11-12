@@ -1,3 +1,4 @@
+import { allBosses } from '../sim/util';
 import * as THREE from 'three';
 import type { SimState } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
@@ -50,7 +51,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
   return {
     update(s) {
       bars.length = 0;
-      const bossIds = new Set([s.boss?.enemyId, ...(s.boss?.worms.flat() ?? [])]);
+      const bossIds = new Set(allBosses(s).flatMap(b => [b.enemyId, ...b.worms.flat()]));
       for (const e of s.enemies) {
         if (e.hp >= e.maxHp || e.hp <= 0 || bossIds.has(e.id) || bars.length >= MAX_BARS) continue;
         const l = ENEMY_LOOK[e.kind];

@@ -22,7 +22,7 @@ import { BLOCKS_AIR, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileA
 import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2 } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
-import { dist } from '../util';
+import { dist, allBosses } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy, solidEdge, wormShare } from './combat';
 import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
@@ -123,7 +123,7 @@ function stomp(s: SimState, p: Player): void {
 function pushOutOfBosses(s: SimState, p: Player): void {
   for (const e of s.enemies) {
     // the big boss bodies (Mega Block, the Kraken, King Rex) are solid
-    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && s.boss?.enemyId !== e.id) || e.hp <= 0) continue;
+    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id)) || e.hp <= 0) continue;
     const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz);
     const edge = solidEdge(s, e);

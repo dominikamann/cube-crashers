@@ -7,7 +7,7 @@ import { BUBBLE_WAND, HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { pvpDamage, rivals } from './versus';
 import { DT, type DamageSource, type Enemy, type Player, type Projectile, type SimState, type Vec2 } from '../types';
-import { dist, targets } from '../util';
+import { dist, targets, allBosses } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
@@ -17,7 +17,7 @@ const HIT_PADDING = 0.15;
 
 /** a boss's own body: too big to be pulled, bubbled or bumped, and tough against stomps and karts */
 export function isBossBody(s: SimState, e: Enemy): boolean {
-  return e.kind === 'megaBlock' || e.kind === 'wormSegment' || e.kind === 'kraken' || (s.boss !== null && s.boss.enemyId === e.id);
+  return e.kind === 'megaBlock' || e.kind === 'wormSegment' || e.kind === 'kraken' || allBosses(s).some(b => b.enemyId === e.id);
 }
 
 /**
@@ -25,7 +25,7 @@ export function isBossBody(s: SimState, e: Enemy): boolean {
  * than its radius, so players are kept outside its corners, where first person would look into the hollow model.
  */
 export function solidEdge(s: SimState, e: Enemy): number {
-  const reach = e.kind === 'megaBlock' ? 2.6 : e.kind === 'trex' && s.boss?.enemyId === e.id ? 2.3 : 0;
+  const reach = e.kind === 'megaBlock' ? 2.6 : e.kind === 'trex' && allBosses(s).some(b => b.enemyId === e.id) ? 2.3 : 0;
   return Math.max(e.radius + PLAYER_RADIUS * 0.6, reach);
 }
 

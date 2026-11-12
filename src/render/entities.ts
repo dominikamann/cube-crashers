@@ -8,6 +8,7 @@ import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
 import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
+import { allBosses } from '../sim/util';
 import { wallTop } from './world';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -249,7 +250,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       eyes.begin();
       pupils.begin();
       plates.begin();
-      const heads = new Set(s.boss?.worms.map(w => w[0]) ?? []);
+      const leapOf = (id: number) => allBosses(s).find(b => b.enemyId === id)?.leap ?? null;
+      const heads = new Set(allBosses(s).flatMap(b => b.worms.map(w => w[0])));
       const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
@@ -275,7 +277,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
         // King Rex is a T-Rex grown to boss size
-        const kingRex = s.boss?.kind === 'rex' && s.boss.enemyId === e.id;
+        const kingRex = allBosses(s).some(b => b.kind === 'rex' && b.enemyId === e.id);
         const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex;
         // in the jungle's tall grass a monster cannot be seen until you are close
         if (grassAt(s, e.pos) && Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z))) > 3.5 && (flashUntil.get(e.id) ?? 0) <= time) continue;
@@ -303,7 +305,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && s.boss?.leap ? Math.sin(Math.PI * Math.min(1, (s.tick - s.boss.leap.start) / (s.boss.leap.land - s.boss.leap.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
+        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
         const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
@@ -399,8 +401,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       for (const k of KINDS) bodies.get(k)!.end();
       // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
-      const grab = s.boss?.kind === 'kraken' ? s.boss.grab : null;
-      const kraken = grab ? s.enemies.find(e => e.id === s.boss!.enemyId) : undefined;
+      const grabber = allBosses(s).find(b => b.kind === 'kraken' && b.grab);
+      const grab = grabber?.grab ?? null;
+      const kraken = grab ? s.enemies.find(e => e.id === grabber!.enemyId) : undefined;
       const held = grab ? s.players.find(p => p.id === grab.playerId) : undefined;
       if (kraken && held) {
         const dx = held.pos.x - kraken.pos.x, dz = held.pos.z - kraken.pos.z;

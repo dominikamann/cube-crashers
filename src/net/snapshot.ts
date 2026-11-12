@@ -44,6 +44,7 @@ type SnapFields = Pick<
   | 'versus'
   | 'countdown'
   | 'heart'
+  | 'bosses'
 >;
 
 function packEnemy(e: Enemy): PackedEnemy {
@@ -118,6 +119,7 @@ export function encodeSnapshot(s: SimState): SnapState {
     versus: s.versus,
     countdown: s.countdown,
     heart: s.heart,
+    bosses: s.bosses,
     mapId: s.map.id,
   };
   return snap;
