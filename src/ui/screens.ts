@@ -86,7 +86,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'medium', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -104,6 +104,18 @@ export function withDefaults<T extends { name: string; color: number | null }>(s
   };
 }
 
+/** arenas for versus: the floors with room to fight */
+export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
+/** the map choice "rotation": a random arena for every match, a new one after each */
+export const MAP_ROTATION = 'random';
+
+/** The arena to play on: the chosen one, or with the rotation a random one that is not `last`. */
+export function versusMapFor(choice: string, last: string | null, random: () => number = Math.random): string {
+  if (choice !== MAP_ROTATION) return choice;
+  const pool = VERSUS_MAPS.filter(m => m !== last);
+  return pool[Math.floor(random() * pool.length)];
+}
+
 export function loadSettings(): Settings {
   let loaded: Settings = { ...DEFAULTS };
   try {
@@ -114,7 +126,7 @@ export function loadSettings(): Settings {
     if (![0.5, 1, 1.5, 2, 3].includes(loaded.mouseSensitivity)) loaded.mouseSensitivity = 1;
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
-    if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'medium';
+    if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'low';
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -664,8 +676,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
-  /** arenas for versus: the floors with room to fight */
-  const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
   /** maps for "Single floor": the floors of the tower in their order */
   const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'jungle', 'servers', 'underwater', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
@@ -737,8 +747,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         }
         choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
-        if (!VERSUS_MAPS.includes(settings.versusMap)) settings.versusMap = VERSUS_MAPS[0];
-        choose(t('setup.map'), VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id })), settings.versusMap, v => (settings.versusMap = v), true);
+        if (!VERSUS_MAPS.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = VERSUS_MAPS[0];
+        // "Rotation": a random arena, and a new one after every match
+        choose(t('setup.map'), [{ label: t('setup.rotation'), value: MAP_ROTATION }, ...VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id }))], settings.versusMap, v => (settings.versusMap = v), true);
       }
       if (mode === 'versus') {
         if (!lan) {
@@ -755,7 +766,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (lan) {
         // on the LAN: start this match now, or put it to the vote next to a surprise card
-        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: settings.versusMap, chaos: settings.versusChaos });
+        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, null), chaos: settings.versusChaos });
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);

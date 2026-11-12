@@ -439,3 +439,18 @@ body.no-map .mapbox { display: none; }
 .alarm { margin-top: 0; gap: 3px; align-items: center; }
 .alarm i { width: 14px; height: 6px; border: none; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
 .alarm i.on { background: var(--red); box-shadow: 0 0 6px rgba(255, 80, 80, 0.7); }
+
+/* the setup pages: one card, a label on the left and its choices on the right, so nothing overlaps or scrolls */
+.screen.setup { justify-content: safe center; overflow-y: auto; gap: 12px; }
+.screen.setup > p.mode-hint { margin: 0; min-height: 0; }
+.setup-body { width: min(900px, calc(100vw - 32px)); max-width: none; align-items: stretch; gap: 9px; padding: 14px 18px 16px; border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 12px; background: rgba(0, 0, 0, 0.3); }
+.setup-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); align-items: center; gap: 14px; }
+.setup-row .setup-label { text-align: right; }
+.setup-row .chips { justify-content: flex-start; gap: 6px; }
+.setup-body .chip { font-size: 10px; padding: 6px 9px; }
+.setup-body > p.mode-hint { margin: -2px 0 2px 184px; min-height: 0; max-width: none; text-align: left; font-size: 9px; line-height: 1.6; opacity: 0.75; }
+@media (max-width: 640px) {
+  .setup-row { grid-template-columns: 1fr; gap: 4px; }
+  .setup-row .setup-label { text-align: left; }
+  .setup-body > p.mode-hint { margin-left: 0; }
+}

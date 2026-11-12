@@ -37,7 +37,7 @@ import { KillCamRecorder, type KillCamPlayback } from './killcam';
 import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
-import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
+import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, versusMapFor } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -570,6 +570,8 @@ function startGame() {
     };
   }
 
+  /** the arena of the last versus match (the rotation picks another one) */
+  let lastVersusMap: string | null = null;
   function finish(won: boolean) {
     mode = 'over';
     keyboard.releaseAll();
@@ -582,9 +584,9 @@ function startGame() {
       dailyRun && role === 'solo'
         ? { label: t('daily.again'), action: () => newSoloGame('run', true) }
         : role === 'solo' && s.versus && gunNext && !settings.versusDiscovery
-        ? { label: t('versus.next', { what: describe(gunNext) }), action: () => ((settings.versusMap = gunNext.map), newVersusGame()) }
+        ? { label: t('versus.next', { what: describe(gunNext) }), action: () => (settings.versusMap === MAP_ROTATION || (settings.versusMap = gunNext.map), newVersusGame()) }
         : role === 'solo' && s.versus
-        ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : t('menu.playAgain'), action: () => newVersusGame() }
+        ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : settings.versusMap === MAP_ROTATION ? t('versus.nextMap') : t('menu.playAgain'), action: () => newVersusGame() }
         : role === 'host' && s.versus && gunNext && !lanDiscovery
         ? { label: t('versus.next', { what: describe(gunNext) }), action: () => lanActions.startVersus(gunNext) }
         : role === 'host' && s.versus && lanDiscovery
@@ -652,7 +654,9 @@ function startGame() {
     // discovery: the next step of the rotation instead of the chosen match
     const pickd = settings.versusDiscovery ? discovery(discoveryStep++) : null;
     const vsMode = pickd?.mode ?? settings.versusMode, vsRule = pickd?.rule ?? settings.versusRule, vsChaos = pickd?.chaos ?? settings.versusChaos;
-    const map = FLOORS[pickd?.map ?? settings.versusMap]?.map ?? floor01;
+    // the map rotation: a random arena, another one than the last
+    lastVersusMap = pickd?.map ?? versusMapFor(settings.versusMap, lastVersusMap);
+    const map = FLOORS[lastVersusMap]?.map ?? floor01;
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
