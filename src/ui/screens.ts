@@ -23,6 +23,8 @@ export interface Settings {
   difficulty: Difficulty;
   /** versus: how well the bots play */
   versusBots: Difficulty;
+  /** the LAN host's pick in the lobby: which game Start begins */
+  lanGame: 'run' | 'bossrush' | 'brawl' | 'endless' | 'versus';
   /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
   /** first person: how fast the mouse (or touchpad) turns the view */
@@ -87,7 +89,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -128,6 +130,7 @@ export function loadSettings(): Settings {
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
     if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'low';
+    if (!['run', 'bossrush', 'brawl', 'endless', 'versus'].includes(loaded.lanGame)) loaded.lanGame = 'run';
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -714,6 +717,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
+  /** the versus match the settings describe (the map rotation picks a random arena) */
+  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, null), chaos: settings.versusChaos });
+
   /** the page behind a title tile: only the options that mode needs, then Start */
   function setupScreen(mode: 'run' | 'quick' | 'versus' | 'endless', lan?: LanActions) {
     back = () => setupScreen(mode, lan);
@@ -791,13 +797,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
       if (lan) {
         // on the LAN: start this match now, or put it to the vote next to a surprise card
-        const option = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, null), chaos: settings.versusChaos });
+        const option = versusOption;
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);
-        button(row, t('setup.start'), () => (settings.versusDiscovery ? lan.startDiscovery() : lan.startVersus(option())), true);
-        if (!settings.versusDiscovery) button(row, t('lobby.voteThis'), () => lan.startVote(option()), true);
-        button(s, t('menu.back'), () => lan.backToLobby());
+        // the match is only chosen here: Done goes back to the lobby, where Start begins it
+        button(row, t('lobby.done'), () => lan.backToLobby(), true);
+        if (!settings.versusDiscovery) button(row, t('lobby.voteThis'), () => lan.startVote(option()));
         return;
       }
       choose(t('setup.players'), [{ label: t('menu.onePlayer'), value: 1 as const }, { label: t('menu.twoPlayers'), value: 2 as const }], settings.localPlayers, v => (settings.localPlayers = v));
@@ -1018,11 +1024,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             card.append(g);
             return row;
           };
-          const go = (row: HTMLElement, label_: string, fn: () => void) => {
-            const b = button(row, label_, fn, true);
-            b.classList.add('small', 'go');
-            return b;
-          };
           const chip = (row: HTMLElement, label_: string, on: boolean, fn: () => void) => {
             const c = document.createElement('button');
             c.className = `chip small${on ? ' on' : ''}`;
@@ -1033,26 +1034,39 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             });
             row.append(c);
           };
-          // together: every co-op game of the title screen
+          // pick the game here; Start (next to Leave) begins it for everyone
+          const pick = (g: Settings['lanGame']) => {
+            settings.lanGame = g;
+            changed();
+            api.lobby(players, difficulty, isHost, me, lan, vote, server);
+          };
+          if (settings.lanGame === 'endless' && !profile.unlocked.includes('endless')) settings.lanGame = 'run';
           const coop = rowOf(t('lobby.coopRow'));
-          go(coop, t('mode.run'), lan.start);
-          go(coop, t('bossrush.title'), () => lan.startMode('bossrush'));
-          go(coop, t('brawl.title'), () => lan.startMode('brawl'));
-          if (profile.unlocked.includes('endless')) go(coop, t('mode.endless'), () => lan.startMode('endless'));
-          const diffRow = rowOf(t('settings.difficulty'));
-          for (const d of DIFFICULTIES) chip(diffRow, t(`difficulty.${d}` as 'difficulty.medium'), d === difficulty, () => lan.setDifficulty(d));
-          // against each other: the versus page picks the rule and the map (or puts it to the vote)
+          chip(coop, t('mode.run'), settings.lanGame === 'run', () => pick('run'));
+          chip(coop, t('bossrush.title'), settings.lanGame === 'bossrush', () => pick('bossrush'));
+          chip(coop, t('brawl.title'), settings.lanGame === 'brawl', () => pick('brawl'));
+          if (profile.unlocked.includes('endless')) chip(coop, t('mode.endless'), settings.lanGame === 'endless', () => pick('endless'));
           const vs = rowOf(t('lobby.versusRow'));
-          if (!vote) go(vs, t('lobby.versus'), () => setupScreen('versus', lan));
-          else text(vs, 'span', 'lobby-note', t('lobby.voteRunning'));
-          // one control for the bots: how many players a versus match is topped up to (bots show up right away)
-          const botsRow = rowOf(t('lobby.botsRow'));
-          const sizes = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-          const at = Math.max(0, sizes.indexOf(lan.autoFill()));
-          const stepTo = (k: number) => lan.setAutoFill(sizes[Math.max(0, Math.min(sizes.length - 1, k))]);
-          chip(botsRow, '\u2212', false, () => stepTo(at - 1));
-          text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
-          chip(botsRow, '+', false, () => stepTo(at + 1));
+          chip(vs, t('mode.versus'), settings.lanGame === 'versus', () => pick('versus'));
+          if (settings.lanGame === 'versus') {
+            // the match Start will begin, and the page that changes it (rule, map, or a vote)
+            const o = versusOption();
+            const what = settings.versusDiscovery ? t('versus.discovery') : `${t(`versus.${o.rule}` as 'versus.score')} · ${settings.versusMap === MAP_ROTATION ? t('setup.rotation') : t(FLOORS[o.map].name as 'floor.plaza')}`;
+            text(vs, 'span', 'lobby-note', what);
+            if (!vote) chip(vs, t('lobby.versus'), false, () => setupScreen('versus', lan));
+            else text(vs, 'span', 'lobby-note', t('lobby.voteRunning'));
+            // one control for the bots: how many players a versus match is topped up to (bots show up right away)
+            const botsRow = rowOf(t('lobby.botsRow'));
+            const sizes = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const at = Math.max(0, sizes.indexOf(lan.autoFill()));
+            const stepTo = (k: number) => lan.setAutoFill(sizes[Math.max(0, Math.min(sizes.length - 1, k))]);
+            chip(botsRow, '\u2212', false, () => stepTo(at - 1));
+            text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
+            chip(botsRow, '+', false, () => stepTo(at + 1));
+          } else {
+            const diffRow = rowOf(t('settings.difficulty'));
+            for (const d of DIFFICULTIES) chip(diffRow, t(`difficulty.${d}` as 'difficulty.medium'), d === difficulty, () => lan.setDifficulty(d));
+          }
           // the view for everyone (co-op and versus)
           const viewRow = rowOf(t('lobby.view'));
           for (const v of ['both', 'fp', 'top'] as const) chip(viewRow, t(`lobby.view.${v}` as 'lobby.view.both'), lan.viewMode() === v, () => lan.setViewMode(v));
@@ -1071,7 +1085,19 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));
         }
-        button(s, t('lobby.leave'), lan.leave);
+        // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
+        const foot = document.createElement('div');
+        foot.className = 'row2';
+        s.append(foot);
+        button(foot, t('lobby.leave'), lan.leave);
+        if (isHost && !vote) {
+          button(foot, t('setup.start'), () => {
+            const g = settings.lanGame;
+            if (g === 'run') lan.start();
+            else if (g === 'versus') settings.versusDiscovery ? lan.startDiscovery() : lan.startVersus(versusOption());
+            else lan.startMode(g);
+          }, true);
+        }
       });
     },
     lobbyCountdown(server) {
