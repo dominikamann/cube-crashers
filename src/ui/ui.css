@@ -32,6 +32,8 @@ html, body {
 .hud-top { position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .hud-box { background: var(--panel); border: 3px solid var(--shadow); box-shadow: 0 4px 0 var(--shadow); padding: 10px 12px; font-size: 11px; }
 .hud-box .sub { font-size: 9px; margin-top: 8px; color: var(--cyan); }
+/* floors without nests or a floor name leave these rows empty: no dead space under the credits */
+.hud-box .sub:empty { display: none; }
 .bar { width: 180px; height: 12px; background: #2a2250; border: 2px solid var(--shadow); margin-top: 8px; position: relative; }
 .bar > i { position: absolute; inset: 0; width: 100%; background: var(--green); transition: width 100ms linear; }
 .hud-center { text-align: center; }
@@ -165,9 +167,9 @@ body.split .build-help { bottom: 86px; font-size: 8px; }
 .tile .name { font-size: clamp(13px, 1.5vw, 17px); }
 .tile .sub { font-size: 9px; line-height: 1.6; opacity: 0.8; }
 .tile:hover:not(:disabled), .tile:focus-visible { background: #fff; outline: none; transform: translateY(-3px); }
-.tile:disabled { opacity: 0.5; cursor: default; }
+.tile:disabled { background: #8ab6c4; color: rgba(27, 20, 64, 0.8); cursor: default; }
 .screen.setup { gap: 14px; background: rgba(20, 16, 50, 0.78); }
-.setup-body { display: flex; flex-direction: column; gap: 14px; align-items: center; max-width: 760px; }
+.setup-body { display: flex; flex-direction: column; gap: 14px; align-items: center; max-width: 880px; }
 .setup-row { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .setup-label { font-size: 10px; color: var(--cyan); }
 .title-main .maps { margin-top: 2px; max-width: 640px; }
@@ -255,7 +257,9 @@ body.split .card { width: 110px; }
 .alarm-extra { color: var(--red); font-size: 12px; margin-left: 4px; }
 .unlocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; width: min(820px, 92vw); }
 .unlocks .btn { min-width: 0; font-size: 11px; }
-.btn:disabled { opacity: 0.45; cursor: default; }
+/* greyed out, but still readable (opacity alone washed the label into the background) */
+.btn:disabled { background: #8ab6c4; color: rgba(27, 20, 64, 0.8); cursor: default; }
+.btn:disabled:hover { transform: none; }
 .textfield { font-family: inherit; font-size: 12px; padding: 8px; width: 220px; background: #fffdf5; color: var(--shadow); border: 3px solid var(--shadow); }
 .lobby { display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 300px; }
 .lobby-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 3px solid var(--shadow); padding: 10px 12px; }
