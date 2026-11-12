@@ -3,6 +3,10 @@ import { MAX_PLAYERS } from '../sim/config/balance';
 import type { Command, Difficulty, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
 import type { SnapState } from './snapshot';
 
+/** how a LAN game may be watched: first person only, from above only, or either (V switches) */
+export type ViewMode = 'both' | 'fp' | 'top';
+export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
+
 export const PROTOCOL_VERSION = 2;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
@@ -51,7 +55,7 @@ export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote }
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -107,7 +111,7 @@ export function parseMessage(raw: string): Message | null {
     case 'lobby':
       return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) ? (m as unknown as HostMessage) : null;
     case 'start':
-      return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVersus(m.versus) && (m.mapId === undefined || (typeof m.mapId === 'string' && Object.hasOwn(FLOORS, m.mapId)))
+      return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVersus(m.versus) && (m.mapId === undefined || (typeof m.mapId === 'string' && Object.hasOwn(FLOORS, m.mapId))) && (m.view === undefined || VIEW_MODES.includes(m.view as ViewMode))
         ? (m as unknown as HostMessage)
         : null;
     case 'snap':

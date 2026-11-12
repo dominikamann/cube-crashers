@@ -5,7 +5,7 @@ import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
 import { balanceTeams } from '../sim/systems/versus';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
-import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type VersusOption } from './protocol';
+import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type VersusOption, type ViewMode } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
 
@@ -41,6 +41,8 @@ export function mergeInputs(batches: Command[][], last: Command[]): { cmds: Comm
 export class HostSession {
   readonly lobby: LobbyPlayer[];
   difficulty: Difficulty = 'medium';
+  /** first person only, from above only, or either: sent to everyone with the start */
+  viewMode: ViewMode = 'both';
   sim: SimState | null = null;
   /** everything the host's own screen should show this frame */
   events: SimEvent[] = [];
@@ -194,7 +196,7 @@ export class HostSession {
     const def = FLOORS[option.map];
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
-    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
+    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
       versus,
@@ -203,7 +205,7 @@ export class HostSession {
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map });
+    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map, view: this.viewMode });
   }
 
   setDifficulty(d: Difficulty): void {
@@ -270,7 +272,7 @@ export class HostSession {
       names: humans.map(p => p.name),
       colors: humans.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked });
+    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode });
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -333,6 +335,8 @@ export class ClientSession {
   playerId = -1;
   lobby: LobbyPlayer[] = [];
   difficulty: Difficulty = 'medium';
+  /** the view the host allows in this game */
+  viewMode: ViewMode = 'both';
   view: SimState | null = null;
   private events: SimEvent[] = [];
   private seq = 0;
@@ -369,6 +373,7 @@ export class ClientSession {
         break;
       case 'start':
         this.difficulty = m.difficulty;
+        this.viewMode = m.view ?? 'both';
         this.lobby = m.players;
         this.vote = null;
         this.view = createSim(m.versus && m.mapId ? FLOORS[m.mapId].map : floor01, m.seed, {

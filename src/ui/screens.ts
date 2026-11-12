@@ -198,6 +198,9 @@ export interface LanActions {
   /** versus: fill matches up with bots to this many players (0 = off) */
   setAutoFill(n: number): void;
   autoFill(): number;
+  /** how everyone may watch: first person only, from above only, or either */
+  setViewMode(v: 'both' | 'fp' | 'top'): void;
+  viewMode(): 'both' | 'fp' | 'top';
 }
 
 export interface Screens {
@@ -771,6 +774,21 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           plus.addEventListener('click', () => stepTo(at + 1));
           bots.append(minus, count, plus);
           vs.append(bots);
+          // the view for everyone (co-op and versus)
+          const viewRow = document.createElement('div');
+          viewRow.className = 'chips lobby-view';
+          text(viewRow, 'span', 'setup-label', t('lobby.view'));
+          for (const v of ['both', 'fp', 'top'] as const) {
+            const c = document.createElement('button');
+            c.className = `chip small${lan.viewMode() === v ? ' on' : ''}`;
+            c.textContent = t(`lobby.view.${v}` as 'lobby.view.both');
+            c.addEventListener('click', () => {
+              actions.click();
+              lan.setViewMode(v);
+            });
+            viewRow.append(c);
+          }
+          s.append(viewRow);
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));

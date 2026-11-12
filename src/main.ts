@@ -153,6 +153,12 @@ function startGame() {
       lastLobby = '';
     },
     autoFill: () => autoFill,
+    setViewMode: (v: 'both' | 'fp' | 'top') => {
+      lanView = v;
+      if (host) host.viewMode = v;
+      lastLobby = '';
+    },
+    viewMode: () => lanView,
   };
 
   /** two different versus cards for a vote: mode, rule and map at random */
@@ -316,6 +322,12 @@ function startGame() {
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
       // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad
+      // a LAN host can allow only one view: it is kept on, whatever V says
+      const forced = role === 'host' ? host?.viewMode : role === 'client' ? client?.viewMode : 'both';
+      if (forced === 'fp' || forced === 'top') {
+        const me = s.players.find(p => p.id === localId());
+        for (const c of [keyboard, padCtl]) if (c.firstPerson !== (forced === 'fp')) c.setFirstPerson(forced === 'fp', me ? lookOf(me) : { x: 0, z: -1 });
+      }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(0, fp0on ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
@@ -484,6 +496,8 @@ function startGame() {
   let lanBots: ((s: SimState) => Command[])[] = [];
   /** fill LAN versus matches up with bots to this many players */
   let autoFill = 4;
+  /** LAN: the view the host allows (sent with each start) */
+  let lanView: 'both' | 'fp' | 'top' = 'both';
 
   /** where the discovery rotation is (alone and on the LAN) */
   let discoveryStep = 0;

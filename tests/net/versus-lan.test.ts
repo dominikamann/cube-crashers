@@ -124,3 +124,14 @@ describe('team wishes on the LAN', () => {
     expect(cs[0].view!.players.find(p => p.id === cs[0].playerId)!.team).toBe(0);
   });
 });
+
+describe('the host decides the view', () => {
+  it('first person only, top view only, or both: the clients learn it with the start', () => {
+    const { hub, host, cs } = lobby(1);
+    host.viewMode = 'fp';
+    host.startVersus({ mode: 'ffa', rule: 'score', map: 'neon' }, 5);
+    hub.flush();
+    expect(cs[0].viewMode).toBe('fp');
+    expect(parseMessage(JSON.stringify({ type: 'start', seed: 1, difficulty: 'medium', players: [{ id: 0, name: 'A', color: 0 }], view: 'sideways' }))).toBeNull();
+  });
+});
