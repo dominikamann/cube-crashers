@@ -96,6 +96,7 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   s.heart = null;
+  s.logoEgg = null;
   const def = floorDef(s.map.id);
   if (def?.kind === 'maze') {
     // the Glitch Maze played on its own

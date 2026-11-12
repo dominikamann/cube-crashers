@@ -56,6 +56,8 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   teamWipe: { type: 'teamWipe' },
   playerOut: { type: 'playerOut', playerId: 0 },
   heartFound: { type: 'heartFound', playerId: 0 },
+  logoHit: { type: 'logoHit', pos: { x: 0, z: 0 }, hits: 3 },
+  logoEgg: { type: 'logoEgg', pos: { x: 0, z: 0 }, prize: 'coins' },
   creditLost: { type: 'creditLost', credits: 2 },
   jump: { type: 'jump', playerId: 0 },
   stomp: { type: 'stomp', pos: p, radius: 1.2 },

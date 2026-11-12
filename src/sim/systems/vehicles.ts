@@ -5,7 +5,7 @@ import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
 import { dist } from '../util';
-import { damageEnemy, damageInRadius } from './combat';
+import { damageEnemy, damageInRadius, isBossBody, solidEdge } from './combat';
 
 export const KART = {
   speed: 12,
@@ -171,7 +171,9 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
 
   if (!driver || speed <= KART.ramSpeed || stats.ramDamage === 0) return;
   for (const e of s.enemies) {
-    if (e.hp <= 0 || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > stats.radius + e.radius) continue;
+    // a solid boss is rammed at its edge (nothing drives into it)
+    const reach = isBossBody(s, e) ? Math.max(stats.radius + e.radius, solidEdge(s, e) + 0.3) : stats.radius + e.radius;
+    if (e.hp <= 0 || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > reach) continue;
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
@@ -192,6 +194,26 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   }
 }
 
+/** The solid bosses stop vehicles like they stop players on foot: pushed back to the edge, and the speed into it is gone. */
+function keepOutOfBosses(s: SimState, v: Vehicle): void {
+  if (v.air > 0) return;
+  for (const e of s.enemies) {
+    if (e.hp <= 0 || (e.kind !== 'megaBlock' && e.kind !== 'kraken' && s.boss?.enemyId !== e.id)) continue;
+    const dx = v.pos.x - e.pos.x, dz = v.pos.z - e.pos.z;
+    const d = Math.hypot(dx, dz), edge = solidEdge(s, e);
+    if (d >= edge) continue;
+    const nx = d > 0.01 ? dx / d : 1, nz = d > 0.01 ? dz / d : 0;
+    const out = { x: e.pos.x + nx * edge, z: e.pos.z + nz * edge };
+    v.pos = isFree(s.map, out, VEHICLES[v.kind].radius, BLOCKS_KART) ? out : nearestFree(s.map, out, VEHICLES[v.kind].radius, BLOCKS_KART);
+    // only the part of the speed that goes into the boss is lost: you slide along it
+    const into = v.vel.x * nx + v.vel.z * nz;
+    if (into < 0) {
+      v.vel.x -= nx * into;
+      v.vel.z -= nz * into;
+    }
+  }
+}
+
 export function updateVehicles(s: SimState, intents: Map<number, Intent>): void {
   for (const p of s.players) {
     if (p.downUntil === null && intents.get(p.id)?.use) toggle(s, p);
@@ -205,6 +227,7 @@ export function updateVehicles(s: SimState, intents: Map<number, Intent>): void 
   s.vehicles = s.vehicles.filter(v => {
     const driver = v.driverId !== null ? s.players.find(p => p.id === v.driverId) : undefined;
     drive(s, v, driver, driver ? intents.get(driver.id) : undefined);
+    keepOutOfBosses(s, v);
     if (driver) driver.pos = { ...v.pos };
     if (v.hp > 0 && v.fuel > 0) return true;
     // a wrecked race kart is the race's business (it comes back at the last checkpoint)

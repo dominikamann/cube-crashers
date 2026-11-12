@@ -203,7 +203,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       outBanner.style.display = p.out && s.phase === 'playing' ? '' : 'none';
       if (p.out) outBanner.textContent = t('hud.outBanner', { name: watching?.name ?? '' });
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
-      nestText.textContent = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : s.boss ? t('hud.bossFight') : '';
+      // (a boss fight needs no line here: the boss bar and the countdown say it, and the box stays small)
+      nestText.textContent = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : '';
       const def = floorDef(s.map.id);
       floorText.textContent = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length, name: def ? t(def.name as 'floor.plaza') : '' }) : '';
 
@@ -238,8 +239,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       // only floors with nests have an alarm
       alarmBox.style.display = s.run.stage === 'floor' && s.nests.length > 0 ? '' : 'none';
       // in versus the score is the race at the top; the box keeps only the coins (for towers)
-      scoreText.textContent = s.versus ? '' : t('hud.score', { score: s.score });
-      scoreText.style.display = s.versus ? 'none' : '';
+      // the score only where it is the goal (Endless); everywhere else the box is one line of coins, and the
+      // score is on the result screen
+      const showScore = !s.versus && s.run.mode === 'endless';
+      scoreText.textContent = showScore ? t('hud.score', { score: s.score }) : '';
+      scoreText.style.display = showScore ? '' : 'none';
       if (p.coins !== lastCoins) {
         coinText.textContent = String(p.coins);
         if (p.coins > lastCoins && lastCoins >= 0) bump(coinRow);
@@ -477,6 +481,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'jetpackPicked':
             if (e.playerId === p.id) toast(t('toast.jetpack'), 'good');
+            break;
+          case 'logoEgg':
+            toast(t(e.prize === 'nothing' ? 'toast.eggNothing' : 'toast.egg'), e.prize === 'nothing' ? 'warn' : 'final');
             break;
           case 'heartFound':
             toast(t('toast.heart', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'final');

@@ -205,7 +205,7 @@ function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; hea
 }
 
 /** the paint of each kart, by its id, so a grid of them is colourful */
-export const KART_PAINT = [0xe23b3b, 0x3d8bfd, 0x3bd16f, 0xffa23b, 0xb15cff, 0x2bd4d4, 0xff6ab0, 0xf4f4fa];
+const KART_PAINT = [0xe23b3b, 0x3d8bfd, 0x3bd16f, 0xffa23b, 0xb15cff, 0x2bd4d4, 0xff6ab0, 0xf4f4fa];
 
 function makeKart(kind: VehicleKind = 'kart', id = 0) {
   const root = new THREE.Group();

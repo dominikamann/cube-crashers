@@ -634,8 +634,8 @@ Chosen on the title screen (alone) or in the lobby (by the host).
 
 | Level | Monster health | Monster damage | Horde size | Lives | Alarm speed | Points |
 |---|---|---|---|---|---|---|
-| Ultra Low | ×0.5 | ×0.35 | ×0.5 | 6 | half speed | ×0.5 |
-| Low | ×0.75 | ×0.5 | ×0.65 | 4 | slower | ×0.75 |
+| Ultra Low | ×0.5 | ×0.35 | ×0.5 | 4 | half speed | ×0.5 |
+| Low | ×0.75 | ×0.5 | ×0.65 | 3 | slower | ×0.75 |
 | Medium | ×1 | ×1 | ×1 | 3 | normal | ×1 |
 | High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
 | Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |

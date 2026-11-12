@@ -342,7 +342,7 @@ body.split .card { width: 110px; }
 @keyframes fp-click-blink { 50% { opacity: 0.45; } }
 .fp-cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; pointer-events: none; }
 .fp-cockpit .frame { position: absolute; inset: 0; width: 100%; height: 100%; }
-.fp-cockpit .wheel { position: absolute; left: 50%; bottom: -6%; width: 30%; max-width: 360px; transform: translateX(-50%); }
+.fp-cockpit .wheel { position: absolute; left: 50%; bottom: -6%; width: 30%; max-width: 360px; aspect-ratio: 1; transform: translate(-50%, 40%); }
 
 .lobby-view { align-items: center; margin-top: 4px; }
 .lobby-view .setup-label { margin-right: 6px; }
@@ -401,3 +401,34 @@ body.no-map .mapbox { display: none; }
 /* empty weapon slots: only the frame of the first empty one shows, the rest are hidden (less noise, versus starts with one weapon) */
 .slot.empty ~ .slot.empty { display: none; }
 .player-hp .hp-number { float: right; color: #fff; font-size: 12px; }
+
+/* a lighter HUD: glass panels with soft corners instead of heavy blocks, hearts for the lives, and the health
+   box next to the weapons in the middle of the bottom edge */
+.hud-box, .slot { background: rgba(16, 13, 42, 0.56); border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.hud-box { padding: 9px 13px; }
+.hud-top { top: 14px; left: 18px; right: 18px; }
+.credits { gap: 4px; }
+.credit, .credit.on { width: 18px; height: 17px; background: none; box-shadow: none; position: relative; }
+.credit::before { content: '\2665'; position: absolute; inset: 0; font-family: system-ui, -apple-system, 'Segoe UI Symbol', sans-serif; font-size: 20px; line-height: 17px; text-align: center; color: rgba(255, 255, 255, 0.16); }
+.credit.on::before { color: #ff5a7a; text-shadow: 0 0 8px rgba(255, 90, 122, 0.65); }
+.hud .bar { height: 10px; border: none; border-radius: 6px; background: rgba(255, 255, 255, 0.13); overflow: hidden; }
+.hud .bar > i { border-radius: 6px; }
+.hud .kart .bar { height: 6px; }
+.dashes i { border: none; border-radius: 4px; height: 6px; background: rgba(255, 255, 255, 0.13); }
+.slot.selected { border-color: var(--gold); box-shadow: 0 0 0 1.5px var(--gold), 0 8px 16px rgba(0, 0, 0, 0.3); }
+.slot.rare { background: linear-gradient(180deg, rgba(209, 154, 0, 0.55), rgba(16, 13, 42, 0.56)); }
+.hud-bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 14px; bottom: 14px; left: 18px; right: 18px; }
+.hud-bottom > .player-hp { justify-self: end; }
+.hud-bottom > .weapons { justify-self: center; }
+.hud-bottom > .mapbox { justify-self: end; }
+.score .coins { margin-top: 0; }
+.score > div:first-child:not(:empty) { margin-bottom: 6px; }
+/* the top row sits on one line: both boxes the same height with their content in the middle, and the boss bar
+   level with them (its name just above) */
+.hud-top > .hud-box { min-height: 38px; display: flex; flex-direction: column; justify-content: center; }
+.hud-top .credits { align-items: center; height: 18px; }
+.credit::before { line-height: 18px; top: -1px; }
+.score .coins { align-items: center; line-height: 1; height: 18px; }
+.score .coins span { position: relative; top: 1px; }
+.boss { top: 10px; line-height: 1; }
+.boss .bar { margin-top: 5px; }

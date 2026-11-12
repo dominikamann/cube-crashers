@@ -177,3 +177,33 @@ describe('ramps and low walls', () => {
     }
   });
 });
+
+describe('vehicles and solid bosses', () => {
+  it('no vehicle drives through the Mega Block: it stops at its edge, and a ram at speed still hurts it', async () => {
+    const { FLOORS } = await import('../../src/sim/config/floors');
+    const { createSim } = await import('../../src/sim/sim');
+    const { addVehicle, VEHICLES } = await import('../../src/sim/systems/vehicles');
+    const { solidEdge } = await import('../../src/sim/systems/combat');
+    for (const kind of ['kart', 'roller', 'hoverboard', 'unicorn'] as const) {
+      const s = createSim(FLOORS.arena.map, 3, { mode: 'quick' });
+      const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+      boss.speed = 0;
+      s.boss!.nextAttackAt = 1e9;
+      const p = s.players[0];
+      p.invulnUntil = 1e9;
+      const v = addVehicle(s, kind, { x: boss.pos.x - 6, z: boss.pos.z }, 0);
+      v.driverId = p.id;
+      p.vehicleId = v.id;
+      const hp = boss.hp;
+      let closest = Infinity;
+      for (let i = 0; i < 150; i++) {
+        stepSim(s, [{ type: 'move', playerId: p.id, dir: { x: 1, z: 0 } }]);
+        closest = Math.min(closest, Math.hypot(v.pos.x - boss.pos.x, v.pos.z - boss.pos.z));
+      }
+      expect(closest, kind).toBeGreaterThanOrEqual(solidEdge(s, boss) - 0.01);
+      expect(v.pos.x, kind).toBeLessThan(boss.pos.x);
+      // (the hoverboard floats and never rams)
+      if (VEHICLES[kind].ramDamage > 0) expect(boss.hp, kind).toBeLessThan(hp);
+    }
+  });
+});

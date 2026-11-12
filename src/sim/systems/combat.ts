@@ -1,3 +1,4 @@
+import { shotAtWall } from './logo-egg';
 import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
@@ -269,7 +270,10 @@ export function updateProjectiles(s: SimState): void {
       if (s.tick >= p.until) continue;
     } else if (s.tick >= p.until || tileAt(s.map, p.pos.x, p.pos.z) === Tile.Wall) {
       // a shot that reaches a wall can still hit someone standing on top of it
-      if (s.tick < p.until) hitPerched(s, p);
+      if (s.tick < p.until) {
+        hitPerched(s, p);
+        if (!p.hostile) shotAtWall(s, p.pos);
+      }
       continue;
     }
 

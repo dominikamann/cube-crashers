@@ -233,7 +233,7 @@ function startGame() {
   fpClick.style.display = 'none';
   hudRoots[0].append(fpClick);
   // first person in a vehicle: a cockpit frame (kart, roller) or the nose of the board along the bottom
-  const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 120" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 104 L172 104 M100 104 L100 160" stroke="#2a2550" stroke-width="16"/><circle cx="100" cy="104" r="16" fill="#ff2bd6"/></svg>`;
+  const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 200" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 100 L172 100 M100 100 L100 172" stroke="#2a2550" stroke-width="16"/><rect x="93" y="11" width="14" height="18" rx="3" fill="#ff2bd6"/><circle cx="100" cy="100" r="16" fill="#ff2bd6"/></svg>`;
   const BOARD_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M120 100 Q130 40 200 28 Q270 40 280 100 Z" fill="#2bf0ff" opacity="0.9"/><path d="M140 100 Q150 52 200 42 Q250 52 260 100" fill="none" stroke="#1d1a33" stroke-width="5"/></svg>`;
   // riding a unicorn in first person: its white neck, ears, a rainbow mane and the golden horn in front of you
   const UNICORN_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M150 100 Q160 50 200 40 Q240 50 250 100 Z" fill="#f6f4ff"/><path d="M168 46 L176 20 L186 44 Z M214 44 L224 20 L232 46 Z" fill="#f6f4ff" stroke="#c9b8ff" stroke-width="2"/><path d="M196 42 L200 0 L206 42 Z" fill="#ffd84a" stroke="#fff6c8" stroke-width="1.5"/><path d="M160 100 Q166 66 184 52" fill="none" stroke="#ff5a5f" stroke-width="6"/><path d="M168 100 Q172 70 188 56" fill="none" stroke="#ffe14a" stroke-width="5"/><path d="M176 100 Q178 76 192 60" fill="none" stroke="#3d8bfd" stroke-width="5"/></svg>`;
@@ -243,7 +243,7 @@ function startGame() {
     c.style.display = 'none';
     // under the HUD
     root.prepend(c);
-    return { el: c, kind: '' };
+    return { el: c, kind: '', yaw: 0, steer: 0, at: 0 };
   });
   const showCockpit = (i: number, on: boolean, playerId: number) => {
     const s = view();
@@ -253,6 +253,35 @@ function startGame() {
     c.el.style.display = kind ? '' : 'none';
     if (kind && kind !== c.kind) c.el.innerHTML = kind === 'hoverboard' ? BOARD_FRAME : kind === 'unicorn' ? UNICORN_FRAME : KART_FRAME;
     c.kind = kind;
+    const wheel = kind ? c.el.querySelector<SVGElement>('.wheel') : null;
+    const ride = wheel && p ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
+    if (wheel && ride) {
+      // the steering wheel turns with the kart. A kart turns on the spot, so the wheel follows a heading that
+      // lags a little behind the real one and is turned by how far the two are apart
+      const now = performance.now() / 1000, dt = Math.max(1e-3, Math.min(0.1, now - c.at));
+      const speed = Math.hypot(ride.vel.x, ride.vel.z);
+      const yaw = speed > 0.5 ? Math.atan2(-ride.vel.x, -ride.vel.z) : c.yaw;
+      const off = Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw));
+      c.yaw += off * Math.min(1, dt * 5);
+      c.steer += (Math.max(-1, Math.min(1, off / 0.7)) - c.steer) * Math.min(1, dt * 14);
+      c.at = now;
+      // the model's heading grows to the left, the wheel on screen turns the way you steer
+      wheel.style.transform = `translate(-50%, 40%) rotate(${(-c.steer * 100).toFixed(1)}deg)`;
+    }
+    // the board and the unicorn have no wheel: they lean into the turn instead
+    const frame = kind === 'hoverboard' || kind === 'unicorn' ? c.el.querySelector<SVGElement>('.frame') : null;
+    const mount = frame && p ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
+    if (frame && mount) {
+      const now = performance.now() / 1000, dt = Math.max(1e-3, Math.min(0.1, now - c.at));
+      const speed = Math.hypot(mount.vel.x, mount.vel.z);
+      const yaw = speed > 0.5 ? Math.atan2(-mount.vel.x, -mount.vel.z) : c.yaw;
+      const off = Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw));
+      c.yaw += off * Math.min(1, dt * 5);
+      c.steer += (Math.max(-1, Math.min(1, off / 0.7)) - c.steer) * Math.min(1, dt * 14);
+      c.at = now;
+      frame.style.transformOrigin = '50% 100%';
+      frame.style.transform = `rotate(${(-c.steer * 7).toFixed(1)}deg)`;
+    }
   };
   /** the mouse is captured in first person so it can turn the view */
   let releasing = false;

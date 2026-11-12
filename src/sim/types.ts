@@ -584,6 +584,9 @@ export type SimEvent =
   | { type: 'playerOut'; playerId: number }
   /** the hidden heart was found: a life for everyone */
   | { type: 'heartFound'; playerId: number }
+  /** the easter egg: a shot hit the AmannLabs logo; enough of them and it answers with a prize (or not) */
+  | { type: 'logoHit'; pos: Vec2; hits: number }
+  | { type: 'logoEgg'; pos: Vec2; prize: 'coins' | 'crate' | 'nothing' }
   | { type: 'jump'; playerId: number }
   | { type: 'stomp'; pos: Vec2; radius: number }
   | { type: 'dash'; playerId: number }
@@ -658,6 +661,8 @@ export interface SimState {
   powerups: Powerup[];
   nextPowerupAt: number;
   jetpacks: JetpackItem[];
+  /** the easter egg: shots that hit the AmannLabs logo on the wall, and how often it has answered on this floor */
+  logoEgg?: { hits: number; given: number } | null;
   /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
   heart?: { pos: Vec2 } | null;
   nextJetpackAt: number;

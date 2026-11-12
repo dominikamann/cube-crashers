@@ -308,6 +308,11 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('playerRespawn');
     case 'creditLost':
       return one('creditLost');
+    case 'logoHit':
+      // every hit rings a little higher
+      return one('coin', 0.8 + 0.04 * e.hits);
+    case 'logoEgg':
+      return e.prize === 'nothing' ? one('buildDenied') : one('elevatorOpen', 1.4);
     case 'heartFound':
       return one('elevatorOpen', 1.3);
     case 'playerOut':
