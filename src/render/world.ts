@@ -468,27 +468,28 @@ const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze',
 
 /** a floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
 function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550') {
-  const x = spot.tx * px, y = spot.tz * px, w = spot.w * px, h = spot.h * px;
-  const markH = h * 0.78, markW = markH * (img.width / img.height);
+  // drawn small in the game's own pixel font and blown up without smoothing, so it is made of the same fat
+  // pixels as everything else: 26 pixels per tile, the font at its native 8
+  const res = 26;
+  const small = document.createElement('canvas');
+  small.width = spot.w * res;
+  small.height = spot.h * res;
+  const c = small.getContext('2d')!;
+  const markH = Math.round(small.height * 0.72), markW = Math.round(markH * (img.width / img.height));
+  c.font = `8px 'Press Start 2P', monospace`;
+  c.textBaseline = 'middle';
+  const amann = c.measureText('Amann').width, labs = c.measureText('Labs').width;
+  const gap = 5;
+  const left = Math.round((small.width - (markW + gap + amann + labs)) / 2);
+  c.drawImage(img, left, Math.round((small.height - markH) / 2), markW, markH);
+  c.fillStyle = ink;
+  c.fillText('Amann', left + markW + gap, small.height / 2 + 1);
+  c.globalAlpha = 0.7;
+  c.fillText('Labs', left + markW + gap + amann, small.height / 2 + 1);
   g.save();
   g.globalAlpha = alpha;
-  {
-    const size = Math.round(h * 0.42);
-    g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    const amann = g.measureText('Amann').width;
-    g.font = `300 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    const labs = g.measureText('Labs').width;
-    const gap = h * 0.22;
-    const total = markW + gap + amann + labs;
-    const left = x + (w - total) / 2;
-    g.drawImage(img, left, y + (h - markH) / 2, markW, markH);
-    g.fillStyle = ink;
-    g.textBaseline = 'middle';
-    g.font = `700 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    g.fillText('Amann', left + markW + gap, y + h / 2);
-    g.font = `300 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
-    g.fillText('Labs', left + markW + gap + amann, y + h / 2);
-  }
+  g.imageSmoothingEnabled = false;
+  g.drawImage(small, spot.tx * px, spot.tz * px, spot.w * px, spot.h * px);
   g.restore();
 }
 
@@ -590,10 +591,13 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   disposables.push(floorTex);
   // the AmannLabs logo once or twice per map, painted in when the image is ready
   let disposed = false;
+  /** the wall logos glow gently, like a sign */
+  const logoMats: THREE.MeshBasicMaterial[] = [];
   const spots = logoSpots(map);
   if (spots.length) {
-    loadMark()
-      .then(img => {
+    // the pixel font has to be there before the logo is drawn with it
+    Promise.all([loadMark(), document.fonts?.load("8px 'Press Start 2P'").catch(() => [])])
+      .then(([img]) => {
         if (disposed) return;
         const g = (floorTex.image as HTMLCanvasElement).getContext('2d')!;
         // clearly readable: light lettering on the dark floors, dark on the light ones
@@ -611,6 +615,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     const geo = new THREE.PlaneGeometry(spot.w, h);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1 });
     disposables.push(tex, geo, mat);
+    logoMats.push(mat);
     const mid = (spot.w - 1) / 2;
     const cx = spot.tx + 0.5 + (spot.along === 'x' ? mid : 0), cz = spot.tz + 0.5 + (spot.along === 'z' ? mid : 0);
     // halfway up the lowest block's visible face (the race track's rails are low)
@@ -954,6 +959,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   return {
     update(s, theme, time) {
+      for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
       const key = `${theme.roadA}-${theme.roadB}-${theme.wallA}-${theme.hemiGround}`;
       if (key !== lastKey) {
         lastKey = key;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim } from '../../src/sim/sim';
-import { BOSS, bossHp } from '../../src/sim/systems/boss';
+import { BOSS, bossHp, megaLeap } from '../../src/sim/systems/boss';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { damagePlayer } from '../../src/sim/systems/player';
 import { enterFloor } from '../../src/sim/systems/run';
@@ -68,6 +68,30 @@ describe('Mega Block', () => {
     const one = bossFloor('megaBlock', 1);
     const four = bossFloor('megaBlock', 4);
     expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * 1.45);
+  });
+
+  it('leaps at a player: a big ring warns where it lands, and it comes down there', () => {
+    const s = bossFloor('megaBlock');
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    const p = s.players[0];
+    p.invulnUntil = 1e9;
+    p.pos = { x: boss.pos.x + 9, z: boss.pos.z + 2 };
+    const target = { ...p.pos };
+    megaLeap(s, p);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'blastWarning', radius: BOSS.leapRadius }));
+    const events = run(s, BOSS.leapTicks + 2);
+    expect(Math.hypot(boss.pos.x - target.x, boss.pos.z - target.z)).toBeLessThan(1.5);
+    expect(events).toContainEqual(expect.objectContaining({ type: 'stomp' }));
+    expect(s.boss!.leap ?? null).toBeNull();
+  });
+
+  it('gets faster with every phase', () => {
+    const s = bossFloor('megaBlock');
+    const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
+    const speed = boss.speed;
+    damageEnemy(s, boss, boss.maxHp * 0.4, 'pixelBlaster', 0);
+    run(s, 3);
+    expect(boss.speed).toBeGreaterThan(speed * 1.2);
   });
 
   it('enters each phase once and calls reinforcements', () => {

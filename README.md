@@ -204,7 +204,8 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
   or +1 life for everyone (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
   are ready. The shop closes after 25 seconds or when everyone is ready.
-- **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
+- **Mega Block:** a huge armoured block with three phases, faster in each. It stomps (red rings), from phase 2
+  it **leaps at you** (a big ring shows where it lands), it sends shockwaves along lines (a cross of four in phase 3)
   and calls reinforcements. Get out of the marked areas.
 - **The Kraken:** crawls slowly across the sea bed toward you on eight long tentacles. Up close it slaps them
   down in a ring around itself; from further away it slams them down in lines, bursts ink clouds under everyone,

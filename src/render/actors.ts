@@ -289,7 +289,16 @@ function makeKart(kind: VehicleKind = 'kart', id = 0) {
   body.add(box(1.2, 0.07, 0.26, yellow, 0, 0.3, -1.2), box(1.0, 0.1, 0.1, dark, 0, 0.36, -1.3));
   for (const x of [-0.22, 0.22]) body.add(box(0.14, 0.1, 0.05, glowMat(0xfff6c8, 2), x, 0.47, -1.24));
   // the cockpit: steering column and wheel, the seat
-  body.add(box(0.05, 0.3, 0.05, steel, 0, 0.62, -0.38), box(0.32, 0.05, 0.22, dark, 0, 0.8, -0.36));
+  body.add(box(0.05, 0.3, 0.05, steel, 0, 0.62, -0.38));
+  // the steering wheel: a rim with a spoke and a red top mark, tilted toward the driver; it turns with the kart
+  const column = new THREE.Group();
+  column.position.set(0, 0.82, -0.34);
+  column.rotation.x = -1.05;
+  const steering = new THREE.Group();
+  steering.add(box(0.36, 0.05, 0.06, dark, 0, 0, -0.15), box(0.36, 0.05, 0.06, dark, 0, 0, 0.15), box(0.06, 0.05, 0.36, dark, -0.15, 0, 0), box(0.06, 0.05, 0.36, dark, 0.15, 0, 0));
+  steering.add(box(0.3, 0.04, 0.06, steel, 0, 0, 0), box(0.1, 0.06, 0.1, paint, 0, 0, 0), box(0.08, 0.06, 0.07, glowMat(0xff3b3b, 1.2), 0, 0, -0.15));
+  column.add(steering);
+  body.add(column);
   body.add(box(0.62, 0.1, 0.5, dark, 0, 0.4, 0.2), box(0.62, 0.62, 0.12, dark, 0, 0.72, 0.5), box(0.5, 0.5, 0.04, paint, 0, 0.72, 0.43), box(0.3, 0.2, 0.14, dark, 0, 1.12, 0.5));
   // the engine, its exhausts and the tail lights
   body.add(box(0.6, 0.34, 0.4, steel, 0, 0.55, 0.82), box(0.44, 0.08, 0.3, dark, 0, 0.76, 0.82));
@@ -300,16 +309,21 @@ function makeKart(kind: VehicleKind = 'kart', id = 0) {
   body.add(box(1.24, 0.07, 0.36, yellow, 0, 1.16, 1.0));
   // wheels: a tyre with a light hub and a bolt, so you see them turn (the rear ones are bigger)
   const wheels: THREE.Group[] = [];
+  const pivots: THREE.Group[] = [];
   for (const [x, z, r] of [[-0.66, -0.75, 0.24], [0.66, -0.75, 0.24], [-0.68, 0.72, 0.3], [0.68, 0.72, 0.3]]) {
     const w = new THREE.Group();
     w.add(box(0.28, r * 2, r * 2, dark, 0, 0, 0), box(0.3, r * 1.5, r * 1.5, dark, 0, 0, 0), box(0.31, r * 0.9, r * 0.9, steel, 0, 0, 0), box(0.33, r * 0.35, r * 1.2, white, 0, 0, 0));
     (w.children[1] as THREE.Mesh).rotation.x = Math.PI / 4;
-    w.position.set(x, r, z);
-    body.add(w, box(0.36, 0.06, 0.06, steel, x * 0.72, r, z));
+    // the front wheels hang in a pivot that turns with the steering
+    const pivot = new THREE.Group();
+    pivot.position.set(x, r, z);
+    pivot.add(w);
+    body.add(pivot, box(0.36, 0.06, 0.06, steel, x * 0.72, r, z));
     wheels.push(w);
+    if (z < 0) pivots.push(pivot);
   }
   root.add(body);
-  return { root, body, yaw: 0, wheels };
+  return { root, body, yaw: 0, wheels, steering, pivots };
 }
 
 const tileQuad = new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2);
@@ -575,7 +589,19 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       karts.set(k.id, v);
     }
     const speed = Math.hypot(k.vel.x, k.vel.z);
+    const yawBefore = v.yaw;
     if (speed > 0.5) v.yaw = Math.atan2(-k.vel.x, -k.vel.z);
+    if ('steering' in v && v.steering) {
+      // the steering wheel and the front wheels follow the turn the kart is making, eased so they do not twitch
+      const st = v as { steer?: number; steerAt?: number };
+      const dt = Math.max(1e-3, Math.min(0.1, time - (st.steerAt ?? time - 1 / 60)));
+      const turn = Math.atan2(Math.sin(v.yaw - yawBefore), Math.cos(v.yaw - yawBefore)) / dt;
+      const want = Math.max(-1, Math.min(1, turn / 3));
+      st.steer = (st.steer ?? 0) + (want - (st.steer ?? 0)) * Math.min(1, dt * 10);
+      st.steerAt = time;
+      v.steering.rotation.y = st.steer * 1.5;
+      for (const pivot of v.pivots!) pivot.rotation.y = st.steer * 0.5;
+    }
     const hop = k.air > 0 ? Math.sin(Math.PI * (1 - k.air / KART.airTicks)) * 1.6 : 0;
     v.root.position.set(k.pos.x, hop, k.pos.z);
     v.root.rotation.y = v.yaw;

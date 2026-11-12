@@ -18,6 +18,12 @@ export const BOSS = {
   wormMaxWorms: 4,
   /** share of Mega Block attacks that are stomps (the rest are shockwave lines) */
   stompChance: 0.6,
+  /** the Mega Block's leap: from phase 2 on, this share of its attacks; where it lands, how long the jump takes */
+  leapChance: 0.3,
+  leapRadius: 3.2,
+  leapTicks: 75,
+  /** it gets this much faster with every phase */
+  megaPhaseSpeed: 1.35,
   stompRadius: 2.5,
   stompDamage: 30,
   strikeRadius: 2,
@@ -109,18 +115,24 @@ function attack(s: SimState, b: BossState): void {
   if (alive.length === 0) return;
   if (b.kind === 'megaBlock') {
     const boss = byId(s, b.enemyId!);
-    // stomps under every player (and a tower now and then), or a shockwave line toward one player
-    if (!boss || s.rng.next() < BOSS.stompChance) {
+    // stomps under every player (and a tower now and then), a leap at one of them (from phase 2), or
+    // shockwave lines toward one player (in phase 3 a cross of four)
+    const roll = s.rng.next();
+    if (boss && b.phase >= 2 && roll > 1 - BOSS.leapChance) {
+      megaLeap(s, s.rng.pick(alive));
+    } else if (!boss || roll < BOSS.stompChance) {
       for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
       if (s.towers.length > 0 && s.rng.next() < 0.5) telegraph(s, s.rng.pick(s.towers).pos, BOSS.stompRadius, BOSS.stompDamage);
     } else {
       const p = s.rng.pick(alive);
       const d = dist(boss.pos, p.pos) || 1;
       const dir = { x: (p.pos.x - boss.pos.x) / d, z: (p.pos.z - boss.pos.z) / d };
-      for (let i = 1; i <= BOSS.waveLength; i++) {
-        const at = { x: boss.pos.x + dir.x * i * BOSS.waveStep, z: boss.pos.z + dir.z * i * BOSS.waveStep };
-        telegraph(s, at, 1.3, BOSS.stompDamage, BOSS.warnTicks + i * 5);
-      }
+      const arms = b.phase >= 3 ? [dir, { x: -dir.x, z: -dir.z }, { x: -dir.z, z: dir.x }, { x: dir.z, z: -dir.x }] : [dir];
+      for (const arm of arms)
+        for (let i = 1; i <= BOSS.waveLength; i++) {
+          const at = { x: boss.pos.x + arm.x * i * BOSS.waveStep, z: boss.pos.z + arm.z * i * BOSS.waveStep };
+          telegraph(s, at, 1.3, BOSS.stompDamage, BOSS.warnTicks + i * 5);
+        }
     }
   } else if (b.kind === 'kraken') {
     const kraken = byId(s, b.enemyId!);
@@ -218,6 +230,32 @@ function resolveWorms(s: SimState, b: BossState): void {
   b.worms = b.worms.filter(w => w.length > 0);
 }
 
+/** The Mega Block jumps at `p`: a big ring warns where it comes down, a moment later it lands there. */
+export function megaLeap(s: SimState, p: Player): void {
+  const b = s.boss;
+  const boss = b && b.kind === 'megaBlock' ? byId(s, b.enemyId!) : undefined;
+  if (!b || !boss) return;
+  b.leap = { from: { ...boss.pos }, to: { ...p.pos }, start: s.tick, land: s.tick + BOSS.leapTicks };
+  telegraph(s, p.pos, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
+}
+
+/** In mid-leap the Mega Block flies over everything in a straight line and comes down with a stomp. */
+function leap(s: SimState, b: BossState): void {
+  const l = b.leap;
+  if (!l) return;
+  const boss = byId(s, b.enemyId!);
+  if (!boss) {
+    b.leap = null;
+    return;
+  }
+  const t = Math.min(1, (s.tick - l.start) / (l.land - l.start));
+  boss.pos = { x: l.from.x + (l.to.x - l.from.x) * t, z: l.from.z + (l.to.z - l.from.z) * t };
+  if (t < 1) return;
+  boss.pos = nearestFree(s.map, l.to, boss.radius, BLOCKS_ENEMY);
+  b.leap = null;
+  s.events.push({ type: 'stomp', pos: { ...boss.pos }, radius: BOSS.leapRadius });
+}
+
 /** The Kraken wraps a tentacle round `p` and starts dragging them in. */
 export function grabPlayer(s: SimState, p: Player): void {
   const b = s.boss;
@@ -256,6 +294,7 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   const b = s.boss;
   if (!b || s.phase !== 'playing') return;
   drag(s, b, intents);
+  leap(s, b);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
@@ -273,6 +312,8 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   while (b.phase < phase) {
     b.phase = (b.phase + 1) as 2 | 3;
     s.events.push({ type: 'bossPhase', phase: b.phase });
+    // the Mega Block gets angrier: faster with every phase
+    if (b.kind === 'megaBlock') for (const e of living) e.speed *= BOSS.megaPhaseSpeed;
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }

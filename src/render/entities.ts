@@ -301,7 +301,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
+        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && s.boss?.leap ? Math.sin(Math.PI * Math.min(1, (s.tick - s.boss.leap.start) / (s.boss.leap.land - s.boss.leap.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
         const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
