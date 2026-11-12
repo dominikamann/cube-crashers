@@ -223,10 +223,10 @@ export class HostSession {
       };
       if (m.v !== PROTOCOL_VERSION) return reject('version');
       if (this.sim) return reject('started');
+      if (this.lobby.some(p => p.id === from)) return;
       // a full lobby with bots: a bot makes room for the human
       if (this.lobby.length >= MAX_PLAYERS && this.lobby.some(p => p.bot)) this.lobby.splice(this.lobby.map(p => !!p.bot).lastIndexOf(true), 1);
       if (this.lobby.length >= MAX_PLAYERS) return reject('full');
-      if (this.lobby.some(p => p.id === from)) return;
       const used = new Set(this.lobby.map(p => p.color));
       const wish = m.color !== undefined && !used.has(m.color) ? m.color : undefined;
       const color = wish ?? [0, 1, 2, 3, 4, 5].find(c => !used.has(c)) ?? 0;

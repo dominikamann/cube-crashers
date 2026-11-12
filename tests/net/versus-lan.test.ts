@@ -97,6 +97,16 @@ describe('auto-fill with bots', () => {
     expect(host.lobby.filter(p => p.bot)).toHaveLength(2);
   });
 
+  it('a repeated hello from someone already in does not cost a bot its place', () => {
+    const { hub, host, cs } = lobby(1);
+    host.setAutoFill(8);
+    hub.flush();
+    const bots = host.lobby.filter(p => p.bot).length;
+    (cs[0] as unknown as { net: { send(to: string, d: string): void } }).net.send('all', JSON.stringify({ type: 'hello', v: 2, name: 'Again' }));
+    hub.flush();
+    expect(host.lobby.filter(p => p.bot)).toHaveLength(bots);
+  });
+
   it('a full lobby with bots still lets a human in', () => {
     const { hub, host } = lobby(1);
     host.setAutoFill(8);

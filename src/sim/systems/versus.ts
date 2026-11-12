@@ -297,6 +297,12 @@ function updateKing(s: SimState): void {
 function updateFlags(s: SimState): void {
   const v = s.versus!;
   const flags = v.flags!;
+  // a carrier who left the game (LAN) drops the cube where it was last seen
+  flags.forEach((f, team) => {
+    if (f.carrier === null || s.players.some(p => p.id === f.carrier)) return;
+    f.carrier = null;
+    s.events.push({ type: 'cubeDropped', team: team as 0 | 1, pos: { ...f.pos } });
+  });
   for (const p of s.players) {
     if (p.downUntil !== null || p.team === undefined) continue;
     const own = flags[p.team];

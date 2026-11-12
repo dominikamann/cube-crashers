@@ -101,11 +101,9 @@ export function createViewModel(): ViewModel {
   const muzzle = new THREE.Vector3();
   const models = new Map<Look, THREE.Group>();
   let shown: THREE.Group | null = null;
-  let kick = 0;
-  let lastCooldown = 0;
   let lastKind: Look | null = null;
-  let lastPos = { x: 0, z: 0 };
-  let walk = 0;
+  // per player: in split screen both views draw a hand, each with its own kick and bob
+  const states = new Map<number, { kick: number; lastCooldown: number; kind: Look | null; lastPos: { x: number; z: number }; walk: number }>();
 
   return {
     update(s, playerId, time, frameDt) {
@@ -114,6 +112,8 @@ export function createViewModel(): ViewModel {
       if (!p || !hand.visible) return;
       const w = p.weapons[p.selected];
       const kind: Look = p.rare && p.rareSelected ? 'rare' : (w?.kind ?? 'pixelBlaster');
+      let st = states.get(p.id);
+      if (!st) states.set(p.id, (st = { kick: 0, lastCooldown: 0, kind: null, lastPos: { ...p.pos }, walk: 0 }));
       if (kind !== lastKind) {
         if (shown) hand.remove(shown);
         let m = models.get(kind);
@@ -121,18 +121,21 @@ export function createViewModel(): ViewModel {
         hand.add(m);
         shown = m;
         lastKind = kind;
-        lastCooldown = 0;
+      }
+      if (st.kind !== kind) {
+        st.kind = kind;
+        st.lastCooldown = 0;
       }
       arm.material = suits[p.color % suits.length];
       // a fresh cooldown means a shot: kick back
       const cd = kind === 'rare' ? (p.rare?.cooldown ?? 0) : (w?.cooldown ?? 0);
-      if (cd > lastCooldown) kick = 1;
-      lastCooldown = cd;
-      kick = Math.max(0, kick - frameDt * 7);
-      const moved = Math.hypot(p.pos.x - lastPos.x, p.pos.z - lastPos.z) > 0.001;
-      lastPos = { ...p.pos };
-      walk += (moved ? 1 : -1) * frameDt * 6;
-      walk = Math.max(0, Math.min(1, walk));
+      if (cd > st.lastCooldown) st.kick = 1;
+      st.lastCooldown = cd;
+      st.kick = Math.max(0, st.kick - frameDt * 7);
+      const moved = Math.hypot(p.pos.x - st.lastPos.x, p.pos.z - st.lastPos.z) > 0.001;
+      st.lastPos = { ...p.pos };
+      st.walk = Math.max(0, Math.min(1, st.walk + (moved ? 1 : -1) * frameDt * 6));
+      const kick = st.kick, walk = st.walk;
       const bob = Math.sin(time * 11) * 0.018 * walk;
       hand.position.set(0.3 + Math.cos(time * 5.5) * 0.01 * walk, -0.3 + bob - kick * 0.03, -0.62 + kick * 0.09);
       hand.rotation.set(kick * 0.25, -0.12, 0);

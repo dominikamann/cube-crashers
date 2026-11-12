@@ -109,6 +109,21 @@ describe('capture the cube', () => {
     expect(d(f[1].pos, f[1].base)).toBeLessThan(0.01);
   });
 
+  it('a carrier who leaves the game drops the cube where they were', () => {
+    const s = sim('capture', 'team', 2);
+    const red = s.players.find(p => p.team === 0)!;
+    const f = s.versus!.flags!;
+    red.pos = { ...f[1].base };
+    stepSim(s, []);
+    expect(f[1].carrier).toBe(red.id);
+    red.pos = { x: 35.5, z: 35.5 };
+    stepSim(s, []);
+    s.players = s.players.filter(p => p !== red);
+    stepSim(s, []);
+    expect(f[1].carrier).toBeNull();
+    expect(d(f[1].pos, { x: 35.5, z: 35.5 })).toBeLessThan(0.01);
+  });
+
   it('three captures win', () => {
     const s = sim('capture', 'team', 2);
     s.versus!.teamScores[0] = VERSUS.captureLimit - 1;

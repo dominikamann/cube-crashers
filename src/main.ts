@@ -213,9 +213,14 @@ function startGame() {
     c.kind = kind;
   };
   /** the mouse is captured in first person so it can turn the view */
+  let releasing = false;
   const lockPointer = (on: boolean) => {
     if (on && document.pointerLockElement !== canvas) canvas.requestPointerLock?.()?.catch?.(() => {});
-    if (!on && document.pointerLockElement === canvas) document.exitPointerLock();
+    if (!on && document.pointerLockElement === canvas) {
+      // we let go ourselves (V, a menu): not a pause
+      releasing = true;
+      document.exitPointerLock();
+    }
   };
   const markers = createMarkers(hudRoots[0]);
   const hud = createHud(hudRoots[0], { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
@@ -419,7 +424,7 @@ function startGame() {
         headline: label,
         ranking: [...s.players]
           .sort((a, b) => points(b.id, b.team) - points(a.id, a.team))
-          .map(p => ({ name: p.name, color: p.color, score: points(p.id, p.team), kills: vs.scores[p.id] ?? 0, revives: 0, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
+          .map(p => ({ name: p.name, color: p.color, score: points(p.id, p.team), kills: p.stats.kills, revives: 0, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
       };
     }
     return {
@@ -778,7 +783,9 @@ function startGame() {
     }
     if (mode === 'playing' && e.code === 'KeyZ' && !e.repeat) zoomedOut = !zoomedOut;
     // V: first person on or off; the mouse gets captured to turn the view
-    if (mode === 'playing' && e.code === 'KeyV' && !e.repeat) lockPointer(!keyboard.firstPerson);
+    // (not when the LAN host fixed the view)
+    const fixedView = role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false;
+    if (mode === 'playing' && e.code === 'KeyV' && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
@@ -802,6 +809,12 @@ function startGame() {
     if (mode === 'playing') keyboard.wheel(e.deltaY);
   }, { passive: true });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // Escape in first person hands the mouse back (the browser does that itself): treat it as a pause
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === canvas) return;
+    if (!releasing && mode === 'playing' && keyboard.firstPerson && !padActive) pause();
+    releasing = false;
+  });
   addEventListener('blur', () => (role === 'solo' ? pause() : keyboard.releaseAll()));
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && role === 'solo') pause();
