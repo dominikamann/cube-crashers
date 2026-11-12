@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-server
+release
+logs
+docs
+.git
+.superpowers
+*.dmg
+*.exe
