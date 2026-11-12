@@ -377,6 +377,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'versusRound':
     case 'kingMoved':
       return one('elevatorOpen');
+    case 'emote':
+      // a ping chirps higher than a message
+      return one('select', e.pos ? 1.6 : 1.3);
     case 'coinOpRule':
       // an arcade jingle: the rules just changed
       return one('cardPicked', 1.15);

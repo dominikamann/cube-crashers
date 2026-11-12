@@ -49,6 +49,8 @@ export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
+/** quick messages: help, a ping at the crosshair, nest here, need coins, nice, good game */
+export type EmoteId = 'help' | 'here' | 'nest' | 'coins' | 'nice' | 'gg';
 export type KillCategory = 'weapon' | 'tower' | 'kart' | 'stomp' | 'dash' | 'other';
 
 export type Command =
@@ -71,7 +73,9 @@ export type Command =
   | { type: 'select'; playerId: number; slot: number }
   /** elevator shop: buy offer number `offer` */
   | { type: 'buy'; playerId: number; offer: number }
-  | { type: 'ready'; playerId: number };
+  | { type: 'ready'; playerId: number }
+  /** a quick message; `at` marks a spot (pings) */
+  | { type: 'emote'; playerId: number; emote: EmoteId; at?: Vec2 };
 
 /** Everything one player asked for in one tick, collected from the commands. */
 export interface Intent {
@@ -139,6 +143,8 @@ export interface Player {
   dashHits: number[];
   invulnUntil: number;
   lastHitEventAt: number;
+  /** tick of the last emote (one a second at most) */
+  lastEmoteAt: number;
   combo: number;
   comboUntil: number;
   perks: Record<PerkKind, number>;
@@ -517,6 +523,7 @@ export type SimEvent =
   | { type: 'cubeCaptured'; team: 0 | 1; playerId: number }
   | { type: 'kingMoved'; pos: Vec2 }
   | { type: 'coinOpRule'; rule: CoinOpRule }
+  | { type: 'emote'; playerId: number; emote: EmoteId; pos?: Vec2 }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
   | { type: 'mazePower'; playerId: number }

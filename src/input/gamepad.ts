@@ -1,5 +1,5 @@
 import { padAt } from '../sim/systems/towers';
-import type { Command, Player, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
+import type { Command, EmoteId, Player, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 import { instantUse } from './context';
 import { aimDistance, clampPitch, forwardOf, lookOf, PAD_TURN, PITCH_START, viewMove, yawOf } from './first-person';
 import { AUTO_BUILD_MS, BUILD_HOLD_MS, DEFAULT_TOWER } from './keyboard';
@@ -24,6 +24,8 @@ const AIM_FAR = 8;
 /** the build menu's cards from left to right; left/right moves the selection along them */
 export { TOWER_ORDER } from '../sim/config/towers';
 import { TOWER_ORDER } from '../sim/config/towers';
+/** d-pad while playing: quick messages (right pings the crosshair) */
+const DPAD_EMOTES: [number, EmoteId][] = [[PAD.UP, 'help'], [PAD.RIGHT, 'here'], [PAD.LEFT, 'nice'], [PAD.DOWN, 'gg']];
 /** d-pad in the elevator shop: offers 1 to 4 */
 const DPAD_SHOP = [PAD.LEFT, PAD.UP, PAD.RIGHT, PAD.DOWN];
 
@@ -235,6 +237,14 @@ export class PadControls {
       if (press(PAD.LB)) out.push({ type: 'select', playerId, slot: (p.selected - 1 + n) % n });
     }
     if (press(PAD.Y)) out.push({ type: 'select', playerId, slot: -1 });
+    // the d-pad sends quick messages (it moves the cards while the build menu is open)
+    if (!this.buildMenuOpen) {
+      const aimCmd = out.find(c => c.type === 'aim');
+      for (const [button, emote] of DPAD_EMOTES) {
+        if (!press(button)) continue;
+        out.push(emote === 'here' && aimCmd?.type === 'aim' ? { type: 'emote', playerId, emote, at: { ...aimCmd.point } } : { type: 'emote', playerId, emote });
+      }
+    }
     if (press(PAD.R3)) this.zoomedOut = !this.zoomedOut;
 
     if (this.buildMenuOpen && this.menuPad !== null) {

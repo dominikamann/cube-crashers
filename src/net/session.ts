@@ -22,7 +22,7 @@ export const VOTE_SECONDS = 30;
 /** names for bots that fill a match up */
 const BOT_NAMES = ['Bot Turbo', 'Bot Pixel', 'Bot Crispy', 'Bot Wobbly', 'Bot Sneaky', 'Bot Cosmic', 'Bot Funky', 'Bot Lucky'];
 
-const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready']);
+const EDGE = new Set(['jump', 'dash', 'use', 'select', 'build', 'upgrade', 'buy', 'ready', 'emote']);
 const HELD = new Set(['hold', 'fire', 'fly']);
 
 /**

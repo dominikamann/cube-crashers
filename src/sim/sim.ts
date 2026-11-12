@@ -28,6 +28,7 @@ import { sampleStats } from './systems/stats';
 import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
+import { handleEmote } from './systems/emotes';
 import type { Command, Difficulty, Intent, Player, RunMode, SimState, Vec2, VersusMode, VersusRule, WeaponKind } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % MAX_PLAYERS): Player {
@@ -55,6 +56,7 @@ export function createPlayer(id: number, pos: Vec2, name = defaultName(id), colo
     dashHits: [],
     invulnUntil: 0,
     lastHitEventAt: -1000,
+    lastEmoteAt: -1000,
     combo: 0,
     comboUntil: 0,
     perks: { speed: 0, dash: 0, magnet: 0, greed: 0, regen: 0, stomp: 0 },
@@ -213,6 +215,9 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
       case 'ready':
         it.ready = true;
+        break;
+      case 'emote':
+        handleEmote(s, c);
         break;
       case 'build':
         tryBuild(s, c.playerId, c.padId, c.tower);

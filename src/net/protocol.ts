@@ -1,7 +1,8 @@
 import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { TOWER_ORDER } from '../sim/config/towers';
-import type { Command, Difficulty, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
+import type { Command, Difficulty, EmoteId, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
+import { EMOTES } from '../sim/systems/emotes';
 import type { SnapState } from './snapshot';
 
 /** how a LAN game may be watched: first person only, from above only, or either (V switches) */
@@ -220,6 +221,10 @@ export function sanitizeCommands(cmds: unknown[], playerId: number): Command[] {
         break;
       case 'ready':
         out.push({ type: 'ready', playerId });
+        break;
+      case 'emote':
+        if (!EMOTES.includes(c.emote as EmoteId)) break;
+        out.push(vec(c.at) ? { type: 'emote', playerId, emote: c.emote as EmoteId, at: { x: Math.min(AIM_MAX, Math.max(AIM_MIN, c.at.x)), z: Math.min(AIM_MAX, Math.max(AIM_MIN, c.at.z)) } } : { type: 'emote', playerId, emote: c.emote as EmoteId });
         break;
       case 'jump':
       case 'fly':

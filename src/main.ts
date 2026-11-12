@@ -27,6 +27,7 @@ import { bestWeapon } from './sim/systems/stats';
 import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
+import { createEmotes } from './ui/emotes';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
 import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
@@ -237,6 +238,8 @@ function startGame() {
   const hud = createHud(hudRoots[0], { buy: i => keyboard.buy(i), ready: () => keyboard.ready() });
   const buildMenu = createBuildMenu(hudRoots[0], kind => keyboard.chooseTower(kind));
   const markers2 = createMarkers(hudRoots[1]);
+  const emotes = createEmotes(hudRoots[0]);
+  const emotes2 = createEmotes(hudRoots[1]);
   const hud2 = createHud(hudRoots[1], { buy: () => {}, ready: () => {} });
   const buildMenu2 = createBuildMenu(hudRoots[1], () => {});
   const padCtl2 = new PadControls();
@@ -386,6 +389,11 @@ function startGame() {
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
+      // quick messages: bubbles over heads, pings on the ground, and the bar while C is open
+      const now = performance.now() / 1000;
+      emotes.setBar(keyboard.emoteOpen && mode === 'playing' && !padActive);
+      emotes.update(s, frameEvents, now, (x, z, y) => renderer.project(x, z, 0, y));
+      if (split) emotes2.update(s, frameEvents, now, (x, z, y) => renderer.project(x, z, 1, y));
       buildMenu.update(s, menuOpen && mode === 'playing', frameEvents, localId(), padActive ? padCtl.menuPad : keyboard.menuPad, padActive ? padCtl.selected : keyboard.selected);
       if (split) {
         hud2.update(s, frameEvents, padCtl2.buildMenuOpen, performance.now() / 1000, 1);
@@ -876,6 +884,11 @@ function startGame() {
     const inGame = target === canvas || (keyboard.firstPerson && !target?.closest('button, a, input, select, label'));
     if (!inGame) return;
     if (e.button === 0) keyboard.mouseDown();
+    // middle click: "over here!" at the crosshair
+    if (e.button === 1) {
+      e.preventDefault();
+      keyboard.ping();
+    }
     if (keyboard.firstPerson && !padActive) lockPointer(true);
   });
   addEventListener('mouseup', e => {

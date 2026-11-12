@@ -1,7 +1,8 @@
 import { padAt } from '../sim/systems/towers';
 import { instantUse } from './context';
 import { aimDistance, clampPitch, forwardOf, lookOf, MOUSE_TURN, PITCH_START, viewMove, yawOf } from './first-person';
-import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
+import type { Command, EmoteId, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
+import { EMOTES } from '../sim/systems/emotes';
 
 import { TOWER_ORDER } from '../sim/config/towers';
 
@@ -48,8 +49,28 @@ export class Keyboard {
   private buys: number[] = [];
   private readyPressed = false;
   private shopKey: number | null = null;
+  /** the emote bar (C) is open: 1–6 send a quick message instead of switching weapons */
+  emoteOpen = false;
+  private emote: { emote: EmoteId; ping: boolean } | null = null;
 
   keyDown(code: string, now: number): void {
+    if (code === 'KeyC' && !this.down.has(code)) {
+      this.emoteOpen = !this.emoteOpen;
+      this.down.add(code);
+      return;
+    }
+    if (this.emoteOpen) {
+      const digit = /^(?:Digit|Numpad)([1-6])$/.exec(code);
+      if (digit) {
+        const emote = EMOTES[Number(digit[1]) - 1];
+        // the ping and "nest here" mark the spot under the crosshair
+        this.emote = { emote, ping: emote === 'here' || emote === 'nest' };
+        this.emoteOpen = false;
+        this.down.add(code);
+        return;
+      }
+      if (code === 'Escape') this.emoteOpen = false;
+    }
     if (code === 'KeyE' && !this.down.has('KeyE')) {
       this.eSince = now;
       this.ePressed = true;
@@ -67,6 +88,11 @@ export class Keyboard {
       if (digit) this.shopKey = Number(digit[1]) - 1;
       if (code === 'Enter' || code === 'KeyR') this.readyPressed = true;
     }
+  }
+
+  /** the middle mouse button: "over here!" at the crosshair */
+  ping(): void {
+    this.emote = { emote: 'here', ping: true };
   }
 
   /** elevator shop: buy offer `i` (clicked) */
@@ -128,6 +154,7 @@ export class Keyboard {
   /** Called when the window loses focus: forget all held keys. */
   releaseAll(): void {
     this.down.clear();
+    this.emoteOpen = false;
     this.eSince = null;
     this.firing = false;
     this.jump = this.dash = this.use = this.ePressed = this.eTapPending = false;
@@ -252,6 +279,13 @@ export class Keyboard {
       this.slot = (((p.selected + this.wheelSteps) % n) + n) % n;
     }
     this.wheelSteps = 0;
+    if (this.emote) {
+      // the spot: the first-person aim point, or the crosshair on the ground
+      const aimCmd = cmds.find(c => c.type === 'aim');
+      const at = this.emote.ping && aimCmd?.type === 'aim' ? aimCmd.point : null;
+      cmds.push(at ? { type: 'emote', playerId, emote: this.emote.emote, at: { ...at } } : { type: 'emote', playerId, emote: this.emote.emote });
+      this.emote = null;
+    }
     if (this.slot !== null) cmds.push({ type: 'select', playerId, slot: this.slot });
     this.slot = null;
 

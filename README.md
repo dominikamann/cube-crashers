@@ -376,11 +376,13 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `Q` | Select the rare weapon (when you have one) |
 | `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
-| `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`3` to choose), hold to build it right away |
+| `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`5` to choose), hold to build it right away |
 | `E` (hold) | Plant a charge · help a teammate up · finish or repair a tower |
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `Z` | Zoom out / in |
+| `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
+| Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
 
 ### Controller (Xbox and other standard pads)
@@ -400,7 +402,7 @@ stick to choose, **A** to confirm, **B** to go back).
 | `X` | Like `E`: kart, open the towers on a pad and build the selected one, hold to plant, repair, help up |
 | `Y` | Rare weapon |
 | `LB` / `RB` | Previous / next weapon · in the build menu: choose the tower |
-| D-pad | Build menu: ◀ ▶ choose the tower · shop: buy offers 1–4 |
+| D-pad | Quick messages: ▲ Help! · ▶ Over here! (ping at the crosshair) · ◀ Nice! · ▼ GG · build menu: ◀ ▶ choose the tower · shop: buy offers 1–4 |
 | `Start` | Pause |
 
 PlayStation pads (PS4, PS5) and other standard controllers work the same way; the hints then show □ instead
@@ -642,7 +644,7 @@ docs/         gameplay GIF and screenshots
 - [x] Versus for up to 8 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
 - [x] First-person view as a switch (and the default for versus)
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
-- [ ] Emotes and pings, for online play
+- [x] Emotes and pings, for online play
 - [x] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
 - [ ] Daily Run: the same seed for everyone each day, with its own best list
 - [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)

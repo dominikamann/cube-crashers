@@ -328,3 +328,14 @@ body.split .card { width: 110px; }
 .server-error { min-height: 1em; color: #ff8080; font-size: 10px; }
 .lobby-server { color: var(--gold); }
 .lobby-countdown { font-size: 14px; }
+
+/* emotes: speech bubbles, pings and the emote bar */
+.emotes { pointer-events: none; overflow: hidden; }
+.emote { position: absolute; left: 0; top: 0; padding: 6px 9px; border-radius: 8px; background: #fff; color: #1a1530; font-size: 10px; white-space: nowrap; border: 2px solid var(--who, #fff); box-shadow: 2px 2px 0 var(--shadow); }
+.emote::after { content: ''; position: absolute; left: 50%; bottom: -7px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.emote.ping { background: var(--who, var(--gold)); color: #fff; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); animation: pulse 0.9s ease-in-out infinite; }
+.emote.ping::after { border-top-color: var(--who, var(--gold)); }
+.emote-bar { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 32px); padding: 10px 12px; border-radius: 10px; background: rgba(10, 8, 30, 0.82); border: 2px solid rgba(255, 255, 255, 0.2); pointer-events: none; }
+.emote-title { width: 100%; text-align: center; font-size: 9px; color: var(--gold); }
+.emote-key { font-size: 10px; color: #fff; padding: 6px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
+.emote-key b { color: var(--cyan); margin-right: 6px; }

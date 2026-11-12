@@ -58,7 +58,8 @@ export interface GameRenderer {
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
-  project(x: number, z: number, view?: number): { x: number; y: number };
+  /** a point on screen (client pixels); `y` is the height above the ground; `behind` = behind the camera */
+  project(x: number, z: number, view?: number, y?: number): { x: number; y: number; behind: boolean };
   /** The point on the ground under a screen position, or null if the ray misses the ground. */
   groundPoint(clientX: number, clientY: number): Vec2 | null;
   dispose(): void;
@@ -434,11 +435,11 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     setDamageNumbers(on) {
       entities.setDamageNumbers(on);
     },
-    project(x, z, view = 0) {
-      const v = new THREE.Vector3(x, 0.5, z).project(views[view].camera);
+    project(x, z, view = 0, y = 0.5) {
+      const v = new THREE.Vector3(x, y, z).project(views[view].camera);
       const rect = canvas.getBoundingClientRect();
       const vw = rect.width / views.length;
-      return { x: rect.left + view * vw + ((v.x + 1) / 2) * vw, y: rect.top + ((1 - v.y) / 2) * rect.height };
+      return { x: rect.left + view * vw + ((v.x + 1) / 2) * vw, y: rect.top + ((1 - v.y) / 2) * rect.height, behind: v.z > 1 };
     },
     groundPoint(clientX, clientY) {
       // the mouse belongs to the first view (player 1 on the left)
