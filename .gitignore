@@ -19,3 +19,4 @@ docs/design/style-reference.html
 *.provisionprofile
 *.mobileprovision
 .env*
+dist-server/

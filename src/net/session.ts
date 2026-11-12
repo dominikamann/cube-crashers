@@ -5,7 +5,8 @@ import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
 import { balanceTeams } from '../sim/systems/versus';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
-import { MAX_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type VersusOption, type ViewMode } from './protocol';
+import { APP_VERSION } from '../version';
+import { MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
 
@@ -58,11 +59,17 @@ export class HostSession {
   private vote: { options: [VersusOption, VersusOption]; votes: Record<number, 0 | 1>; until: number } | null = null;
   private now: () => number;
   private lastVoteSecond = -1;
+  /** a dedicated server: nobody plays on it, it runs one mode and starts matches by itself */
+  private server: ServerStatus | null = null;
 
-  constructor(private net: Transport, opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number }) {
+  constructor(
+    private net: Transport,
+    opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number; dedicated?: { name: string; mode: ServerMode } },
+  ) {
     this.now = opts.now ?? (() => Date.now());
     for (const u of opts.unlocked ?? []) this.unlocked.add(u);
-    this.lobby = [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
+    if (opts.dedicated) this.server = { name: opts.dedicated.name.slice(0, MAX_SERVER_NAME), mode: opts.dedicated.mode, startsIn: null };
+    this.lobby = opts.dedicated ? [] : [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
       if (joined) return;
@@ -88,7 +95,20 @@ export class HostSession {
   }
 
   private broadcastLobby(): void {
-    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined });
+    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined });
+  }
+
+  /** dedicated server: seconds until the next match, or null while it waits for players */
+  setStartsIn(seconds: number | null): void {
+    if (!this.server || this.server.startsIn === seconds) return;
+    this.server.startsIn = seconds;
+    this.broadcastLobby();
+  }
+
+  /** every human in the lobby is ready (and there is at least one) */
+  allReady(): boolean {
+    const humans = this.lobby.filter(p => !p.bot);
+    return humans.length > 0 && humans.every(p => p.ready);
   }
 
   /** the vote as the lobby shows it, or null */
@@ -216,7 +236,20 @@ export class HostSession {
   private receive(from: number, data: string): void {
     const m = parseMessage(data);
     if (!m) return;
-    if (m.type === 'hello') {
+    if (m.type === 'info' && !('name' in m)) {
+      // the server list asking: answer and hang up (the asker never joins the lobby)
+      this.send(from, {
+        type: 'info',
+        name: this.server?.name ?? this.lobby[0]?.name ?? 'Host',
+        mode: this.server?.mode ?? 'lan',
+        players: this.lobby.filter(p => !p.bot).length,
+        max: MAX_PLAYERS,
+        version: APP_VERSION,
+        protocol: PROTOCOL_VERSION,
+        playing: this.sim !== null,
+      });
+      this.net.kick(from);
+    } else if (m.type === 'hello') {
       const reject = (reason: 'version' | 'started' | 'full') => {
         this.send(from, { type: 'reject', reason });
         this.net.kick(from);
@@ -246,6 +279,11 @@ export class HostSession {
       this.countVote(from, m.choice);
     } else if (m.type === 'team') {
       this.setTeamWish(from, m.team);
+    } else if (m.type === 'ready') {
+      const p = this.lobby.find(x => x.id === from);
+      if (!p || this.sim) return;
+      p.ready = m.ready;
+      this.broadcastLobby();
     } else if (m.type === 'leave') {
       const i = this.lobby.findIndex(p => p.id === from);
       if (i >= 0) {
@@ -309,6 +347,7 @@ export class HostSession {
   /** Back to the lobby after a run (the same players stay). */
   endRun(): void {
     this.sim = null;
+    for (const p of this.lobby) delete p.ready;
     this.pending.clear();
     this.lastInput.clear();
     this.outEvents = [];
@@ -337,6 +376,8 @@ export class ClientSession {
   difficulty: Difficulty = 'medium';
   /** the view the host allows in this game */
   viewMode: ViewMode = 'both';
+  /** set when the host is a dedicated server */
+  server: ServerStatus | null = null;
   view: SimState | null = null;
   private events: SimEvent[] = [];
   private seq = 0;
@@ -368,6 +409,7 @@ export class ClientSession {
         this.lobby = m.players;
         this.difficulty = m.difficulty;
         this.vote = m.vote ?? null;
+        this.server = m.server ?? null;
         // the host only sends the lobby while nobody plays: a finished run goes back to it
         if (this.status === 'playing' && this.view?.phase !== 'playing') this.status = 'lobby';
         break;
@@ -409,6 +451,11 @@ export class ClientSession {
   /** wish to play red (0) or blue (1) in team games, or null for whatever evens it out */
   chooseTeam(team: 0 | 1 | null): void {
     this.net.send('all', JSON.stringify({ type: 'team', team }));
+  }
+
+  /** on a dedicated server: ready for the next match */
+  setReady(ready: boolean): void {
+    this.net.send('all', JSON.stringify({ type: 'ready', ready }));
   }
 
   /** Sends this tick's commands for the own player. */

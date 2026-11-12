@@ -7,13 +7,42 @@ import type { SnapState } from './snapshot';
 export type ViewMode = 'both' | 'fp' | 'top';
 export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
 
-/** 3: versus, votes, team wishes, gun game, the host's view setting (0.4.0) */
+/**
+ * 3: versus, votes, team wishes, gun game, the host's view setting (0.4.0).
+ * 0.4.1 added the server-list probe and ready flags without breaking 0.4.0, so it stays 3.
+ */
 export const PROTOCOL_VERSION = 3;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
 export const MAX_NAME = 16;
 export const SNAPSHOT_EVERY_TICKS = 2;
+/** a server name in the server list */
+export const MAX_SERVER_NAME = 40;
+
+/** what a dedicated server plays: a co-op run, one versus rule, or Discovery (all of them in turn) */
+export type ServerMode = 'coop' | 'discovery' | 'gungame' | 'score' | 'king' | 'rounds' | 'capture';
+export const SERVER_MODES: ServerMode[] = ['coop', 'discovery', 'gungame', 'score', 'king', 'rounds', 'capture'];
+
+/** what a dedicated server tells its lobby: its name, its mode and when the next match starts (null = waiting for players) */
+export interface ServerStatus {
+  name: string;
+  mode: ServerMode;
+  startsIn: number | null;
+}
+
+/** the answer to a server-list probe */
+export interface ServerInfo {
+  name: string;
+  mode: ServerMode | 'lan';
+  players: number;
+  max: number;
+  /** the game version the server runs, e.g. "0.4.1" */
+  version: string;
+  protocol: number;
+  /** a match is running (new players wait in the lobby) */
+  playing: boolean;
+}
 
 export interface LobbyPlayer {
   id: number;
@@ -23,6 +52,8 @@ export interface LobbyPlayer {
   bot?: boolean;
   /** red (0) or blue (1) wished for team games; unset = whatever evens the teams out */
   team?: 0 | 1;
+  /** on a dedicated server: ready for the next match */
+  ready?: boolean;
 }
 
 /** one card of a versus vote */
@@ -49,13 +80,17 @@ export type ClientMessage =
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'vote'; choice: 0 | 1 }
   | { type: 'team'; team: 0 | 1 | null }
+  | { type: 'ready'; ready: boolean }
+  /** the server list asking who is there (answered with 'info', then the connection is closed) */
+  | { type: 'info' }
   | { type: 'leave' };
 
 /** host → client */
 export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
-  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote }
+  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote; server?: ServerStatus }
+  | ({ type: 'info' } & ServerInfo)
   | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
@@ -74,6 +109,8 @@ const validOption = (o: unknown) =>
 const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
+const validServer = (v: unknown) =>
+  v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && (v.startsIn === null || isNum(v.startsIn)));
 const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture', 'gungame'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
@@ -103,6 +140,13 @@ export function parseMessage(raw: string): Message | null {
       return m.team === 0 || m.team === 1 || m.team === null ? { type: 'team', team: m.team } : null;
     case 'vote':
       return m.choice === 0 || m.choice === 1 ? { type: 'vote', choice: m.choice } : null;
+    case 'ready':
+      return typeof m.ready === 'boolean' ? { type: 'ready', ready: m.ready } : null;
+    case 'info':
+      // the probe has no fields; the answer has all of them
+      if (m.name === undefined) return { type: 'info' };
+      if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean') return null;
+      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing };
     case 'leave':
       return { type: 'leave' };
     case 'welcome':
@@ -110,7 +154,7 @@ export function parseMessage(raw: string): Message | null {
     case 'reject':
       return ['version', 'full', 'started'].includes(m.reason as string) ? (m as HostMessage) : null;
     case 'lobby':
-      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) ? (m as unknown as HostMessage) : null;
+      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) && validServer(m.server) ? (m as unknown as HostMessage) : null;
     case 'start':
       return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVersus(m.versus) && (m.mapId === undefined || (typeof m.mapId === 'string' && Object.hasOwn(FLOORS, m.mapId))) && (m.view === undefined || VIEW_MODES.includes(m.view as ViewMode))
         ? (m as unknown as HostMessage)

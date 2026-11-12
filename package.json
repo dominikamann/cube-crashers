@@ -14,7 +14,9 @@
     "dist:mac": "npm run build && electron-builder --mac --publish never -c.mac.identity=null",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "icon": "node scripts/make-icon.mjs",
-    "dist:mac:signed": "npm run build && node scripts/dist-mac-signed.mjs"
+    "dist:mac:signed": "npm run build && node scripts/dist-mac-signed.mjs",
+    "build:server": "vite build --config vite.server.config.ts",
+    "server": "npm run build:server && node dist-server/cube-crashers-server.mjs"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",
