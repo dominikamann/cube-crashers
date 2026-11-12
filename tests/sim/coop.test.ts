@@ -7,7 +7,7 @@ import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
-import { enterFloor } from '../../src/sim/systems/run';
+import { enterFloor, floorCleared } from '../../src/sim/systems/run';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnHorde } from '../../src/sim/systems/hordes';
 import { damagePlayer } from '../../src/sim/systems/player';
@@ -112,6 +112,21 @@ describe('reviving', () => {
     expect(b.out).toBe(false);
     expect(b.lives).toBe(1);
     expect(b.downUntil).toBeNull();
+  });
+
+  it('who was out is back as soon as the floor is cleared, so they play the game between the floors too', () => {
+    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const b = s.players[1];
+    b.lives = 0;
+    b.out = true;
+    b.downUntil = Number.MAX_SAFE_INTEGER;
+    for (const n of s.nests) n.state = 'destroyed';
+    s.enemies = [];
+    floorCleared(s);
+    expect(b.out).toBe(false);
+    expect(b.lives).toBe(1);
+    expect(b.downUntil).toBeNull();
+    expect(s.credits).toBe(s.players[0].lives! + 1);
   });
 
   it('ends the run exactly once when the last players are out', () => {

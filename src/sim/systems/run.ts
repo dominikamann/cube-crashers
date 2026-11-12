@@ -35,6 +35,15 @@ export function floorCleared(s: SimState): void {
   }
   s.score += FLOOR_BONUS;
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
+  // the floor is done: whoever was out is back, with one life, for the game between the floors and the next floor
+  for (const p of s.players) {
+    if (!p.out) continue;
+    p.out = false;
+    p.lives = 1;
+    p.downUntil = null;
+    p.hp = p.maxHp;
+  }
+  syncCredits(s);
   // Boss Rush: no games in between, just the shop before the next boss
   if (s.run.mode === 'bossrush') {
     openShop(s);

@@ -453,7 +453,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('toast.elevator'), 'good');
             break;
           case 'creditLost':
-            if (e.credits > 0) toast(t('toast.creditLost', { credits: e.credits }), 'warn');
+            if (e.credits > 0 && (e.playerId === undefined || e.playerId === p.id)) toast(t('toast.creditLost', { credits: e.credits }), 'warn');
             break;
           case 'powerupSpawned':
             toast(t('toast.powerup', { name: t(`powerup.${e.kind}`) }));

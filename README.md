@@ -197,7 +197,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.
 - **Glitch Maze:** no weapons, no jumping. Collect the pixels in the maze while the glitch ghosts hunt you; a
-  caught player goes back to the start (no damage, no credit lost). A power cube in each corner turns the
+  caught player goes back to the start (no damage, no life lost). A power cube in each corner turns the
   ghosts blue for a few seconds: crash them for coins. Clear the maze for a bonus.
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
@@ -454,7 +454,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `V` | First person on / off (mouse turns and tilts the view) |
 | `1`–`6` / mouse wheel | Select a weapon |
 | `Q` | Select the rare weapon (when you have one) |
-| `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you. **Hold** to fly when you carry a jetpack. |
+| `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you (several in a row get weaker). Only the top of a jump is out of the monsters' reach. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
 | `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`5` to choose), hold to build it right away |
 | `E` (hold) | Plant a charge · help a teammate up · finish or repair a tower |
