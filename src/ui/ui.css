@@ -282,6 +282,18 @@ body.split .card { width: 110px; }
 .settings-cell .textfield { width: 220px; }
 .settings-cell.colors .swatch { width: 28px; height: 28px; }
 .screen.settings .controls-help { max-width: 620px; font-size: 9px; line-height: 1.8; opacity: 0.75; }
+/* Settings → Controls: two columns of "action  [key]" rows */
+.controls-hint { max-width: 620px; font-size: 9px; line-height: 1.7; opacity: 0.85; margin: 0; }
+.controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(9, auto); grid-auto-flow: column; gap: 6px 26px; width: min(720px, calc(100vw - 32px)); padding: 14px 20px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
+.controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.controls-action { font-size: 9px; color: var(--cyan); }
+.chip.key-chip { min-width: 92px; text-align: center; }
+.chip.key-chip.listening { background: var(--gold); color: var(--shadow); border-color: #fff; animation: key-wait 0.8s steps(2) infinite; }
+@keyframes key-wait { 50% { border-color: var(--shadow); } }
+.chip.key-chip.fixed { opacity: 0.55; cursor: default; display: inline-block; }
+.controls-notice { min-height: 14px; margin: 0; font-size: 10px; color: var(--gold); }
+.controls-notice.pop { animation: bump 0.3s; }
+@media (max-width: 560px) { .controls-grid { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }
 @media (max-width: 560px) { .settings-card { grid-template-columns: 1fr; } .settings-label { text-align: left; } }
 
 .credits-thanks { min-height: 1.6em; margin: 2px 0 6px; font-size: 10px; color: var(--gold); }

@@ -5,7 +5,7 @@ import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
-import { t } from './i18n';
+import { setKeyBindings, t } from './i18n';
 import { lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
@@ -100,6 +100,8 @@ function startGame() {
     audio?.mixer.setMusicVolume(settings.music);
     audio?.mixer.setSfxVolume(settings.sfx);
     keyboard.steerWithMouse = settings.steerWithMouse;
+    keyboard.setBindings(settings.bindings);
+    setKeyBindings(settings.bindings);
     renderer.setQuality(settings.graphics);
     renderer.setDamageNumbers(settings.damageNumbers);
   }
@@ -886,7 +888,8 @@ function startGame() {
 
   addEventListener('keydown', e => {
     padActive = false;
-    if (e.code === 'Space') e.preventDefault();
+    // Space (and the jump key) would scroll or press a focused button
+    if (e.code === 'Space' || (mode === 'playing' && e.code === settings.bindings.jump)) e.preventDefault();
     // repeats of a held key are let through, so keys still held after a pause work again;
     // the keyboard only counts the first press for one-off actions
     if (e.code === 'Escape' || e.code === 'KeyP') {
@@ -895,11 +898,11 @@ function startGame() {
       else if (mode === 'paused') resume();
       return;
     }
-    if (mode === 'playing' && e.code === 'KeyZ' && !e.repeat) zoomedOut = !zoomedOut;
-    // V: first person on or off; the mouse gets captured to turn the view
+    if (mode === 'playing' && e.code === settings.bindings.zoom && !e.repeat) zoomedOut = !zoomedOut;
+    // V (or the player's view key): first person on or off; the mouse gets captured to turn the view
     // (not when the LAN host fixed the view)
     const fixedView = role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false;
-    if (mode === 'playing' && e.code === 'KeyV' && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
+    if (mode === 'playing' && e.code === settings.bindings.view && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
     if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
