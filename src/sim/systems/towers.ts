@@ -6,7 +6,7 @@ import { BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
 import { PLAYER_RADIUS } from '../config/balance';
 import { airborne } from './rare';
 import { dist, nearestEnemy, targets } from '../util';
-import { damageEnemy } from './combat';
+import { damageEnemy, isBossBody } from './combat';
 
 export const BUILD_RADIUS = 1.2;
 
@@ -160,7 +160,7 @@ function fire(s: SimState, t: Tower): boolean {
       };
       for (const e of near) {
         damageEnemy(s, e, def.damage, t.kind);
-        if (e.kind === 'megaBlock' || e.kind === 'wormSegment') continue;
+        if (isBossBody(s, e)) continue;
         const a = away(e.pos);
         e.knock = { x: a.x * BUMPER.knock, z: a.z * BUMPER.knock };
       }

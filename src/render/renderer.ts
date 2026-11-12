@@ -13,6 +13,7 @@ import { createFx } from './fx';
 import { createPickups } from './pickups';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
+import { createWorldExtras } from './world-extras';
 import { createViewModel } from './viewmodel';
 import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
@@ -213,6 +214,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   }
 
   let world = createWorld(scene, map);
+  let extras = createWorldExtras(scene, map);
   let mapId = map.id;
   const overlay = new THREE.Scene();
   const entities = createEntities(scene, overlay);
@@ -257,6 +259,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         // a new floor: rebuild the static world and jump the camera to the new spawn
         world.dispose();
         world = createWorld(scene, s.map);
+        extras.dispose();
+        extras = createWorldExtras(scene, s.map);
         actors.setMap(s.map);
         mapId = s.map.id;
         for (const v of views) {
@@ -289,6 +293,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       }
 
       world.update(s, theme, time);
+      extras.update(s, theme, time);
       entities.update(s, theme, time, events, frameDt);
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);

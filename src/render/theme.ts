@@ -215,6 +215,50 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
       };
       return { day: raceLook, night: raceLook };
     }
+    case 'jungle':
+      // deep greens under a warm, misty sky
+      return {
+        day: { ...THEMES.day, background: 0xcfe8b0, skyTop: 0x6fbf6a, roadA: 0x8fbf5a, roadB: 0x84b451, wallA: 0x7a5a3a, wallB: 0x6b4e32, hemiGround: 0x4a7a3a, sunColor: 0xfff0c0, fogNear: 18, fogFar: 44 },
+        night: THEMES.night,
+      };
+    case 'servers': {
+      // a cool, dark hall lit by the racks
+      const serverLook: Theme = {
+        ...THEMES.night,
+        background: 0x0c1424,
+        skyTop: 0x03060c,
+        roadA: 0x2a3348,
+        roadB: 0x252d40,
+        wallA: 0x39435c,
+        wallB: 0x323b52,
+        fillColor: 0x2bb8ff,
+        fillIntensity: 0.55,
+        glow: 1.6,
+      };
+      return { day: serverLook, night: serverLook };
+    }
+    case 'underwater': {
+      // blue-green water: light from above, the far side lost in the haze
+      const sea: Theme = {
+        ...THEMES.day,
+        background: 0x1f6f8f,
+        skyTop: 0x0b3a5a,
+        fillColor: 0x4fe0ff,
+        fillIntensity: 0.6,
+        fogNear: 12,
+        fogFar: 34,
+        hemiSky: 0x9ff0ff,
+        hemiGround: 0x1f4f6f,
+        sunColor: 0xbff4ff,
+        sunIntensity: 1.2,
+        roadA: 0xd9c89a,
+        roadB: 0xcfbd8e,
+        wallA: 0x6a8a9a,
+        wallB: 0x5f7f8f,
+        glow: 1.3,
+      };
+      return { day: sea, night: sea };
+    }
     case 'shaft':
       return {
         day: { ...THEMES.night, background: 0x2a1f4a, skyTop: 0x0b0820, roadA: 0x6a7088, roadB: 0x626880, wallA: 0x3a3f5c, wallB: 0x333852 },

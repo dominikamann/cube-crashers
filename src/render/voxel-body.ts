@@ -41,6 +41,16 @@ const SHAPES: Partial<Record<EnemyKind, Shape>> = {
   healer: { n: [4, 6, 4], inside: (u, v, w) => round(u, v, w, 3), tone: (_u, v, w) => (w > 0.3 && v < 0.2 ? BELLY : 1) },
   // a diamond standing on its tip
   teleporter: { n: [5, 7, 5], inside: (u, v, w) => Math.abs(u) + Math.abs(v) + Math.abs(w) <= 1.25, tone: (u, v, w) => (Math.abs(u) + Math.abs(v) + Math.abs(w) < 0.6 ? 1.5 : 1) },
+  // a fish: a flat oval with a lighter belly and a stripe
+  fish: { n: [2, 4, 6], inside: (_u, v, w) => (v / 1) ** 2 + (w / 1) ** 2 <= 1.15, tone: (_u, v, w) => (v < -0.3 ? BELLY : Math.abs(w + 0.1) < 0.2 ? 0.7 : 1) },
+  // a shark: a long torpedo, pointed snout, white belly
+  shark: { n: [5, 4, 12], inside: (u, v, w) => u * u + v * v <= 1.2 - 0.9 * Math.max(0, w) ** 2 - 0.5 * Math.max(0, -w - 0.4), tone: (_u, v) => (v < -0.2 ? [1.6, 1.6, 1.6] : 1) },
+  // the Kraken: a big round head with spots, lighter round the mouth
+  kraken: {
+    n: [10, 8, 9],
+    inside: (u, v, w) => u * u + ((v - 0.1) / 0.95) ** 2 + w * w <= 1.15,
+    tone: (u, v, w) => (w > 0.5 && v < -0.2 ? BELLY : Math.sin(u * 9) * Math.sin(v * 7 + w * 5) > 0.55 ? 0.7 : 1),
+  },
   // a dome on straight sides
   ghost: { n: [6, 6, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15) },
   // the glitch ghost: the same dome, with scan lines through it

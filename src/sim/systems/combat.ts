@@ -14,6 +14,11 @@ import { killCategory } from './stats';
 
 const HIT_PADDING = 0.15;
 
+/** a boss's own body: too big to be pulled, bubbled or bumped, and tough against stomps and karts */
+export function isBossBody(s: SimState, e: Enemy): boolean {
+  return e.kind === 'megaBlock' || e.kind === 'wormSegment' || e.kind === 'kraken' || (s.boss !== null && s.boss.enemyId === e.id);
+}
+
 export function comboMult(p: Player): number {
   return Math.min(COMBO_MAX_MULT, 1 + Math.floor(p.combo / COMBO_STEP));
 }
@@ -37,7 +42,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   if (e.hp <= 0) return;
   // maze ghosts are only crashed by touching them while powered up
   if (e.kind === 'ghost') return;
-  if ((e.kind === 'megaBlock' || e.kind === 'wormSegment') && (source === 'stomp' || source === 'kart')) amount *= BOSS_BODY_RESIST;
+  if (isBossBody(s, e) && (source === 'stomp' || source === 'kart')) amount *= BOSS_BODY_RESIST;
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;
   s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt });
@@ -253,7 +258,7 @@ export function updateProjectiles(s: SimState): void {
       hitEnemy(s, e, p.damage, p.kind, p.ownerId);
       p.hitIds.push(e.id);
       // a soap bubble: the monster floats stuck in it (bosses are too big)
-      if (p.kind === 'bubbleWand' && e.hp > 0 && e.kind !== 'megaBlock' && e.kind !== 'wormSegment') {
+      if (p.kind === 'bubbleWand' && e.hp > 0 && !isBossBody(s, e)) {
         e.stuckUntil = s.tick + BUBBLE_WAND.stuckTicks;
         s.bubbles.push({ id: s.nextId++, pos: { ...e.pos }, ownerId: p.ownerId, popAt: e.stuckUntil });
       }

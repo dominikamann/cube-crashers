@@ -36,6 +36,11 @@ const REINFORCEMENTS: Record<2 | 3, HordeComp> = {
   2: [{ kind: 'blob', count: 8 }, { kind: 'shooter', count: 2 }],
   3: [{ kind: 'hunter', count: 6 }, { kind: 'bomber', count: 3 }],
 };
+/** under water the Kraken calls the sea instead */
+const SEA_REINFORCEMENTS: Record<2 | 3, HordeComp> = {
+  2: [{ kind: 'fish', count: 12 }, { kind: 'shark', count: 1 }],
+  3: [{ kind: 'fish', count: 10 }, { kind: 'shark', count: 3 }],
+};
 
 const byId = (s: SimState, id: number) => s.enemies.find(e => e.id === id);
 
@@ -52,8 +57,8 @@ export function bossHp(s: SimState): number {
 export function spawnBoss(s: SimState, kind: BossKind): void {
   const centre = nearestFree(s.map, { x: s.map.w / 2, z: s.map.h * 0.35 }, 1.2, BLOCKS_ENEMY);
   let b: BossState;
-  if (kind === 'megaBlock' || kind === 'rex') {
-    const e = spawnEnemy(s, kind === 'rex' ? 'trex' : 'megaBlock', centre);
+  if (kind === 'megaBlock' || kind === 'rex' || kind === 'kraken') {
+    const e = spawnEnemy(s, kind === 'rex' ? 'trex' : kind, centre);
     if (kind === 'rex') {
       // King Rex: a T-Rex grown to boss size
       e.hp = e.maxHp = BOSS.rexHp * hpScale(s);
@@ -93,6 +98,20 @@ function attack(s: SimState, b: BossState): void {
         const at = { x: boss.pos.x + dir.x * i * BOSS.waveStep, z: boss.pos.z + dir.z * i * BOSS.waveStep };
         telegraph(s, at, 1.3, BOSS.stompDamage, BOSS.warnTicks + i * 5);
       }
+    }
+  } else if (b.kind === 'kraken') {
+    const kraken = byId(s, b.enemyId!);
+    // tentacles slam down in lines toward the players, or an ink cloud bursts under each of them
+    if (kraken && s.rng.next() < 0.6) {
+      for (const p of alive.slice(0, 3)) {
+        const d = dist(kraken.pos, p.pos) || 1;
+        const dir = { x: (p.pos.x - kraken.pos.x) / d, z: (p.pos.z - kraken.pos.z) / d };
+        for (let i = 1; i <= BOSS.waveLength; i++) {
+          telegraph(s, { x: kraken.pos.x + dir.x * (1.5 + i * BOSS.waveStep), z: kraken.pos.z + dir.z * (1.5 + i * BOSS.waveStep) }, 1.2, BOSS.strikeDamage, BOSS.warnTicks + i * 4);
+        }
+      }
+    } else {
+      for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
     }
   } else if (b.kind === 'rex') {
     const rex = byId(s, b.enemyId!);
@@ -192,7 +211,7 @@ export function updateBoss(s: SimState): void {
     b.phase = (b.phase + 1) as 2 | 3;
     s.events.push({ type: 'bossPhase', phase: b.phase });
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
-    if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), REINFORCEMENTS[b.phase], { rush: true });
+    if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }
   if (s.tick >= b.nextAttackAt) {
     attack(s, b);

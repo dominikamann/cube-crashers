@@ -25,7 +25,10 @@ export type EnemyKind =
   | 'croc'
   | 'monkey'
   | 'trex'
-  | 'phantom';
+  | 'phantom'
+  | 'fish'
+  | 'shark'
+  | 'kraken';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -42,10 +45,10 @@ export type WeaponKind =
   | 'yoyoLauncher';
 export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
-export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush';
-export type BossKind = 'megaBlock' | 'worm' | 'rex';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */

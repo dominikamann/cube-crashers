@@ -119,7 +119,8 @@ function stomp(s: SimState, p: Player): void {
  */
 function pushOutOfBosses(s: SimState, p: Player): void {
   for (const e of s.enemies) {
-    if (e.kind !== 'megaBlock' || e.hp <= 0) continue;
+    // the big boss bodies (Mega Block, the Kraken, King Rex) are solid
+    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && s.boss?.enemyId !== e.id) || e.hp <= 0) continue;
     const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz);
     const edge = e.radius + PLAYER_RADIUS * 0.6;

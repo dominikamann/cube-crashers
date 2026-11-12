@@ -1,11 +1,11 @@
-import { ALARM_SPEED_STEP, BOMBER, CROC, CROWD_CONTACT_SHARE, MONKEY, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, CROC, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
 import { dist } from '../util';
-import { damageEnemy, explode } from './combat';
+import { damageEnemy, explode, isBossBody } from './combat';
 import { airborne, held } from './rare';
 import { hpScale } from './coop';
 import { damagePlayer } from './player';
@@ -112,7 +112,7 @@ function heal(s: SimState, e: Enemy): void {
   e.cooldownUntil = s.tick + HEALER.everyTicks;
   const healed: Vec2[] = [];
   for (const o of s.enemies) {
-    if (o === e || o.hp <= 0 || o.hp >= o.maxHp || o.kind === 'megaBlock' || o.kind === 'wormSegment' || o.kind === 'ghost') continue;
+    if (o === e || o.hp <= 0 || o.hp >= o.maxHp || isBossBody(s, o) || o.kind === 'ghost') continue;
     if (dist(o.pos, e.pos) > HEALER.radius + o.radius) continue;
     o.hp = Math.min(o.maxHp, o.hp + o.maxHp * HEALER.share);
     healed.push({ ...o.pos });
@@ -121,7 +121,7 @@ function heal(s: SimState, e: Enemy): void {
 }
 
 /** how this monster charges: the rammer's long run or the crocodile's short lunge */
-const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : RAMMER);
+const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : RAMMER);
 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
 function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
@@ -194,7 +194,8 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
       }
       return chase;
     case 'rammer':
-    case 'croc': {
+    case 'croc':
+    case 'shark': {
       const c = chargeOf(e);
       if (los && d < c.range && s.tick >= e.cooldownUntil) {
         startWindup(s, e, p.pos, c.windupTicks, 'windup');
@@ -319,7 +320,7 @@ export function updateEnemies(s: SimState): void {
         explode(s, e.pos, TREX.radius, { player: TREX.damage, tower: TREX.tower }, 'explosion');
       } else if (e.state === 'windup' && e.kind === 'monkey') {
         throwCoconut(s, e, players);
-      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc')) {
+      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark')) {
         e.state = 'charge';
         e.chargeLeft = chargeOf(e).distance;
       } else {

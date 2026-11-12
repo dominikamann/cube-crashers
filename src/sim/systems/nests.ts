@@ -59,7 +59,9 @@ function shuffled<T>(s: SimState, list: T[]): T[] {
 function roamingComp(s: SimState, scale = 1): HordeComp {
   const names = ['blobSwarm', 'hunterPack', 'mixed', 'shieldWall', 'boomSquad', 'ramCrew', 'shieldLine', 'fieldMedic', 'blinkers', 'haunting'];
   // the big ones only show up once the alarm has risen
-  if (s.alarm.level >= 2) names.push('jungle');
+  // the jungle is home to the crocodiles and monkeys: they turn up there from the start
+  if (s.alarm.level >= 2 || s.map.id === 'jungle') names.push('jungle');
+  if (s.map.id === 'jungle') names.push('jungle');
   if (s.alarm.level >= 3) names.push('rexHunt');
   const factor = (1 + ALARM_SIZE_STEP * s.alarm.level) * scale;
   return HORDE_COMPS[s.rng.pick(names)].map(g => ({ kind: g.kind, count: Math.ceil(g.count * factor) }));

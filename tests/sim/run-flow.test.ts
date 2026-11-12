@@ -91,7 +91,7 @@ describe('a run', () => {
     run(s, 2);
     expect(s.run.stage).toBe('floor');
     expect(s.run.floor).toBe(1);
-    expect(s.map.id).toBe(RUN_FLOORS[1]);
+    expect(s.map.id).toBe(s.run.floors[1]);
     expect(p.weapons.find(w => w.kind === 'bomb')?.level).toBe(3);
     expect(p.perks.speed).toBe(2);
     expect(p.coins).toBe(77);
