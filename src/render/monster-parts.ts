@@ -146,6 +146,36 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
       { at: [0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
     ]),
   ],
+  fish: [
+    { at: [0, 0, -0.4], size: [0.06, 0.32, 0.22], color: 'light', anim: 'wag', amp: 0.8 },
+    { at: [0, 0.23, 0], size: [0.04, 0.12, 0.24], color: 'dark' },
+  ],
+  shark: [
+    // the fin on its back, a tail that sweeps, side fins
+    { at: [0, 0.45, -0.1], size: [0.08, 0.38, 0.32], color: 'dark' },
+    { at: [0, 0.05, -0.95], size: [0.08, 0.5, 0.3], color: 'dark', anim: 'wag', amp: 0.6 },
+    { at: [-0.42, -0.12, 0.15], size: [0.3, 0.05, 0.22], color: 'dark' },
+    { at: [0.42, -0.12, 0.15], size: [0.3, 0.05, 0.22], color: 'dark' },
+    ...[0.48, 0.6, 0.72].map((z): Part => ({ at: [0, -0.12, z], size: [0.4, 0.06, 0.05], color: 0xffffff })),
+  ],
+  kraken: [
+    // eight tentacles fanning out around it, each in three pieces that wave
+    ...Array.from({ length: 8 }, (_, i): Part[] => {
+      const a = (i / 8) * Math.PI * 2;
+      return [1.7, 2.3, 2.85].map((r, k): Part => ({
+        at: [Math.cos(a) * r, -0.95 + k * 0.05, Math.sin(a) * r],
+        size: [0.55 - k * 0.12, 0.4 - k * 0.08, 0.55 - k * 0.12],
+        color: k === 2 ? 'light' : 'body',
+        anim: 'sway',
+        ph: i * 0.8 + k * 0.6,
+        amp: 0.25 + k * 0.1,
+      }));
+    }).flat(),
+  ],
+  phantom: [
+    { at: [-0.24, -0.5, 0], size: [0.18, 0.18, 0.6], color: 'light', anim: 'sway', amp: 0.4 },
+    { at: [0.24, -0.5, 0], size: [0.18, 0.18, 0.6], color: 'light', anim: 'sway', ph: PI, amp: 0.4 },
+  ],
   ghost: [
     { at: [-0.27, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', amp: 0.3 },
     { at: [0, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', ph: PI * 0.66, amp: 0.3 },

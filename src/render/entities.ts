@@ -24,11 +24,25 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   teleporter: { w: 0.55, h: 0.7, d: 0.55, day: 0x7a5cff, night: 0xa98cff, eyeY: 0.5, eyeX: 0, eye: 0.2 },
   croc: { w: 0.8, h: 0.5, d: 2.0, day: 0x3f9b4b, night: 0x5fe07a, eyeY: 0.48, eyeX: 0.22, eye: 0.13 },
   monkey: { w: 0.7, h: 0.9, d: 0.6, day: 0x9b6a3c, night: 0xc98a52, eyeY: 0.66, eyeX: 0.13, eye: 0.11 },
+  fish: { w: 0.3, h: 0.4, d: 0.6, day: 0xffa23b, night: 0xffb85c, eyeY: 0.26, eyeX: 0.1, eye: 0.08 },
+  shark: { w: 0.7, h: 0.6, d: 1.6, day: 0x6f8fb0, night: 0x8fb4dc, eyeY: 0.4, eyeX: 0.22, eye: 0.1 },
+  kraken: { w: 3.0, h: 2.2, d: 2.6, day: 0xd04a8a, night: 0xff6ab0, eyeY: 1.5, eyeX: 0.6, eye: 0.45 },
+  phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
   trex: { w: 0.9, h: 1.6, d: 1.7, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.38, eyeX: 0.24, eye: 0.14 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
 const KINDS = Object.keys(ENEMY_LOOK) as EnemyKind[];
+
+/** the tall-grass tiles of a map as a lookup, made once per map */
+const grassTiles = new WeakMap<object, Set<number>>();
+function grassAt(s: SimState, pos: { x: number; z: number }): boolean {
+  const list = s.map.grass;
+  if (!list) return false;
+  let set = grassTiles.get(s.map);
+  if (!set) grassTiles.set(s.map, (set = new Set(list.map(g => Math.floor(g.z) * s.map.w + Math.floor(g.x)))));
+  return set.has(Math.floor(pos.z) * s.map.w + Math.floor(pos.x));
+}
 /** monsters that hop: they squash when they land */
 const HOPPERS = new Set<EnemyKind>(['blob', 'splitter', 'splitling', 'healer', 'shielder', 'monkey']);
 
@@ -228,21 +242,32 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const awake = s.players.filter(p => p.downUntil === null);
       for (const e of s.enemies) {
         const l = ENEMY_LOOK[e.kind];
-        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock';
+        // King Rex is a T-Rex grown to boss size
+        const kingRex = s.boss?.kind === 'rex' && s.boss.enemyId === e.id;
+        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex;
+        // in the jungle's tall grass a monster cannot be seen until you are close
+        if (grassAt(s, e.pos) && Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z))) > 3.5 && (flashUntil.get(e.id) ?? 0) <= time) continue;
+        // a glitch ghost is hard to see from afar: it flickers in and out, jumping about, until it is close
+        if (e.kind === 'phantom') {
+          const near = Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z)));
+          const seen = near < 4 || (Math.floor(time * 12 + e.id * 3.1) % 5 === 0 && Math.sin(time * 7 + e.id) > -0.3);
+          if (!seen && (flashUntil.get(e.id) ?? 0) <= time) continue;
+        }
         // a new monster pops out of the floor with a little overshoot
         let born = bornAt.get(e.id);
         if (born === undefined) bornAt.set(e.id, (born = time));
         const pop = boss ? 1 : popIn(Math.min(1, (time - born) / 0.3));
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
         const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
-        const scale = (e.elite ? 1.4 : 1) * worn * pop;
+        const scale = (kingRex ? 2.4 : e.elite ? 1.4 : 1) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
         const squash = HOPPERS.has(e.kind) && !held ? 0.84 + 0.26 * hop : 1;
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : 0;
+        // the teleporter floats; fish and sharks swim a little above the sea bed
+        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : 0;
         const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';

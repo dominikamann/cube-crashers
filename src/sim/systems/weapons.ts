@@ -5,7 +5,7 @@ import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MI
 import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
-import { hitEnemy } from './combat';
+import { hitEnemy, isBossBody } from './combat';
 import { fireRare } from './rare';
 
 function rotate(v: Vec2, rad: number): Vec2 {
@@ -154,7 +154,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         if (!inCone(e.pos, e.radius)) continue;
         hitEnemy(s, e, damage, w.kind, p.id);
         // bosses are too heavy to move
-        if (e.kind === 'megaBlock' || e.kind === 'wormSegment') continue;
+        if (isBossBody(s, e)) continue;
         const dx = to.x - e.pos.x, dz = to.z - e.pos.z;
         e.knock = { x: dx * MAGNET.pull, z: dz * MAGNET.pull };
       }

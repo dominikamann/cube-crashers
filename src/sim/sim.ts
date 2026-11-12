@@ -3,7 +3,7 @@ import { PLAYER_HP } from './config/balance';
 import { DIFFICULTY } from './config/difficulty';
 import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './systems/coop';
 import type { FloorMap } from './map/tilemap';
-import { FLOORS, RUN_FLOORS, runFloors } from './config/floors';
+import { BOSS_RUSH, FLOORS, RUN_FLOORS, runFloors } from './config/floors';
 import { Rng } from './rng';
 import { initRun, updateRunStage } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
@@ -110,8 +110,8 @@ export interface SimOptions {
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
   const mode = opts.mode ?? 'quick';
-  const floors = mode === 'run' ? runFloors(seed) : [firstMap.id];
-  const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : firstMap;
+  const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map(b => b.map) : [firstMap.id];
+  const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : mode === 'bossrush' ? FLOORS[floors[0]].map : firstMap;
   const s: SimState = {
     tick: 0,
     seed,

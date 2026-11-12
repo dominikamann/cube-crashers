@@ -41,6 +41,8 @@ export interface FloorMap {
   powerSpots: Vec2[];
   crateSpots: Vec2[];
   waypoints: Vec2[];
+  /** tall grass (the jungle): plain floor to walk on, but monsters in it are hard to see; tile centres */
+  grass?: Vec2[];
 }
 
 const TILE_CHARS: Record<string, Tile> = {
@@ -61,14 +63,14 @@ const PAD_NEST_RANGE = 9;
 /**
  * Text legend: '#' wall, '.' floor, '=' low wall, '~' hazard, '>' boost, '^' ramp, 'S' spawn, 'E' elevator,
  * 'U' 'R' 'D' 'L' conveyor belts (pushing north, east, south, west),
- * 'N' nest spot, 'r' rush entry, 'p' pad, 'V' vehicle, '*' power-up, 'c' crate, 'w' waypoint.
+ * 'N' nest spot, 'r' rush entry, 'p' pad, 'V' vehicle, '*' power-up, 'c' crate, 'w' waypoint, 'g' tall grass.
  * Markers sit on floor; positions are tile centres.
  */
 export function parseMap(id: string, rows: string[]): FloorMap {
   const h = rows.length;
   const w = rows[0].length;
   const tiles: Tile[] = [];
-  const marks: Record<string, Vec2[]> = { S: [], E: [], N: [], r: [], p: [], V: [], '*': [], c: [], w: [] };
+  const marks: Record<string, Vec2[]> = { S: [], E: [], N: [], r: [], p: [], V: [], '*': [], c: [], w: [], g: [] };
   rows.forEach((row, tz) => {
     if (row.length !== w) throw new Error(`map ${id}: row ${tz} has ${row.length} tiles, expected ${w}`);
     [...row].forEach((ch, tx) => {
@@ -107,6 +109,7 @@ export function parseMap(id: string, rows: string[]): FloorMap {
     powerSpots: marks['*'],
     crateSpots: marks.c,
     waypoints: marks.w,
+    ...(marks.g.length > 0 ? { grass: marks.g } : {}),
   };
 }
 

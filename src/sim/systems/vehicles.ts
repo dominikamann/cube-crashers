@@ -35,7 +35,12 @@ export const VEHICLES: Record<VehicleKind, { speed: number; accel: number; hp: n
   roller: { speed: KART.speed * 0.7, accel: 18, hp: 250, ramDamage: 80, radius: 0.9, jumps: false, hovers: false },
   // fast and light: floats over glitch floor and low walls, no ramming
   hoverboard: { speed: KART.speed * 1.3, accel: 36, hp: 60, ramDamage: 0, radius: 0.6, jumps: false, hovers: true },
+  // rare and magic: fast, leaps off ramps, spears monsters with its horn, never runs out of steam
+  unicorn: { speed: KART.speed * 1.2, accel: 34, hp: 120, ramDamage: 60, radius: 0.7, jumps: true, hovers: false },
 };
+
+/** a unicorn turns up on its own now and then: every `checkTicks` the game rolls `chance` */
+export const UNICORN = { checkTicks: 60 * 60, chance: 0.2 };
 
 export function addKart(s: SimState, pos: Vec2, spot: number): Vehicle {
   return addVehicle(s, 'kart', pos, spot);
@@ -132,7 +137,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   if (hit.hitX) v.vel.x = 0;
   if (hit.hitZ) v.vel.z = 0;
   const speed = Math.hypot(v.vel.x, v.vel.z);
-  if (driver && speed > 1 && !v.locked) v.fuel--;
+  if (driver && speed > 1 && !v.locked && v.kind !== 'unicorn') v.fuel--;
 
   if (v.air > 0) {
     v.air--;
@@ -168,6 +173,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
     if (v.kind === 'kart') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
+    if (v.kind === 'unicorn') v.hp -= KART.ramCostSmall;
     damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
   }
@@ -195,7 +201,22 @@ export function updateVehicles(s: SimState, intents: Map<number, Intent>): void 
       leave(s, driver, v);
       driver.invulnUntil = Math.max(driver.invulnUntil, s.tick + KART.ejectInvulnTicks);
     }
-    s.vehicleRespawns.push({ spot: v.spot, at: s.tick + KART.respawnTicks, kind: v.kind });
+    // a unicorn is a lucky find: it does not come back where it was
+    if (v.kind !== 'unicorn') s.vehicleRespawns.push({ spot: v.spot, at: s.tick + KART.respawnTicks, kind: v.kind });
     return false;
   });
+  maybeUnicorn(s);
+}
+
+/** Now and then a unicorn trots in at a free vehicle spot (one at a time, only where there are such spots). */
+function maybeUnicorn(s: SimState): void {
+  s.nextUnicornAt ??= s.tick + UNICORN.checkTicks;
+  if (s.tick < s.nextUnicornAt) return;
+  s.nextUnicornAt = s.tick + UNICORN.checkTicks;
+  if (s.run.stage !== 'floor' || s.vehicles.some(v => v.kind === 'unicorn') || s.rng.next() >= UNICORN.chance) return;
+  const free = s.map.vehicleSpots.map((pos, spot) => ({ pos, spot })).filter(x => !s.vehicles.some(v => dist(v.pos, x.pos) < 2));
+  if (free.length === 0) return;
+  const at = s.rng.pick(free);
+  addVehicle(s, 'unicorn', at.pos, at.spot);
+  s.events.push({ type: 'unicornAppeared', pos: { ...at.pos } });
 }

@@ -121,8 +121,8 @@ export function saveSettings(s: Settings): void {
 }
 
 /** Adds a score to the local top 5 of this difficulty and returns the list (highest first). */
-export function recordScore(score: number, difficulty: Difficulty | 'endless'): number[] {
-  let all: Partial<Record<Difficulty | 'endless', number[]>> = {};
+export function recordScore(score: number, difficulty: Difficulty | 'endless' | 'bossrush'): number[] {
+  let all: Partial<Record<Difficulty | 'endless' | 'bossrush', number[]>> = {};
   try {
     const raw = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '{}');
     // version 0.1 kept a single list: it becomes the Medium list
@@ -177,6 +177,8 @@ export interface ScreenActions {
   join(): void;
   /** today's Daily Run */
   daily(): void;
+  /** every boss in a row */
+  bossRush(): void;
   /** the online server list; missing where only the desktop app can go online */
   online?: () => void;
   resume(): void;
@@ -636,6 +638,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const b = button(box, t('daily.play'), actions.daily);
         b.classList.add('small');
         s.append(box);
+        // the Boss Rush: every boss in a row
+        const rush = document.createElement('div');
+        rush.className = 'daily-box rush-box';
+        text(rush, 'div', 'setup-label', t('bossrush.title'));
+        text(rush, 'p', 'mode-hint', t('bossrush.sub'));
+        const rb = button(rush, t('bossrush.play'), actions.bossRush);
+        rb.classList.add('small');
+        s.append(rush);
       }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
@@ -708,7 +718,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     result(won, r, again) {
       show('result', s => {
         // a won Tower Run gets its own headline: the whole tower is done
-        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : t(won ? 'won.title' : 'lost.title'));
+        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && r.mode === 'bossrush' ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
         text(s, 'h2', '', title);
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
