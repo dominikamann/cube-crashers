@@ -250,6 +250,11 @@ export function createFx(scene: THREE.Scene): Fx {
             if (pos) burst(pos, 1, 30, [0xffc928, 0xd19a00, 0xffffff], 4, 0.12);
             break;
           }
+          case 'magnetPull':
+            // a magnetic beam and sparks drawn in where the monsters gather
+            beam(e.from, 0.8, e.to, 0.6, 0xff5e8a, 0.1);
+            burst(e.to, 0.6, 10, [0xff5e8a, 0x7fb2ff], 2, 0.08, 0.3);
+            break;
           case 'railFired':
             // a bright beam along the line, and sparks where it stops
             beam(e.from, 0.9, e.to, 0.9, 0x9ff8ff, 0.16);

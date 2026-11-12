@@ -272,8 +272,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           }
           continue;
         }
-        if (p.kind === 'bubblegumBazooka') {
-          gums.add(p.pos.x, 0.7, p.pos.z, 0, 0.35);
+        if (p.kind === 'bubblegumBazooka' || p.kind === 'bubbleWand') {
+          gums.add(p.pos.x, 0.7, p.pos.z, 0, p.kind === 'bubbleWand' ? 0.25 + 0.03 * Math.sin(time * 12) : 0.35);
           continue;
         }
         if (p.behavior === 'lob') {

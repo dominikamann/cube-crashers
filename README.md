@@ -433,6 +433,9 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
 | **Fly Swatter** | A huge slap right in front of you: very strong, very short. The knife of this game. |
+| **Bubble Wand** | A slow soap bubble: the monster it hits floats stuck in it for a few seconds. |
+| **Magnet Glove** | Pulls the monsters in front of you together at the crosshair (then throw a bomb). Yanks rivals toward you. |
+| **Yo-yo Launcher** | Out and straight back on its string, hitting on both ways. Short and quick. |
 
 Hits from up close (within 3 tiles) deal **50 % more damage**.
 

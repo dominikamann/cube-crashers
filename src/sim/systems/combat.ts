@@ -2,7 +2,7 @@ import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, PLAYER_RADIUS, COIN_LIFETI
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
-import { HOTDOG, MINE } from '../config/weapons';
+import { BUBBLE_WAND, HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { pvpDamage, rivals } from './versus';
 import { DT, type DamageSource, type Enemy, type Player, type SimState, type Vec2 } from '../types';
@@ -230,6 +230,11 @@ export function updateProjectiles(s: SimState): void {
       if (dist(p.pos, e.pos) > e.radius + HIT_PADDING) continue;
       hitEnemy(s, e, p.damage, p.kind, p.ownerId);
       p.hitIds.push(e.id);
+      // a soap bubble: the monster floats stuck in it (bosses are too big)
+      if (p.kind === 'bubbleWand' && e.hp > 0 && e.kind !== 'megaBlock' && e.kind !== 'wormSegment') {
+        e.stuckUntil = s.tick + BUBBLE_WAND.stuckTicks;
+        s.bubbles.push({ id: s.nextId++, pos: { ...e.pos }, ownerId: p.ownerId, popAt: e.stuckUntil });
+      }
       if (p.pierce <= 0) {
         alive = false;
         break;

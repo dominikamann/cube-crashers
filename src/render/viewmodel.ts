@@ -37,6 +37,20 @@ function makeModel(kind: Look): THREE.Group {
       g.add(box(0.04, 0.04, 0.3, metal, 0, 0, -0.55));
       g.add(box(0.06, 0.13, 0.08, dark, 0, -0.12, 0.02));
       break;
+    case 'bubbleWand':
+      g.add(box(0.04, 0.04, 0.45, lambert(0x8a5a2b), 0, 0, -0.1));
+      g.add(box(0.16, 0.16, 0.03, glowMat(0xff9ee8, 1.1), 0, 0.02, -0.38));
+      g.add(box(0.1, 0.1, 0.035, lambert(0xffffff), 0, 0.02, -0.38));
+      break;
+    case 'magnetGlove':
+      g.add(box(0.16, 0.14, 0.2, lambert(0x3a3f55), 0, 0, -0.05));
+      g.add(box(0.06, 0.06, 0.18, lambert(0xff3b3b), -0.06, 0, -0.24), box(0.06, 0.06, 0.18, lambert(0x7fb2ff), 0.06, 0, -0.24));
+      g.add(box(0.06, 0.03, 0.04, lambert(0xd0d0d0), -0.06, 0, -0.34), box(0.06, 0.03, 0.04, lambert(0xd0d0d0), 0.06, 0, -0.34));
+      break;
+    case 'yoyoLauncher':
+      g.add(box(0.06, 0.12, 0.08, dark, 0, -0.08, 0));
+      g.add(box(0.18, 0.18, 0.08, lambert(0x2bd4ff), 0, 0.02, -0.2), box(0.08, 0.08, 0.1, lambert(0xffcf3a), 0, 0.02, -0.2));
+      break;
     case 'candyCannon':
       g.add(box(0.16, 0.16, 0.5, lambert(0xff7ac8), 0, 0, -0.15));
       g.add(box(0.2, 0.2, 0.06, lambert(0xffffff), 0, 0, -0.42));
@@ -151,7 +165,7 @@ export function createViewModel(): ViewModel {
         hand.position.y = -0.3 + bob - (kick > 0 ? Math.sin(Math.PI * kick) * 0.08 : 0);
       }
       // melee and thrown things have no muzzle
-      const shoots = !['laserSword', 'flySwatter', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang'].includes(kind);
+      const shoots = !['laserSword', 'flySwatter', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang', 'magnetGlove', 'yoyoLauncher'].includes(kind);
       flash.visible = shoots && kick > 0.65;
       flash.rotation.z = time * 20;
       tracerMat.opacity = shoots ? Math.max(0, kick - 0.4) * 1.6 : 0;

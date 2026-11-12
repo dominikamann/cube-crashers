@@ -100,6 +100,16 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sawtooth', freq: 1800, freqEnd: 300, attack: 0.002, sustain: 0.05, decay: 0.18, volume: 0.13, lowpass: 4000 },
     { wave: 'square', freq: 90, freqEnd: 40, attack: 0.001, sustain: 0.04, decay: 0.1, volume: 0.1 },
   ],
+  // a soft blown bubble
+  shot_bubbleWand: [
+    { wave: 'sine', freq: 400, freqEnd: 900, attack: 0.01, sustain: 0.06, decay: 0.12, volume: 0.12, vibrato: { rate: 14, depth: 30 } },
+  ],
+  // a magnetic hum that pulls up
+  shot_magnetGlove: [
+    { wave: 'sawtooth', freq: 90, freqEnd: 260, attack: 0.02, sustain: 0.18, decay: 0.12, volume: 0.1, lowpass: 900, vibrato: { rate: 30, depth: 20 } },
+  ],
+  // a zip out on the string
+  shot_yoyoLauncher: [{ wave: 'triangle', freq: 600, freqEnd: 1400, attack: 0.003, sustain: 0.05, decay: 0.06, volume: 0.1 }],
   // a whoosh and a wet KLATSCH
   shot_flySwatter: [
     { wave: 'noise', freq: 600, attack: 0.02, sustain: 0.04, decay: 0.05, volume: 0.1, lowpass: 1800 },
@@ -272,6 +282,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'railFired':
       // the zap itself comes with the shot; this is the crack where the beam ends
       return one('enemyHit', 0.6);
+    case 'magnetPull':
+      // the hum comes with the shot; this is the clack of things pulled together
+      return one('enemyHit', 0.45);
     case 'playerHit':
       return one('playerHit');
     case 'playerDown':

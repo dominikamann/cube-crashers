@@ -141,6 +141,54 @@ describe('weapons', () => {
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'railFired' }));
   });
 
+  it('the bubble wand traps the monster it hits in a bubble for a while', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.pos.z = 66.5;
+    p.weapons = held('bubbleWand');
+    const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -5));
+    stepSim(s, [aimAt(e.pos), fire]);
+    run(s, 30);
+    expect(e.hp).toBe(TANK - dmg('bubbleWand'));
+    expect(e.stuckUntil).toBeGreaterThan(s.tick + 60);
+    const at = { ...e.pos };
+    run(s, 60);
+    expect(Math.hypot(e.pos.x - at.x, e.pos.z - at.z)).toBeLessThan(0.05);
+  });
+
+  it('the magnet glove pulls the monsters in front together toward the crosshair', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.weapons = held('magnetGlove');
+    const target = rel(p.pos, 0, -4);
+    const a = spawnEnemy(s, 'tank', rel(p.pos, -2, -5));
+    const b = spawnEnemy(s, 'tank', rel(p.pos, 2, -5));
+    const behind = spawnEnemy(s, 'tank', rel(p.pos, 0, 4));
+    for (const e of [a, b, behind]) e.speed = 0;
+    const gap = () => Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+    const before = gap();
+    stepSim(s, [aimAt(target), fire]);
+    expect(s.events.some(ev => ev.type === 'magnetPull')).toBe(true);
+    run(s, 20);
+    expect(gap()).toBeLessThan(before - 1.5);
+    expect(a.hp).toBeLessThan(TANK);
+    expect(behind.hp).toBe(TANK);
+  });
+
+  it('the yo-yo flies out and back and hits the same monster on both ways', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.pos.z = 66.5;
+    p.weapons = held('yoyoLauncher');
+    const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -3));
+    e.speed = 0;
+    stepSim(s, [aimAt(rel(p.pos, 0, -6)), fire]);
+    run(s, 90);
+    expect(s.projectiles).toHaveLength(0);
+    // close range both times
+    expect(e.hp).toBeCloseTo(TANK - 2 * dmg('yoyoLauncher') * 1.5);
+  });
+
   it('candy cannon fires a spread of 6 pellets', () => {
     const s = quietSim();
     const p = s.players[0];

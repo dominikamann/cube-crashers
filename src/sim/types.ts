@@ -17,7 +17,10 @@ export type WeaponKind =
   | 'bananaMine'
   | 'bomb'
   | 'flySwatter'
-  | 'pixelRail';
+  | 'pixelRail'
+  | 'bubbleWand'
+  | 'magnetGlove'
+  | 'yoyoLauncher';
 export type TowerKind = 'laser' | 'popcorn' | 'frost';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze';
@@ -505,6 +508,7 @@ export type SimEvent =
   | { type: 'towerDone'; padId: number; level: number }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
   | { type: 'railFired'; from: Vec2; to: Vec2 }
+  | { type: 'magnetPull'; from: Vec2; to: Vec2 }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }
   | { type: 'playerDown'; playerId: number }

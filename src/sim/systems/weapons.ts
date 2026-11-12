@@ -1,8 +1,8 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
-import { BLASTER, BOMB, BOOMERANG, CANDY, DISCO, HOTDOG, MINE, RAIL, SWATTER, SWORD, WEAPONS, levelMul } from '../config/weapons';
-import { Tile, tileAt } from '../map/tilemap';
+import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MINE, RAIL, SWATTER, SWORD, WEAPONS, YOYO, levelMul } from '../config/weapons';
+import { BLOCKS_WALKER, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
 import { hitEnemy } from './combat';
@@ -118,22 +118,56 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       });
       return true;
     }
-    case 'joystickBoomerang': {
+    case 'joystickBoomerang':
+    case 'yoyoLauncher': {
+      // the yo-yo is a short, fast boomerang on a string
+      const def = w.kind === 'yoyoLauncher' ? YOYO : BOOMERANG;
       s.projectiles.push({
         id: s.nextId++,
         kind: w.kind,
         behavior: 'boomerang',
         pos: { ...p.pos },
-        vel: { x: p.aim.x * BOOMERANG.speed, z: p.aim.z * BOOMERANG.speed },
+        vel: { x: p.aim.x * def.speed, z: p.aim.z * def.speed },
         damage,
         pierce: Infinity,
         until: s.tick + 240,
         hitIds: [],
         ownerId: p.id,
         travelled: 0,
-        range: BOOMERANG.distance,
+        range: def.distance,
         returning: false,
       });
+      return true;
+    }
+    case 'bubbleWand':
+      s.projectiles.push(bolt(s, p, w, { ...p.pos }, p.aim, BUBBLE_WAND.speed, BUBBLE_WAND.range, damage));
+      return true;
+    case 'magnetGlove': {
+      const to = aimWithin(p, MAGNET.range);
+      const minDot = Math.cos((MAGNET.halfArcDeg * Math.PI) / 180);
+      const inCone = (q: Vec2, r: number) => {
+        const dx = q.x - p.pos.x, dz = q.z - p.pos.z;
+        const d = Math.hypot(dx, dz);
+        return d <= MAGNET.range + r && (d < 0.6 || (dx * p.aim.x + dz * p.aim.z) / d >= minDot);
+      };
+      for (const e of targets(s)) {
+        if (!inCone(e.pos, e.radius)) continue;
+        hitEnemy(s, e, damage, w.kind, p.id);
+        // bosses are too heavy to move
+        if (e.kind === 'megaBlock' || e.kind === 'wormSegment') continue;
+        const dx = to.x - e.pos.x, dz = to.z - e.pos.z;
+        e.knock = { x: dx * MAGNET.pull, z: dz * MAGNET.pull };
+      }
+      // versus: rivals in the cone are yanked toward you
+      for (const r of rivals(s, p.id)) {
+        if (!inCone(r.pos, PLAYER_RADIUS)) continue;
+        const dx = p.pos.x - r.pos.x, dz = p.pos.z - r.pos.z;
+        const d = Math.hypot(dx, dz);
+        const step = Math.max(0, Math.min(MAGNET.rivalPull, d - 1));
+        if (d > 1e-6) moveCircle(s.map, r.pos, (dx / d) * step, (dz / d) * step, PLAYER_RADIUS, BLOCKS_WALKER);
+        damagePlayer(s, r, pvpDamage(damage), 'other', p.id);
+      }
+      s.events.push({ type: 'magnetPull', from: { ...p.pos }, to });
       return true;
     }
     case 'discoBall': {
