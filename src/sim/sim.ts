@@ -257,7 +257,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateTowerWork(s, intents);
   updateTowers(s);
   updateAreas(s);
-  updateBoss(s);
+  updateBoss(s, intents);
   updateCoins(s);
   updateOffers(s);
   if (onFloor) {

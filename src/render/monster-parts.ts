@@ -16,7 +16,9 @@ interface Part {
    * leg: steps in the walk cycle · arm: swings from the shoulder (`at` is the shoulder) · wag: a tail swinging
    * from its front end · flap: wings · orbit: circles the body · sway: tips from side to side
    */
-  anim?: 'leg' | 'arm' | 'wag' | 'flap' | 'orbit' | 'sway';
+  anim?: 'leg' | 'arm' | 'wag' | 'flap' | 'orbit' | 'sway' | 'jaw';
+  /** jaw: the hinge it turns around (same frame as `at`) */
+  pivot?: [number, number, number];
   /** phase offset within the animation */
   ph?: number;
   amp?: number;
@@ -118,14 +120,27 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     { at: [0, 0.05, 0], size: [0.14, 0.14, 0.14], color: 0xd8ccff, glow: true, anim: 'orbit', ph: PI, amp: 0.58 },
   ],
   croc: [
-    ...fourLegs(0.42, -0.33, 0.55, 0.2, 0.16),
-    { at: [0, -0.05, -1.0], size: [0.36, 0.26, 0.6], color: 'body', anim: 'wag', amp: 0.5 },
-    // teeth along the snout, ridges down the back
-    ...[0.4, 0.58, 0.76, 0.92].flatMap((z): Part[] => [
-      { at: [-0.3, -0.12, z], size: [0.06, 0.12, 0.07], color: 0xffffff },
-      { at: [0.3, -0.12, z], size: [0.06, 0.12, 0.07], color: 0xffffff },
+    // four short legs splayed out to the sides, each with a clawed foot
+    ...[[-1, 0.42, 0], [1, 0.42, PI], [-1, -0.45, PI], [1, -0.45, 0]].flatMap(([side, z, ph]): Part[] => [
+      { at: [side * 0.48, -0.14, z], size: [0.3, 0.12, 0.15], color: 'body', anim: 'leg', ph, amp: 0.1 },
+      { at: [side * 0.62, -0.24, z + 0.04], size: [0.16, 0.12, 0.22], color: 'dark', anim: 'leg', ph, amp: 0.1 },
+      { at: [side * 0.62, -0.28, z + 0.17], size: [0.14, 0.04, 0.05], color: 0xf2f0e6, anim: 'leg', ph, amp: 0.1 },
     ]),
-    ...[-0.15, -0.45, -0.75].map((z): Part => ({ at: [0, 0.3, z], size: [0.14, 0.12, 0.14], color: 'dark' })),
+    // the tail: two pieces, sweeping
+    { at: [0, -0.1, -1.18], size: [0.3, 0.2, 0.5], color: 'body', anim: 'wag', amp: 0.45 },
+    { at: [0, -0.12, -1.5], size: [0.18, 0.14, 0.4], color: 'dark', anim: 'wag', ph: 0.6, amp: 0.7 },
+    // the lower jaw hinged under the eyes, with its teeth: it opens before a lunge and snaps during one
+    { at: [0, -0.2, 0.68], size: [0.5, 0.1, 0.66], color: 'light', anim: 'jaw', pivot: [0, -0.15, 0.36] },
+    ...[0.52, 0.68, 0.84].flatMap((z): Part[] => [
+      { at: [-0.2, -0.11, z], size: [0.05, 0.1, 0.05], color: 0xffffff, anim: 'jaw', pivot: [0, -0.15, 0.36] },
+      { at: [0.2, -0.11, z], size: [0.05, 0.1, 0.05], color: 0xffffff, anim: 'jaw', pivot: [0, -0.15, 0.36] },
+    ]),
+    // the upper teeth along the snout, and a red mouth inside
+    ...[0.48, 0.62, 0.76, 0.9].flatMap((z): Part[] => [
+      { at: [-0.25, -0.2, z], size: [0.05, 0.09, 0.05], color: 0xffffff },
+      { at: [0.25, -0.2, z], size: [0.05, 0.09, 0.05], color: 0xffffff },
+    ]),
+    { at: [0, -0.17, 0.55], size: [0.36, 0.04, 0.4], color: 0xc0303a },
   ],
   monkey: [
     ...feet(0.16, -0.51, 0.16, 0.12, 0.24),
@@ -159,17 +174,21 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     ...[0.48, 0.6, 0.72].map((z): Part => ({ at: [0, -0.12, z], size: [0.4, 0.06, 0.05], color: 0xffffff })),
   ],
   kraken: [
-    // eight tentacles fanning out around it, each in three pieces that wave
+    // eight long, thick tentacles fanning out around it, each in five pieces that thin out and wave, with
+    // light suckers along the underside
     ...Array.from({ length: 8 }, (_, i): Part[] => {
       const a = (i / 8) * Math.PI * 2;
-      return [1.7, 2.3, 2.85].map((r, k): Part => ({
-        at: [Math.cos(a) * r, -0.95 + k * 0.05, Math.sin(a) * r],
-        size: [0.55 - k * 0.12, 0.4 - k * 0.08, 0.55 - k * 0.12],
-        color: k === 2 ? 'light' : 'body',
-        anim: 'sway',
-        ph: i * 0.8 + k * 0.6,
-        amp: 0.25 + k * 0.1,
-      }));
+      return [1.6, 2.3, 3.0, 3.65, 4.25].flatMap((r, k): Part[] => [
+        {
+          at: [Math.cos(a) * r, -0.95 + k * 0.08, Math.sin(a) * r],
+          size: [0.85 - k * 0.14, 0.6 - k * 0.09, 0.85 - k * 0.14],
+          color: k >= 3 ? 'light' : 'body',
+          anim: 'sway',
+          ph: i * 0.8 + k * 0.6,
+          amp: 0.2 + k * 0.08,
+        },
+        { at: [Math.cos(a) * r, -1.22 + k * 0.08, Math.sin(a) * r], size: [0.3 - k * 0.04, 0.06, 0.3 - k * 0.04], color: 0xffd0e4, anim: 'sway', ph: i * 0.8 + k * 0.6, amp: 0.2 + k * 0.08 },
+      ]);
     }).flat(),
   ],
   phantom: [
@@ -195,7 +214,7 @@ export const MONSTER_LIFT: Partial<Record<EnemyKind, number>> = {
   rammer: 0.2,
   shielder: 0.14,
   healer: 0.12,
-  croc: 0.16,
+  croc: 0.12,
   monkey: 0.12,
   trex: 0.3,
 };
@@ -221,6 +240,8 @@ export interface PartPose {
   tilt: number;
   /** flash, frozen or slowed: overrides every part's colour */
   tint: number | undefined;
+  /** 0 = at rest, 1 = winding up an attack, above 1 = in the attack (a jaw snaps) */
+  attack?: number;
   /** the walk cycle (radians), the clock, and whether the monster is held still */
   phase: number;
   time: number;
@@ -272,6 +293,17 @@ export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: E
       case 'sway':
         rz += Math.sin(p.time * 5 + id + ph) * amp;
         break;
+      case 'jaw': {
+        // wide open while winding up, snapping shut again and again during the attack
+        const a = p.attack === undefined || p.attack === 0 ? 0.08 : p.attack <= 1 ? 0.75 : 0.45 * Math.abs(Math.sin(p.time * 22));
+        const [, py, pz] = part.pivot ?? [lx, ly, lz];
+        const dy = ly - py, dz = lz - pz;
+        // turn around the hinge: the front drops
+        ly = py + dy * Math.cos(a) - dz * Math.sin(a);
+        lz = pz + dy * Math.sin(a) + dz * Math.cos(a);
+        rx -= a;
+        break;
+      }
     }
     const wx = p.x + lx * p.sx * c + lz * p.sz * sn;
     const wz = p.z - lx * p.sx * sn + lz * p.sz * c;

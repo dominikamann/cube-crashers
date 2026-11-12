@@ -4,17 +4,19 @@
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
 ![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
-![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%208%20players-ff7a2f)
+![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
-**A fast voxel action game for one to eight players.** Fight your way up a tower, floor by floor. Hordes of
-retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
-the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
-Crash Kart and plough through the pixels. Play alone or with up to seven friends on your LAN, together
-against the monsters or against each other in **Versus**: score races, King of the Cube, Capture the Cube,
-Gun Game, from above or in **first person** like a classic shooter.
+**A fast voxel action game for one to ten players.** Fight your way up a tower, floor by floor. Hordes of
+retro arcade monsters (blobs, crocodiles, monkeys, a T-Rex, sharks and more) roam a big voxel map and hunt you
+down. Blow up their glitch nests, hold the zone while the horde storms in, build towers at the chokepoints,
+stomp, dash, fly a jetpack over the walls, ride a Crash Kart or a lucky unicorn. Every run picks its worlds,
+from the Arcade Plaza to the Pixel Jungle, the Server Farm and the Sunken Arcade with the Kraken. Play alone,
+with up to nine friends on your LAN or online, together against the monsters or against each other in
+**Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
+**first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
@@ -64,6 +66,7 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
 - [The run: five floors, a different game between them, shop, bosses](#the-run-five-floors-a-different-game-between-them-shop-bosses)
+- [Boss Rush](#boss-rush)
 - [Daily Run](#daily-run)
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
@@ -123,10 +126,12 @@ See [Development](#development). You need Node.js 20 or newer.
 
 1. Start the game, pick a mode under **Play** and click it:
    - **Tower Run**: the full game over five floors.
-   - **Single floor**: one map of your choice, a short game. Every floor, both bosses and the three
+   - **Single floor**: one map of your choice, a short game. Every world, the bosses and the three
      minigames (Kart Rally, Lane Defense, Glitch Maze) are there to pick.
    - **Versus**: players against players, with bots to fill up (see [Versus](#versus-players-against-players)).
    - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
+   - Under **Tower Run** you also find the **Daily Run** and the **Boss Rush**; **LAN party** and **Online
+     Multiplayer** are next to the tiles.
 
    Set the **difficulty** with the arrows below.
 2. You start next to the elevator at the bottom of the map. The **minimap** (bottom right) shows the
@@ -165,9 +170,12 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | Floor | Theme | What happens | Then |
 |---|---|---|---|
 | 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
-| 2 | Candy Factory | Nests; **conveyor belts** push players and monsters | **Lane Defense** |
-| 3 | Mega Block Arena | **Boss: Mega Block** | **Glitch Maze** |
-| 4 | Neon City *or* Neon Highway | Nests; permanent night, more elites | **Shaft ride** |
+| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
+| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
+| 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
+
+Which world each floor is depends on the run (its seed), so no two runs look quite the same; on the LAN
+everyone gets the same ones. Every world can also be played on its own under **Single floor**.
 | 5 | Rooftop | **Final boss: Segment Worm** | – |
 
 Between the floors the elevator takes you to a short game of its own, then to the shop:
@@ -188,6 +196,10 @@ Between the floors the elevator takes you to a short game of its own, then to th
   are ready. The shop closes after 25 seconds or when everyone is ready.
 - **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
   and calls reinforcements. Get out of the marked areas.
+- **The Kraken:** crawls slowly across the sea bed toward you on eight long tentacles. Up close it slaps them
+  down in a ring around itself; from further away it slams them down in lines, bursts ink clouds under everyone,
+  or grabs a player with a tentacle and drags them in (dash to break free). Schools of fish and sharks swim
+  about from the start, the Kraken keeps calling new ones, faster each phase, and a big school at each new phase.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
 - The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
@@ -195,6 +207,12 @@ Between the floors the elevator takes you to a short game of its own, then to th
   fresh. Beat the Segment Worm and take the last elevator to win the run.
 
 ---
+
+## Boss Rush
+
+Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
+**the Kraken** and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a
+ring around itself and stomps under everyone. At the difficulty you set; its own best list.
 
 ## Daily Run
 
@@ -221,11 +239,21 @@ the whole team.
 
 ## Settings and graphics
 
+- **Mouse speed (first person):** how fast the mouse or touchpad turns the view, 0.5× to 3×. On a touchpad try 2× or 3×.
 - **Graphics quality:** Low, Medium, High (default) or Ultra. Higher levels use sharper shadows, smoothing,
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
+- **Keys → Change keys** opens the **Controls** page: every keyboard action with its key. Click an action (or pick it
+  and press `Enter`), then press the new key. If another action had that key, the two swap. *Reset to defaults*
+  brings back the standard keys. `Esc` and `P` always pause and cannot be changed; the mouse buttons and the
+  controller keep theirs. All hints in the game (build pad, build menu, emote bar, tips) name your keys.
+- **Colour-blind mode** (off by default): nothing important relies on telling red from green any more. Teams are
+  orange ▲ against blue ● with the shape over every player, on the minimap and in the team names; health bars run
+  from light blue to dark orange and get darker as health drops; monster shots are violet and bigger than your
+  yellow bolts; angry eyes and warning lanes and rings blink hard; the glitch floor shows a thick yellow "no" sign.
+  It switches at once, also in a paused match.
 - **Controls** are listed at the bottom of the settings screen, and **About** shows the version you have installed.
 - **Credits** (title screen): who made the game.
 
@@ -395,9 +423,13 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `Z` | Zoom out / in |
+| `M` | Show or hide the minimap (in first person it is smaller and see-through anyway) |
 | `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
+
+These are the default keys: change them under *Settings → Keys → Change keys*. The arrow keys, right `Shift` and
+the number pad keep working alongside your keys unless you give them another job.
 
 ### Controller (Xbox and other standard pads)
 
@@ -449,7 +481,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
-| **Fly Swatter** | A huge slap right in front of you: very strong, very short. The knife of this game. |
+| **Fly Swatter** | A huge slap swung sideways right across your front: very strong, very short. The knife of this game. |
 | **Bubble Wand** | A slow soap bubble: the monster it hits floats stuck in it for a few seconds. |
 | **Magnet Glove** | Pulls the monsters in front of you together at the crosshair (then throw a bomb). Yanks rivals toward you. |
 | **Yo-yo Launcher** | Out and straight back on its string, hitting on both ways. Short and quick. |
@@ -500,12 +532,16 @@ once it is finished. Towers are solid: you walk round them, and work on them fro
   meanwhile. Gold marks on the base show the level.
 - **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
 
-### Crash Kart, Steamroller, Hoverboard
+### Crash Kart, Steamroller, Hoverboard, Unicorn
 
 Tap `E` next to a kart to get in. Twice as fast as walking, rams monsters out of the way, keeps your weapons
 firing and protects you: hits damage the kart instead of you. Boost pads speed you up, ramps launch you over
 low walls. 20 seconds of fuel; comes back 45 seconds after it breaks. Once unlocked, the **Steamroller** and
 the **Hoverboard** appear on the map as well (see [Unlocks](#unlocks-and-endless-mode)).
+
+Now and then a **unicorn** trots in on its own ("A unicorn appeared!"). Ride it like a kart: faster than one,
+it leaps off ramps, spears monsters with its horn and leaves a rainbow behind. It never runs out of steam, but
+once it is wrecked it is gone until the next lucky moment.
 
 ### Power-ups
 
@@ -515,6 +551,8 @@ Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, 
 ---
 
 ## Monsters
+
+![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.gif)
 
 All monsters are original voxel creatures, built from many small cubes, with feet, arms, tails and wings that
 move. Every dangerous attack is announced first: the eyes glow red, and the ground shows where it will hit.
@@ -535,6 +573,11 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Crocodile** | Heavy and tough. Lunges a short way with a snap of its jaws. | Red lane on the ground |
 | **Monkey** | Keeps its distance and throws coconuts that burst where you stood. | Red ring where it lands |
 | **T-Rex** | The biggest of them all: roars, then stomps everything around it. Shows up once the alarm has risen. | Red ring around it |
+| **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
+| **Pixel Fish** | Small and fast, in schools (under water). | – |
+| **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
+| **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **King Rex** | The last boss of the Boss Rush. | Red rings |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
@@ -670,8 +713,8 @@ docs/         gameplay GIF and screenshots
 - [x] Daily Run: the same seed for everyone each day, with its own best list
 - [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
 - [x] Replay of the last seconds (kill cam)
-- [ ] Key rebinding: a Controls page, click an action and press the new key
-- [ ] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
+- [x] Key rebinding: a Controls page, click an action and press the new key
+- [x] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing

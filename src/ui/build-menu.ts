@@ -1,4 +1,5 @@
-import { t } from '../i18n';
+import { keyName, t } from '../i18n';
+import { WEAPON_ACTIONS } from '../input/bindings';
 import { MAX_TOWER_LEVEL, TOWER_ORDER as ORDER, TOWERS, towerStats, upgradeCost } from '../sim/config/towers';
 import type { SimEvent, SimState, TowerKind } from '../sim/types';
 
@@ -16,10 +17,12 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
   layer.append(wrap);
   root.append(layer);
 
+  /** the key shown on card i: the player's weapon key of that slot */
+  const cardKey = (i: number) => keyName(WEAPON_ACTIONS[i]);
   const cards = ORDER.map((kind, i) => {
     const card = document.createElement('div');
     card.className = 'card txt';
-    card.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(`tower.${kind}`)}</div><div>${t(`tower.${kind}.desc`)}</div><div class="cost">● ${TOWERS[kind].cost}</div>`;
+    card.innerHTML = `<div class="key">${cardKey(i)}</div><div class="name">${t(`tower.${kind}`)}</div><div>${t(`tower.${kind}.desc`)}</div><div class="cost">● ${TOWERS[kind].cost}</div>`;
     card.addEventListener('mousedown', e => {
       e.preventDefault();
       onChoose(kind);
@@ -48,7 +51,7 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
       if (on === padLabels) return;
       padLabels = on;
       upKey = '';
-      cards.forEach((c, i) => (c.card.querySelector('.key')!.textContent = on ? '' : String(i + 1)));
+      cards.forEach((c, i) => (c.card.querySelector('.key')!.textContent = on ? '' : cardKey(i)));
       cards.forEach(c => c.card.querySelector('.key')!.classList.toggle('hidden', on));
     },
     update(s, open, events, localId, padId, selected) {
@@ -57,6 +60,11 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
       const coins = (s.players.find(p => p.id === localId) ?? s.players[0]).coins;
       const tower = padId === null ? undefined : s.towers.find(tw => tw.padId === padId);
       for (const c of cards) c.card.style.display = tower ? 'none' : '';
+      // the keys may have been changed in the pause menu
+      if (open && !padLabels) cards.forEach((c, i) => {
+        const k = c.card.querySelector('.key')!;
+        if (k.textContent !== cardKey(i)) k.textContent = cardKey(i);
+      });
       // the selected card: E (X) builds it, holding on from the opening press builds it too
       cards.forEach(c => c.card.classList.toggle('selected', c.kind === selected));
       const helpText = tower ? t(padLabels ? 'build.helpUpgradePad' : 'build.helpUpgrade') : t(padLabels ? 'build.helpPad' : 'build.help');
@@ -66,13 +74,14 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
       if (tower) {
         const max = tower.level >= MAX_TOWER_LEVEL;
         const cost = max ? 0 : upgradeCost(tower.kind, tower.level + 1);
-        const key = `${tower.kind}-${tower.level}-${tower.upgrading}`;
+        const useKey = padLabels ? 'X' : keyName('use');
+        const key = `${tower.kind}-${tower.level}-${tower.upgrading}-${useKey}`;
         if (key !== upKey) {
           upKey = key;
           const now = towerStats(tower.kind, tower.level), next = towerStats(tower.kind, tower.level + 1);
           up.innerHTML = max
             ? `<div class="name">${t(`tower.${tower.kind}`)} · ${t('tower.level', { n: tower.level })}</div><div>${t('tower.maxLevel')}</div>`
-            : `<div class="key">${padLabels ? 'X' : 'E'}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
+            : `<div class="key">${useKey}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
         }
         up.classList.toggle('poor', max || coins < cost);
       } else {

@@ -4,6 +4,7 @@ import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
 import { addMonsterParts, MONSTER_LIFT } from './monster-parts';
 import { voxelBody } from './voxel-body';
+import { palette } from './palette';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
@@ -219,7 +220,18 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         bodyMats.get(k)!.color.setHex(night > 0.5 ? l.night : l.day);
         bodies.get(k)!.begin();
       }
-      eyeMat.color.setHex(night > 0.5 ? 0xffffff : 0xfff27a);
+      const pal = palette();
+      eyeMat.color.setHex(night > 0.5 ? 0xffffff : pal.eyes);
+      // colour-blind mode: angry eyes and warnings flash hard on and off instead of only being red
+      const flash = Math.floor(time * 8) % 2 === 0;
+      redEyeMat.color.setHex(pal.angryEyes);
+      redEyeMat.emissive.setHex(pal.angryEyes);
+      redEyeMat.emissiveIntensity = pal.blinkWarnings ? (flash ? 3 : 0.3) * Math.min(theme.glow, 1.4) : 1.6;
+      warnMat.color.setHex(pal.warn);
+      hostileMat.color.setHex(pal.hostileShot);
+      hostileMat.emissive.setHex(pal.hostileShot);
+      boltMat.color.setHex(pal.playerShot);
+      boltMat.emissive.setHex(pal.playerShot);
       eyeMat.emissive.copy(eyeMat.color);
       eyeMat.emissiveIntensity = 1.3 * Math.min(theme.glow, 1.5);
       boomerangMat.emissiveIntensity = 1.5 * theme.glow;
@@ -231,7 +243,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
-      warnMat.opacity = 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
+      warnMat.opacity = pal.blinkWarnings ? (flash ? 0.7 : 0.12) : 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
       tmpFrom.y = 0.06;
 
       const slowed = (until: number) => until > s.tick;
@@ -288,6 +300,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
+          attack: e.state === 'windup' ? 1 : e.state === 'charge' ? 2 : 0,
         });
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
@@ -360,6 +373,24 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
+      // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
+      const grab = s.boss?.kind === 'kraken' ? s.boss.grab : null;
+      const kraken = grab ? s.enemies.find(e => e.id === s.boss!.enemyId) : undefined;
+      const held = grab ? s.players.find(p => p.id === grab.playerId) : undefined;
+      if (kraken && held) {
+        const dx = held.pos.x - kraken.pos.x, dz = held.pos.z - kraken.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const look = ENEMY_LOOK.kraken;
+        const color = theme.pointLights > 0.5 ? look.night : look.day;
+        const n = Math.max(4, Math.round(d / 0.45));
+        for (let i = 1; i <= n; i++) {
+          const t = i / n;
+          const wave = Math.sin(time * 14 - t * 9) * 0.3 * (1 - t * 0.5);
+          const x = kraken.pos.x + dx * t - (dz / d) * wave, z = kraken.pos.z + dz * t + (dx / d) * wave;
+          const size = 0.62 - 0.32 * t;
+          partsLit.addScaled(x, 0.55 + 0.45 * Math.sin(Math.PI * t), z, Math.atan2(dx, dz), size, size, 0.5, i === n ? 0xffd0e4 : color);
+        }
+      }
       for (const p of [eyes, pupils, plates, angryEyes]) p.end();
       // forget monsters that are gone
       if (bornAt.size > 600) {
@@ -371,7 +402,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
       for (const p of s.projectiles) {
         if (p.hostile) {
-          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, 1, undefined, time * 6);
+          // colour-blind mode: monster shots are also bigger than the players' bolts
+          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
           continue;
         }
         if (p.behavior === 'saw') {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FLOORS, runFloors } from '../../src/sim/config/floors';
 import { BLOCKS_WALKER, isFree, Tile, tileAt, type FloorMap } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { spawnBoss } from '../../src/sim/systems/boss';
+import { grabPlayer, spawnBoss } from '../../src/sim/systems/boss';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Vec2 } from '../../src/sim/types';
 import { quietSim, rel } from './helpers';
@@ -62,12 +62,53 @@ describe('the new worlds', () => {
 });
 
 describe('under water', () => {
+  it('the sea is full of fish and sharks from the start, and the Kraken keeps calling new schools', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    s.players[0].invulnUntil = 1e9;
+    const sea = () => s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0);
+    expect(sea().filter(e => e.kind === 'fish').length).toBeGreaterThanOrEqual(15);
+    expect(sea().some(e => e.kind === 'shark')).toBe(true);
+    for (const e of sea()) e.hp = 0;
+    for (let i = 0; i < 30 * 60; i++) stepSim(s, []);
+    expect(sea().length).toBeGreaterThanOrEqual(5);
+  }, 90_000);
+
+  it('the Kraken crawls toward the players', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    const p = s.players[0];
+    p.invulnUntil = 1e9;
+    const k = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    const start = Math.hypot(k.pos.x - p.pos.x, k.pos.z - p.pos.z);
+    for (let i = 0; i < 5 * 60; i++) stepSim(s, []);
+    expect(Math.hypot(k.pos.x - p.pos.x, k.pos.z - p.pos.z)).toBeLessThan(start - 1.5);
+  });
+
+  it('it grabs a player with a tentacle and drags them in, and a dash breaks free', () => {
+    const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    const p = s.players[0];
+    p.invulnUntil = 1e9;
+    const k = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    k.speed = 0;
+    p.pos = { x: k.pos.x, z: k.pos.z + 7 };
+    grabPlayer(s, p);
+    expect(s.boss!.grab?.playerId).toBe(p.id);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'krakenGrab', playerId: p.id }));
+    const before = Math.hypot(k.pos.x - p.pos.x, k.pos.z - p.pos.z);
+    for (let i = 0; i < 30; i++) stepSim(s, []);
+    expect(Math.hypot(k.pos.x - p.pos.x, k.pos.z - p.pos.z)).toBeLessThan(before - 1);
+    stepSim(s, [{ type: 'dash', playerId: p.id }]);
+    stepSim(s, []);
+    expect(s.boss!.grab).toBeFalsy();
+  });
+
   it('the Kraken lashes out with its tentacles and sends fish and sharks', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
     expect(s.boss?.kind).toBe('kraken');
     s.players[0].invulnUntil = 1e9;
+    // held in place far from the player: it lashes and inks from afar instead of crawling up to grab
+    s.enemies.find(e => e.id === s.boss!.enemyId)!.speed = 0;
     let warned = 0;
-    for (let i = 0; i < 8 * 60; i++) {
+    for (let i = 0; i < 20 * 60; i++) {
       stepSim(s, []);
       warned += s.events.filter(e => e.type === 'blastWarning').length;
     }

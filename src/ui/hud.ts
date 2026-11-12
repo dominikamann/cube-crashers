@@ -4,7 +4,8 @@ import { LANE } from '../sim/systems/lane';
 import { MAZE } from '../sim/systems/maze';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
-import { t } from '../i18n';
+import { t, type StringKey } from '../i18n';
+import { cssColor, isColorBlind, palette } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { JETPACK } from '../sim/config/rare';
 import { ALARM_MAX, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
@@ -102,7 +103,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let shopKey = '';
 
   const bottom = el('div', 'hud-bottom', layer);
-  const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP');
+  const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP ');
+  // the number too: a bar alone says "about half", a shooter wants "47"
+  const hpNumber = el('span', 'hp-number', left);
   const hpFill = el('i', '', el('div', 'bar', left));
   const dashRow = el('div', 'dashes', left);
   const jetBox = el('div', 'kart', left);
@@ -209,7 +212,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       alarmBox.classList.toggle('overload', s.alarm.level >= ALARM_MAX);
       // only floors with nests have an alarm
       alarmBox.style.display = s.run.stage === 'floor' && s.nests.length > 0 ? '' : 'none';
-      scoreText.textContent = t('hud.score', { score: s.score });
+      // in versus the score is the race at the top; the box keeps only the coins (for towers)
+      scoreText.textContent = s.versus ? '' : t('hud.score', { score: s.score });
+      scoreText.style.display = s.versus ? 'none' : '';
       if (p.coins !== lastCoins) {
         coinText.textContent = String(p.coins);
         if (p.coins > lastCoins && lastCoins >= 0) bump(coinRow);
@@ -234,6 +239,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       hpFill.style.width = `${(p.hp / p.maxHp) * 100}%`;
+      hpNumber.textContent = String(Math.max(0, Math.ceil(p.hp)));
+      // colour-blind mode: the bar also darkens from light blue to dark orange as health drops
+      hpFill.style.background = isColorBlind() ? cssColor(palette().health(p.hp / p.maxHp)) : '';
       danger.style.display = p.hp < 30 && p.downUntil === null && s.phase === 'playing' ? '' : 'none';
       const dashKey = `${p.dashCharges}/${maxDashCharges(p)}`;
       if (dashKey !== lastDash) {
@@ -286,24 +294,26 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         sl.reload.style.width = `${(1 - Math.min(1, w.cooldown / WEAPONS[w.kind].cooldown)) * 100}%`;
       });
 
+      // with a controller the hints name its button instead of the use key
+      const useHint = (key: StringKey, params?: Record<string, string | number>) => t(key, padMode ? { ...params, 'key.use': padMode } : params);
       let hintText = '';
       if (p.downUntil === null && !buildMenuOpen) {
         const pad = padAt(s, p.pos);
         const padTower = pad === null ? undefined : s.towers.find(tw => tw.padId === pad);
-        if (p.vehicleId !== null) hintText = kart?.locked ? '' : t('hud.leave');
-        else if (s.nests.some(n => n.state === 'idle' && dist(n.pos, p.pos) <= PLANT_RANGE)) hintText = t('hud.plant');
-        else if (s.vehicles.some(v => v.driverId === null && dist(v.pos, p.pos) <= KART.enterRange)) hintText = t('hud.drive');
-        else if (padTower && padTower.buildLeft > 0) hintText = t('hud.building', { pct: Math.floor((1 - padTower.buildLeft / (padTower.upgrading ? UPGRADE_TICKS : BUILD_TICKS)) * 100) });
-        else if (padTower && padTower.hp < padTower.maxHp) hintText = t('hud.repair', { pct: Math.floor((padTower.hp / padTower.maxHp) * 100) });
-        else if (padTower && padTower.level < MAX_TOWER_LEVEL) hintText = t('hud.upgrade');
-        else if (pad !== null && !padTower) hintText = t('hud.build');
+        if (p.vehicleId !== null) hintText = kart?.locked ? '' : useHint('hud.leave');
+        else if (s.nests.some(n => n.state === 'idle' && dist(n.pos, p.pos) <= PLANT_RANGE)) hintText = useHint('hud.plant');
+        else if (s.vehicles.some(v => v.driverId === null && dist(v.pos, p.pos) <= KART.enterRange)) hintText = useHint('hud.drive');
+        else if (padTower && padTower.buildLeft > 0) hintText = useHint('hud.building', { pct: Math.floor((1 - padTower.buildLeft / (padTower.upgrading ? UPGRADE_TICKS : BUILD_TICKS)) * 100) });
+        else if (padTower && padTower.hp < padTower.maxHp) hintText = useHint('hud.repair', { pct: Math.floor((padTower.hp / padTower.maxHp) * 100) });
+        else if (padTower && padTower.level < MAX_TOWER_LEVEL) hintText = useHint('hud.upgrade');
+        else if (pad !== null && !padTower) hintText = useHint('hud.build');
         else if (s.elevatorOpen) hintText = t('hud.goElevator');
         else if (tileAt(s.map, p.pos.x, p.pos.z) === Tile.Hazard) hintText = t('hud.glitchFloor');
         else if (tileAt(s.map, p.pos.x, p.pos.z) === Tile.Boost) hintText = t('hud.boostFloor');
       }
-      const planting = p.plantTicks > 0 && hintText === t('hud.plant');
-      if (planting) hintText = t('hud.planting');
-      hint.textContent = padMode ? hintText.replace(/\bE\b/g, padMode) : hintText;
+      const planting = p.plantTicks > 0 && hintText === useHint('hud.plant');
+      if (planting) hintText = useHint('hud.planting');
+      hint.textContent = hintText;
       hint.style.display = hintText ? '' : 'none';
       hint.classList.toggle('steady', planting);
       plantBar.style.display = planting ? '' : 'none';

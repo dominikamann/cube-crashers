@@ -10,9 +10,10 @@ import { KART } from '../sim/systems/vehicles';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
 import type { Theme } from './theme';
+import { NORMAL, palette, playerColor } from './palette';
 
-/** suit colours of the up to six players (also used by the HUD and minimap) */
-export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4, 0xff6fd8, 0xe8e8f0, 0xb8e04a, 0xb0703c];
+/** the normal suit colours; playerColor() gives the ones shown right now (colour-blind mode changes some) */
+export const PLAYER_COLORS = NORMAL.players;
 
 export interface Actors {
   /** `localIds`: the players on this screen (two in split screen) */
@@ -30,7 +31,8 @@ export interface Actors {
 function makePlayer(color: number) {
   const root = new THREE.Group();
   const body = new THREE.Group();
-  const hue = PLAYER_COLORS[color % PLAYER_COLORS.length];
+  const pal = palette();
+  const hue = playerColor(color);
   const suit = lambert(hue);
   const trim = lambert(new THREE.Color(hue).lerp(new THREE.Color(0xffffff), 0.45).getHex());
   const skin = lambert(0xffd2a8);
@@ -111,7 +113,15 @@ function makePlayer(color: number) {
   glint.position.y = 0.05;
   glint.visible = false;
   root.add(glint);
-  return { color, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
+  // colour-blind mode marks the teams by shape too: a triangle (▲) for team 0, a ball (●) for team 1
+  const marks = [new THREE.ConeGeometry(0.26, 0.4, 3), new THREE.SphereGeometry(0.2, 12, 8)].map((g, team) => {
+    const m = new THREE.Mesh(g, glowMat(pal.teams[team], 1.6));
+    m.position.y = 2.55;
+    m.visible = false;
+    root.add(m);
+    return m;
+  });
+  return { color, pal, marks, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
 const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
@@ -383,8 +393,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
     let v = players.get(p.id);
-    // a new suit colour (teams): a new model
-    if (v && v.color !== p.color) {
+    // a new suit colour (teams) or colour-blind mode switched: a new model
+    if (v && (v.color !== p.color || v.pal !== palette())) {
       scene.remove(v.root, v.light);
       disposeTree(v.root);
       v = undefined;
@@ -409,6 +419,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
     v.glint.visible = p.rare !== null && !down;
+    const marked = palette().teamMarks && s.versus?.mode === 'team' && p.team !== undefined && !down;
+    v.marks.forEach((m, team) => {
+      m.visible = marked && p.team === team;
+      m.rotation.y = time * 1.5;
+      m.position.y = 2.55 + Math.sin(time * 3) * 0.05;
+    });
     v.glint.rotation.y = time * 3;
     v.glint.scale.setScalar(1 + 0.1 * Math.sin(time * 8));
     v.yaw = Math.atan2(-p.aim.x, -p.aim.z);
@@ -652,6 +668,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       }
       cubes.forEach((c, team) => {
         const f = vs?.flags?.[team];
+        const tc = palette().teams[team];
+        for (const mat of [c.cube.material, c.base.material] as THREE.MeshStandardMaterial[]) if (mat.color.getHex() !== tc) (mat.color.setHex(tc), mat.emissive.setHex(tc));
         c.cube.visible = c.base.visible = !!f;
         if (!f) return;
         const carried = f.carrier !== null;
@@ -673,7 +691,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         r.group.rotation.y = time * 1.5;
         const ready = (p0.weapons[p0.selected]?.cooldown ?? 0) === 0;
         // in split screen the crosshairs wear the suit colours, so nobody aims with the other's
-        r.mat.color.setHex(!ready ? 0xff6b6b : localIds.length > 1 ? PLAYER_COLORS[p0.color % PLAYER_COLORS.length] : 0xffffff);
+        r.mat.color.setHex(!ready ? 0xff6b6b : localIds.length > 1 ? playerColor(p0.color) : 0xffffff);
         r.group.scale.setScalar(ready ? 1 : 0.8);
       });
     },

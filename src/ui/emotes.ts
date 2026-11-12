@@ -1,5 +1,6 @@
-import { t } from '../i18n';
-import { PLAYER_COLORS } from '../render/actors';
+import { keyName, t } from '../i18n';
+import { WEAPON_ACTIONS } from '../input/bindings';
+import { cssColor, playerColor } from '../render/palette';
 import { EMOTES } from '../sim/systems/emotes';
 import type { SimEvent, SimState, Vec2 } from '../sim/types';
 
@@ -19,7 +20,7 @@ type Project = (x: number, z: number, y: number) => { x: number; y: number; behi
 
 /**
  * Quick messages on screen: a speech bubble over the player who said it, a marker on the ground for pings,
- * and the emote bar while C is held open.
+ * and the emote bar while it is open (C by default).
  */
 export function createEmotes(root: HTMLElement) {
   const layer = document.createElement('div');
@@ -28,12 +29,16 @@ export function createEmotes(root: HTMLElement) {
   const bar = document.createElement('div');
   bar.className = 'emote-bar';
   bar.style.display = 'none';
-  bar.innerHTML = `<div class="emote-title">${t('emote.bar')}</div>${EMOTES.map((e, i) => `<div class="emote-key"><b>${i + 1}</b>${t(`emote.${e}`)}</div>`).join('')}`;
   root.append(bar);
+  // drawn on opening, so it always names the player's current keys
+  const drawBar = () => {
+    bar.innerHTML = `<div class="emote-title">${t('emote.bar')}</div>${EMOTES.map((e, i) => `<div class="emote-key"><b>${keyName(WEAPON_ACTIONS[i])}</b>${t(`emote.${e}`)}</div>`).join('')}`;
+  };
   const shown: Shown[] = [];
 
   return {
     setBar(open: boolean) {
+      if (open && bar.style.display === 'none') drawBar();
       bar.style.display = open ? '' : 'none';
     },
     update(s: SimState, events: SimEvent[], now: number, project: Project) {
@@ -45,7 +50,7 @@ export function createEmotes(root: HTMLElement) {
         if (!e.pos) for (const old of shown.filter(x => x.playerId === e.playerId)) old.until = 0;
         const el = document.createElement('div');
         el.className = e.pos ? 'emote ping' : 'emote';
-        el.style.setProperty('--who', `#${PLAYER_COLORS[who.color % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`);
+        el.style.setProperty('--who', cssColor(playerColor(who.color)));
         el.textContent = e.pos ? `${who.name}: ${t(`emote.${e.emote}`)}` : t(`emote.${e.emote}`);
         layer.append(el);
         shown.push({ el, until: now + (e.pos ? PING_SECONDS : BUBBLE_SECONDS), playerId: e.pos ? null : e.playerId, pos: e.pos ?? null });
