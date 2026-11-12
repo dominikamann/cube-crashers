@@ -96,6 +96,12 @@ function startGame() {
   const view = (): SimState => (role === 'host' ? host?.sim : role === 'client' ? client?.view : null) ?? solo;
   const localId = () => (role === 'client' ? (client?.playerId ?? 0) : 0);
 
+  // no sound or music from a window nobody sees (minimised, another tab, hidden)
+  document.addEventListener('visibilitychange', () => {
+    if (!audio) return;
+    if (document.hidden) void audio.ctx.suspend();
+    else void audio.ctx.resume();
+  });
   function ensureAudio() {
     if (!audio) {
       const ctx = new AudioContext();
@@ -103,7 +109,8 @@ function startGame() {
       audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus) };
       applySettings();
     }
-    void audio.ctx.resume();
+    // silent while the window is minimised or hidden (see the visibilitychange listener)
+    if (!document.hidden) void audio.ctx.resume();
     return audio;
   }
 
@@ -395,7 +402,10 @@ function startGame() {
       const me = s.players.find(p => p.id === localId());
       if (replay && (mode !== 'playing' || !s.versus || (me && me.downUntil === null) || !replay.advance(frameDt))) replay = null;
       killBanner.style.display = replay ? '' : 'none';
-      renderer.setViews(replay ? [replay.killerId] : split ? [0, 1] : [localId()]);
+      // out of lives in a team game: the camera follows a teammate who is still in
+      const meOut = view().players.find(p => p.id === localId())?.out;
+      const watched = meOut ? view().players.find(p => !p.out)?.id ?? localId() : localId();
+      renderer.setViews(replay ? [replay.killerId] : split ? [0, 1] : [watched]);
       renderer.setZoomedOut(0, zoomedOut !== padCtl.zoomedOut);
       if (split) renderer.setZoomedOut(1, padCtl2.zoomedOut);
       // first person (everywhere but the elevator shop): view 0 follows player 1's input, view 1 the second pad

@@ -61,6 +61,8 @@ describe('the dedicated server', () => {
     run(1);
     const bot = host.sim!.players.find(p => p.id >= 1000)!;
     const start = { ...bot.pos };
+    // past the opening countdown
+    host.sim!.countdown = 0;
     run(5);
     expect(Math.hypot(bot.pos.x - start.x, bot.pos.z - start.z)).toBeGreaterThan(1);
   });

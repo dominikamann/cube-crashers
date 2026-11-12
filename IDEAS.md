@@ -31,9 +31,6 @@ into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
 ### Survival Siege
 One big arena, no nests: survive 10 minutes against ever bigger waves. Every minute an elevator brings a shop.
 
-### Boss Rush
-All bosses one after another, with a shop between each. Separate high score list.
-
 
 ---
 
@@ -44,12 +41,12 @@ All bosses one after another, with a shop between each. Separate high score list
 - **Toy Factory**: building blocks as walls that monsters can knock over; a stamping press that hits a row of
   tiles on a beat.
 - **Frozen Freezer Aisle**: slippery ice floor (you slide when you stop), frozen monsters thaw over time.
-- **Pixel Jungle**: tall grass hides monsters until they are close; vines block paths and can be cut with the
-  Laser Sword.
-- **Server Farm**: rows of server racks, cooling fans that push like conveyor belts, a power-down that turns
-  the lights off on a timer.
+- More for the **Pixel Jungle** (it is in the game): vines that block paths and can be cut with the Laser Sword.
+- More for the **Server Farm** (it is in the game): cooling fans that push like conveyor belts, a power-down
+  that turns the lights off on a timer.
 - **Lava Bakery**: hot plates that glow before they burn; giant donut rings as ramps.
-- **Underwater Arcade**: slow movement, bubbles lift you over walls, jellyfish monsters.
+- More for the **Sunken Arcade** (it is in the game): slow movement, bubbles that lift you over walls,
+  jellyfish monsters.
 - **Space Station**: low gravity (longer jumps), airlocks that open on a timer and suck coins out.
 - **Night Market**: food stalls as cover, lanterns that light up when you pass.
 - **City from OpenStreetMap**: see below.
@@ -78,7 +75,6 @@ Play in your own street or town centre:
 
 - **Coin Thief**: grabs coins from the floor and runs; drops them all when killed.
 - **Builder**: places small walls that change the paths of the horde.
-- **Glitch Ghost**: walks through walls, only visible when close or in a frost field.
 
 ## Weapons and items
 
@@ -97,6 +93,7 @@ Play in your own street or town centre:
 - **Bumper Car**: bounces off walls, great for ramming.
 - **Shopping Trolley**: two players, one pushes, one shoots.
 - **Mini Mech**: slow, stomps, can step over low walls.
+- A new look for the karts and the unicorn, in the finer voxel style of the monsters.
 
 ---
 
@@ -119,3 +116,5 @@ Let the community add content without touching the core game:
 ## Quality of life
 
 - Photo mode.
+- A frames-per-second display in the settings, to pick the right graphics level.
+- A signed Windows installer (no SmartScreen warning).

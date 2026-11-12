@@ -5,9 +5,9 @@ import { COUNTDOWN_TICKS, createSim, stepSim } from '../../src/sim/sim';
 import { TICK_RATE } from '../../src/sim/types';
 
 describe('the countdown that opens a game', () => {
-  it('versus: 5 4 3 2 1, nobody moves until GO, and the match clock starts after it', () => {
+  it('versus: 10 9 ... 1, nobody moves until GO, and the match clock starts after it', () => {
     const s = createSim(floorNeon, 3, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' }, countdown: true });
-    expect(COUNTDOWN_TICKS).toBe(5 * TICK_RATE);
+    expect(COUNTDOWN_TICKS).toBe(10 * TICK_RATE);
     expect(s.countdown).toBe(COUNTDOWN_TICKS);
     const endsAt = s.versus!.endsAt, tick = s.tick;
     const p = s.players[0];
@@ -19,7 +19,7 @@ describe('the countdown that opens a game', () => {
       for (const e of s.events) if (e.type === 'countdown') counted.push(e.n);
     }
     // a beep for each number, and GO at the end
-    expect(counted).toEqual([5, 4, 3, 2, 1, 0]);
+    expect(counted).toEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
     expect(p.pos).toEqual(start);
     // the clock stood still: the whole match is still ahead
     expect(s.tick).toBe(tick);

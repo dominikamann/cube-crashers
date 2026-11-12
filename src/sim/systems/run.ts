@@ -5,7 +5,7 @@ import { CREDIT_BONUS, PAR_SECONDS, TIME_BONUS_PER_SECOND } from '../config/bala
 import { floorDef, FLOORS } from '../config/floors';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type Intent, type RunMode, type SimState } from '../types';
-import { spawnPoint } from './coop';
+import { spawnPoint, syncCredits } from './coop';
 import { setupFloor } from './nests';
 import { enterShaft } from './shaft';
 import { buy, openShop, shopDone } from './shop';
@@ -97,8 +97,14 @@ export function enterFloor(s: SimState, index: number): void {
       p.downUntil = null;
       p.hp = p.maxHp;
     }
+    // whoever was out is back for the new floor, with one life
+    if (p.out) {
+      p.out = false;
+      p.lives = 1;
+    }
     p.invulnUntil = s.tick + 120;
   });
+  syncCredits(s);
   setupFloor(s);
   s.events.push({ type: 'floorStart', floor: index, mapId: s.map.id });
 }

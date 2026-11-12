@@ -31,13 +31,34 @@ export function defaultName(index: number): string {
   return PLAYER_NAMES[index % PLAYER_NAMES.length];
 }
 
-/** Loses one credit; the run ends when none are left. Returns false if the run is now lost. */
-export function loseCredit(s: SimState): boolean {
-  s.credits--;
-  s.events.push({ type: 'creditLost', credits: s.credits });
-  if (s.credits > 0) return true;
-  s.phase = 'lost';
-  s.events.push({ type: 'gameLost' });
+/** the lives each player starts with (and the most a hidden heart fills up to) */
+export function startLives(s: SimState): number {
+  return DIFFICULTY[s.difficulty].credits;
+}
+
+/** the team's credits are everyone's lives together (alone: just yours) */
+export function syncCredits(s: SimState): void {
+  s.credits = s.players.reduce((n, p) => n + (p.lives ?? 0), 0);
+}
+
+/**
+ * `p` loses one of their own lives. With none left they are out (until the next floor or a hidden heart) while
+ * the others play on; the run is lost when everyone is out. Returns true when `p` gets back up.
+ */
+export function loseLife(s: SimState, p: Player): boolean {
+  p.lives = Math.max(0, (p.lives ?? 0) - 1);
+  syncCredits(s);
+  s.events.push({ type: 'creditLost', credits: p.lives, playerId: p.id });
+  if (p.lives > 0) return true;
+  p.out = true;
+  p.reviveUntil = null;
+  p.reviveProgress = 0;
+  p.downUntil = Number.MAX_SAFE_INTEGER;
+  s.events.push({ type: 'playerOut', playerId: p.id });
+  if (s.phase === 'playing' && s.players.every(x => x.out)) {
+    s.phase = 'lost';
+    s.events.push({ type: 'gameLost' });
+  }
   return false;
 }
 
@@ -49,11 +70,13 @@ export function sendToRespawn(s: SimState, p: Player): void {
   p.coins -= Math.floor(p.coins * DOWN_COIN_LOSS);
 }
 
-/** Everyone is down at once: one credit for the whole team, then all get back up. */
+/** Everyone is down at once: each of them loses a life, and those with one left get back up. */
 function teamWipe(s: SimState): void {
   s.events.push({ type: 'teamWipe' });
-  if (!loseCredit(s)) return;
-  for (const p of s.players) if (p.reviveUntil !== null || p.downUntil === null) sendToRespawn(s, p);
+  for (const p of s.players) {
+    if (p.out || !(p.reviveUntil !== null || p.downUntil === null)) continue;
+    if (loseLife(s, p)) sendToRespawn(s, p);
+  }
 }
 
 export function checkTeamWipe(s: SimState): void {
@@ -84,15 +107,17 @@ export function updateRevives(s: SimState, intents: Map<number, Intent>): void {
     }
     p.reviveProgress = 0;
     if (s.tick < p.reviveUntil) continue;
-    if (!loseCredit(s)) return;
-    sendToRespawn(s, p);
+    if (loseLife(s, p)) sendToRespawn(s, p);
+    if (s.phase !== 'playing') return;
   }
 }
 
 export function addPlayer(s: SimState, id: number, name?: string): Player {
   // late import cycle guard: createPlayer lives in sim.ts
   const p = makePlayer(id, spawnPoint(s, s.players.length), name ?? defaultName(s.players.length), freeColor(s));
+  p.lives = startLives(s);
   s.players.push(p);
+  syncCredits(s);
   return p;
 }
 
@@ -103,6 +128,7 @@ export function removePlayer(s: SimState, id: number): void {
   s.mines = s.mines.filter(m => m.ownerId !== id);
   s.players = s.players.filter(x => x.id !== id);
   s.flow = null;
+  syncCredits(s);
   // the one who left may have been the last who could help the others up
   checkTeamWipe(s);
 }

@@ -7,6 +7,7 @@ import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
+import { enterFloor } from '../../src/sim/systems/run';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnHorde } from '../../src/sim/systems/hordes';
 import { damagePlayer } from '../../src/sim/systems/player';
@@ -60,41 +61,62 @@ describe('reviving', () => {
     b.pos = rel(a.pos, 1, 0);
     damagePlayer(s, b, 1000);
     expect(s.events).toContainEqual({ type: 'playerDowned', playerId: 1 });
-    expect(s.credits).toBe(3);
+    expect(s.players.map(p => p.lives)).toEqual([3, 3]);
     expect(b.reviveUntil).toBe(s.tick + REVIVE_TICKS);
     const events = run(s, REVIVE_HOLD_TICKS + 1, () => [hold(0)]);
     expect(events).toContainEqual({ type: 'playerRevived', playerId: 1, by: 0 });
     expect(b.downUntil).toBeNull();
     expect(b.hp).toBe(b.maxHp / 2);
-    expect(s.credits).toBe(3);
+    expect(s.players.map(p => p.lives)).toEqual([3, 3]);
     expect(a.stats.revives).toBe(1);
   });
 
-  it('costs a credit when nobody comes in time', () => {
+  it('costs the downed player one of their own lives when nobody comes in time', () => {
     const s = team(2);
-    const b = s.players[1];
-    b.pos = rel(s.players[0].pos, 8, 0);
+    const [a, b] = s.players;
+    expect([a.lives, b.lives]).toEqual([3, 3]);
+    b.pos = rel(a.pos, 8, 0);
     damagePlayer(s, b, 1000);
     const events = run(s, REVIVE_TICKS + 1);
-    expect(events).toContainEqual({ type: 'creditLost', credits: 2 });
+    expect(events).toContainEqual({ type: 'creditLost', credits: 2, playerId: b.id });
+    expect([a.lives, b.lives]).toEqual([3, 2]);
     expect(b.reviveUntil).toBeNull();
     run(s, RESPAWN_TICKS + 1);
     expect(b.downUntil).toBeNull();
   });
 
-  it('costs one credit when the whole team is down, and everyone gets back up', () => {
+  it('when the whole team is down, everyone loses a life and gets back up', () => {
     const s = team(2);
     damagePlayer(s, s.players[1], 1000);
     damagePlayer(s, s.players[0], 1000);
-    expect(s.credits).toBe(2);
+    expect(s.players.map(p => p.lives)).toEqual([2, 2]);
     expect(s.events).toContainEqual({ type: 'teamWipe' });
     run(s, RESPAWN_TICKS + 1);
     expect(s.players.every(p => p.downUntil === null)).toBe(true);
   });
 
-  it('ends the run exactly once when the team is wiped on the last credit', () => {
+  it('a player out of lives is out, the others play on, and the next floor brings them back with one', () => {
+    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const [a, b] = s.players;
+    b.lives = 1;
+    b.pos = rel(a.pos, 8, 0);
+    damagePlayer(s, b, 1000);
+    const events = run(s, REVIVE_TICKS + 1);
+    expect(b.out).toBe(true);
+    expect(events).toContainEqual({ type: 'playerOut', playerId: b.id });
+    expect(s.phase).toBe('playing');
+    // still out a while later: no respawn without a life
+    run(s, RESPAWN_TICKS + 1);
+    expect(b.downUntil).not.toBeNull();
+    enterFloor(s, 1);
+    expect(b.out).toBe(false);
+    expect(b.lives).toBe(1);
+    expect(b.downUntil).toBeNull();
+  });
+
+  it('ends the run exactly once when the last players are out', () => {
     const s = team(3);
-    s.credits = 1;
+    for (const p of s.players) p.lives = 1;
     const all: SimEvent[] = [];
     for (const p of s.players) {
       damagePlayer(s, p, 1000);
@@ -107,17 +129,15 @@ describe('reviving', () => {
 });
 
 describe('teammates leaving', () => {
-  it('costs one credit, not one per downed player, when the last helper leaves', () => {
+  it('when the last helper leaves, the downed ones lose a life each and get back up', () => {
     const s = team(3);
     const [a, b] = s.players;
     damagePlayer(s, a, 1000);
     damagePlayer(s, b, 1000);
-    expect(s.credits).toBe(3);
     removePlayer(s, 2);
-    expect(s.credits).toBe(2);
+    expect([a.lives, b.lives]).toEqual([2, 2]);
     run(s, RESPAWN_TICKS + 1);
     expect(s.players.every(p => p.downUntil === null)).toBe(true);
-    expect(s.credits).toBe(2);
   });
 });
 

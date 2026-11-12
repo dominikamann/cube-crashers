@@ -197,7 +197,7 @@ describe('credits', () => {
     p.safePoint = { x: 30.5, z: 62.5 };
     damagePlayer(s, p, 1000);
     expect(s.credits).toBe(2);
-    expect(s.events).toContainEqual({ type: 'creditLost', credits: 2 });
+    expect(s.events).toContainEqual({ type: 'creditLost', credits: 2, playerId: 0 });
     expect(p.coins).toBe(30);
     expect(s.stats.downs).toBe(1);
     const events = run(s, 181);

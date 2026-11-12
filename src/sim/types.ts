@@ -177,6 +177,9 @@ export interface Player {
   perched?: boolean;
   /** climbing a ladder: ticks left until you stand on the wall top at `top` */
   climb?: { ticks: number; top: Vec2 } | null;
+  /** lives left (each player has their own); at 0 the player is out until the next floor */
+  lives?: number;
+  out?: boolean;
   /** stomps in a row (each one lands soon after the last): every one after the first hurts less */
   stompChain?: number;
   /** sinking down after the jetpack was let go: ticks until the landing */
@@ -574,7 +577,11 @@ export type SimEvent =
   | { type: 'playerRevived'; playerId: number; by: number }
   | { type: 'teamWipe' }
   | { type: 'playerRespawn'; playerId: number }
-  | { type: 'creditLost'; credits: number }
+  | { type: 'creditLost'; credits: number; playerId?: number }
+  /** a player lost their last life: out until the next floor (or a hidden heart) */
+  | { type: 'playerOut'; playerId: number }
+  /** the hidden heart was found: a life for everyone */
+  | { type: 'heartFound'; playerId: number }
   | { type: 'jump'; playerId: number }
   | { type: 'stomp'; pos: Vec2; radius: number }
   | { type: 'dash'; playerId: number }
@@ -649,6 +656,8 @@ export interface SimState {
   powerups: Powerup[];
   nextPowerupAt: number;
   jetpacks: JetpackItem[];
+  /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
+  heart?: { pos: Vec2 } | null;
   nextJetpackAt: number;
   /** when the game next rolls for a unicorn to turn up */
   nextUnicornAt?: number;

@@ -83,7 +83,7 @@ describe('a run', () => {
     p.weapons.push({ kind: 'bomb', level: 3, cooldown: 0 });
     p.perks.speed = 2;
     p.coins = 77;
-    s.credits = 2;
+    s.players[0].lives = 2;
     s.towers.push({ id: 99, kind: 'laser', padId: 0, pos: { x: 5, z: 5 }, hp: 40, maxHp: 40, cooldown: 0, level: 1, buildLeft: 0, upgrading: false });
     s.alarm.level = 4;
     enterElevator(s);
@@ -185,7 +185,9 @@ describe('the shop', () => {
     const idx = (pid: number) => s.run.shop!.offers[pid].findIndex(o => o.kind === 'credit');
     stepSim(s, [buy(0, idx(0))]);
     stepSim(s, [buy(1, idx(1))]);
-    expect(s.credits).toBe(credits + 1);
+    // a life for each of the two players, bought once
+    expect(s.credits).toBe(credits + 2);
+    expect(s.players.map(p => p.lives)).toEqual([4, 4]);
     expect(s.players[1].coins).toBe(1000);
   });
 

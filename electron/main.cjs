@@ -30,6 +30,10 @@ function createWindow() {
 
   if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
 
+  // minimised or hidden: the game goes on (a LAN host keeps hosting) but stays silent
+  for (const event of ['minimize', 'hide']) win.on(event, () => win.webContents.setAudioMuted(true));
+  for (const event of ['restore', 'show']) win.on(event, () => win.webContents.setAudioMuted(false));
+
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown' && input.key === 'F11') {
       win.setFullScreen(!win.isFullScreen());

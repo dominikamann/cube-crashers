@@ -2,13 +2,17 @@ import { JUMP_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
-import { placeStartCrates } from './offers';
+import { cardPositions, placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { spawnHorde } from './hordes';
-import { explode } from './combat';
+import { dropCoins, explode } from './combat';
 
 export const VERSUS = {
+  /** what a fallen player drops: it can be taken after a moment and lies there for a while; gun game drops coins */
+  lootArmTicks: 45,
+  lootTicks: 15 * TICK_RATE,
+  lootCoins: 5,
   /** score race: back in the game this long after going down */
   respawnTicks: 3 * TICK_RATE,
   /** safe for a moment after (re)spawning */
@@ -254,6 +258,31 @@ function startRound(s: SimState): void {
 }
 
 /** A player went down in a versus match: score, drop the gear, come back (or sit out the round). */
+/**
+ * What a fallen player leaves behind for whoever gets there first: their two best extra weapons as cards and
+ * their jetpack. In gun game the ladder decides the weapons, so there it is a few coins.
+ */
+function dropLoot(s: SimState, p: Player): void {
+  const at = isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER) ? { ...p.pos } : nearestFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER);
+  if (s.versus?.rule === 'gungame') {
+    dropCoins(s, at, VERSUS.lootCoins);
+    return;
+  }
+  const extra = p.weapons.filter(w => w.kind !== 'pixelBlaster').sort((a, b) => b.level - a.level).slice(0, 2);
+  if (extra.length > 0) {
+    s.offers.push({
+      id: s.nextId++,
+      pos: at,
+      cards: extra.map(w => ({ type: 'weapon' as const, weapon: w.kind })),
+      cardPos: cardPositions(s, at, extra.length),
+      armedAt: s.tick + VERSUS.lootArmTicks,
+      expiresAt: s.tick + VERSUS.lootTicks,
+    });
+    s.events.push({ type: 'offerOpened', pos: { ...at } });
+  }
+  if (p.jetpack) s.jetpacks.push({ id: s.nextId++, pos: { ...at } });
+}
+
 export function versusDeath(s: SimState, p: Player, attackerId: number | undefined): void {
   const v = s.versus!;
   const killer = attackerId !== undefined && attackerId !== p.id ? s.players.find(x => x.id === attackerId) : undefined;
@@ -279,6 +308,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     p.vehicleId = null;
   }
   dropCube(s, p);
+  dropLoot(s, p);
   equip(p, s);
   p.air = 0;
   p.dashTicks = 0;

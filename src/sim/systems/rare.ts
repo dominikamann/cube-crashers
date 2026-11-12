@@ -48,7 +48,8 @@ export function updateJetpacks(s: SimState): void {
     s.nextJetpackAt = s.tick + JETPACK.respawnTicks;
     if (s.jetpacks.length === 0) placeJetpack(s, s.map.powerSpots);
   }
-  const alive = s.players.filter(p => p.downUntil === null && p.vehicleId === null);
+  // from a kart or a unicorn too: you ride over it and have it on your back when you get out
+  const alive = s.players.filter(p => p.downUntil === null);
   s.jetpacks = s.jetpacks.filter(j => {
     const p = alive.find(x => dist(x.pos, j.pos) <= JETPACK.pickupRadius);
     if (!p) return true;

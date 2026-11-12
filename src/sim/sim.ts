@@ -21,6 +21,7 @@ import { setupFloor, updateAlarm, updateBlasts, updateNests } from './systems/ne
 import { updateOffers } from './systems/offers';
 import { updatePowerups } from './systems/powerups';
 import { updateJetpacks, updateRare } from './systems/rare';
+import { updateHeart } from './systems/heart';
 import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
@@ -109,8 +110,8 @@ export interface SimOptions {
   colors?: number[];
 }
 
-/** the countdown that opens a game: 5 4 3 2 1 GO! */
-export const COUNTDOWN_TICKS = 5 * TICK_RATE;
+/** the countdown that opens a game: 10 9 ... 1 GO! */
+export const COUNTDOWN_TICKS = 10 * TICK_RATE;
 
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
@@ -277,6 +278,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   if (onFloor) {
     updatePowerups(s);
     updateJetpacks(s);
+    updateHeart(s);
   }
   updateRare(s);
   removeDead(s);

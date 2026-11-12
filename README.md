@@ -156,9 +156,12 @@ After the last floor (or a lost run) the **result screen** shows every player: s
 best weapon, best combo, towers built, coins collected, revives and downs.
 
 **Things to know:**
-- You have **3 credits** (depends on the difficulty). Going down costs one; you get back up at the last safe
-  spot. Out of credits = game over.
-- The **alarm** (top centre) rises every 40 seconds and sends hordes after you. At alarm 5 the lights go out.
+- Every game opens with a **countdown** (10 … 1, GO!) that shows what you are about to play.
+- You have **3 lives** (depends on the difficulty). Going down costs one; you get back up at the last safe
+  spot. Out of lives = game over (in a team: you are out until the next floor, see [LAN party](#lan-party)).
+- Now and then a **hidden heart** lies on top of a block far from the start. Climb up (a ladder or the jetpack)
+  and walk to it: a life for everyone, up to what you started with, and whoever was out is back in.
+- The **alarm** (top centre) rises every minute and sends hordes after you. At alarm 5 the lights go out.
   Destroying a nest lowers it.
 - **Coins** drop from monsters and vanish after 8 seconds. Spend them on towers, upgrades and in the shop.
 - **Yellow-black barriers** stop you on foot: **jump** over them (Space). The orange **ramps** in front of them
@@ -199,7 +202,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
-  or +1 credit for the team (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
+  or +1 life for everyone (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
   are ready. The shop closes after 25 seconds or when everyone is ready.
 - **Mega Block:** a huge armoured block with three phases. It stomps (red rings), sends shockwaves along lines
   and calls reinforcements. Get out of the marked areas.
@@ -210,7 +213,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
 - The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
-- Weapons, perks, coins and credits come with you to the next floor. Towers, karts, monsters and the alarm start
+- Weapons, perks, coins and lives come with you to the next floor. Towers, karts, monsters and the alarm start
   fresh. Beat the Segment Worm and take the last elevator to win the run.
 
 ---
@@ -287,9 +290,11 @@ Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop 
    The host finds it in the system network settings.
 
 **In the game:**
-- Every player has their own **suit colour**, weapons, perks and coins. **Credits belong to the team.**
+- Every player has their own **suit colour**, weapons, perks, coins and **lives**.
 - When a teammate goes down, they lie on the floor for **8 seconds**. Stand next to them and **hold E** to help
-  them up: no credit lost. If nobody makes it in time, the team loses a credit.
+  them up: no life lost. If nobody makes it in time, they lose one of their lives.
+- A player **out of lives is out**: they watch a teammate while the rest play on. The **next floor brings them
+  back with one life**, and so does the hidden heart. The run is lost when everyone is out.
 - Hordes grow with the number of players. Split up and hold several nests at once.
 - After the run a **ranking** shows who crashed the most cubes, the best combo, and who helped others up most.
 
@@ -405,7 +410,9 @@ Once it is merged, every game shows it the next time the list is opened.
 ## Versus: players against players
 
 From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
-Blaster; crates with weapons, karts and a jetpack lie around. Up to 10 players, bots fill up. Pick how well the
+Blaster; crates with weapons, karts and a jetpack lie around. Whoever goes down **drops their two best extra
+weapons and their jetpack** for the others to grab (in Gun Game: a few coins). From a kart or the unicorn you
+pick things up by riding over them. Up to 10 players, bots fill up. Pick how well the
 bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (sharp and instant).
 
 | Rule | How it works |
@@ -624,10 +631,10 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 
 Chosen on the title screen (alone) or in the lobby (by the host).
 
-| Level | Monster health | Monster damage | Horde size | Credits | Alarm speed | Points |
+| Level | Monster health | Monster damage | Horde size | Lives | Alarm speed | Points |
 |---|---|---|---|---|---|---|
 | Ultra Low | ×0.5 | ×0.35 | ×0.5 | 6 | half speed | ×0.5 |
-| Low | ×0.75 | ×0.6 | ×0.75 | 4 | slower | ×0.75 |
+| Low | ×0.75 | ×0.5 | ×0.65 | 4 | slower | ×0.75 |
 | Medium | ×1 | ×1 | ×1 | 3 | normal | ×1 |
 | High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
 | Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |
@@ -765,6 +772,8 @@ docs/         gameplay GIF and screenshots
 - [x] Replay of the last seconds (kill cam)
 - [x] Key rebinding: a Controls page, click an action and press the new key
 - [x] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
+- [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
+- [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing

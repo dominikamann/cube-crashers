@@ -35,6 +35,7 @@ import { placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
+import { placeHiddenHeart } from './heart';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
 
 const eliteBonus = (s: SimState) => floorDef(s.map.id)?.eliteBonus ?? 0;
@@ -94,6 +95,7 @@ export function setupFloor(s: SimState): void {
   // all timers count from now: later floors start long after tick 0
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
+  s.heart = null;
   const def = floorDef(s.map.id);
   if (def?.kind === 'maze') {
     // the Glitch Maze played on its own
@@ -145,6 +147,7 @@ export function setupFloor(s: SimState): void {
   placeStartKarts(s);
   placeStartJetpack(s);
   s.nextPowerupAt = s.tick + POWERUP.firstTicks;
+  if (s.run.mode === 'run') placeHiddenHeart(s);
 }
 
 function besideNest(s: SimState, n: Nest): Vec2 {

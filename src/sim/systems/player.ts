@@ -11,7 +11,6 @@ import {
   PLAYER_RADIUS,
   PLAYER_SPEED,
   RESPAWN_INVULN_TICKS,
-  RESPAWN_TICKS,
   REVIVE_TICKS,
   STOMP_DAMAGE,
   STOMP_KNOCKBACK,
@@ -26,7 +25,7 @@ export const HIT_EVENT_TICKS = 15;
 import { dist } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy, wormShare } from './combat';
-import { checkTeamWipe, loseCredit, sendToRespawn } from './coop';
+import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
@@ -85,11 +84,7 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
     checkTeamWipe(s);
     return;
   }
-  if (!loseCredit(s)) {
-    p.downUntil = s.tick + RESPAWN_TICKS;
-    return;
-  }
-  sendToRespawn(s, p);
+  if (loseLife(s, p)) sendToRespawn(s, p);
 }
 
 export function maxDashCharges(p: Player): number {

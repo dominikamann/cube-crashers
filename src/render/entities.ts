@@ -8,6 +8,7 @@ import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
 import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
+import { wallTop } from './world';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
@@ -473,6 +474,17 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         blastFills.add(b.pos.x, 0.05, b.pos.z, 0, b.radius * Math.max(0.05, (s.tick - b.createdAt) / (b.at - b.createdAt)));
       }
       blastFills.end();
+      if (s.heart) {
+        // the hidden heart on its wall top: a small red heart of cubes that turns and bobs
+        const h = s.heart.pos, rot = time * 1.5, c = Math.cos(rot), sn = Math.sin(rot);
+        const y0 = wallTop(s.map, h.x, h.z) + 0.75 + Math.sin(time * 3) * 0.1;
+        const put = (lx: number, ly: number, w: number, hh: number) => partsGlow.addScaled(h.x + lx * c, y0 + ly, h.z - lx * sn, rot, w, hh, 0.2, 0xff3b6b);
+        put(-0.17, 0.2, 0.3, 0.26);
+        put(0.17, 0.2, 0.3, 0.26);
+        put(0, 0.02, 0.62, 0.24);
+        put(0, -0.18, 0.36, 0.2);
+        put(0, -0.34, 0.14, 0.14);
+      }
       for (const j of s.jetpacks) {
         // a little jetpack built from cubes: it floats, turns slowly, its burners flicker and sparks rise from the pad
         const rot = time * 1.2 + j.id, c = Math.cos(rot), sn = Math.sin(rot);

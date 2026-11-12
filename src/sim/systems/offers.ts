@@ -40,7 +40,7 @@ function options(s: SimState, p: Player): Card[] {
 }
 
 /** Spots around the crate, on free floor and at least MIN_CARD_GAP apart, so every card can be chosen. */
-function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
+export function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
   const out: Vec2[] = [];
   for (const dist_ of [CARD_DISTANCE, CARD_DISTANCE + 0.8, CARD_DISTANCE + 1.6, CARD_DISTANCE + 2.4]) {
     for (let i = 0; i < 24 && out.length < n; i++) {

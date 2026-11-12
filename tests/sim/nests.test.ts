@@ -246,7 +246,7 @@ describe('elevator', () => {
 
   it('gives exactly one outcome when the last credit is lost on the elevator', () => {
     const s = cleared();
-    s.credits = 1;
+    s.players[0].lives = 1;
     const p = s.players[0];
     p.hp = 1;
     p.pos = rel(s.map.elevator, 1.2, 0);

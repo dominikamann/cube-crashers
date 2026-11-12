@@ -54,7 +54,7 @@ describe('boss floors', () => {
 
   it('give exactly one outcome when the boss dies in the tick the last credit is lost', () => {
     const s = bossFloor('megaBlock');
-    s.credits = 1;
+    s.players[0].lives = 1;
     kill(s, s.enemies.find(e => e.kind === 'megaBlock')!);
     damagePlayer(s, s.players[0], 1000);
     const events: SimEvent[] = [...s.events, ...run(s, 5)];

@@ -1,3 +1,4 @@
+import { DIFFICULTY } from '../sim/config/difficulty';
 import { FLOORS } from '../sim/config/floors';
 import { inZone } from '../sim/systems/nests';
 import { RACE, raceSeconds } from '../sim/systems/race';
@@ -61,7 +62,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
   const runBox = el('div', 'hud-box txt', top);
   const creditRow = el('div', 'credits', runBox);
-  const creditEls = Array.from({ length: START_CREDITS }, () => el('i', 'credit', creditRow));
+  // your own lives (up to the most any level starts with), and your teammates' under them
+  const creditEls = Array.from({ length: Math.max(START_CREDITS, ...Object.values(DIFFICULTY).map(d => d.credits)) }, () => el('i', 'credit', creditRow));
+  const teamText = el('div', 'sub team', runBox);
+  const outBanner = el('div', 'out-banner txt', layer);
   const nestText = el('div', 'sub', runBox);
   const floorText = el('div', 'sub floor', runBox);
 
@@ -185,7 +189,19 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       document.body.classList.toggle('versus', !!s.versus);
       const p = s.players.find(x => x.id === localId) ?? s.players[0];
 
-      creditEls.forEach((c, i) => c.classList.toggle('on', i < s.credits));
+      const lives = p.lives ?? s.credits;
+      const most = Math.max(DIFFICULTY[s.difficulty].credits, lives);
+      creditEls.forEach((c, i) => {
+        c.classList.toggle('on', i < lives);
+        c.style.display = i < most ? '' : 'none';
+      });
+      const mates = s.versus ? [] : s.players.filter(o => o !== p);
+      teamText.textContent = mates.map(o => `${o.name} ${o.out ? t('hud.out') : '♥'.repeat(o.lives ?? 0)}`).join(' · ');
+      teamText.style.display = mates.length ? '' : 'none';
+      // out of lives: watching a teammate until the next floor
+      const watching = p.out ? s.players.find(o => !o.out) : undefined;
+      outBanner.style.display = p.out && s.phase === 'playing' ? '' : 'none';
+      if (p.out) outBanner.textContent = t('hud.outBanner', { name: watching?.name ?? '' });
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
       nestText.textContent = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : s.boss ? t('hud.bossFight') : '';
       const def = floorDef(s.map.id);
@@ -459,6 +475,12 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'jetpackPicked':
             if (e.playerId === p.id) toast(t('toast.jetpack'), 'good');
+            break;
+          case 'heartFound':
+            toast(t('toast.heart', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'final');
+            break;
+          case 'playerOut':
+            if (e.playerId !== p.id) toast(t('toast.out', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn');
             break;
           case 'jetpackEmpty':
             if (e.playerId === p.id) toast(t('toast.jetpackEmpty'));

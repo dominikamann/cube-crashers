@@ -1,3 +1,4 @@
+import { syncCredits } from './coop';
 import { ALL_PERKS, PERK_MAX } from '../config/perks';
 import { MAX_WEAPON_LEVEL } from '../config/weapons';
 import type { Player, ShopOffer, SimState } from '../types';
@@ -52,7 +53,9 @@ export function buy(s: SimState, p: Player, index: number): void {
       p.hp = p.maxHp;
       break;
     case 'credit':
-      s.credits++;
+      // a life for everyone in the team
+      for (const q of s.players) q.lives = (q.lives ?? 0) + 1;
+      syncCredits(s);
       shop.creditSold = true;
       break;
   }
