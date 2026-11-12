@@ -173,6 +173,8 @@ export const en = {
   'settings.difficulty': 'Difficulty',
   'settings.name': 'Your name',
   'settings.color': 'Suit colour',
+  'settings.about': 'About',
+  'settings.version': 'Installed version',
   'settings.colorAuto': 'Automatic',
   'settings.graphics': 'Graphics',
   'settings.damageNumbers': 'Damage numbers',

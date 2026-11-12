@@ -1,3 +1,4 @@
+import { APP_VERSION } from '../version';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, VersusOption as VersusChoice } from '../net/protocol';
 import { PLAYER_COLORS } from '../render/actors';
@@ -473,6 +474,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         });
       };
       drawColors();
+      section(t('settings.about'));
+      text(row(t('settings.version')), 'span', 'settings-version', `v${APP_VERSION}`);
       text(s, 'p', 'controls-help', t('menu.controls'));
       button(s, t('menu.back'), () => back(), true);
     });

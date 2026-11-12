@@ -273,6 +273,7 @@ body.split .card { width: 110px; }
 .screen.settings { gap: 14px; background: rgba(20, 16, 50, 0.78); }
 .settings-card { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px 22px; width: min(620px, calc(100vw - 32px)); padding: 18px 24px 20px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
 .settings-section { grid-column: 1 / -1; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); padding-top: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding-bottom: 6px; }
+.settings-version { font-size: 11px; color: rgba(255, 255, 255, 0.75); }
 .settings-section:first-child { padding-top: 0; }
 .settings-label { font-size: 11px; text-align: right; color: var(--cyan); }
 .settings-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
