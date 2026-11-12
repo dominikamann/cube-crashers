@@ -1,0 +1,250 @@
+import type { EnemyKind } from '../sim/types';
+import type { InstancedPool } from './pool';
+
+/**
+ * What makes a monster more than a box: feet, arms, tails, wings and feelers built from small voxels.
+ * Coordinates are in the body's own frame: x to its right, y up from the body's centre, z forward.
+ */
+interface Part {
+  at: [number, number, number];
+  size: [number, number, number];
+  /** a fixed colour, or a shade of the body's colour */
+  color: number | 'body' | 'dark' | 'light';
+  /** drawn unlit (reads as glowing) */
+  glow?: boolean;
+  /**
+   * leg: steps in the walk cycle · arm: swings from the shoulder (`at` is the shoulder) · wag: a tail swinging
+   * from its front end · flap: wings · orbit: circles the body · sway: tips from side to side
+   */
+  anim?: 'leg' | 'arm' | 'wag' | 'flap' | 'orbit' | 'sway';
+  /** phase offset within the animation */
+  ph?: number;
+  amp?: number;
+}
+
+const PI = Math.PI;
+const GOLD = 0xffe14a;
+
+const feet = (x: number, y: number, w: number, h: number, d: number, amp = 0.1): Part[] => [
+  { at: [-x, y, 0], size: [w, h, d], color: 'dark', anim: 'leg', ph: 0, amp },
+  { at: [x, y, 0], size: [w, h, d], color: 'dark', anim: 'leg', ph: PI, amp },
+];
+const fourLegs = (x: number, y: number, z: number, w: number, h: number, amp = 0.12): Part[] => [
+  { at: [-x, y, z], size: [w, h, w], color: 'dark', anim: 'leg', ph: 0, amp },
+  { at: [x, y, z], size: [w, h, w], color: 'dark', anim: 'leg', ph: PI, amp },
+  { at: [-x, y, -z], size: [w, h, w], color: 'dark', anim: 'leg', ph: PI, amp },
+  { at: [x, y, -z], size: [w, h, w], color: 'dark', anim: 'leg', ph: 0, amp },
+];
+const arms = (x: number, y: number, w: number, h: number, color: Part['color'] = 'dark', amp = 0.6): Part[] => [
+  { at: [-x, y, 0], size: [w, h, w], color, anim: 'arm', ph: PI, amp },
+  { at: [x, y, 0], size: [w, h, w], color, anim: 'arm', ph: 0, amp },
+];
+
+export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
+  blob: [
+    ...feet(0.2, -0.42, 0.2, 0.14, 0.28),
+    ...arms(0.42, 0.12, 0.12, 0.3),
+    { at: [0, 0.43, 0], size: [0.06, 0.16, 0.06], color: 'dark' },
+    { at: [0, 0.56, 0], size: [0.14, 0.14, 0.14], color: GOLD, glow: true, anim: 'sway', amp: 0.3 },
+  ],
+  hunter: [
+    ...fourLegs(0.2, -0.255, 0.28, 0.1, 0.16),
+    { at: [-0.15, 0.25, 0.3], size: [0.1, 0.16, 0.08], color: 'light' },
+    { at: [0.15, 0.25, 0.3], size: [0.1, 0.16, 0.08], color: 'light' },
+    { at: [0, 0.05, -0.56], size: [0.08, 0.08, 0.3], color: 'dark', anim: 'wag', amp: 0.7 },
+  ],
+  tank: [
+    ...feet(0.35, -0.625, 0.36, 0.2, 0.5, 0.08),
+    ...arms(0.74, 0.3, 0.26, 0.62, 'dark', 0.35),
+    { at: [-0.72, 0.4, 0], size: [0.34, 0.2, 0.42], color: 'light' },
+    { at: [0.72, 0.4, 0], size: [0.34, 0.2, 0.42], color: 'light' },
+  ],
+  splitter: [
+    ...feet(0.22, -0.46, 0.22, 0.12, 0.3),
+    // the core that shows through the gap between its halves
+    { at: [0, 0, 0], size: [0.1, 0.5, 0.5], color: GOLD, glow: true },
+    { at: [-0.2, 0.5, 0.15], size: [0.06, 0.22, 0.06], color: 'light', anim: 'sway', amp: 0.25 },
+    { at: [0.2, 0.5, 0.15], size: [0.06, 0.22, 0.06], color: 'light', anim: 'sway', ph: PI, amp: 0.25 },
+    { at: [-0.2, 0.64, 0.15], size: [0.1, 0.1, 0.1], color: GOLD, glow: true, anim: 'sway', amp: 0.25 },
+    { at: [0.2, 0.64, 0.15], size: [0.1, 0.1, 0.1], color: GOLD, glow: true, anim: 'sway', ph: PI, amp: 0.25 },
+  ],
+  splitling: feet(0.12, -0.24, 0.12, 0.06, 0.16, 0.06),
+  shooter: [
+    ...feet(0.14, -0.57, 0.14, 0.14, 0.2),
+    // a cannon for an arm
+    { at: [0.36, 0.05, 0.18], size: [0.14, 0.14, 0.5], color: 0x1c6f66 },
+    { at: [0.36, 0.05, 0.46], size: [0.18, 0.18, 0.08], color: 0xff5a3b, glow: true },
+    { at: [-0.34, 0.25, 0], size: [0.1, 0.36, 0.1], color: 'dark', anim: 'arm', amp: 0.5 },
+    // a dish on its head
+    { at: [0, 0.56, 0], size: [0.05, 0.14, 0.05], color: 'dark' },
+    { at: [0, 0.65, 0], size: [0.28, 0.05, 0.28], color: 'light', anim: 'sway', amp: 0.2 },
+  ],
+  bomber: [
+    ...feet(0.2, -0.37, 0.16, 0.14, 0.24, 0.16),
+    // arms up in panic
+    { at: [-0.42, 0.25, 0], size: [0.1, 0.34, 0.1], color: 'dark', anim: 'sway', amp: 0.5 },
+    { at: [0.42, 0.25, 0], size: [0.1, 0.34, 0.1], color: 'dark', anim: 'sway', ph: PI, amp: 0.5 },
+  ],
+  rammer: [
+    ...fourLegs(0.4, -0.5, 0.42, 0.24, 0.2),
+    { at: [0, 0.1, -0.8], size: [0.12, 0.12, 0.3], color: 'dark', anim: 'wag', amp: 0.5 },
+    // a bumper plate on its nose
+    { at: [0, -0.05, 0.68], size: [0.9, 0.5, 0.08], color: 'light' },
+  ],
+  swarmer: [
+    { at: [-0.45, 0.05, 0], size: [0.42, 0.04, 0.3], color: 'light', anim: 'flap', amp: 0.7 },
+    { at: [0.45, 0.05, 0], size: [0.42, 0.04, 0.3], color: 'light', anim: 'flap', amp: 0.7 },
+    { at: [0, -0.02, -0.3], size: [0.06, 0.06, 0.2], color: GOLD },
+  ],
+  shielder: [
+    ...feet(0.2, -0.495, 0.18, 0.14, 0.26),
+    // a helmet crest, and the arm that holds the shield
+    { at: [0, 0.5, 0], size: [0.1, 0.16, 0.5], color: 0xff5a5f },
+    { at: [0.3, 0, 0.32], size: [0.12, 0.12, 0.3], color: 'dark' },
+  ],
+  healer: [
+    ...feet(0.14, -0.435, 0.14, 0.12, 0.2),
+    // arms raised, a medic's pack on the back
+    { at: [-0.36, 0.2, 0], size: [0.1, 0.34, 0.1], color: 'light', anim: 'sway', amp: 0.35 },
+    { at: [0.36, 0.2, 0], size: [0.1, 0.34, 0.1], color: 'light', anim: 'sway', ph: PI, amp: 0.35 },
+    { at: [0, 0.05, -0.34], size: [0.36, 0.4, 0.14], color: 0xffffff },
+    { at: [0, 0.05, -0.42], size: [0.24, 0.08, 0.02], color: 0xff3b3b },
+    { at: [0, 0.05, -0.42], size: [0.08, 0.24, 0.02], color: 0xff3b3b },
+  ],
+  teleporter: [
+    { at: [0, -0.45, 0], size: [0.3, 0.16, 0.3], color: 'dark', anim: 'sway', amp: 0.3 },
+    { at: [0, -0.62, 0], size: [0.16, 0.12, 0.16], color: 'dark', anim: 'sway', ph: PI, amp: 0.4 },
+    { at: [0, 0.05, 0], size: [0.14, 0.14, 0.14], color: 0xd8ccff, glow: true, anim: 'orbit', ph: 0, amp: 0.58 },
+    { at: [0, 0.05, 0], size: [0.14, 0.14, 0.14], color: 0xd8ccff, glow: true, anim: 'orbit', ph: PI, amp: 0.58 },
+  ],
+  croc: [
+    ...fourLegs(0.42, -0.33, 0.55, 0.2, 0.16),
+    { at: [0, -0.05, -1.0], size: [0.36, 0.26, 0.6], color: 'body', anim: 'wag', amp: 0.5 },
+    // teeth along the snout, ridges down the back
+    ...[0.4, 0.58, 0.76, 0.92].flatMap((z): Part[] => [
+      { at: [-0.3, -0.12, z], size: [0.06, 0.12, 0.07], color: 0xffffff },
+      { at: [0.3, -0.12, z], size: [0.06, 0.12, 0.07], color: 0xffffff },
+    ]),
+    ...[-0.15, -0.45, -0.75].map((z): Part => ({ at: [0, 0.3, z], size: [0.14, 0.12, 0.14], color: 'dark' })),
+  ],
+  monkey: [
+    ...feet(0.16, -0.51, 0.16, 0.12, 0.24),
+    // long arms that swing, big ears, a curly tail
+    ...arms(0.41, 0.1, 0.11, 0.55, 'dark', 0.9),
+    { at: [-0.42, 0.28, 0], size: [0.12, 0.2, 0.1], color: 'light' },
+    { at: [0.42, 0.28, 0], size: [0.12, 0.2, 0.1], color: 'light' },
+    { at: [0, -0.2, -0.3], size: [0.07, 0.07, 0.45], color: 'dark', anim: 'wag', amp: 0.9 },
+  ],
+  trex: [
+    ...feet(0.28, -0.95, 0.26, 0.3, 0.42, 0.14),
+    { at: [0, -0.3, -0.78], size: [0.38, 0.36, 0.75], color: 'body', anim: 'wag', amp: 0.35 },
+    // tiny arms, and teeth under the big head
+    { at: [-0.42, 0.05, 0.3], size: [0.09, 0.26, 0.09], color: 'dark', anim: 'arm', ph: PI, amp: 0.5 },
+    { at: [0.42, 0.05, 0.3], size: [0.09, 0.26, 0.09], color: 'dark', anim: 'arm', amp: 0.5 },
+    ...[0.45, 0.62, 0.78].flatMap((z): Part[] => [
+      { at: [-0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
+      { at: [0.3, 0.2, z], size: [0.07, 0.12, 0.07], color: 0xffffff },
+    ]),
+  ],
+  ghost: [
+    { at: [-0.27, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', amp: 0.3 },
+    { at: [0, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', ph: PI * 0.66, amp: 0.3 },
+    { at: [0.27, -0.5, 0], size: [0.22, 0.2, 0.8], color: 'body', anim: 'sway', ph: PI * 1.33, amp: 0.3 },
+  ],
+};
+
+/** how far the body is lifted off the ground to stand on its legs (tiles, before scaling) */
+export const MONSTER_LIFT: Partial<Record<EnemyKind, number>> = {
+  blob: 0.14,
+  hunter: 0.16,
+  tank: 0.2,
+  splitter: 0.12,
+  splitling: 0.06,
+  shooter: 0.14,
+  bomber: 0.14,
+  rammer: 0.2,
+  shielder: 0.14,
+  healer: 0.12,
+  croc: 0.16,
+  monkey: 0.12,
+  trex: 0.3,
+};
+
+function shade(base: number, how: Part['color']): number {
+  if (typeof how === 'number') return how;
+  if (how === 'body') return base;
+  const r = (base >> 16) & 255, g = (base >> 8) & 255, b = base & 255;
+  const mix = how === 'dark' ? (c: number) => Math.round(c * 0.62) : (c: number) => Math.round(c + (255 - c) * 0.4);
+  return (mix(r) << 16) | (mix(g) << 8) | mix(b);
+}
+
+export interface PartPose {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  /** the body's scale along its own axes (squash and stretch included) */
+  sx: number;
+  sy: number;
+  sz: number;
+  lean: number;
+  tilt: number;
+  /** flash, frozen or slowed: overrides every part's colour */
+  tint: number | undefined;
+  /** the walk cycle (radians), the clock, and whether the monster is held still */
+  phase: number;
+  time: number;
+  still: boolean;
+}
+
+/** Adds the parts of one monster to the pools (lit ones and glowing ones). */
+export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: EnemyKind, bodyColor: number, id: number, p: PartPose): void {
+  const parts = MONSTER_PARTS[kind];
+  if (!parts) return;
+  const c = Math.cos(p.yaw), sn = Math.sin(p.yaw);
+  for (const part of parts) {
+    let [lx, ly, lz] = part.at;
+    let rx = p.lean, ry = p.yaw, rz = p.tilt;
+    const amp = part.amp ?? 0.1;
+    const ph = part.ph ?? 0;
+    switch (part.anim) {
+      case 'leg':
+        if (!p.still) {
+          lz += Math.sin(p.phase + ph) * amp;
+          ly += Math.max(0, Math.cos(p.phase + ph)) * amp * 0.6;
+        }
+        break;
+      case 'arm': {
+        // hangs from the shoulder and swings with the steps
+        const a = p.still ? 0 : Math.sin(p.phase + ph) * amp;
+        ly -= (part.size[1] / 2) * Math.cos(a);
+        lz -= (part.size[1] / 2) * Math.sin(a);
+        rx += a;
+        break;
+      }
+      case 'wag': {
+        const a = Math.sin(p.time * 10 + id) * amp;
+        lx -= (part.size[2] / 2) * Math.sin(a);
+        lz += (part.size[2] / 2) * (1 - Math.cos(a));
+        ry += a;
+        break;
+      }
+      case 'flap':
+        rz += Math.sin(p.time * 34 + id) * amp * Math.sign(part.at[0]);
+        break;
+      case 'orbit': {
+        const a = p.time * 4 + ph + id;
+        lx = Math.cos(a) * amp;
+        lz = Math.sin(a) * amp;
+        ly += Math.sin(p.time * 3 + ph) * 0.12;
+        break;
+      }
+      case 'sway':
+        rz += Math.sin(p.time * 5 + id + ph) * amp;
+        break;
+    }
+    const wx = p.x + lx * p.sx * c + lz * p.sz * sn;
+    const wz = p.z - lx * p.sx * sn + lz * p.sz * c;
+    (part.glow ? glow : lit).addScaled(wx, p.y + ly * p.sy, wz, ry, part.size[0] * p.sx, part.size[1] * p.sy, part.size[2] * p.sz, p.tint ?? shade(bodyColor, part.color), rx, rz);
+  }
+}

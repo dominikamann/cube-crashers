@@ -1010,12 +1010,14 @@ function applyDemo(sim: SimState) {
   // ?demo=zoo: one of every monster in a row in front of the player, crawling slowly (to look at them)
   if (params.get('demo') === 'zoo') {
     void import('./sim/systems/enemies').then(m => {
-      const kinds = ['blob', 'hunter', 'tank', 'splitter', 'shooter', 'bomber', 'rammer', 'swarmer', 'shielder', 'healer', 'teleporter'] as const;
+      const kinds = ['blob', 'hunter', 'tank', 'splitter', 'shooter', 'bomber', 'rammer', 'swarmer', 'shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex'] as const;
       const p = sim.players[0];
       p.invulnUntil = Number.MAX_SAFE_INTEGER;
+      p.pos.z += 5;
+      // two rows above the player, so they walk toward the camera
       kinds.forEach((k, i) => {
-        const e = m.spawnEnemy(sim, k, { x: p.pos.x - 5 + i, z: p.pos.z + 3 });
-        e.speed *= 0.15;
+        const e = m.spawnEnemy(sim, k, { x: p.pos.x + ((i % 7) - 3) * 1.9, z: p.pos.z - (i >= 7 ? 5.6 : 3.2) });
+        e.speed *= 0.05;
       });
     });
   }

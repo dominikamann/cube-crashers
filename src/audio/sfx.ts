@@ -262,7 +262,7 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
 export const MAX_COIN_STREAK_STEPS = 12;
 const SEMITONE = 1.059;
 
-const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter' };
+const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'windup_rammer', monkey: 'windup_shooter', trex: 'windup_rammer' };
 
 export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];

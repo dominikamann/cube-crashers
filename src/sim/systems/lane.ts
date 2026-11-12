@@ -11,7 +11,7 @@ export const LANE = {
   ticks: 90 * TICK_RATE,
   coreHp: 100,
   /** how much of the cabinet a monster takes when it gets there */
-  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15, swarmer: 3, shielder: 10, healer: 6, teleporter: 8 } as Partial<Record<EnemyKind, number>>,
+  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15, swarmer: 3, shielder: 10, healer: 6, teleporter: 8, croc: 25, monkey: 10, trex: 35 } as Partial<Record<EnemyKind, number>>,
   waveTicks: 4.5 * TICK_RATE,
   /** a minigame should keep you busy on any difficulty: waves never shrink below this share */
   minScale: 0.85,
@@ -33,6 +33,7 @@ const FLAVOURS: EnemyKind[][] = [
   ['shielder', 'shielder', 'blob'],
   ['healer', 'tank', 'blob', 'blob'],
   ['teleporter', 'hunter', 'blob'],
+  ['monkey', 'blob', 'blob', 'hunter'],
 ];
 
 /** what a wave is made of: more and tougher monsters as the defence goes on, in a mix (heaviest last) */
@@ -43,7 +44,9 @@ export function laneWave(n: number): EnemyKind[] {
   for (let i = 0; i < size; i++) out.push(flavour[i % flavour.length]);
   // later waves bring an extra heavy one
   if (n >= 8) out.push('tank');
+  if (n >= 10) out.push('croc');
   if (n >= 12) out.push('bomber', 'rammer');
+  if (n >= 14) out.push('trex');
   return out;
 }
 

@@ -79,20 +79,75 @@ describe('the Teleporter', () => {
   });
 });
 
+describe('the Crocodile', () => {
+  it('is a heavyweight that lunges: a warning first, then a short fast snap that hurts', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    const e = spawnEnemy(s, 'croc', rel(p.pos, 0, -4));
+    expect(e.hp).toBeGreaterThan(ENEMIES.tank.hp * 2);
+    let warned = false;
+    const hp = p.hp;
+    for (let i = 0; i < 200 && p.hp === hp; i++) {
+      stepSim(s, []);
+      warned ||= s.events.some(ev => ev.type === 'enemyWindup' && ev.kind === 'croc');
+    }
+    expect(warned).toBe(true);
+    expect(hp - p.hp).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('the Monkey', () => {
+  it('keeps its distance and throws coconuts: a ring on the ground warns where one lands', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    const e = spawnEnemy(s, 'monkey', rel(p.pos, 0, -6));
+    let ring = false;
+    for (let i = 0; i < 240 && !ring; i++) {
+      stepSim(s, []);
+      ring = s.events.some(ev => ev.type === 'blastWarning');
+    }
+    expect(ring).toBe(true);
+    expect(s.blasts).toHaveLength(1);
+    expect(Math.hypot(s.blasts[0].pos.x - p.pos.x, s.blasts[0].pos.z - p.pos.z)).toBeLessThan(0.5);
+    // it did not run up to the player
+    expect(Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z)).toBeGreaterThan(3);
+  });
+});
+
+describe('the T-Rex', () => {
+  it('is the biggest of them: it roars, then stomps and everything around it gets hurt', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    const e = spawnEnemy(s, 'trex', rel(p.pos, 0, -2.5));
+    expect(e.hp).toBeGreaterThan(ENEMIES.croc.hp);
+    e.speed = 0;
+    let warned = false, stomped = false;
+    const hp = p.hp;
+    for (let i = 0; i < 120 && !stomped; i++) {
+      stepSim(s, []);
+      warned ||= s.events.some(ev => ev.type === 'enemyWindup' && ev.kind === 'trex');
+      stomped = s.events.some(ev => ev.type === 'explosion');
+    }
+    expect(warned).toBe(true);
+    expect(stomped).toBe(true);
+    expect(p.hp).toBeLessThan(hp);
+  });
+});
+
 describe('the new monsters show up', () => {
   it('in roaming hordes', () => {
     const kinds = new Set(Object.values(HORDE_COMPS).flat().map(g => g.kind));
-    for (const k of ['shielder', 'healer', 'teleporter'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
+    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
   });
 
   it('in the Lane Defense waves', () => {
     const kinds = new Set(Array.from({ length: 20 }, (_, n) => laneWave(n)).flat());
-    for (const k of ['shielder', 'healer', 'teleporter'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
+    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
   });
 
   it('on a LAN client too (and the maze ghosts as well)', () => {
     const s = quietSim();
-    const kinds: EnemyKind[] = ['shielder', 'healer', 'teleporter', 'ghost'];
+    const kinds: EnemyKind[] = ['shielder', 'healer', 'teleporter', 'ghost', 'croc', 'monkey', 'trex'];
     for (const [i, k] of kinds.entries()) spawnEnemy(s, k, rel(s.players[0].pos, i, -5));
     const client = quietSim();
     const snap = JSON.parse(serializeSnapshot(s, []));

@@ -21,7 +21,10 @@ export type EnemyKind =
   | 'ghost'
   | 'shielder'
   | 'healer'
-  | 'teleporter';
+  | 'teleporter'
+  | 'croc'
+  | 'monkey'
+  | 'trex';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'

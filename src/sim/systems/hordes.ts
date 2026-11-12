@@ -16,6 +16,8 @@ export const HORDE_COMPS: Record<string, HordeComp> = {
   mixed: [{ kind: 'blob', count: 6 }, { kind: 'splitter', count: 3 }, { kind: 'shooter', count: 2 }],
   shieldLine: [{ kind: 'shielder', count: 4 }, { kind: 'shooter', count: 2 }, { kind: 'blob', count: 3 }],
   fieldMedic: [{ kind: 'healer', count: 2 }, { kind: 'tank', count: 1 }, { kind: 'blob', count: 6 }],
+  jungle: [{ kind: 'croc', count: 1 }, { kind: 'monkey', count: 2 }, { kind: 'blob', count: 4 }],
+  rexHunt: [{ kind: 'trex', count: 1 }, { kind: 'hunter', count: 5 }],
   blinkers: [{ kind: 'teleporter', count: 4 }, { kind: 'hunter', count: 3 }],
 };
 

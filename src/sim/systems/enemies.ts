@@ -1,4 +1,4 @@
-import { ALARM_SPEED_STEP, BOMBER, CROWD_CONTACT_SHARE, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, CROC, CROWD_CONTACT_SHARE, MONKEY, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
@@ -120,8 +120,24 @@ function heal(s: SimState, e: Enemy): void {
   if (healed.length > 0) s.events.push({ type: 'enemyHealed', pos: { ...e.pos }, targets: healed });
 }
 
+/** how this monster charges: the rammer's long run or the crocodile's short lunge */
+const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : RAMMER);
+
+/** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
+function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
+  e.state = 'move';
+  e.cooldownUntil = s.tick + MONKEY.cooldownTicks;
+  const target = nearestPlayer(players, e.pos);
+  if (!target) return;
+  const pos = { ...target.p.pos };
+  s.blasts.push({ id: s.nextId++, pos, radius: MONKEY.radius, createdAt: s.tick, at: s.tick + MONKEY.flightTicks, damage: MONKEY.damage });
+  s.events.push({ type: 'blastWarning', pos: { ...pos }, radius: MONKEY.radius });
+  s.events.push({ type: 'enemyShot', pos: { ...e.pos } });
+}
+
 /** Moves a charging rammer and resolves what it runs into. */
 function charge(s: SimState, e: Enemy, players: Player[]): void {
+  const RAMMER = chargeOf(e);
   const step = RAMMER.speed * DT;
   const hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, e.radius, BLOCKS_ENEMY);
   e.chargeLeft -= step;
@@ -178,11 +194,28 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
       }
       return chase;
     case 'rammer':
-      if (los && d < RAMMER.range && s.tick >= e.cooldownUntil) {
-        startWindup(s, e, p.pos, RAMMER.windupTicks, 'windup');
+    case 'croc': {
+      const c = chargeOf(e);
+      if (los && d < c.range && s.tick >= e.cooldownUntil) {
+        startWindup(s, e, p.pos, c.windupTicks, 'windup');
         return still;
       }
       return chase;
+    }
+    case 'trex':
+      if (d < TREX.range + e.radius && s.tick >= e.cooldownUntil) {
+        startWindup(s, e, p.pos, TREX.windupTicks, 'windup');
+        s.events.push({ type: 'blastWarning', pos: { ...e.pos }, radius: TREX.radius });
+        return still;
+      }
+      return chase;
+    case 'monkey':
+      if (los && d <= MONKEY.throwRange && s.tick >= e.cooldownUntil) {
+        startWindup(s, e, p.pos, MONKEY.windupTicks, 'windup');
+        return still;
+      }
+      if (los && d < MONKEY.min) return { dir: unit(p.pos, e.pos), factor: 1 };
+      return !los || d > MONKEY.max ? chase : still;
     case 'healer':
       // stays behind the others: backs off when a player comes close
       if (los && d < HEALER.keepAway) return { dir: unit(p.pos, e.pos), factor: 1 };
@@ -266,9 +299,15 @@ export function updateEnemies(s: SimState): void {
         e.state = 'move';
       } else if (e.state === 'windup' && e.kind === 'teleporter') {
         blink(s, e, players);
-      } else if (e.state === 'windup' && e.kind === 'rammer') {
+      } else if (e.state === 'windup' && e.kind === 'trex') {
+        e.state = 'move';
+        e.cooldownUntil = s.tick + TREX.cooldownTicks;
+        explode(s, e.pos, TREX.radius, { player: TREX.damage, tower: TREX.tower }, 'explosion');
+      } else if (e.state === 'windup' && e.kind === 'monkey') {
+        throwCoconut(s, e, players);
+      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc')) {
         e.state = 'charge';
-        e.chargeLeft = RAMMER.distance;
+        e.chargeLeft = chargeOf(e).distance;
       } else {
         e.state = 'move';
       }

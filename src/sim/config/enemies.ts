@@ -29,6 +29,12 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   healer: { hp: 24, speed: 1.9, radius: 0.35, coins: 3, score: 40, contactDamage: 5 },
   // shimmers, then blinks right next to you
   teleporter: { hp: 18, speed: 2.2, radius: 0.35, coins: 2, score: 30, contactDamage: 14 },
+  // a heavyweight: lunges at you with a snap of its jaws
+  croc: { hp: 260, speed: 1.5, radius: 0.6, coins: 10, score: 150, contactDamage: 25 },
+  // nimble: keeps its distance and throws coconuts that burst where they land
+  monkey: { hp: 120, speed: 2.6, radius: 0.4, coins: 8, score: 120, contactDamage: 10 },
+  // the biggest thing short of a boss: roars, then stomps the ground around it
+  trex: { hp: 420, speed: 1.9, radius: 0.8, coins: 16, score: 300, contactDamage: 30 },
   megaBlock: { hp: 1800, speed: 1.3, radius: 1.6, coins: 0, score: 2000, contactDamage: 40 },
   // moved by the boss system
   wormSegment: { hp: 80, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { SimState } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
+import { MONSTER_LIFT } from './monster-parts';
 
 const MAX_BARS = 400;
 const BAR_H = 0.07;
@@ -52,7 +53,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
         if (e.hp >= e.maxHp || e.hp <= 0 || bossIds.has(e.id) || bars.length >= MAX_BARS) continue;
         const l = ENEMY_LOOK[e.kind];
         const scale = e.elite ? 1.4 : 1;
-        bars.push({ x: e.pos.x, y: l.h * scale + (e.kind === 'swarmer' ? 1.6 : 0.35), z: e.pos.z, w: Math.max(0.6, Math.min(1.4, l.w * scale)), frac: e.hp / e.maxHp, playerId: null });
+        bars.push({ x: e.pos.x, y: (l.h + (MONSTER_LIFT[e.kind] ?? 0)) * scale + (e.kind === 'swarmer' ? 1.6 : 0.4), z: e.pos.z, w: Math.max(0.6, Math.min(1.4, l.w * scale)), frac: e.hp / e.maxHp, playerId: null });
       }
       for (const p of s.players) {
         if (p.downUntil !== null || p.hp <= 0) continue;

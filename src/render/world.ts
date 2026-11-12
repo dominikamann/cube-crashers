@@ -617,7 +617,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     const g = new THREE.Group();
     const kind = Math.floor(hash(c.tx * 7, c.tz * 11) * 4);
     if (kind === 0) {
-      g.add(box(0.5, 0.35, 0.5, pot, 0, 0.18, 0), box(0.6, 0.45, 0.6, leafA, 0, 0.55, 0), box(0.35, 0.3, 0.35, leafB, 0.05, 0.9, 0));
+      // a tree in a planter: a trunk and three layers of leaves, taller than a player
+      g.add(box(0.6, 0.3, 0.6, pot, 0, 0.15, 0), box(0.2, 0.95, 0.2, wood, 0, 0.75, 0));
+      g.add(box(1.05, 0.55, 1.05, leafA, 0, 1.4, 0), box(0.78, 0.5, 0.78, leafB, 0.05, 1.9, -0.03), box(0.45, 0.4, 0.45, leafA, 0, 2.32, 0.04));
     } else if (kind === 1) {
       g.add(box(0.12, 1.6, 0.12, metal, 0, 0.8, 0), box(0.32, 0.22, 0.32, lampGlow, 0, 1.7, 0));
     } else if (kind === 2) {

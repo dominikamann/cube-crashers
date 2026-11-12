@@ -80,6 +80,12 @@ export const RUSH_BASE_SIZE = 8;
 export const RUSH_SIZE_PER_ALARM = 3;
 export const NEST_SPAWN_TICKS = 1200;
 export const NEST_BLAST = { radius: 6, damage: 250, coins: 25 };
+/** the crocodile's lunge: like a rammer's charge, but short and quick to come again */
+export const CROC = { range: 5.5, windupTicks: 32, speed: 12, distance: 5.5, damage: 28, towerDamage: 25, stunTicks: 50, hitStunTicks: 40, cooldownTicks: 150 };
+/** the monkey stays between `min` and `max` tiles away and throws a coconut every `cooldownTicks` */
+export const MONKEY = { min: 4, max: 7, throwRange: 9, windupTicks: 30, cooldownTicks: 170, flightTicks: 50, radius: 1.5, damage: 22 };
+/** the T-Rex roars when a player is within `range`, then its stomp hurts everything within `radius` */
+export const TREX = { range: 3.2, windupTicks: 40, cooldownTicks: 200, radius: 3, damage: 30, tower: 30 };
 export const ENEMY_CAP = 160;
 
 export const ALARM_MAX = 5;

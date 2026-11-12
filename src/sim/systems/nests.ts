@@ -58,6 +58,9 @@ function shuffled<T>(s: SimState, list: T[]): T[] {
 /** Roaming horde mixes get nastier as the alarm rises. */
 function roamingComp(s: SimState, scale = 1): HordeComp {
   const names = ['blobSwarm', 'hunterPack', 'mixed', 'shieldWall', 'boomSquad', 'ramCrew', 'shieldLine', 'fieldMedic', 'blinkers'];
+  // the big ones only show up once the alarm has risen
+  if (s.alarm.level >= 2) names.push('jungle');
+  if (s.alarm.level >= 3) names.push('rexHunt');
   const factor = (1 + ALARM_SIZE_STEP * s.alarm.level) * scale;
   return HORDE_COMPS[s.rng.pick(names)].map(g => ({ kind: g.kind, count: Math.ceil(g.count * factor) }));
 }
