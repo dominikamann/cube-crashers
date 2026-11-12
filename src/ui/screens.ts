@@ -522,7 +522,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   /** arenas for versus: the floors with room to fight */
   const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
   /** maps for "Single floor": the floors of the tower in their order */
-  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
+  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'jungle', 'servers', 'underwater', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
   function lanScreen() {
     show('', s => {
