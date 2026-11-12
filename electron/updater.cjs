@@ -4,7 +4,8 @@
 const { app, shell } = require('electron');
 
 const RELEASES_URL = 'https://github.com/dominikamann/cube-crashers/releases/latest';
-const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+// look for a new version every three hours while the game is open
+const CHECK_EVERY_MS = 3 * 60 * 60 * 1000;
 
 function startUpdater(emit) {
   if (!app.isPackaged) return { install() {}, openDownload() {} };

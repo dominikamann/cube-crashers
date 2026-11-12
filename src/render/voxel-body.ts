@@ -41,25 +41,49 @@ const SHAPES: Partial<Record<EnemyKind, Shape>> = {
   healer: { n: [4, 6, 4], inside: (u, v, w) => round(u, v, w, 3), tone: (_u, v, w) => (w > 0.3 && v < 0.2 ? BELLY : 1) },
   // a diamond standing on its tip
   teleporter: { n: [5, 7, 5], inside: (u, v, w) => Math.abs(u) + Math.abs(v) + Math.abs(w) <= 1.25, tone: (u, v, w) => (Math.abs(u) + Math.abs(v) + Math.abs(w) < 0.6 ? 1.5 : 1) },
+  // a fish: a flat oval with a lighter belly and a stripe
+  fish: { n: [2, 4, 6], inside: (_u, v, w) => (v / 1) ** 2 + (w / 1) ** 2 <= 1.15, tone: (_u, v, w) => (v < -0.3 ? BELLY : Math.abs(w + 0.1) < 0.2 ? 0.7 : 1) },
+  // a shark: a long torpedo, pointed snout, white belly
+  shark: { n: [5, 4, 12], inside: (u, v, w) => u * u + v * v <= 1.2 - 0.9 * Math.max(0, w) ** 2 - 0.5 * Math.max(0, -w - 0.4), tone: (_u, v) => (v < -0.2 ? [1.6, 1.6, 1.6] : 1) },
+  // the Kraken: a big round head with spots, lighter round the mouth
+  kraken: {
+    n: [10, 8, 9],
+    inside: (u, v, w) => u * u + ((v - 0.1) / 0.95) ** 2 + w * w <= 1.15,
+    tone: (u, v, w) => (w > 0.5 && v < -0.2 ? BELLY : Math.sin(u * 9) * Math.sin(v * 7 + w * 5) > 0.55 ? 0.7 : 1),
+  },
   // a dome on straight sides
   ghost: { n: [6, 6, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15) },
+  // the glitch ghost: the same dome, with scan lines through it
+  phantom: { n: [6, 7, 6], inside: (u, v, w) => (v > 0 ? u * u + v * v + w * w <= 1.15 : u * u + w * w <= 1.15), tone: (_u, v) => (Math.floor((v + 1) * 3.5) % 2 === 0 ? 1.35 : 0.8) },
   megaBlock: { n: [10, 9, 10], inside: (u, v, w) => round(u, v, w, 8), tone: (u, v, w) => (Math.abs(u) > 0.7 && Math.abs(w) > 0.7 ? 0.7 : Math.abs(v) < 0.12 ? 0.75 : 1) },
   wormSegment: { n: [5, 5, 5], inside: (u, v, w) => round(u, v, w, 3) },
   // long and low: a body, and a flat snout with nostrils; light belly, dark ridges on the back
+  // a crocodile: a long low body that tapers into the tail, a flat upper jaw with eye bumps on top
+  // (the lower jaw is a separate part, so it can open)
   croc: {
-    n: [5, 4, 12],
-    inside: (u, v, w) => (w <= 0.15 ? Math.abs(u) <= (w < -0.7 ? 0.65 : 1) && (v < 0.5 || Math.abs(u) < 0.7) : Math.abs(u) <= 0.65 && (v <= 0.1 || (w > 0.8 && v <= 0.6))),
-    tone: (_u, v, w) => (v < -0.5 ? BELLY : v > 0.5 && Math.floor((w + 1) * 6) % 2 === 0 ? 0.65 : 1),
+    n: [10, 7, 26],
+    inside: (u, v, w) => {
+      if (w <= 0.3) {
+        const wide = 0.62 + 0.38 * Math.min(1, (w + 1) / 0.9);
+        return (u / wide) ** 2 + ((v + 0.15) / (0.8 * wide)) ** 2 <= 1;
+      }
+      const t = (w - 0.3) / 0.7;
+      // the eye bumps sit just behind the snout
+      if (w < 0.55 && Math.abs(Math.abs(u) - 0.42) < 0.17 && v > 0.15 && v < 0.75) return true;
+      return Math.abs(u) <= 0.62 - 0.22 * t && v >= -0.3 && v <= 0.3 - 0.35 * t;
+    },
+    tone: (u, v, w) =>
+      v < -0.45 ? BELLY : w > 0.3 && v > 0.4 && w < 0.55 ? [1.6, 1.5, 0.5] : v > 0.35 && w < 0.3 && Math.floor((w + 1) * 9) % 2 === 0 && Math.abs(u) < 0.35 ? 0.6 : 1,
   },
   // a round head on a small body; a light face and belly
   monkey: {
-    n: [5, 7, 4],
+    n: [8, 11, 6],
     inside: (u, v, w) => (v > 0 ? u * u + ((v - 0.5) / 0.5) ** 2 + w * w <= 1.2 : (u / 0.85) ** 2 + ((v + 0.5) / 0.55) ** 2 + (w / 0.9) ** 2 <= 1.25),
     tone: (u, v, w) => (w > 0.4 && Math.abs(u) < 0.65 && (v > 0.15 ? v < 0.8 : v < -0.1) ? [1.75, 1.6, 1.35] : 1),
   },
   // upright on two legs: a barrel of a body, a big head out in front, a light belly
   trex: {
-    n: [5, 9, 9],
+    n: [8, 14, 14],
     inside: (u, v, w) =>
       v > 0.3
         ? w > -0.05 && Math.abs(u) <= 0.85 && (v < 0.95 || w < 0.7) && (w < 0.5 || v > 0.42)

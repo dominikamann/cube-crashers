@@ -8,7 +8,7 @@ import { TICK_RATE, type Intent, type RunMode, type SimState } from '../types';
 import { spawnPoint } from './coop';
 import { setupFloor } from './nests';
 import { enterShaft } from './shaft';
-import { buy, shopDone } from './shop';
+import { buy, openShop, shopDone } from './shop';
 
 /** points for every floor cleared in a run */
 export const FLOOR_BONUS = 1000;
@@ -23,17 +23,23 @@ export function initRun(s: SimState, mode: RunMode, floors: string[]): void {
 export const INTERMISSIONS: ('race' | 'lane' | 'maze' | 'shaft')[] = ['race', 'lane', 'maze', 'shaft'];
 
 export function floorCleared(s: SimState): void {
-  const last = s.run.mode !== 'run' || s.run.floor >= s.run.floors.length - 1;
+  const multi = s.run.mode === 'run' || s.run.mode === 'bossrush';
+  const last = !multi || s.run.floor >= s.run.floors.length - 1;
   const seconds = s.tick / TICK_RATE;
   if (last) {
     s.score += s.credits * CREDIT_BONUS + Math.round(Math.max(0, PAR_SECONDS - seconds) * TIME_BONUS_PER_SECOND);
-    if (s.run.mode === 'run') s.score += FLOOR_BONUS;
+    if (multi) s.score += FLOOR_BONUS;
     s.phase = 'won';
     s.events.push({ type: 'gameWon', score: s.score });
     return;
   }
   s.score += FLOOR_BONUS;
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
+  // Boss Rush: no games in between, just the shop before the next boss
+  if (s.run.mode === 'bossrush') {
+    openShop(s);
+    return;
+  }
   // between floors: a different game each time (the shaft ride where nothing else is planned yet)
   const next = INTERMISSIONS[s.run.floor];
   if (next === 'race') enterRace(s);

@@ -22,7 +22,7 @@ import {
   START_CLEAR_RADIUS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
-import { floorDef } from '../config/floors';
+import { BOSS_RUSH, floorDef } from '../config/floors';
 import { BLOCKS_WALKER, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
@@ -57,9 +57,11 @@ function shuffled<T>(s: SimState, list: T[]): T[] {
 
 /** Roaming horde mixes get nastier as the alarm rises. */
 function roamingComp(s: SimState, scale = 1): HordeComp {
-  const names = ['blobSwarm', 'hunterPack', 'mixed', 'shieldWall', 'boomSquad', 'ramCrew', 'shieldLine', 'fieldMedic', 'blinkers'];
+  const names = ['blobSwarm', 'hunterPack', 'mixed', 'shieldWall', 'boomSquad', 'ramCrew', 'shieldLine', 'fieldMedic', 'blinkers', 'haunting'];
   // the big ones only show up once the alarm has risen
-  if (s.alarm.level >= 2) names.push('jungle');
+  // the jungle is home to the crocodiles and monkeys: they turn up there from the start
+  if (s.alarm.level >= 2 || s.map.id === 'jungle') names.push('jungle');
+  if (s.map.id === 'jungle') names.push('jungle');
   if (s.alarm.level >= 3) names.push('rexHunt');
   const factor = (1 + ALARM_SIZE_STEP * s.alarm.level) * scale;
   return HORDE_COMPS[s.rng.pick(names)].map(g => ({ kind: g.kind, count: Math.ceil(g.count * factor) }));
@@ -111,11 +113,13 @@ export function setupFloor(s: SimState): void {
     enterRace(s);
     return;
   }
-  if (def?.kind === 'boss') {
+  // Boss Rush: every floor is a boss fight, whatever map it is on
+  const rushBoss = s.run.mode === 'bossrush' ? BOSS_RUSH[s.run.floor]?.boss : undefined;
+  if (def?.kind === 'boss' || rushBoss) {
     // a boss floor: no nests, no rising alarm, just the boss and a few helpers
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     s.nests = [];
-    spawnBoss(s, def.boss!);
+    spawnBoss(s, rushBoss ?? def!.boss!);
     placeStartCrates(s);
     placeStartKarts(s);
     s.nextPowerupAt = s.tick + POWERUP.firstTicks;

@@ -3,7 +3,7 @@ import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
-import { PLAYER_COLORS } from '../render/actors';
+import { cssColor, playerColor } from '../render/palette';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
 import { ALL_RARE } from '../sim/config/rare';
@@ -13,6 +13,7 @@ import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
+import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
 export interface Settings {
   music: number;
@@ -21,6 +22,8 @@ export interface Settings {
   difficulty: Difficulty;
   /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
+  /** first person: how fast the mouse (or touchpad) turns the view */
+  mouseSensitivity: number;
   graphics: GraphicsQuality;
   damageNumbers: boolean;
   /** versus: watch the last seconds again when you are knocked out */
@@ -47,6 +50,10 @@ export interface Settings {
   versusSize: number;
   /** online servers the player added by address (host:port) */
   servers: string[];
+  /** which key does what (Settings → Controls) */
+  bindings: Bindings;
+  /** colours and shapes that do not rely on telling red from green */
+  colorBlind: boolean;
 }
 
 const TIP_COUNT = 16;
@@ -73,7 +80,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [] };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, mouseSensitivity: 1, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -98,6 +105,9 @@ export function loadSettings(): Settings {
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
+    if (![0.5, 1, 1.5, 2, 3].includes(loaded.mouseSensitivity)) loaded.mouseSensitivity = 1;
+    loaded.bindings = validBindings(loaded.bindings);
+    loaded.colorBlind = loaded.colorBlind === true;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -121,8 +131,8 @@ export function saveSettings(s: Settings): void {
 }
 
 /** Adds a score to the local top 5 of this difficulty and returns the list (highest first). */
-export function recordScore(score: number, difficulty: Difficulty | 'endless'): number[] {
-  let all: Partial<Record<Difficulty | 'endless', number[]>> = {};
+export function recordScore(score: number, difficulty: Difficulty | 'endless' | 'bossrush'): number[] {
+  let all: Partial<Record<Difficulty | 'endless' | 'bossrush', number[]>> = {};
   try {
     const raw = JSON.parse(localStorage.getItem(SCORES_KEY) ?? '{}');
     // version 0.1 kept a single list: it becomes the Medium list
@@ -177,6 +187,8 @@ export interface ScreenActions {
   join(): void;
   /** today's Daily Run */
   daily(): void;
+  /** every boss in a row */
+  bossRush(): void;
   /** the online server list; missing where only the desktop app can go online */
   online?: () => void;
   resume(): void;
@@ -250,7 +262,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   root.append(layer);
   let back: () => void = () => {};
 
+  /** set while the Controls page waits for a key: called when the page goes away */
+  let stopListening: (() => void) | null = null;
+
   function show(cls: string, build: (screen: HTMLElement) => void) {
+    stopListening?.();
     layer.innerHTML = '';
     const screen = document.createElement('div');
     screen.className = `screen ${cls}`;
@@ -298,7 +314,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (k in TOWERS) return t(`tower.${k}` as 'tower.laser');
     return t(`source.${k}` as 'source.stomp');
   };
-  const hex = (c: number) => `#${PLAYER_COLORS[c % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`;
+  const hex = (c: number) => cssColor(playerColor(c));
 
   function changed() {
     saveSettings(settings);
@@ -473,10 +489,22 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
 
       section(t('settings.gameplay'));
+      const keys = row(t('settings.keys'));
+      const change = document.createElement('button');
+      change.className = 'chip small';
+      change.textContent = `${t('settings.changeKeys')} ›`;
+      change.addEventListener('click', () => {
+        actions.click();
+        controlsScreen();
+      });
+      keys.append(change);
+      chips(t('settings.mouse'), [0.5, 1, 1.5, 2, 3].map(v => ({ label: `${v}×`, value: v })), () => settings.mouseSensitivity, v => (settings.mouseSensitivity = v));
       chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
       chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
+      chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
+      text(card, 'div', 'settings-note', t('settings.colorBlindHint'));
 
       section(t('settings.player'));
       const input = document.createElement('input');
@@ -517,10 +545,99 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
+  /** one row per action with its key: click it, then press the new key */
+  function controlsScreen() {
+    show('settings controls', s => {
+      text(s, 'h2', '', t('controls.title'));
+      text(s, 'p', 'controls-hint', t('controls.hint'));
+      const grid = document.createElement('div');
+      grid.className = 'controls-grid';
+      s.append(grid);
+      const notice = text(s, 'p', 'controls-notice', '');
+      const say = (msg: string) => {
+        notice.textContent = msg;
+        notice.classList.remove('pop');
+        void notice.offsetWidth;
+        notice.classList.add('pop');
+      };
+      const buttons = new Map<Action, HTMLButtonElement>();
+      let listening: Action | null = null;
+      const draw = () => {
+        for (const [a, b] of buttons) {
+          b.textContent = a === listening ? t('controls.press') : keyLabel(settings.bindings[a]);
+          b.classList.toggle('listening', a === listening);
+        }
+      };
+      const stop = () => {
+        removeEventListener('keydown', onKey, true);
+        listening = null;
+        stopListening = null;
+        draw();
+      };
+      // capture on the window: runs before the game's own key handler, which never sees the key
+      const onKey = (e: KeyboardEvent) => {
+        if (!listening) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.repeat) return;
+        const action = listening;
+        if (e.code === 'Escape') return stop();
+        if (!canBind(e.code)) return say(t('controls.reserved', { key: keyLabel(e.code) }));
+        const r = assignKey(settings.bindings, action, e.code);
+        settings.bindings = r.bindings;
+        changed();
+        const name = (a: Action) => t(`action.${a}` as 'action.up');
+        say(r.swapped ? t('controls.swapped', { a: name(action), b: name(r.swapped) }) : t('controls.set', { a: name(action), key: keyLabel(e.code) }));
+        stop();
+        buttons.get(action)?.focus();
+      };
+      const listen = (a: Action) => {
+        if (!listening) addEventListener('keydown', onKey, true);
+        listening = a;
+        stopListening = stop;
+        draw();
+      };
+      for (const a of ACTIONS) {
+        const row = document.createElement('div');
+        row.className = 'controls-row';
+        text(row, 'span', 'controls-action', t(`action.${a}` as 'action.up'));
+        const b = document.createElement('button');
+        b.className = 'chip small key-chip';
+        b.addEventListener('click', () => {
+          actions.click();
+          if (listening === a) stop();
+          else listen(a);
+        });
+        buttons.set(a, b);
+        row.append(b);
+        grid.append(row);
+      }
+      // pause is not for changing: Escape must always get you out
+      const pauseRow = document.createElement('div');
+      pauseRow.className = 'controls-row';
+      text(pauseRow, 'span', 'controls-action', t('controls.pause'));
+      text(pauseRow, 'span', 'chip small key-chip fixed', 'Esc / P');
+      grid.append(pauseRow);
+      draw();
+      text(s, 'p', 'controls-help', t('controls.fixed'));
+      const foot = document.createElement('div');
+      foot.className = 'row2';
+      s.append(foot);
+      button(foot, t('controls.reset'), () => {
+        if (listening) stop();
+        settings.bindings = { ...DEFAULT_BINDINGS };
+        changed();
+        draw();
+        say(t('controls.resetDone'));
+      });
+      button(foot, t('menu.back'), () => settingsScreen(), true);
+    });
+  }
+
   /** arenas for versus: the floors with room to fight */
   const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
   /** maps for "Single floor": the floors of the tower in their order */
-  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
+  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'jungle', 'servers', 'underwater', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
   function lanScreen() {
     show('', s => {
@@ -636,6 +753,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const b = button(box, t('daily.play'), actions.daily);
         b.classList.add('small');
         s.append(box);
+        // the Boss Rush: every boss in a row
+        const rush = document.createElement('div');
+        rush.className = 'daily-box rush-box';
+        text(rush, 'div', 'setup-label', t('bossrush.title'));
+        text(rush, 'p', 'mode-hint', t('bossrush.sub'));
+        const rb = button(rush, t('bossrush.play'), actions.bossRush);
+        rb.classList.add('small');
+        s.append(rush);
       }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
@@ -708,7 +833,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     result(won, r, again) {
       show('result', s => {
         // a won Tower Run gets its own headline: the whole tower is done
-        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : t(won ? 'won.title' : 'lost.title'));
+        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && r.mode === 'bossrush' ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
         text(s, 'h2', '', title);
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');

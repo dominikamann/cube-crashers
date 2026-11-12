@@ -10,9 +10,10 @@ import { KART } from '../sim/systems/vehicles';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
 import type { Theme } from './theme';
+import { NORMAL, palette, playerColor } from './palette';
 
-/** suit colours of the up to six players (also used by the HUD and minimap) */
-export const PLAYER_COLORS = [0x3d8bfd, 0xff5a5f, 0x3bd16f, 0xffb020, 0xb15cff, 0x2bd4d4, 0xff6fd8, 0xe8e8f0, 0xb8e04a, 0xb0703c];
+/** the normal suit colours; playerColor() gives the ones shown right now (colour-blind mode changes some) */
+export const PLAYER_COLORS = NORMAL.players;
 
 export interface Actors {
   /** `localIds`: the players on this screen (two in split screen) */
@@ -30,7 +31,8 @@ export interface Actors {
 function makePlayer(color: number) {
   const root = new THREE.Group();
   const body = new THREE.Group();
-  const hue = PLAYER_COLORS[color % PLAYER_COLORS.length];
+  const pal = palette();
+  const hue = playerColor(color);
   const suit = lambert(hue);
   const trim = lambert(new THREE.Color(hue).lerp(new THREE.Color(0xffffff), 0.45).getHex());
   const skin = lambert(0xffd2a8);
@@ -82,7 +84,7 @@ function makePlayer(color: number) {
   const sword = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 20, 1, -Math.PI * 0.18, Math.PI * 0.36).rotateX(-Math.PI / 2), swordMat);
   sword.visible = false;
   root.add(sword);
-  // the fly swatter: a paddle on a handle that comes down in front of you, flat on the ground
+  // the fly swatter: a paddle on a handle, held upright and swung sideways across the front
   const swatter = new THREE.Group();
   const paddle = new THREE.Group();
   const mesh = lambert(0x3bd16f);
@@ -111,7 +113,15 @@ function makePlayer(color: number) {
   glint.position.y = 0.05;
   glint.visible = false;
   root.add(glint);
-  return { color, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
+  // colour-blind mode marks the teams by shape too: a triangle (▲) for team 0, a ball (●) for team 1
+  const marks = [new THREE.ConeGeometry(0.26, 0.4, 3), new THREE.SphereGeometry(0.2, 12, 8)].map((g, team) => {
+    const m = new THREE.Mesh(g, glowMat(pal.teams[team], 1.6));
+    m.position.y = 2.55;
+    m.visible = false;
+    root.add(m);
+    return m;
+  });
+  return { color, pal, marks, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
 }
 
 const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
@@ -202,6 +212,35 @@ function makeKart(kind: VehicleKind = 'kart') {
     body.add(drum, box(1.3, 0.6, 1.2, lambert(0xffb020), 0, 0.6, 0.45), box(0.9, 0.6, 0.7, lambert(0x333344), 0, 1.2, 0.55), box(0.35, 0.2, 0.25, glowMat(0xffe14a, 2), 0, 0.95, 1.08));
     root.add(body);
     return { root, body, yaw: 0 };
+  }
+  if (kind === 'unicorn') {
+    // a white voxel unicorn: golden horn, a mane and a tail in rainbow colours, four legs that gallop
+    const coat = lambert(0xf6f4ff), hoof = lambert(0xc9b8ff);
+    body.add(box(0.62, 0.55, 1.25, coat, 0, 0.95, 0.05));
+    body.add(box(0.36, 0.5, 0.36, coat, 0, 1.3, -0.55), box(0.38, 0.36, 0.6, coat, 0, 1.55, -0.78), box(0.28, 0.2, 0.2, lambert(0xffc8e0), 0, 1.47, -1.07));
+    body.add(box(0.08, 0.08, 0.04, lambert(0x2a2a50), -0.16, 1.62, -0.96), box(0.08, 0.08, 0.04, lambert(0x2a2a50), 0.16, 1.62, -0.96));
+    body.add(box(0.07, 0.14, 0.07, coat, -0.12, 1.79, -0.62), box(0.07, 0.14, 0.07, coat, 0.12, 1.79, -0.62));
+    const horn = new THREE.Group();
+    horn.add(box(0.1, 0.1, 0.22, glowMat(0xffd84a, 1.1), 0, 0, 0), box(0.07, 0.07, 0.18, glowMat(0xffe98a, 1.1), 0, 0.02, -0.17), box(0.04, 0.04, 0.12, glowMat(0xfff6c8, 1.2), 0, 0.04, -0.3));
+    horn.position.set(0, 1.78, -0.92);
+    horn.rotation.x = 0.55;
+    body.add(horn);
+    const rainbow = [0xff5a5f, 0xffa23b, 0xffe14a, 0x3bd16f, 0x3d8bfd, 0xb15cff];
+    rainbow.forEach((c, i) => body.add(box(0.12, 0.16, 0.14, lambert(c), 0, 1.68 - i * 0.07, -0.5 + i * 0.13)));
+    const tail = new THREE.Group();
+    rainbow.forEach((c, i) => tail.add(box(0.14, 0.1, 0.12, lambert(c), 0, -i * 0.09, i * 0.06)));
+    tail.position.set(0, 1.08, 0.7);
+    body.add(tail);
+    const legs: THREE.Group[] = [];
+    for (const [x, z] of [[-0.2, -0.42], [0.2, -0.42], [-0.2, 0.48], [0.2, 0.48]]) {
+      const leg = new THREE.Group();
+      leg.add(box(0.16, 0.5, 0.16, coat, 0, -0.25, 0), box(0.18, 0.12, 0.2, hoof, 0, -0.55, 0));
+      leg.position.set(x, 0.72, z);
+      body.add(leg);
+      legs.push(leg);
+    }
+    root.add(body);
+    return { root, body, yaw: 0, legs, tail };
   }
   if (kind === 'hoverboard') {
     // a glowing board floating above the ground
@@ -354,8 +393,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
     let v = players.get(p.id);
-    // a new suit colour (teams): a new model
-    if (v && v.color !== p.color) {
+    // a new suit colour (teams) or colour-blind mode switched: a new model
+    if (v && (v.color !== p.color || v.pal !== palette())) {
       scene.remove(v.root, v.light);
       disposeTree(v.root);
       v = undefined;
@@ -373,11 +412,19 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const fly = p.flying ? 2.5 + Math.sin(time * 6) * 0.1 : 0;
     // landed on top of a wall block with the jetpack
     const perch = p.perched ? wallTop(s.map, p.pos.x, p.pos.z) : 0;
-    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? 0.35 : 0), p.pos.z);
+    // on a unicorn you sit up on its back
+    const mount = driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'unicorn' ? 0.95 : 0.35;
+    v.root.position.set(p.pos.x, perch + jump + fly + (driving ? mount : 0), p.pos.z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying;
     v.flame.scale.set(1, 0.7 + Math.random() * 0.6, 1);
     v.glint.visible = p.rare !== null && !down;
+    const marked = palette().teamMarks && s.versus?.mode === 'team' && p.team !== undefined && !down;
+    v.marks.forEach((m, team) => {
+      m.visible = marked && p.team === team;
+      m.rotation.y = time * 1.5;
+      m.position.y = 2.55 + Math.sin(time * 3) * 0.05;
+    });
     v.glint.rotation.y = time * 3;
     v.glint.scale.setScalar(1 + 0.1 * Math.sin(time * 8));
     v.yaw = Math.atan2(-p.aim.x, -p.aim.z);
@@ -415,11 +462,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (v.swatT < 1) {
       v.swatT = Math.min(1, v.swatT + frameDt / 0.3);
       v.swatter.visible = v.swatT < 1;
-      v.swatter.rotation.y = v.yaw;
-      // up, then down in a third of the time, flat on the ground for the rest
-      const down = Math.min(1, v.swatT / 0.3);
-      v.paddle.rotation.x = 1.5 * (1 - down * down);
-      v.swatter.position.y = 0.85 - 0.75 * down;
+      // a wind-up to the right, then a fast flat sweep across to the left (eased out), the face of the paddle leading
+      const wind = Math.min(1, v.swatT / 0.25);
+      const sweep = v.swatT < 0.25 ? 0 : 1 - (1 - (v.swatT - 0.25) / 0.75) ** 3;
+      v.swatter.rotation.y = v.yaw - 1.0 * wind + 2.2 * sweep;
+      v.paddle.rotation.set(0, 0, Math.PI / 2);
+      v.swatter.position.y = 0.85;
     }
     // a soft light above the head (not inside it), and the suit's own lights kept low: at night a player
     // must not turn into a white blob
@@ -469,6 +517,16 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.root.position.set(k.pos.x, hop, k.pos.z);
     v.root.rotation.y = v.yaw;
     v.body.rotation.x = k.air > 0 ? -0.25 : 0;
+    if ('legs' in v && v.legs) {
+      // a gallop: front and back legs swing in pairs, faster the faster it runs; the tail streams behind
+      const pace = Math.min(1, speed / 8);
+      const step = time * (6 + speed * 1.4);
+      v.legs.forEach((leg, i) => (leg.rotation.x = Math.sin(step + (i < 2 ? 0 : Math.PI) + (i % 2) * 0.6) * 0.8 * pace));
+      v.tail!.rotation.x = 0.4 + pace * 0.8 + Math.sin(time * 9) * 0.1;
+      v.body.position.y = Math.abs(Math.sin(step)) * 0.12 * pace;
+      setGlow(v.root, theme.glow);
+      return;
+    }
     const hover = k.kind === 'hoverboard' ? 0.25 + Math.sin(time * 4 + k.id) * 0.08 : 0;
     v.body.position.y = hover + (k.driverId === null ? Math.sin(time * 3 + k.id) * 0.03 : Math.sin(time * 40) * 0.015 * Math.min(1, speed / 6));
     setGlow(v.root, theme.glow);
@@ -610,6 +668,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       }
       cubes.forEach((c, team) => {
         const f = vs?.flags?.[team];
+        const tc = palette().teams[team];
+        for (const mat of [c.cube.material, c.base.material] as THREE.MeshStandardMaterial[]) if (mat.color.getHex() !== tc) (mat.color.setHex(tc), mat.emissive.setHex(tc));
         c.cube.visible = c.base.visible = !!f;
         if (!f) return;
         const carried = f.carrier !== null;
@@ -631,7 +691,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         r.group.rotation.y = time * 1.5;
         const ready = (p0.weapons[p0.selected]?.cooldown ?? 0) === 0;
         // in split screen the crosshairs wear the suit colours, so nobody aims with the other's
-        r.mat.color.setHex(!ready ? 0xff6b6b : localIds.length > 1 ? PLAYER_COLORS[p0.color % PLAYER_COLORS.length] : 0xffffff);
+        r.mat.color.setHex(!ready ? 0xff6b6b : localIds.length > 1 ? playerColor(p0.color) : 0xffffff);
         r.group.scale.setScalar(ready ? 1 : 0.8);
       });
     },

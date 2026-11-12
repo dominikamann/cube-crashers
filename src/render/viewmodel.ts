@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { SimState, WeaponKind } from '../sim/types';
-import { PLAYER_COLORS } from './actors';
+import { playerColor } from './palette';
 import { box, glowMat, lambert } from './pool';
 
 /**
@@ -29,7 +29,8 @@ function makeModel(kind: Look): THREE.Group {
       g.add(box(0.04, 0.04, 0.5, lambert(0x8a5a2b), 0, 0, -0.2));
       g.add(box(0.36, 0.03, 0.32, lambert(0x3bd16f), 0, 0, -0.6));
       for (const o of [-0.11, 0, 0.11]) g.add(box(0.015, 0.04, 0.32, lambert(0x1f8a44), o, 0, -0.6));
-      g.rotation.x = 0.35;
+      // upright: the face of the paddle points to the side it swings toward
+      g.rotation.set(0.2, 0, Math.PI / 2);
       break;
     case 'pixelRail':
       g.add(box(0.1, 0.1, 0.55, lambert(0x2a2550), 0, 0, -0.15));
@@ -99,8 +100,14 @@ export function createViewModel(): ViewModel {
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
   const hand = new THREE.Group();
-  const suits = PLAYER_COLORS.map(c => lambert(c));
-  const arm = box(0.12, 0.12, 0.5, suits[0], 0.02, -0.08, 0.3);
+  // one material per suit colour shown so far (colour-blind mode adds a few)
+  const suits = new Map<number, THREE.Material>();
+  const suit = (c: number) => {
+    let m = suits.get(c);
+    if (!m) suits.set(c, (m = lambert(c)));
+    return m;
+  };
+  const arm = box(0.12, 0.12, 0.5, suit(playerColor(0)), 0.02, -0.08, 0.3);
   const fist = box(0.12, 0.12, 0.12, lambert(0xffd2a8), 0, -0.06, 0.05);
   hand.add(arm, fist);
   scene.add(hand);
@@ -140,7 +147,7 @@ export function createViewModel(): ViewModel {
         st.kind = kind;
         st.lastCooldown = 0;
       }
-      arm.material = suits[p.color % suits.length];
+      arm.material = suit(playerColor(p.color));
       // a fresh cooldown means a shot: kick back
       const cd = kind === 'rare' ? (p.rare?.cooldown ?? 0) : (w?.cooldown ?? 0);
       if (cd > st.lastCooldown) st.kick = 1;
@@ -160,9 +167,11 @@ export function createViewModel(): ViewModel {
         hand.position.x = 0.3 - Math.sin(Math.PI * t) * 0.25 * (kick > 0 ? 1 : 0);
         if (kick === 0) hand.rotation.set(0, -0.12, 0);
       } else if (kind === 'flySwatter') {
-        // raised, then slammed down
-        hand.rotation.set(kick > 0 ? 1.1 * kick * kick - 0.5 * Math.sin(Math.PI * kick) : 0, -0.12, 0);
-        hand.position.y = -0.3 + bob - (kick > 0 ? Math.sin(Math.PI * kick) * 0.08 : 0);
+        // held upright, then swung flat from the right across to the left
+        const t = 1 - kick;
+        const swinging = kick > 0;
+        hand.rotation.set(0, swinging ? 1.0 - t * 2.2 : -0.12, swinging ? -0.25 * Math.sin(Math.PI * t) : 0);
+        hand.position.x = 0.3 - (swinging ? Math.sin(Math.PI * t) * 0.3 : 0);
       }
       // melee and thrown things have no muzzle
       const shoots = !['laserSword', 'flySwatter', 'bananaMine', 'bomb', 'discoBall', 'joystickBoomerang', 'magnetGlove', 'yoyoLauncher'].includes(kind);

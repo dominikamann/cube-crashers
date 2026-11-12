@@ -1,5 +1,5 @@
 import { Tile } from '../sim/map/tilemap';
-import { PLAYER_COLORS } from '../render/actors';
+import { cssColor, palette, playerColor } from '../render/palette';
 import type { SimState } from '../sim/types';
 
 const SCALE = 2.5;
@@ -77,10 +77,29 @@ export function createMinimap(parent: HTMLElement): Minimap {
         dot(n.pos.x, n.pos.z, 7 * pulse, '#ff2bd6');
       }
       if (!s.elevatorOpen || blink) dot(s.map.elevator.x, s.map.elevator.z, 7, s.elevatorOpen ? '#2bf0ff' : '#5a7a88');
+      // colour-blind mode in a team game: team 0 is a triangle, team 1 a round dot, as over their heads
+      const shapes = palette().teamMarks && s.versus?.mode === 'team';
       for (const p of s.players) {
         const me = p.id === localId;
+        const color = me ? '#ffffff' : cssColor(playerColor(p.color));
+        if (shapes && p.team !== undefined) {
+          const x = p.pos.x * SCALE, z = p.pos.z * SCALE, r = me ? 6 : 5;
+          ctx.beginPath();
+          if (p.team === 0) {
+            ctx.moveTo(x, z - r);
+            ctx.lineTo(x + r, z + r * 0.8);
+            ctx.lineTo(x - r, z + r * 0.8);
+            ctx.closePath();
+          } else ctx.arc(x, z, r * 0.8, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.strokeStyle = '#1b1440';
+          ctx.lineWidth = 1.5;
+          ctx.fill();
+          ctx.stroke();
+          continue;
+        }
         dot(p.pos.x, p.pos.z, me ? 9 : 7, '#1b1440');
-        dot(p.pos.x, p.pos.z, me ? 6 : 4, me ? '#ffffff' : `#${PLAYER_COLORS[p.color].toString(16).padStart(6, '0')}`);
+        dot(p.pos.x, p.pos.z, me ? 6 : 4, color);
       }
     },
   };

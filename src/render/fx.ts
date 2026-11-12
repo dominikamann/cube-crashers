@@ -27,6 +27,9 @@ interface Beam {
 
 const MAX_PARTICLES = 3000;
 
+/** the colours of the unicorn's trail */
+const RAINBOW = [0xff5a5f, 0xffa23b, 0xffe14a, 0x3bd16f, 0x3d8bfd, 0xb15cff];
+
 export const POWERUP_COLOR: Record<PowerupKind, number> = {
   magnet: 0xff4d6d,
   rapid: 0xffe14a,
@@ -148,6 +151,11 @@ export function createFx(scene: THREE.Scene): Fx {
 
   return {
     update(s, events, theme, dt, time) {
+      // a galloping unicorn leaves a rainbow behind it
+      for (const v of s.vehicles) {
+        if (v.kind !== 'unicorn' || Math.hypot(v.vel.x, v.vel.z) < 3 || Math.floor(time * 30) % 2 !== 0) continue;
+        burst({ x: v.pos.x - v.vel.x * 0.06, z: v.pos.z - v.vel.z * 0.06 }, 0.5, 2, RAINBOW, 0.6, 0.11, 0.2);
+      }
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {
@@ -282,11 +290,11 @@ export function createFx(scene: THREE.Scene): Fx {
             break;
           case 'shot':
             if (e.weapon === 'flySwatter') {
-              // KLATSCH: a shock ring where the paddle lands, and a jolt
+              // KLATSCH: a sweep of green bits across the front, and a jolt
               const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
               const at = who ? { x: e.pos.x + who.aim.x * 1.25, z: e.pos.z + who.aim.z * 1.25 } : e.pos;
-              ring(at, 1.1, [0x3bd16f, 0xffffff]);
-              burst(at, 0.2, 10, [0x3bd16f, 0xb8ffcf], 3, 0.1, 0.6);
+              const side = who ? { x: -who.aim.z, z: who.aim.x } : { x: 1, z: 0 };
+              for (const k of [-0.8, 0, 0.8]) burst({ x: at.x + side.x * k, z: at.z + side.z * k }, 0.85, 4, [0x3bd16f, 0xb8ffcf, 0xffffff], 3, 0.09, 0.3);
               addShake(0.12);
             }
             if (e.weapon === 'discoBall') {

@@ -4,6 +4,7 @@ import { padAt } from '../sim/systems/towers';
 import type { SimState } from '../sim/types';
 import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
+import { COLOR_BLIND, isColorBlind, NORMAL } from './palette';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
 import { MAZE_CUBES } from '../sim/config/floor-maze';
@@ -136,7 +137,7 @@ function boostTexture(): THREE.CanvasTexture {
 }
 
 /** glitch floor: flickering magenta pixels with a crossed-out monster on every tile – monsters cannot cross it */
-function glitchTexture(): THREE.CanvasTexture {
+function glitchTexture(sign: string, bold: boolean): THREE.CanvasTexture {
   return canvasTexture(32, 32, g => {
     const shades = ['#2a0636', '#4a0c5a', '#7a1388', '#5a1270', '#3a0a46'];
     for (let y = 0; y < 32; y += 2) {
@@ -156,9 +157,9 @@ function glitchTexture(): THREE.CanvasTexture {
     g.fillStyle = '#2a0636';
     g.fillRect(13, 12, 2, 3);
     g.fillRect(17, 12, 2, 3);
-    // red "no" sign over it
-    g.strokeStyle = '#ff2a4a';
-    g.lineWidth = 2.5;
+    // a "no" sign over it: red, or in colour-blind mode a thicker yellow one that reads by brightness
+    g.strokeStyle = sign;
+    g.lineWidth = bold ? 3.5 : 2.5;
     g.beginPath();
     g.arc(16, 15, 10, 0, Math.PI * 2);
     g.stroke();
@@ -474,7 +475,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.LowWall, [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
 
   // ---- glitch floor and boost tiles
-  const glitchTex = glitchTexture();
+  const glitchTex = glitchTexture(NORMAL.glitchSign, false);
+  const glitchTexCb = glitchTexture(COLOR_BLIND.glitchSign, true);
   const glitchMat = glowMat(0xffffff, 0.6);
   glitchMat.map = glitchTex;
   glitchMat.emissiveMap = glitchTex;
@@ -484,7 +486,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   boostMat.map = boostTex;
   boostMat.emissiveMap = boostTex;
   layer(t => t === Tile.Boost, boostMat, 0.42, -0.4, false);
-  disposables.push(glitchTex, boostTex);
+  disposables.push(glitchTex, glitchTexCb, boostTex);
 
   // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction
   const beltTex = canvasTexture(32, 32, g => {
@@ -784,6 +786,11 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         });
       }
       const glow = Math.min(theme.glow, 1.4);
+      const wantGlitch = isColorBlind() ? glitchTexCb : glitchTex;
+      if (glitchMat.map !== wantGlitch) {
+        glitchMat.map = glitchMat.emissiveMap = wantGlitch;
+        glitchMat.needsUpdate = true;
+      }
       glitchMat.emissiveIntensity = (0.55 + 0.25 * Math.sin(time * 5)) * glow;
       // glitchy flicker: now and then a short bright burst
       const step = Math.floor(time * 10);

@@ -86,6 +86,8 @@ export const CROC = { range: 5.5, windupTicks: 32, speed: 12, distance: 5.5, dam
 export const MONKEY = { min: 4, max: 7, throwRange: 9, windupTicks: 30, cooldownTicks: 170, flightTicks: 50, radius: 1.5, damage: 22 };
 /** the T-Rex roars when a player is within `range`, then its stomp hurts everything within `radius` */
 export const TREX = { range: 3.2, windupTicks: 40, cooldownTicks: 200, radius: 3, damage: 30, tower: 30 };
+/** the shark's lunge: longer and faster than the crocodile's */
+export const SHARK = { range: 7, windupTicks: 30, speed: 15, distance: 7, damage: 24, towerDamage: 20, stunTicks: 45, hitStunTicks: 40, cooldownTicks: 140 };
 export const ENEMY_CAP = 160;
 
 export const ALARM_MAX = 5;

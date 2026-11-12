@@ -134,20 +134,35 @@ describe('the T-Rex', () => {
   });
 });
 
+describe('the Glitch Ghost', () => {
+  it('walks straight through walls toward the nearest player', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    // a wall between them: north of the start on the plaza there is a block
+    const e = spawnEnemy(s, 'phantom', { x: p.pos.x, z: p.pos.z - 9 });
+    const start = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+    run(s, 120);
+    const now = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+    expect(now).toBeLessThan(start - 3);
+    // it went the straight way, not round
+    expect(Math.abs(e.pos.x - p.pos.x)).toBeLessThan(0.6);
+  });
+});
+
 describe('the new monsters show up', () => {
   it('in roaming hordes', () => {
     const kinds = new Set(Object.values(HORDE_COMPS).flat().map(g => g.kind));
-    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
+    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex', 'phantom'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
   });
 
   it('in the Lane Defense waves', () => {
     const kinds = new Set(Array.from({ length: 20 }, (_, n) => laneWave(n)).flat());
-    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
+    for (const k of ['shielder', 'healer', 'teleporter', 'croc', 'monkey', 'trex', 'phantom'] as EnemyKind[]) expect(kinds.has(k)).toBe(true);
   });
 
   it('on a LAN client too (and the maze ghosts as well)', () => {
     const s = quietSim();
-    const kinds: EnemyKind[] = ['shielder', 'healer', 'teleporter', 'ghost', 'croc', 'monkey', 'trex'];
+    const kinds: EnemyKind[] = ['shielder', 'healer', 'teleporter', 'ghost', 'croc', 'monkey', 'trex', 'phantom'];
     for (const [i, k] of kinds.entries()) spawnEnemy(s, k, rel(s.players[0].pos, i, -5));
     const client = quietSim();
     const snap = JSON.parse(serializeSnapshot(s, []));
