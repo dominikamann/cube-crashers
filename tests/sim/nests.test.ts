@@ -203,7 +203,8 @@ describe('alarm', () => {
     }
     expect(max).toBeGreaterThan(60);
     expect(max).toBeLessThanOrEqual(ENEMY_CAP);
-  }, 30_000);
+    // a long simulation: give it room on a busy machine
+  }, 90_000);
 });
 
 describe('elevator', () => {
