@@ -1,4 +1,5 @@
 import { APP_VERSION } from '../version';
+import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
@@ -159,6 +160,8 @@ export interface RunSummary {
   floors: number;
   /** versus: who won, shown as the headline */
   headline?: string;
+  /** a Daily Run: its date */
+  daily?: string;
   /** one row per player, best first */
   ranking: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number; bestWeapon: string | null; coins: number; towers: number }[];
 }
@@ -170,6 +173,8 @@ export interface ScreenActions {
   versus(): void;
   host(): void;
   join(): void;
+  /** today's Daily Run */
+  daily(): void;
   /** the online server list; missing where only the desktop app can go online */
   online?: () => void;
   resume(): void;
@@ -611,6 +616,24 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       if (mode === 'versus' && settings.localPlayers === 2 && settings.versusRule !== 'gungame' && (settings.versusMode === 'team' || settings.versusRule === 'capture')) {
         choose(t('setup.split'), [{ label: t('setup.together'), value: true }, { label: t('setup.against'), value: false }], settings.splitTogether, v => (settings.splitTogether = v));
       }
+      if (mode === 'run') {
+        // the Daily Run: same seed for everyone today, its own best list
+        const date = dailyDate(new Date());
+        const box = document.createElement('div');
+        box.className = 'daily-box';
+        text(box, 'div', 'setup-label', t('daily.title'));
+        text(box, 'p', 'mode-hint', t('daily.sub', { date }));
+        let best: number[] = [];
+        try {
+          best = dailyBest(localStorage, date);
+        } catch {
+          // storage unavailable
+        }
+        text(box, 'p', 'daily-best', best.length ? t('daily.best', { list: best.join(' · ') }) : t('daily.none'));
+        const b = button(box, t('daily.play'), actions.daily);
+        b.classList.add('small');
+        s.append(box);
+      }
       const start = { run: actions.play, quick: actions.quick, versus: actions.versus, endless: actions.endless }[mode];
       const row = document.createElement('div');
       row.className = 'row2';
@@ -687,6 +710,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         if (!won) text(s, 'p', '', t('lost.subtitle'));
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
         const versus = r.mode === 'versus';
+        if (r.daily) text(s, 'p', 'daily-best', t('daily.result', { date: r.daily }));
         if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors })}` : ''}`);
         if (versus) text(s, 'p', '', t('result.time', { time: `${m}:${sec}` }));
         else text(s, 'div', 'bigscore', t('result.score', { score: r.score }));

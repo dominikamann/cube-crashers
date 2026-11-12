@@ -28,6 +28,7 @@ import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, ty
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createEmotes } from './ui/emotes';
+import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
 import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
@@ -258,6 +259,7 @@ function startGame() {
     app,
     {
       play: () => newSoloGame('run'),
+      daily: () => newSoloGame('run', true),
       quick: () => newSoloGame('quick'),
       endless: () => newSoloGame('endless'),
       versus: () => newVersusGame(),
@@ -468,7 +470,8 @@ function startGame() {
       credits: s.credits,
       nestsDestroyed: s.nests.filter(n => n.state === 'destroyed').length,
       nests: s.nests.length,
-      best: recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.difficulty),
+      best: dailyRun ? recordDaily(localStorage, dailyRun, s.score) : recordScore(s.score, s.run.mode === 'endless' ? 'endless' : s.difficulty),
+      daily: dailyRun ?? undefined,
       tickets: earnTickets(s),
       unlocked: newUnlocks,
       won: s.phase === 'won',
@@ -490,7 +493,9 @@ function startGame() {
     // gun game goes on to the next map once someone has made it through the ladder
     const gunNext = s.versus?.rule === 'gungame' ? { mode: 'ffa' as const, rule: 'gungame' as const, map: DISCOVERY_MAPS[(DISCOVERY_MAPS.indexOf(s.map.id) + 1) % DISCOVERY_MAPS.length] } : null;
     const again =
-      role === 'solo' && s.versus && gunNext && !settings.versusDiscovery
+      dailyRun && role === 'solo'
+        ? { label: t('daily.again'), action: () => newSoloGame('run', true) }
+        : role === 'solo' && s.versus && gunNext && !settings.versusDiscovery
         ? { label: t('versus.next', { what: describe(gunNext) }), action: () => ((settings.versusMap = gunNext.map), newVersusGame()) }
         : role === 'solo' && s.versus
         ? { label: settings.versusDiscovery ? t('versus.next', { what: describe(discovery(discoveryStep)) }) : t('menu.playAgain'), action: () => newVersusGame() }
@@ -567,8 +572,11 @@ function startGame() {
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id));
     enterPlay();
   }
-  function newSoloGame(mode: RunMode = lastSoloMode) {
+  /** the date of the Daily Run being played, or null */
+  let dailyRun: string | null = null;
+  function newSoloGame(mode: RunMode = lastSoloMode, daily = false) {
     if (mode === 'versus') return newVersusGame();
+    dailyRun = daily ? dailyDate(new Date()) : null;
     versusBots = [];
     lastSoloMode = mode;
     leaveLan(false);
@@ -579,7 +587,10 @@ function startGame() {
     const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
     // "Single floor" plays the map chosen on the title screen
     const first = mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
-    solo = createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
+    solo = dailyRun
+      ? // the same run for everyone today: fixed seed and difficulty, every weapon
+        createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors })
+      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }

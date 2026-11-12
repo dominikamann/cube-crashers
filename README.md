@@ -64,6 +64,7 @@ Runs on **Windows and macOS**. Free and open source (MIT).
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
 - [The run: five floors, a different game between them, shop, bosses](#the-run-five-floors-a-different-game-between-them-shop-bosses)
+- [Daily Run](#daily-run)
 - [Unlocks and endless mode](#unlocks-and-endless-mode)
 - [Settings and graphics](#settings-and-graphics)
 - [Playing together on the LAN](#playing-together-on-the-lan)
@@ -194,6 +195,12 @@ Between the floors the elevator takes you to a short game of its own, then to th
   fresh. Beat the Segment Worm and take the last elevator to win the run.
 
 ---
+
+## Daily Run
+
+Under **Tower Run** there is a **Daily Run**: once a day the same tower for everyone in the world (same seed, so
+the same floors, crates and rare weapons), on Medium with every weapon unlocked. Your five best scores of the day
+are kept; tomorrow there is a new one. Compare with friends.
 
 ## Unlocks and endless mode
 
@@ -646,7 +653,7 @@ docs/         gameplay GIF and screenshots
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
 - [x] Emotes and pings, for online play
 - [x] Coin-Op Chaos: a versus mode where a random rule changes every 30 seconds
-- [ ] Daily Run: the same seed for everyone each day, with its own best list
+- [x] Daily Run: the same seed for everyone each day, with its own best list
 - [x] New weapons (Bubble Wand, Magnet Glove, Yo-yo Launcher), monsters (Shielder, Healer, Teleporter) and towers (Tesla Coil, Bumper)
 - [ ] Replay of the last seconds (kill cam)
 - [ ] Key rebinding: a Controls page, click an action and press the new key
