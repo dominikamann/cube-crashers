@@ -12,6 +12,7 @@ import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
 import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
+import { nextInDirection } from './input/pad-nav';
 import { createLoop } from './loop';
 import { createLan, type Lan } from './net/lan';
 import { PROTOCOL_VERSION, type LobbyPlayer } from './net/protocol';
@@ -847,15 +848,15 @@ function startGame() {
     if (audio) audio.music.playTrack('menu');
   }
 
-  let padScreen: Element | null = null;
-  let padLockUntil = 0;
-  const PAD_SCREEN_LOCK_MS = 1500;
+  /** when the last game ended: A is ignored for a moment after it, so players still mashing A do not hit "Play again" */
+  let playedUntil = 0;
+  const PAD_AFTER_GAME_MS = 1200;
+  let padFocused: HTMLElement | null = null;
 
-  /** Controller in menus: d-pad or stick moves the focus, A presses, B goes back, Start pauses and resumes. */
+  /** Controller in menus: d-pad or stick moves to the button that way, A presses, B goes back, Start pauses and resumes. */
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
-
-
+    if (mode === 'playing') playedUntil = performance.now();
     const all = readPads();
     if (all.length === 0) return;
     // any controller can pause and steer the menus
@@ -867,25 +868,40 @@ function startGame() {
       else if (mode === 'paused') resume();
       return;
     }
-    if (mode === 'playing') return;
-    // a new screen ignores the pad for a moment: players still mashing A from the game must not hit "Play again"
-    const screen = document.querySelector('.screen');
-    if (screen !== padScreen) {
-      padScreen = screen;
-      padLockUntil = performance.now() + PAD_SCREEN_LOCK_MS;
-    }
-    if (performance.now() < padLockUntil) return;
+    if (mode === 'playing' || !(e.up || e.down || e.left || e.right || e.a || e.b)) return;
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('.screen button:not(:disabled)')].filter(b => b.offsetParent !== null);
     if (buttons.length === 0) return;
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    if (e.up || e.left) buttons[at <= 0 ? buttons.length - 1 : at - 1].focus();
-    if (e.down || e.right) buttons[at < 0 || at >= buttons.length - 1 ? 0 : at + 1].focus();
-    if (e.a) (at >= 0 ? buttons[at] : buttons[0]).click();
+    // the controller's own highlight: the browser hides its focus ring when the mouse was used last
+    const focus = (b: HTMLButtonElement) => {
+      padFocused?.classList.remove('pad-focus');
+      b.focus();
+      b.classList.add('pad-focus');
+      padFocused = b;
+    };
+    const dir = e.up ? 'up' : e.down ? 'down' : e.left ? 'left' : e.right ? 'right' : null;
+    if (dir) {
+      const boxes = buttons.map(b => {
+        const r = b.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      });
+      focus(buttons[nextInDirection(boxes, at, dir)]);
+    }
+    if (e.a) {
+      // nothing chosen yet: the first press only shows where you are
+      if (at < 0) focus(buttons[0]);
+      else if (performance.now() - playedUntil > PAD_AFTER_GAME_MS) buttons[at].click();
+    }
     if (e.b) {
       if (mode === 'paused') resume();
       else buttons.find(b => b.textContent === t('menu.back'))?.click();
     }
   }
+  // the mouse takes over again: drop the controller's highlight
+  addEventListener('pointermove', () => {
+    padFocused?.classList.remove('pad-focus');
+    padFocused = null;
+  });
   requestAnimationFrame(pollPadMenus);
 
   // ?paddebug=1 shows what the browser reports for each controller (name, mapping, sticks, buttons)

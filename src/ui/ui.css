@@ -140,7 +140,7 @@ body.split .build-help { bottom: 86px; font-size: 8px; }
 .screen h2 { font-size: clamp(18px, 3.5vw, 32px); margin: 0; text-align: center; }
 .screen p { font-size: 11px; line-height: 1.8; text-align: center; max-width: 640px; margin: 0; }
 .btn { font-family: inherit; font-size: 14px; color: var(--shadow); background: var(--cyan); border: 3px solid var(--shadow); box-shadow: 0 5px 0 var(--shadow); padding: 14px 26px; min-width: 240px; cursor: pointer; }
-.btn:hover, .btn:focus-visible { background: #fff; outline: none; transform: translateY(-2px); }
+.btn:hover, .btn:focus-visible, .btn.pad-focus { background: #fff; outline: none; transform: translateY(-2px); }
 .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
 .btn.alt { background: var(--gold); }
 .screen.title { justify-content: center; gap: clamp(14px, 3vh, 28px); padding: 16px 16px 72px; overflow-y: auto; }
@@ -168,7 +168,7 @@ body.color-blind .team-wish.red { background: #ff8c1a; color: #1b1440; }
 .tile.main { background: var(--gold); }
 .tile .name { font-size: clamp(13px, 1.5vw, 17px); }
 .tile .sub { font-size: 9px; line-height: 1.6; opacity: 0.8; }
-.tile:hover:not(:disabled), .tile:focus-visible { background: #fff; outline: none; transform: translateY(-3px); }
+.tile:hover:not(:disabled), .tile:focus-visible, .tile.pad-focus { background: #fff; outline: none; transform: translateY(-3px); }
 .tile:disabled { background: #8ab6c4; color: rgba(27, 20, 64, 0.8); cursor: default; }
 .screen.setup { gap: 14px; background: rgba(20, 16, 50, 0.78); }
 .setup-body { display: flex; flex-direction: column; gap: 14px; align-items: center; max-width: 880px; }
@@ -199,7 +199,7 @@ body.split .card { width: 110px; }
 .btn.play { font-size: clamp(18px, 2.6vw, 26px); padding: clamp(14px, 2.4vh, 22px) 64px; min-width: 300px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .chip { font-family: inherit; font-size: 11px; color: #fff; background: rgba(20, 16, 50, 0.75); border: 2px solid rgba(255, 255, 255, 0.35); padding: 8px 12px; cursor: pointer; }
-.chip:hover:not(:disabled), .chip:focus-visible { border-color: #fff; outline: none; }
+.chip:hover:not(:disabled), .chip:focus-visible, .chip.pad-focus { border-color: #fff; outline: none; }
 .chip.on { background: var(--cyan); color: var(--shadow); border-color: var(--shadow); text-shadow: none; }
 .chip { text-shadow: none; }
 .chip:disabled { opacity: 0.5; cursor: default; }
@@ -212,9 +212,9 @@ body.split .card { width: 110px; }
 .foot .btn { background: transparent; color: #e8e6ff; border: 0; box-shadow: none; border-radius: 999px; padding: 9px 16px; font-size: 10px; display: flex; align-items: center; gap: 8px; }
 .foot .btn + .btn { margin-left: 2px; }
 .foot .btn .ico { display: inline-flex; opacity: 0.9; }
-.foot .btn:hover, .foot .btn:focus-visible { background: rgba(255, 255, 255, 0.14); color: var(--cyan); transform: none; }
+.foot .btn:hover, .foot .btn:focus-visible, .foot .btn.pad-focus { background: rgba(255, 255, 255, 0.14); color: var(--cyan); transform: none; }
 .foot .btn:active { transform: translateY(1px); box-shadow: none; }
-.foot .btn.quit:hover, .foot .btn.quit:focus-visible { color: #ff7a9a; }
+.foot .btn.quit:hover, .foot .btn.quit:focus-visible, .foot .btn.quit.pad-focus { color: #ff7a9a; }
 .stars { font-size: 40px; letter-spacing: 8px; color: var(--gold); text-shadow: 3px 3px 0 var(--shadow); }
 .stars .off { color: #3a3470; }
 .setting { display: flex; align-items: center; gap: 16px; font-size: 11px; }

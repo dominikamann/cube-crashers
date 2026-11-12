@@ -266,10 +266,16 @@ export class PadControls {
 }
 
 /** Menu navigation edges from a pad: up/down/left/right (d-pad or left stick), A confirm, B back. */
+/** holding a direction in a menu: the first repeat after this long, then one every REPEAT_MS */
+const REPEAT_DELAY_MS = 450;
+const REPEAT_MS = 110;
+
 export class PadMenu {
   private prev = { up: false, down: false, left: false, right: false, a: false, b: false, start: false };
+  /** when the held direction fires next */
+  private repeatAt = { up: 0, down: 0, left: 0, right: 0 };
 
-  read(pad: PadSnapshot): { up: boolean; down: boolean; left: boolean; right: boolean; a: boolean; b: boolean; start: boolean } {
+  read(pad: PadSnapshot, nowMs = performance.now()): { up: boolean; down: boolean; left: boolean; right: boolean; a: boolean; b: boolean; start: boolean } {
     const b = (i: number) => !!pad.buttons[i]?.pressed;
     const ly = pad.axes[1] ?? 0, lx = pad.axes[0] ?? 0;
     const now = {
@@ -290,6 +296,14 @@ export class PadMenu {
       b: now.b && !this.prev.b,
       start: now.start && !this.prev.start,
     };
+    // a direction held down repeats, so long lists can be scrolled through
+    for (const d of ['up', 'down', 'left', 'right'] as const) {
+      if (edges[d]) this.repeatAt[d] = nowMs + REPEAT_DELAY_MS;
+      else if (now[d] && nowMs >= this.repeatAt[d]) {
+        edges[d] = true;
+        this.repeatAt[d] = nowMs + REPEAT_MS;
+      }
+    }
     this.prev = now;
     return edges;
   }
