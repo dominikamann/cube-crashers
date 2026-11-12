@@ -321,6 +321,10 @@ A config file looks like this:
 { "name": "Gun Club", "mode": "gungame", "bots": 6, "view": "fp" }
 ```
 
+**Keep it up to date:** players can only join a server that runs the same version as their game (the list
+says *other version* otherwise). With Docker: `docker pull ghcr.io/dominikamann/cube-crashers-server` and
+restart the container; with Node: download the new `cube-crashers-server.mjs` from the latest release.
+
 To play over the internet, **open the port (TCP 47800) in your router** and forward it to the computer
 running the server. Players on your own network can use its local address.
 
@@ -512,8 +516,8 @@ Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, 
 
 ## Monsters
 
-All monsters are original voxel creatures in the style of old arcade games. Every dangerous attack is
-announced first.
+All monsters are original voxel creatures, built from many small cubes, with feet, arms, tails and wings that
+move. Every dangerous attack is announced first: the eyes glow red, and the ground shows where it will hit.
 
 | Monster | Behaviour | Warning |
 |---|---|---|
@@ -528,6 +532,9 @@ announced first.
 | **Shielder** | Holds a shield in front: shots from the front do little. Get behind it, or throw a bomb or hotdog over it. | Silver shield |
 | **Healer** | Stays back and mends the monsters around it. Take it out first. | Green cross, green sparkles |
 | **Teleporter** | Shimmers, then blinks right next to you. | It flickers before it blinks |
+| **Crocodile** | Heavy and tough. Lunges a short way with a snap of its jaws. | Red lane on the ground |
+| **Monkey** | Keeps its distance and throws coconuts that burst where you stood. | Red ring where it lands |
+| **T-Rex** | The biggest of them all: roars, then stomps everything around it. Shows up once the alarm has risen. | Red ring around it |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
