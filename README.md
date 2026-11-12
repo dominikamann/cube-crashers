@@ -4,17 +4,19 @@
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
 ![Windows and macOS](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-5b8def)
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
-![LAN party](https://img.shields.io/badge/LAN%20party-up%20to%208%20players-ff7a2f)
+![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
-**A fast voxel action game for one to eight players.** Fight your way up a tower, floor by floor. Hordes of
-retro arcade monsters roam a big voxel map and hunt you down. Blow up their glitch nests, hold the zone while
-the horde storms in, build towers at the chokepoints, stomp, dash, fly a jetpack over the walls, or grab a
-Crash Kart and plough through the pixels. Play alone or with up to seven friends on your LAN, together
-against the monsters or against each other in **Versus**: score races, King of the Cube, Capture the Cube,
-Gun Game, from above or in **first person** like a classic shooter.
+**A fast voxel action game for one to ten players.** Fight your way up a tower, floor by floor. Hordes of
+retro arcade monsters (blobs, crocodiles, monkeys, a T-Rex, sharks and more) roam a big voxel map and hunt you
+down. Blow up their glitch nests, hold the zone while the horde storms in, build towers at the chokepoints,
+stomp, dash, fly a jetpack over the walls, ride a Crash Kart or a lucky unicorn. Every run picks its worlds,
+from the Arcade Plaza to the Pixel Jungle, the Server Farm and the Sunken Arcade with the Kraken. Play alone,
+with up to nine friends on your LAN or online, together against the monsters or against each other in
+**Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
+**first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
@@ -124,10 +126,12 @@ See [Development](#development). You need Node.js 20 or newer.
 
 1. Start the game, pick a mode under **Play** and click it:
    - **Tower Run**: the full game over five floors.
-   - **Single floor**: one map of your choice, a short game. Every floor, both bosses and the three
+   - **Single floor**: one map of your choice, a short game. Every world, the bosses and the three
      minigames (Kart Rally, Lane Defense, Glitch Maze) are there to pick.
    - **Versus**: players against players, with bots to fill up (see [Versus](#versus-players-against-players)).
    - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
+   - Under **Tower Run** you also find the **Daily Run** and the **Boss Rush**; **LAN party** and **Online
+     Multiplayer** are next to the tiles.
 
    Set the **difficulty** with the arrows below.
 2. You start next to the elevator at the bottom of the map. The **minimap** (bottom right) shows the
