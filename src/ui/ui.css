@@ -150,6 +150,8 @@ body.split .build-help { bottom: 86px; font-size: 8px; }
 .team-wish { margin-left: auto; }
 .team-wish.red { background: #ff5a5f; color: #fff; }
 .team-wish.blue { background: #3d8bfd; color: #fff; }
+/* colour-blind mode: team 0 is orange (the text names it, with its ▲) */
+body.color-blind .team-wish.red { background: #ff8c1a; color: #1b1440; }
 .team-wish:disabled { opacity: 1; cursor: default; }
 .vote { display: flex; gap: 16px; }
 .vote-card { font-family: inherit; color: var(--ink); background: var(--panel); border: 3px solid var(--cyan); box-shadow: 0 5px 0 var(--shadow); padding: 12px 16px; min-width: 200px; font-size: 11px; line-height: 1.8; cursor: pointer; }
@@ -270,10 +272,12 @@ body.split .card { width: 110px; }
 .tip-box b { color: var(--cyan); margin-right: 8px; }
 .tip-box.fade { opacity: 0; }
 
-.screen.settings { gap: 14px; background: rgba(20, 16, 50, 0.78); }
+.screen.settings { gap: 14px; background: rgba(20, 16, 50, 0.78); justify-content: safe center; overflow-y: auto; }
 .settings-card { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px 22px; width: min(620px, calc(100vw - 32px)); padding: 18px 24px 20px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
 .settings-section { grid-column: 1 / -1; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); padding-top: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding-bottom: 6px; }
 .settings-version { font-size: 11px; color: rgba(255, 255, 255, 0.75); }
+.settings-note { grid-column: 2; margin-top: -8px; font-size: 8px; line-height: 1.6; opacity: 0.7; }
+@media (max-width: 560px) { .settings-note { grid-column: 1; } }
 .settings-section:first-child { padding-top: 0; }
 .settings-label { font-size: 11px; text-align: right; color: var(--cyan); }
 .settings-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -282,6 +286,18 @@ body.split .card { width: 110px; }
 .settings-cell .textfield { width: 220px; }
 .settings-cell.colors .swatch { width: 28px; height: 28px; }
 .screen.settings .controls-help { max-width: 620px; font-size: 9px; line-height: 1.8; opacity: 0.75; }
+/* Settings → Controls: two columns of "action  [key]" rows */
+.controls-hint { max-width: 620px; font-size: 9px; line-height: 1.7; opacity: 0.85; margin: 0; }
+.controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(9, auto); grid-auto-flow: column; gap: 6px 26px; width: min(720px, calc(100vw - 32px)); padding: 14px 20px; border: 2px solid rgba(255, 255, 255, 0.16); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
+.controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.controls-action { font-size: 9px; color: var(--cyan); }
+.chip.key-chip { min-width: 92px; text-align: center; }
+.chip.key-chip.listening { background: var(--gold); color: var(--shadow); border-color: #fff; animation: key-wait 0.8s steps(2) infinite; }
+@keyframes key-wait { 50% { border-color: var(--shadow); } }
+.chip.key-chip.fixed { opacity: 0.55; cursor: default; display: inline-block; }
+.controls-notice { min-height: 14px; margin: 0; font-size: 10px; color: var(--gold); }
+.controls-notice.pop { animation: bump 0.3s; }
+@media (max-width: 560px) { .controls-grid { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }
 @media (max-width: 560px) { .settings-card { grid-template-columns: 1fr; } .settings-label { text-align: left; } }
 
 .credits-thanks { min-height: 1.6em; margin: 2px 0 6px; font-size: 10px; color: var(--gold); }

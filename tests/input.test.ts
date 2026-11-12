@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AUTO_BUILD_MS, Keyboard } from '../src/input/keyboard';
+import { assignKey, DEFAULT_BINDINGS } from '../src/input/bindings';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 
@@ -303,5 +304,80 @@ describe('Keyboard and karts', () => {
     const k = new Keyboard();
     k.keyDown('KeyE', 0);
     expect(k.commands(s, 0, 20)).toContainEqual({ type: 'use', playerId: 0 });
+  });
+});
+
+describe('Keyboard with rebound keys', () => {
+  const rebound = (action: Parameters<typeof assignKey>[1], code: string) => {
+    const k = new Keyboard();
+    k.setBindings(assignKey(DEFAULT_BINDINGS, action, code).bindings);
+    return k;
+  };
+  const types = (k: Keyboard, s = createSim(floor01, 1)) => k.commands(s, 0, 10).map(c => c.type);
+
+  it('jump on J: J jumps, Space no longer does', () => {
+    const k = rebound('jump', 'KeyJ');
+    k.keyDown('Space', 0);
+    expect(types(k)).not.toContain('jump');
+    k.keyUp('Space');
+    k.keyDown('KeyJ', 0);
+    expect(types(k)).toEqual(expect.arrayContaining(['jump', 'fly']));
+  });
+
+  it('use on F opens the build menu on a pad, E does nothing', () => {
+    const k = rebound('use', 'KeyF');
+    const s = onPad();
+    k.keyDown('KeyE', 0);
+    k.commands(s, 0, 10);
+    expect(k.buildMenuOpen).toBe(false);
+    k.keyUp('KeyE', 20);
+    k.keyDown('KeyF', 30);
+    k.commands(s, 0, 40);
+    expect(k.buildMenuOpen).toBe(true);
+  });
+
+  it('walking on IJKL: I walks up, W stands still, the arrows still walk', () => {
+    const k = new Keyboard();
+    k.setBindings({ ...DEFAULT_BINDINGS, up: 'KeyI', left: 'KeyJ', down: 'KeyK', right: 'KeyL' });
+    const move = () => k.commands(createSim(floor01, 1), 0, 10)[0];
+    k.keyDown('KeyW', 0);
+    expect(move()).toEqual({ type: 'move', playerId: 0, dir: { x: 0, z: 0 } });
+    k.keyUp('KeyW');
+    k.keyDown('KeyI', 0);
+    expect(move()).toEqual({ type: 'move', playerId: 0, dir: { x: 0, z: -1 } });
+    k.keyUp('KeyI');
+    k.keyDown('ArrowUp', 0);
+    expect(move()).toEqual({ type: 'move', playerId: 0, dir: { x: 0, z: -1 } });
+  });
+
+  it('a swapped weapon key picks that slot, and the emote bar follows the weapon keys', () => {
+    // weapon 1 and weapon 2 swapped: 2 now selects slot 0
+    const k = rebound('weapon1', 'Digit2');
+    k.keyDown('Digit2', 0);
+    expect(k.commands(createSim(floor01, 1), 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: 0 });
+    k.keyUp('Digit2');
+    const e = rebound('emotes', 'KeyG');
+    e.keyDown('KeyC', 0);
+    expect(e.emoteOpen).toBe(false);
+    e.keyDown('KeyG', 0);
+    expect(e.emoteOpen).toBe(true);
+  });
+
+  it('the rare weapon on R, dash on Ctrl, first person on B', () => {
+    const k = new Keyboard();
+    k.setBindings({ ...DEFAULT_BINDINGS, rare: 'KeyT', dash: 'ControlLeft', view: 'KeyB' });
+    k.keyDown('KeyQ', 0);
+    k.keyDown('ShiftLeft', 0);
+    k.keyDown('KeyV', 0);
+    const before = k.commands(createSim(floor01, 1), 0, 10);
+    expect(before.some(c => c.type === 'select' || c.type === 'dash')).toBe(false);
+    expect(k.firstPerson).toBe(false);
+    k.keyDown('KeyT', 0);
+    k.keyDown('ControlLeft', 0);
+    k.keyDown('KeyB', 0);
+    const after = k.commands(createSim(floor01, 1), 0, 20);
+    expect(after).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
+    expect(after).toContainEqual({ type: 'dash', playerId: 0 });
+    expect(k.firstPerson).toBe(true);
   });
 });

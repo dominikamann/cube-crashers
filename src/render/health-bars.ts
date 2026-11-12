@@ -3,6 +3,7 @@ import type { SimState } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
 import { MONSTER_LIFT } from './monster-parts';
 import { wallTop } from './world';
+import { palette } from './palette';
 
 const MAX_BARS = 400;
 const BAR_H = 0.07;
@@ -63,6 +64,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
     },
     face(camera, hide) {
       right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+      const pal = palette();
       let n = 0;
       for (const b of bars) {
         if (b.playerId !== null && hide.includes(b.playerId)) continue;
@@ -76,7 +78,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
         o.scale.set(Math.max(0.001, b.w * b.frac), BAR_H, 0.03);
         o.updateMatrix();
         fill.setMatrixAt(n, o.matrix);
-        color.setHSL(0.33 * b.frac, 0.85, 0.5);
+        color.setHex(pal.health(b.frac));
         fill.setColorAt(n, color);
         n++;
       }

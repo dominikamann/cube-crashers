@@ -3,7 +3,7 @@ import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
 import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
-import { PLAYER_COLORS } from '../render/actors';
+import { cssColor, playerColor } from '../render/palette';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
 import { ALL_RARE } from '../sim/config/rare';
@@ -13,6 +13,7 @@ import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
+import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
 export interface Settings {
   music: number;
@@ -47,6 +48,10 @@ export interface Settings {
   versusSize: number;
   /** online servers the player added by address (host:port) */
   servers: string[];
+  /** which key does what (Settings → Controls) */
+  bindings: Bindings;
+  /** colours and shapes that do not rely on telling red from green */
+  colorBlind: boolean;
 }
 
 const TIP_COUNT = 16;
@@ -73,7 +78,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [] };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -98,6 +103,8 @@ export function loadSettings(): Settings {
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
+    loaded.bindings = validBindings(loaded.bindings);
+    loaded.colorBlind = loaded.colorBlind === true;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -252,7 +259,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   root.append(layer);
   let back: () => void = () => {};
 
+  /** set while the Controls page waits for a key: called when the page goes away */
+  let stopListening: (() => void) | null = null;
+
   function show(cls: string, build: (screen: HTMLElement) => void) {
+    stopListening?.();
     layer.innerHTML = '';
     const screen = document.createElement('div');
     screen.className = `screen ${cls}`;
@@ -300,7 +311,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (k in TOWERS) return t(`tower.${k}` as 'tower.laser');
     return t(`source.${k}` as 'source.stomp');
   };
-  const hex = (c: number) => `#${PLAYER_COLORS[c % PLAYER_COLORS.length].toString(16).padStart(6, '0')}`;
+  const hex = (c: number) => cssColor(playerColor(c));
 
   function changed() {
     saveSettings(settings);
@@ -475,10 +486,21 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       }
 
       section(t('settings.gameplay'));
+      const keys = row(t('settings.keys'));
+      const change = document.createElement('button');
+      change.className = 'chip small';
+      change.textContent = `${t('settings.changeKeys')} ›`;
+      change.addEventListener('click', () => {
+        actions.click();
+        controlsScreen();
+      });
+      keys.append(change);
       chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
       chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
+      chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
+      text(card, 'div', 'settings-note', t('settings.colorBlindHint'));
 
       section(t('settings.player'));
       const input = document.createElement('input');
@@ -516,6 +538,95 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(row(t('settings.version')), 'span', 'settings-version', `v${APP_VERSION}`);
       text(s, 'p', 'controls-help', t('menu.controls'));
       button(s, t('menu.back'), () => back(), true);
+    });
+  }
+
+  /** one row per action with its key: click it, then press the new key */
+  function controlsScreen() {
+    show('settings controls', s => {
+      text(s, 'h2', '', t('controls.title'));
+      text(s, 'p', 'controls-hint', t('controls.hint'));
+      const grid = document.createElement('div');
+      grid.className = 'controls-grid';
+      s.append(grid);
+      const notice = text(s, 'p', 'controls-notice', '');
+      const say = (msg: string) => {
+        notice.textContent = msg;
+        notice.classList.remove('pop');
+        void notice.offsetWidth;
+        notice.classList.add('pop');
+      };
+      const buttons = new Map<Action, HTMLButtonElement>();
+      let listening: Action | null = null;
+      const draw = () => {
+        for (const [a, b] of buttons) {
+          b.textContent = a === listening ? t('controls.press') : keyLabel(settings.bindings[a]);
+          b.classList.toggle('listening', a === listening);
+        }
+      };
+      const stop = () => {
+        removeEventListener('keydown', onKey, true);
+        listening = null;
+        stopListening = null;
+        draw();
+      };
+      // capture on the window: runs before the game's own key handler, which never sees the key
+      const onKey = (e: KeyboardEvent) => {
+        if (!listening) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.repeat) return;
+        const action = listening;
+        if (e.code === 'Escape') return stop();
+        if (!canBind(e.code)) return say(t('controls.reserved', { key: keyLabel(e.code) }));
+        const r = assignKey(settings.bindings, action, e.code);
+        settings.bindings = r.bindings;
+        changed();
+        const name = (a: Action) => t(`action.${a}` as 'action.up');
+        say(r.swapped ? t('controls.swapped', { a: name(action), b: name(r.swapped) }) : t('controls.set', { a: name(action), key: keyLabel(e.code) }));
+        stop();
+        buttons.get(action)?.focus();
+      };
+      const listen = (a: Action) => {
+        if (!listening) addEventListener('keydown', onKey, true);
+        listening = a;
+        stopListening = stop;
+        draw();
+      };
+      for (const a of ACTIONS) {
+        const row = document.createElement('div');
+        row.className = 'controls-row';
+        text(row, 'span', 'controls-action', t(`action.${a}` as 'action.up'));
+        const b = document.createElement('button');
+        b.className = 'chip small key-chip';
+        b.addEventListener('click', () => {
+          actions.click();
+          if (listening === a) stop();
+          else listen(a);
+        });
+        buttons.set(a, b);
+        row.append(b);
+        grid.append(row);
+      }
+      // pause is not for changing: Escape must always get you out
+      const pauseRow = document.createElement('div');
+      pauseRow.className = 'controls-row';
+      text(pauseRow, 'span', 'controls-action', t('controls.pause'));
+      text(pauseRow, 'span', 'chip small key-chip fixed', 'Esc / P');
+      grid.append(pauseRow);
+      draw();
+      text(s, 'p', 'controls-help', t('controls.fixed'));
+      const foot = document.createElement('div');
+      foot.className = 'row2';
+      s.append(foot);
+      button(foot, t('controls.reset'), () => {
+        if (listening) stop();
+        settings.bindings = { ...DEFAULT_BINDINGS };
+        changed();
+        draw();
+        say(t('controls.resetDone'));
+      });
+      button(foot, t('menu.back'), () => settingsScreen(), true);
     });
   }
 
