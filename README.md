@@ -189,7 +189,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Kart Rally:** everyone sits in their own kart (no getting out, and it cannot be wrecked) on a race track with a
   jump, boost pads, an S-bend and a narrow canyon. **The first to drive five laps wins**, and the race ends right
   then. Laps only count through every checkpoint in order. Ram or shoot the monsters on the track. Alone you drive
-  for a medal by your time (gold within 2:30, silver within 3:30, bronze within 6:00).
+  for a medal by your time (gold within 1:20, silver within 1:45, bronze within 2:30).
 - **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.
@@ -538,7 +538,7 @@ Lies somewhere on the map now and then. Pick it up and **hold Space** to fly ove
 monsters. The tank lasts about 5 seconds of flight and fills up again on the ground; you keep the jetpack
 for the rest of the floor.
 
-Let go of Space above a block inside the arena and you **land on top of it**: monsters cannot reach you up
+Let go of Space and you sink gently back down. Above a block inside the arena you **land on top of it**: monsters cannot reach you up
 there and the tank fills up again. Walk off the edge to drop down. Shots still hit you, so in versus it is a
 breather, not a fortress. (The outer walls of the map do not count.)
 
