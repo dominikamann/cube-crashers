@@ -141,10 +141,14 @@ export class Keyboard {
   }
 
   /** mouse movement while the pointer is captured (first person): turns the view */
+  /** how fast the mouse turns the view in first person (1 = normal; a touchpad wants more) */
+  mouseSensitivity = 1;
+
   look(dx: number, dy: number): void {
     if (!this.firstPerson) return;
-    this.yaw -= dx * MOUSE_TURN;
-    this.pitch = clampPitch(this.pitch - dy * MOUSE_TURN);
+    const turn = MOUSE_TURN * this.mouseSensitivity;
+    this.yaw -= dx * turn;
+    this.pitch = clampPitch(this.pitch - dy * turn);
   }
   /** where the mouse points on the ground, or null when it is outside the game */
   setAim(point: Vec2 | null): void {

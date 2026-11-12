@@ -381,3 +381,18 @@ describe('Keyboard with rebound keys', () => {
     expect(k.firstPerson).toBe(true);
   });
 });
+
+describe('mouse sensitivity (first person)', () => {
+  it('turns the view further per mouse move when it is set higher, e.g. for a touchpad', () => {
+    const turned = (sensitivity: number) => {
+      const k = new Keyboard();
+      k.mouseSensitivity = sensitivity;
+      k.setFirstPerson(true, { x: 0, z: -1 });
+      const before = k.yaw;
+      k.look(100, 0);
+      return before - k.yaw;
+    };
+    expect(turned(2)).toBeCloseTo(turned(1) * 2);
+    expect(turned(0.5)).toBeCloseTo(turned(1) / 2);
+  });
+});

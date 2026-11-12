@@ -232,6 +232,7 @@ export const en = {
   'settings.name': 'Your name',
   'settings.color': 'Suit colour',
   'settings.about': 'About',
+  'settings.mouse': 'Mouse speed (first person)',
   'settings.killCam': 'Kill cam (versus)',
   'killcam.banner': 'KILL CAM · {name} got you',
   'killcam.skip': 'Click to skip',

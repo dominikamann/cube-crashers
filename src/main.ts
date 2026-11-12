@@ -101,6 +101,7 @@ function startGame() {
     audio?.mixer.setMusicVolume(settings.music);
     audio?.mixer.setSfxVolume(settings.sfx);
     keyboard.steerWithMouse = settings.steerWithMouse;
+    keyboard.mouseSensitivity = settings.mouseSensitivity;
     keyboard.setBindings(settings.bindings);
     setKeyBindings(settings.bindings);
     // takes effect right away, also in a paused match: the renderers read the palette every frame

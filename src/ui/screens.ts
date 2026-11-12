@@ -22,6 +22,8 @@ export interface Settings {
   difficulty: Difficulty;
   /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
+  /** first person: how fast the mouse (or touchpad) turns the view */
+  mouseSensitivity: number;
   graphics: GraphicsQuality;
   damageNumbers: boolean;
   /** versus: watch the last seconds again when you are knocked out */
@@ -78,7 +80,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', steerWithMouse: false, mouseSensitivity: 1, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -103,6 +105,7 @@ export function loadSettings(): Settings {
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
+    if (![0.5, 1, 1.5, 2, 3].includes(loaded.mouseSensitivity)) loaded.mouseSensitivity = 1;
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
@@ -495,6 +498,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         controlsScreen();
       });
       keys.append(change);
+      chips(t('settings.mouse'), [0.5, 1, 1.5, 2, 3].map(v => ({ label: `${v}×`, value: v })), () => settings.mouseSensitivity, v => (settings.mouseSensitivity = v));
       chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
       chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
