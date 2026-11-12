@@ -105,6 +105,9 @@ export function createBot(): (s: SimState) => Command[] {
     }
 
     let move = { x: 0, z: 0 };
+    // a boss floor has no nest: keep the boss at shooting range and circle it
+    const bossId = s.boss ? (s.boss.enemyId ?? s.boss.worms[0]?.[0]) : undefined;
+    const boss = bossId === undefined ? undefined : s.enemies.find(e => e.id === bossId && e.hp > 0);
     const atNest = nest && goal === nest.pos && d(nest.pos, p.pos) < 2.2;
     const holding = nest && goal === nest.pos && nest.state === 'planted' && d(nest.pos, p.pos) < 4.5;
     if (atNest && nest.state === 'idle') {
@@ -120,6 +123,14 @@ export function createBot(): (s: SimState) => Command[] {
         move.x += ((p.pos.x - threat.e.pos.x) / threat.d) * 0.8;
         move.z += ((p.pos.z - threat.e.pos.z) / threat.d) * 0.8;
       }
+    } else if (boss && !card && !crate && !s.elevatorOpen) {
+      const rx = p.pos.x - boss.pos.x, rz = p.pos.z - boss.pos.z;
+      const r = Math.hypot(rx, rz) || 1;
+      if (r > 8) move = flowDir(s.map, buildFlowField(s.map, [boss.pos], BLOCKS_ENEMY, towerTiles(s)), p.pos);
+      else {
+        const pull = (6 - r) * 0.6;
+        move = { x: -rz / r + (rx / r) * pull, z: rx / r + (rz / r) * pull };
+      }
     } else {
       move = d(goal, p.pos) < 1.2 ? { x: goal.x - p.pos.x, z: goal.z - p.pos.z } : flowDir(s.map, field, p.pos);
     }
@@ -127,7 +138,9 @@ export function createBot(): (s: SimState) => Command[] {
 
     // build a tower when standing on a free pad with coins to spare
     const pad = padAt(s, p.pos);
-    if (pad !== null && p.coins >= TOWERS.laser.cost && !s.towers.some(t => t.padId === pad)) {
+    // (not inside a nest's zone: towers are solid and would block the circle the bot runs there)
+    const inZone = s.nests.some(n => n.state !== 'destroyed' && d(n.pos, p.pos) < 5);
+    if (pad !== null && !inZone && p.coins >= TOWERS.laser.cost && !s.towers.some(t => t.padId === pad)) {
       cmds.push({ type: 'build', playerId: 0, padId: pad, tower: 'laser' });
     }
     // stay on the pad and hold E until the tower stands

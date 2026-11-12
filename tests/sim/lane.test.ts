@@ -38,6 +38,32 @@ describe('lane defense', () => {
     expect(after).toBeLessThan(top);
   });
 
+  it('the waves vary (fast ones, tough ones, shooters, splitters...) and keep coming, even on Ultra Low', () => {
+    const s = createSim(floor01, 4, { mode: 'run', difficulty: 'ultraLow' });
+    s.run.floor = 1;
+    for (const n of s.nests) n.state = 'destroyed';
+    s.enemies = [];
+    floorCleared(s);
+    s.players[0].pos = { x: LANE_CORE.x, z: LANE_CORE.z - 1 };
+    s.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
+    const kinds = new Set<string>();
+    let spawned = 0;
+    const seen = new Set<number>();
+    for (let i = 0; i < 60 * 60 && s.run.stage === 'lane'; i++) {
+      // nobody defends here: keep the cabinet standing so the whole minute runs
+      s.run.lane!.coreHp = LANE.coreHp;
+      stepSim(s, []);
+      for (const e of s.enemies) {
+        if (seen.has(e.id)) continue;
+        seen.add(e.id);
+        kinds.add(e.kind);
+        spawned++;
+      }
+    }
+    expect(kinds.size).toBeGreaterThanOrEqual(5);
+    expect(spawned).toBeGreaterThan(90);
+  });
+
   it('a monster that reaches the cabinet damages it and is gone', () => {
     const s = laneSim();
     s.players[0].pos = { x: 2.5, z: 10.5 };

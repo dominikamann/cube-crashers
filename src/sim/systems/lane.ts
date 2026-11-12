@@ -11,22 +11,36 @@ export const LANE = {
   ticks: 90 * TICK_RATE,
   coreHp: 100,
   /** how much of the cabinet a monster takes when it gets there */
-  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15 } as Partial<Record<EnemyKind, number>>,
-  waveTicks: 6 * TICK_RATE,
+  leak: { blob: 5, hunter: 5, splitter: 8, splitling: 2, tank: 20, shooter: 6, bomber: 15, rammer: 15, swarmer: 3 } as Partial<Record<EnemyKind, number>>,
+  waveTicks: 4.5 * TICK_RATE,
+  /** a minigame should keep you busy on any difficulty: waves never shrink below this share */
+  minScale: 0.85,
   /** coins for a cabinet at full health (less for a damaged one), and a bonus for a perfect defence */
   rewardCoins: 80,
   perfectBonus: 40,
   reach: 1.4,
 };
 
-/** what a wave is made of: more and tougher monsters as the defence goes on */
+/** each wave has a flavour, so no two in a row look alike: a rush, a wall, a firing line, ... */
+const FLAVOURS: EnemyKind[][] = [
+  ['blob', 'blob', 'hunter'],
+  ['swarmer', 'swarmer', 'hunter'],
+  ['splitter', 'blob', 'blob'],
+  ['shooter', 'blob', 'hunter'],
+  ['tank', 'blob', 'blob', 'blob'],
+  ['rammer', 'hunter', 'swarmer'],
+  ['bomber', 'blob', 'splitter'],
+];
+
+/** what a wave is made of: more and tougher monsters as the defence goes on, in a mix (heaviest last) */
 function wave(n: number): EnemyKind[] {
+  const flavour = FLAVOURS[n % FLAVOURS.length];
+  const size = 6 + Math.floor(n * 1.2);
   const out: EnemyKind[] = [];
-  for (let i = 0; i < 4 + n; i++) out.push('blob');
-  for (let i = 0; i < Math.floor(n / 2); i++) out.push('hunter');
-  if (n >= 4) out.push('splitter');
-  if (n >= 6) out.push('tank');
-  if (n >= 9) out.push('bomber', 'tank');
+  for (let i = 0; i < size; i++) out.push(flavour[i % flavour.length]);
+  // later waves bring an extra heavy one
+  if (n >= 8) out.push('tank');
+  if (n >= 12) out.push('bomber', 'rammer');
   return out;
 }
 
@@ -97,11 +111,16 @@ export function updateLane(s: SimState): void {
 
   const elapsed = LANE.ticks - (s.run.stageUntil - s.tick);
   if (elapsed % LANE.waveTicks === 0) {
-    const kinds = wave(lane.waves++);
-    const count = Math.round(kinds.length * hordeScale(s));
+    const n = lane.waves++;
+    const kinds = wave(n);
+    // fewer on easy settings, but never just the first few (that used to leave only blobs)
+    const count = Math.max(3, Math.round(kinds.length * Math.max(LANE.minScale, hordeScale(s))));
     for (let i = 0; i < count && s.enemies.length < ENEMY_CAP; i++) {
+      const kind = kinds[Math.floor((i * kinds.length) / count)];
       const from = s.map.waypoints[i % s.map.waypoints.length];
-      spawnEnemy(s, kinds[i % kinds.length], { x: from.x + s.rng.range(-1, 1), z: from.z + s.rng.range(0, 2) });
+      // the last waves come with an elite at the back
+      const elite = n >= 10 && i === count - 1;
+      spawnEnemy(s, kind, { x: from.x + s.rng.range(-1, 1), z: from.z + s.rng.range(0, 2) }, { elite });
     }
   }
 }
