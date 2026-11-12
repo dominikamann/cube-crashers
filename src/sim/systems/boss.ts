@@ -1,5 +1,5 @@
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
-import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
+import { ENEMY_CAP, PLAYER_RADIUS, RAMMER } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
@@ -48,6 +48,9 @@ export const BOSS = {
   seaCap: 30,
   /** King Rex */
   rexHp: 1600,
+  /** the Rhino: a rammer grown to boss size that charges like mad; a charge that hits flings the player this far */
+  rhinoHp: 1500,
+  rhinoFling: 9,
   /** King Rex's roar: the ground cracks in a ring around it */
   roarRadius: 4.5,
 };
@@ -82,8 +85,14 @@ export function bossHp(s: SimState): number {
 export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
   const centre = nearestFree(s.map, at ?? { x: s.map.w / 2, z: s.map.h * 0.35 }, 1.2, BLOCKS_ENEMY);
   let b: BossState;
-  if (kind === 'megaBlock' || kind === 'rex' || kind === 'kraken') {
-    const e = spawnEnemy(s, kind === 'rex' ? 'trex' : kind, centre);
+  if (kind === 'megaBlock' || kind === 'rex' || kind === 'kraken' || kind === 'rhino') {
+    const e = spawnEnemy(s, kind === 'rex' ? 'trex' : kind === 'rhino' ? 'rammer' : kind, centre);
+    if (kind === 'rhino') {
+      // the Rhino: a rammer grown to boss size, faster on its feet
+      e.hp = e.maxHp = BOSS.rhinoHp * hpScale(s);
+      e.radius = 1.1;
+      e.speed *= 1.5;
+    }
     if (kind === 'rex') {
       // King Rex: a T-Rex grown to boss size
       e.hp = e.maxHp = BOSS.rexHp * hpScale(s);
@@ -116,7 +125,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
  * A cleared wave gives a breather and a heart, then the next comes in. Now and then a shark swims through.
  */
 export const BRAWL = {
-  kinds: ['megaBlock', 'rex', 'worm', 'kraken'] as BossKind[],
+  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino'] as BossKind[],
   /** this many of them come a second time */
   extra: 2,
   breakTicks: 4 * TICK_RATE,
@@ -214,7 +223,7 @@ function attack(s: SimState, b: BossState): void {
     } else {
       for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
     }
-  } else if (b.kind === 'rex') {
+  } else if (b.kind === 'rex' || b.kind === 'rhino') {
     const rex = byId(s, b.enemyId!);
     // a roar that cracks the ground in a ring around it, or a stomp under every player
     if (rex && s.rng.next() < 0.45) {
@@ -359,8 +368,24 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
   }
 }
 
+/** The Rhino's charge: whoever it runs into is thrown across the arena, in the direction it was running. */
+function fling(s: SimState, b: BossState): void {
+  const e = byId(s, b.enemyId!);
+  // charging, or stopped this very tick by the hit
+  if (!e || !(e.state === 'charge' || (e.state === 'stunned' && e.stateUntil - s.tick >= RAMMER.hitStunTicks - 2))) return;
+  for (const p of s.players) {
+    if (p.downUntil !== null || p.flying || p.perched || p.vehicleId !== null) continue;
+    if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + 0.5 || s.tick - ((b.flungAt ??= {})[p.id] ?? -1e9) < 90) continue;
+    b.flungAt[p.id] = s.tick;
+    // in small steps, so a wall stops the flight
+    for (let i = 0; i < BOSS.rhinoFling * 2; i++) moveCircle(s.map, p.pos, e.dir.x * 0.5, e.dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
+    s.events.push({ type: 'kartRam', pos: { ...p.pos } });
+  }
+}
+
 function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
   drag(s, b, intents);
+  if (b.kind === 'rhino') fling(s, b);
   leap(s, b);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };

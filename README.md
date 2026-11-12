@@ -225,6 +225,11 @@ Also under **Tower Run**: every boss in a row, with a shop between them: **Mega 
 **the Kraken** and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a
 ring around itself and stomps under everyone. At the difficulty you set; its own best list.
 
+**Boss Brawl** (also on the Tower Run page) puts every boss into the Mega Block Arena: one or two at a time, by
+the dice, and some of them twice. After each wave you get a breather and a heart; now and then a stray shark
+swims through. One boss lives only here: the **Rhino**, which charges like mad and flings whoever it hits
+across the arena. Best with friends.
+
 ## Daily Run
 
 Under **Tower Run** there is a **Daily Run**: once a day the same tower for everyone in the world (same seed, so
@@ -413,7 +418,8 @@ Once it is merged, every game shows it the next time the list is opened.
 From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
 Blaster; crates with weapons, karts and a jetpack lie around. Whoever goes down **drops their two best extra
 weapons and their jetpack** for the others to grab (in Gun Game: a few coins). From a kart or the unicorn you
-pick things up by riding over them. Up to 10 players, bots fill up. Pick how well the
+pick things up by riding over them. Up to 10 players, bots fill up. With the map set to **Rotation** every match is on a random arena, a new one
+after each. Pick how well the
 bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (sharp and instant).
 
 | Rule | How it works |
@@ -775,6 +781,7 @@ docs/         gameplay GIF and screenshots
 - [x] Colour-blind mode: teams, health bars, glitch floor and enemy shots told apart by more than red and green
 - [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
+- [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing

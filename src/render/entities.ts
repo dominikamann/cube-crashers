@@ -293,7 +293,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const pop = boss ? 1 : popIn(Math.min(1, (time - born) / 0.3));
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
         const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
-        const scale = (kingRex ? 2.4 : e.elite ? 1.4 : 1) * worn * pop;
+        // the Rhino: a rammer grown to boss size
+        const rhino = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
+        const scale = (kingRex ? 2.4 : rhino ? 2.2 : e.elite ? 1.4 : 1) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));

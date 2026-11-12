@@ -48,7 +48,7 @@ export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp'
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
-export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
@@ -394,6 +394,8 @@ export interface BossState {
   lastPos: Vec2;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */
   grab?: { playerId: number; until: number } | null;
+  /** the Rhino: when it last flung each player (by id) */
+  flungAt?: Record<number, number>;
   /** the Mega Block in mid-leap: from where to where, and when it lands */
   leap?: { from: Vec2; to: Vec2; start: number; land: number } | null;
   /** the Kraken: when it next calls a school of fish and sharks */
