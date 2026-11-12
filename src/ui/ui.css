@@ -248,8 +248,9 @@ body.split .card { width: 110px; }
 .marker i { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; display: block; clip-path: polygon(100% 50%, 15% 5%, 35% 50%, 15% 95%); background: var(--pink); filter: drop-shadow(2px 2px 0 var(--shadow)); animation: pulse 0.9s ease-in-out infinite; }
 .marker.elevator i { background: var(--cyan); }
 @keyframes pulse { 50% { opacity: 0.55; } }
-.boss { position: absolute; bottom: 116px; left: 50%; transform: translateX(-50%); width: min(560px, 80vw); text-align: center; font-size: 12px; color: var(--pink); }
-.boss .bar { width: 100%; height: 14px; margin-top: 4px; }
+/* the boss bar sits at the top centre, between the corner boxes: never over the minimap or the weapons */
+.boss { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 420px)); min-width: 220px; text-align: center; font-size: 11px; color: var(--pink); opacity: 0.85; text-shadow: 2px 2px 0 var(--shadow); }
+.boss .bar { width: 100%; height: 10px; margin-top: 4px; }
 .has-bar .hint { bottom: 170px; }
 .has-bar .plant-bar { bottom: 152px; }
 .boss .bar > i { background: linear-gradient(90deg, var(--pink), #7b4fd1); }
@@ -377,3 +378,7 @@ body.versus .down { top: 130px; transform: translateX(-50%); font-size: 13px; }
 /* the minimap: smaller and see-through in first person, gone when the player switched it off */
 body.fp .mapbox { transform: scale(0.62); transform-origin: bottom right; opacity: 0.55; }
 body.no-map .mapbox { display: none; }
+
+/* empty weapon slots: only the frame of the first empty one shows, the rest are hidden (less noise, versus starts with one weapon) */
+.slot.empty ~ .slot.empty { display: none; }
+.player-hp .hp-number { float: right; color: #fff; font-size: 12px; }

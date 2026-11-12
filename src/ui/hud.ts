@@ -103,7 +103,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let shopKey = '';
 
   const bottom = el('div', 'hud-bottom', layer);
-  const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP');
+  const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP ');
+  // the number too: a bar alone says "about half", a shooter wants "47"
+  const hpNumber = el('span', 'hp-number', left);
   const hpFill = el('i', '', el('div', 'bar', left));
   const dashRow = el('div', 'dashes', left);
   const jetBox = el('div', 'kart', left);
@@ -210,7 +212,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       alarmBox.classList.toggle('overload', s.alarm.level >= ALARM_MAX);
       // only floors with nests have an alarm
       alarmBox.style.display = s.run.stage === 'floor' && s.nests.length > 0 ? '' : 'none';
-      scoreText.textContent = t('hud.score', { score: s.score });
+      // in versus the score is the race at the top; the box keeps only the coins (for towers)
+      scoreText.textContent = s.versus ? '' : t('hud.score', { score: s.score });
+      scoreText.style.display = s.versus ? 'none' : '';
       if (p.coins !== lastCoins) {
         coinText.textContent = String(p.coins);
         if (p.coins > lastCoins && lastCoins >= 0) bump(coinRow);
@@ -235,6 +239,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       hpFill.style.width = `${(p.hp / p.maxHp) * 100}%`;
+      hpNumber.textContent = String(Math.max(0, Math.ceil(p.hp)));
       // colour-blind mode: the bar also darkens from light blue to dark orange as health drops
       hpFill.style.background = isColorBlind() ? cssColor(palette().health(p.hp / p.maxHp)) : '';
       danger.style.display = p.hp < 30 && p.downUntil === null && s.phase === 'playing' ? '' : 'none';

@@ -100,6 +100,8 @@ export function createViewModel(): ViewModel {
   scene.add(sun);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
   const hand = new THREE.Group();
+  // a smaller weapon down in the corner: it frames the view instead of filling a quarter of it
+  hand.scale.setScalar(0.68);
   // one material per suit colour shown so far (colour-blind mode adds a few)
   const suits = new Map<number, THREE.Material>();
   const suit = (c: number) => {
@@ -158,7 +160,7 @@ export function createViewModel(): ViewModel {
       st.walk = Math.max(0, Math.min(1, st.walk + (moved ? 1 : -1) * frameDt * 6));
       const kick = st.kick, walk = st.walk;
       const bob = Math.sin(time * 11) * 0.018 * walk;
-      hand.position.set(0.3 + Math.cos(time * 5.5) * 0.01 * walk, -0.3 + bob - kick * 0.03, -0.62 + kick * 0.09);
+      hand.position.set(0.34 + Math.cos(time * 5.5) * 0.01 * walk, -0.31 + bob - kick * 0.03, -0.66 + kick * 0.09);
       hand.rotation.set(kick * 0.25, -0.12, 0);
       if (kind === 'laserSword') {
         // a slash from the right across to the left
