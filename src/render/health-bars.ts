@@ -3,7 +3,7 @@ import type { SimState } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
 
 const MAX_BARS = 400;
-const BAR_H = 0.09;
+const BAR_H = 0.07;
 
 /**
  * Small health bars over hurt monsters and over other players, turned toward each camera before it draws,
@@ -26,16 +26,18 @@ interface Bar {
 
 export function createHealthBars(scene: THREE.Scene): HealthBars {
   const geo = new THREE.BoxGeometry(1, 1, 1);
-  const make = (color: number, order: number) => {
-    const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color, toneMapped: false }), MAX_BARS);
+  // see-through: a faint backing and a soft fill, not a hard black bar
+  const make = (color: number, opacity: number, order: number) => {
+    const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, opacity, depthWrite: false });
+    const m = new THREE.InstancedMesh(geo, mat, MAX_BARS);
     m.count = 0;
     m.frustumCulled = false;
     m.renderOrder = order;
     scene.add(m);
     return m;
   };
-  const back = make(0x1a1530, 1);
-  const fill = make(0xffffff, 2);
+  const back = make(0x1a1530, 0.28, 1);
+  const fill = make(0xffffff, 0.75, 2);
   fill.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_BARS * 3), 3);
   const bars: Bar[] = [];
   const o = new THREE.Object3D();
@@ -64,7 +66,7 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
         if (b.playerId !== null && hide.includes(b.playerId)) continue;
         o.quaternion.copy(camera.quaternion);
         o.position.set(b.x, b.y, b.z);
-        o.scale.set(b.w + 0.06, BAR_H + 0.05, 0.02);
+        o.scale.set(b.w + 0.04, BAR_H + 0.03, 0.02);
         o.updateMatrix();
         back.setMatrixAt(n, o.matrix);
         // the fill shrinks toward the left end, a little in front of the back

@@ -327,6 +327,7 @@ export const en = {
   'build.helpUpgrade': 'E upgrades',
   'build.helpUpgradePad': 'X upgrades · B closes',
   'tip.label': 'Tip',
+  'hud.clickToAim': 'Click to aim',
   'tip.firstPerson': 'New: first-person view! In a game press V (View button on a controller). Mouse or right stick turns, W walks where you look.',
   'tip.close': 'Got it',
   'tip.0': 'On a build pad, press E (X) to open the towers, pick one, press again to build.',

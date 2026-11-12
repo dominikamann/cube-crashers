@@ -192,6 +192,12 @@ function startGame() {
     root.append(c);
     return c;
   });
+  // the browser refuses to capture the mouse while it is outside the window: say how to get it back
+  const fpClick = document.createElement('div');
+  fpClick.className = 'fp-click';
+  fpClick.textContent = t('hud.clickToAim');
+  fpClick.style.display = 'none';
+  hudRoots[0].append(fpClick);
   // first person in a vehicle: a cockpit frame (kart, roller) or the nose of the board along the bottom
   const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 120" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 104 L172 104 M100 104 L100 160" stroke="#2a2550" stroke-width="16"/><circle cx="100" cy="104" r="16" fill="#ff2bd6"/></svg>`;
   const BOARD_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M120 100 Q130 40 200 28 Q270 40 280 100 Z" fill="#2bf0ff" opacity="0.9"/><path d="M140 100 Q150 52 200 42 Q250 52 260 100" fill="none" stroke="#1d1a33" stroke-width="5"/></svg>`;
@@ -351,6 +357,7 @@ function startGame() {
       renderer.setFirstPerson(1, fp1on ? { yaw: padCtl2.yaw, pitch: padCtl2.pitch } : null);
       fpCross[0].style.display = fp0on && mode === 'playing' ? '' : 'none';
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
+      fpClick.style.display = fp0on && mode === 'playing' && !padActive && fp0 === keyboard && document.pointerLockElement !== canvas ? '' : 'none';
       showCockpit(0, fp0on && mode === 'playing', localId());
       showCockpit(1, fp1on && mode === 'playing', 1);
       if (mode !== 'playing' || padActive || !keyboard.firstPerson) lockPointer(false);
@@ -810,10 +817,16 @@ function startGame() {
     mouse.y = e.clientY;
     if (document.pointerLockElement === canvas) keyboard.look(e.movementX, e.movementY);
   });
-  canvas.addEventListener('mousedown', e => {
-    if (e.button === 0 && mode === 'playing') keyboard.mouseDown();
-    // back from the pause menu in first person: a click captures the mouse again
-    if (mode === 'playing' && keyboard.firstPerson && !padActive) lockPointer(true);
+  addEventListener('mousedown', e => {
+    if (mode !== 'playing') return;
+    // from above only clicks into the game count (the HUD has buttons); in first person the pointer may sit
+    // anywhere when it was not captured (it was outside the window, or the capture was refused): every click
+    // that is not on a button fires and captures it again
+    const target = e.target instanceof Element ? e.target : null;
+    const inGame = target === canvas || (keyboard.firstPerson && !target?.closest('button, a, input, select, label'));
+    if (!inGame) return;
+    if (e.button === 0) keyboard.mouseDown();
+    if (keyboard.firstPerson && !padActive) lockPointer(true);
   });
   addEventListener('mouseup', e => {
     if (e.button === 0) keyboard.mouseUp();
