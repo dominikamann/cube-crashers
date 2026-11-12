@@ -47,6 +47,13 @@ const bossLabel = (kind: string) => t(`boss.${kind}` as 'boss.worm');
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud ui-scaled', root);
+  // the opening of a versus match: what is played, and 5 4 3 2 1 GO!
+  const intro = el('div', 'versus-intro', layer);
+  const introRule = el('div', 'versus-intro-rule', intro);
+  const introMode = el('div', 'versus-intro-mode', intro);
+  const introHint = el('div', 'versus-intro-hint', intro);
+  const introCount = el('div', 'versus-intro-count', intro);
+  let introShown = '';
   let padMode: string | null = null;
   const top = el('div', 'hud-top', layer);
 
@@ -458,6 +465,24 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       const vs = s.versus;
+      // the countdown, then GO! for a moment
+      const toGo = vs?.startsAt !== undefined ? (vs.startsAt - s.tick) / TICK_RATE : -9;
+      intro.style.display = vs && toGo > -1 ? '' : 'none';
+      if (vs && toGo > -1) {
+        introRule.textContent = t(`versus.${vs.rule}` as 'versus.score');
+        introMode.textContent = vs.rule === 'capture' || vs.rule === 'gungame' ? (vs.chaos ? t('versus.chaosCard') : '') : `${t(`versus.${vs.mode}` as 'versus.ffa')}${vs.chaos ? ` ${t('versus.chaosCard')}` : ''}`;
+        introHint.textContent = t(`versus.${vs.rule}Hint` as 'versus.scoreHint');
+        const shown = toGo > 0 ? String(Math.ceil(toGo)) : t('versus.go');
+        if (shown !== introShown) {
+          introShown = shown;
+          introCount.textContent = shown;
+          // restart the pop for every number
+          introCount.classList.remove('pop');
+          void introCount.offsetWidth;
+          introCount.classList.add('pop');
+        }
+        intro.classList.toggle('going', toGo <= 0);
+      }
       if (vs) {
         const left = Math.max(0, Math.ceil((vs.endsAt - s.tick) / TICK_RATE));
         const time = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;

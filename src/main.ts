@@ -617,7 +617,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined } });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined, countdown: true } });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }

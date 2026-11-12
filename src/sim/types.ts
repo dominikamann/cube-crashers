@@ -469,6 +469,8 @@ export interface VersusState {
   roundBreakUntil: number;
   round: number;
   nextCrateAt: number;
+  /** the match opens with a countdown: nothing moves before this tick (5 4 3 2 1 GO!) */
+  startsAt?: number;
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;

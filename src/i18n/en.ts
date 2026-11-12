@@ -109,6 +109,7 @@ export const en = {
   'setup.match': 'Match',
   'setup.pick': 'Pick it',
   'versus.discovery': 'Discovery',
+  'versus.go': 'GO!',
   'versus.discoveryHint': 'A new match every time: every rule, teams and free for all taking turns, a new map, now and then monsters.',
   'versus.next': 'Next: {what}',
   'versus.hudKing': 'You {me} · Lead {lead} · {time}',

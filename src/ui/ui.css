@@ -26,6 +26,16 @@ html, body {
 .ui-layer { position: fixed; inset: 0; pointer-events: none; }
 /* menus, HUD and result screens grow with big screens (a TV, a 4K monitor): laid out for about 1280 x 760 */
 .ui-scaled { zoom: var(--ui-zoom, 1); }
+/* the opening of a versus match: the rule, how it is played, and a big 5 4 3 2 1 GO! */
+.versus-intro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(10, 8, 30, 0.45); text-align: center; pointer-events: none; transition: background 0.4s, opacity 0.6s; }
+.versus-intro.going { background: transparent; opacity: 0; transition-delay: 0.3s; }
+.versus-intro-rule { font-size: 34px; color: var(--gold); text-shadow: 0 4px 0 var(--shadow); }
+.versus-intro-mode { font-size: 14px; color: var(--cyan); text-shadow: 0 2px 0 var(--shadow); min-height: 1em; }
+.versus-intro-hint { max-width: 560px; font-size: 11px; line-height: 1.7; color: #fff; text-shadow: 0 2px 0 var(--shadow); }
+.versus-intro-count { margin-top: 14px; font-size: 96px; color: #fff; text-shadow: 0 6px 0 var(--shadow); }
+.versus-intro.going .versus-intro-count { color: var(--gold); }
+.versus-intro-count.pop { animation: count-pop 0.9s ease-out; }
+@keyframes count-pop { 0% { transform: scale(1.8); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.85; } }
 .ui-layer button, .ui-layer input, .ui-layer .card { pointer-events: auto; }
 
 .txt { text-shadow: 3px 3px 0 var(--shadow); }
