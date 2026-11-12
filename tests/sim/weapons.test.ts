@@ -134,7 +134,8 @@ describe('weapons', () => {
     const b = spawnEnemy(s, 'tank', rel(p.pos, 0, -4));
     const off = spawnEnemy(s, 'tank', rel(p.pos, 2, -3));
     stepSim(s, [aimAt(rel(p.pos, 0, -6)), fire]);
-    expect(a.hp).toBe(TANK - dmg('pixelRail'));
+    // (the near one gets the close-range bonus)
+    expect(a.hp).toBe(TANK - dmg('pixelRail') * 1.5);
     expect(b.hp).toBe(TANK - dmg('pixelRail'));
     expect(off.hp).toBe(TANK);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'railFired' }));
