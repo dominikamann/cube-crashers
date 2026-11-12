@@ -724,7 +724,9 @@ function startGame() {
     // a dedicated server goes back to its lobby by itself after the results
     if (mode === 'over' && client.server && client.status === 'lobby') showLobby();
     if (mode === 'lobby' && !running) {
-      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote, client.server]);
+      // the countdown ticks in place; only real changes redraw the lobby
+      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote, client.server && { ...client.server, startsIn: client.server.startsIn === null }]);
+      if (client.server) screens.lobbyCountdown(client.server);
       if (key === lastLobby) return;
       lastLobby = key;
       screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server);

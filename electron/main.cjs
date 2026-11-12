@@ -100,8 +100,11 @@ ipcMain.handle('lan:host', async (event, name) => {
   beacon = lan.startBeacon({ info: () => ({ name: shown, players: info.players, open: info.open, gamePort: self.port }) });
 });
 
+/** host or host:port (name, IPv4 or [IPv6]), as long as the online list allows */
+const ADDRESS = /^[A-Za-z0-9.:[\]-]{1,260}$/;
+
 ipcMain.handle('lan:join', async (event, address) => {
-  if (!fromGame(event) || typeof address !== 'string' || address.length > 64) return;
+  if (!fromGame(event) || typeof address !== 'string' || !ADDRESS.test(address)) throw new Error('bad address');
   stopLan();
   let self = null;
   self = await lan.connect(address, {
@@ -154,7 +157,7 @@ ipcMain.handle('lan:serverList', async event => {
 });
 
 ipcMain.handle('lan:probe', (event, address) => {
-  if (!fromGame(event) || typeof address !== 'string' || !/^[A-Za-z0-9.:[\]-]{1,260}$/.test(address)) return null;
+  if (!fromGame(event) || typeof address !== 'string' || !ADDRESS.test(address)) return null;
   return lan.probe(address);
 });
 

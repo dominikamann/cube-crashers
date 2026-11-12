@@ -124,6 +124,19 @@ describe('the server browser', () => {
     expect(probed).toHaveLength(6);
   });
 
+  it('adding a server while the others are still being asked does not start a second loop', async () => {
+    const { browser, probed, advance } = setup({ servers: [{ name: 'Up', address: 'up1:1' }] });
+    browser.start();
+    browser.refresh();
+    browser.refresh();
+    await advance(0);
+    const afterStart = probed.length;
+    await advance(10_000);
+    await advance(10_000);
+    // two addresses (own + list), one round per 10 seconds
+    expect(probed.length - afterStart).toBe(4);
+  });
+
   it('keeps working with the built-in list when GitHub cannot be reached', async () => {
     const { browser, updates, advance } = setup(null);
     browser.start();

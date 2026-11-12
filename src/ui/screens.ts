@@ -228,6 +228,8 @@ export interface Screens {
   lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null): void;
   /** the online server list; update() fills it in as servers answer */
   online(h: OnlineHandlers): { update(rows: ServerRow[]): void };
+  /** a dedicated server's countdown, changed in place (redrawing the lobby every second would take the controller's focus) */
+  lobbyCountdown(server: ServerStatus): void;
   /** the list of games found on the network; call again to refresh */
   joinList(games: JoinEntry[], canEnterAddress: boolean, lan: LanActions): void;
   notice(text: string): void;
@@ -276,6 +278,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     const c = playerCount(r.info!);
     return c.bots > 0 ? t('online.playersBots', { n: c.players, max: c.max, b: c.bots }) : t('online.players', { n: c.players, max: c.max });
   };
+  let countdown: HTMLElement | null = null;
+  const countdownText = (server: ServerStatus) => (server.running ? t('lobby.running') : server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
   const modeName = (m: ServerMode | 'lan') => (m === 'coop' || m === 'lan' ? t(`server.mode.${m}`) : t(`versus.${m}` as 'versus.score'));
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   const nextDiff = (d: Difficulty) => DIFFICULTIES[(DIFFICULTIES.indexOf(d) + 1) % DIFFICULTIES.length];
@@ -719,6 +723,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       });
     },
     lobby(players, difficulty, isHost, me, lan, vote, server) {
+      countdown = null;
       show('', s => {
         text(s, 'h2', '', t('lobby.title', { n: players.length }));
         if (server) text(s, 'p', 'lobby-server', t('lobby.server', { name: server.name, mode: modeName(server.mode) }));
@@ -731,7 +736,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           swatch.style.background = hex(p.color);
           row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}${p.ready ? ' \u2713' : ''}`));
           // team wish: everyone sets their own, the others see it (not on a server that never plays teams)
-          const teams = !server || (server.mode !== 'gungame' && server.mode !== 'coop');
+          const teams = !server || server.teams;
           if (!p.bot && teams) {
             const wish = document.createElement('button');
             wish.className = `chip small team-wish${p.team === 0 ? ' red' : p.team === 1 ? ' blue' : ''}`;
@@ -828,17 +833,23 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         } else if (server) {
           // a dedicated server starts by itself: the countdown, and a button to say you are ready
           if (server.mode === 'coop') text(s, 'p', '', diffLabel(difficulty));
-          text(s, 'p', 'lobby-countdown', server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
-          const ready = !!players.find(p => p.id === me)?.ready;
-          const b = button(s, ready ? t('lobby.isReady') : t('lobby.ready'), () => lan.setReady(!ready), !ready);
-          if (ready) b.classList.add('on');
-          text(s, 'p', 'credits-small', t('lobby.readyHint'));
+          countdown = text(s, 'p', 'lobby-countdown', countdownText(server));
+          // ready only counts between matches
+          if (!server.running) {
+            const ready = !!players.find(p => p.id === me)?.ready;
+            const b = button(s, ready ? t('lobby.isReady') : t('lobby.ready'), () => lan.setReady(!ready), !ready);
+            if (ready) b.classList.add('on');
+            text(s, 'p', 'credits-small', t('lobby.readyHint'));
+          }
         } else {
           text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));
         }
         button(s, t('lobby.leave'), lan.leave);
       });
+    },
+    lobbyCountdown(server) {
+      if (countdown?.isConnected) countdown.textContent = countdownText(server);
     },
     online(h) {
       // Escape leaves through the same door as Back (which stops the checking)

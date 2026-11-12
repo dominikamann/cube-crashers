@@ -117,18 +117,21 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
   const probes = new Map<string, Probe>();
   let running = false;
   let cancel: (() => void) | null = null;
+  /** each round belongs to one loop; a refresh starts a new loop and the old one ends when its round is back */
+  let loop = 0;
 
   const publish = () => deps.onUpdate(rankServers(entries, probes, deps.protocol, deps.own()));
 
-  async function round() {
-    if (!running) return;
+  async function round(mine: number) {
+    const current = () => running && mine === loop;
+    if (!current()) return;
     if (elapsed - listAt >= LIST_EVERY_MS) {
       listAt = elapsed;
       const json = await deps.fetchList().catch(() => null);
       const fresh = parseServerList(json);
       // an unreachable GitHub keeps the last list (or the built-in one)
       if (json !== null) entries = fresh;
-      if (!running) return;
+      if (!current()) return;
     }
     publish();
     const addresses = [...new Set([...deps.own(), ...entries.map(e => e.address)])];
@@ -139,11 +142,11 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
         probes.set(address, m && m.type === 'info' && 'name' in m ? { info: m as unknown as ServerInfo, ping: answer!.ms } : null);
       }),
     );
-    if (!running) return;
+    if (!current()) return;
     publish();
     cancel = setTimer(() => {
       elapsed += PROBE_EVERY_MS;
-      void round();
+      void round(mine);
     }, PROBE_EVERY_MS);
   }
 
@@ -151,7 +154,7 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
     start() {
       if (running) return;
       running = true;
-      void round();
+      void round(++loop);
     },
     stop() {
       running = false;
@@ -162,7 +165,7 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
     refresh() {
       if (!running) return;
       cancel?.();
-      void round();
+      void round(++loop);
     },
   };
 }

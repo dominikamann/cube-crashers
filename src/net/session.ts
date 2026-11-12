@@ -64,11 +64,11 @@ export class HostSession {
 
   constructor(
     private net: Transport,
-    opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number; dedicated?: { name: string; mode: ServerMode } },
+    opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number; dedicated?: { name: string; mode: ServerMode; teams: boolean } },
   ) {
     this.now = opts.now ?? (() => Date.now());
     for (const u of opts.unlocked ?? []) this.unlocked.add(u);
-    if (opts.dedicated) this.server = { name: opts.dedicated.name.slice(0, MAX_SERVER_NAME), mode: opts.dedicated.mode, startsIn: null };
+    if (opts.dedicated) this.server = { name: opts.dedicated.name.slice(0, MAX_SERVER_NAME), mode: opts.dedicated.mode, teams: opts.dedicated.teams, startsIn: null, running: false };
     this.lobby = opts.dedicated ? [] : [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
@@ -91,7 +91,7 @@ export class HostSession {
   /** 'all' means everyone in the lobby, not every connection (half-open or rejected peers get nothing) */
   private sendRaw(to: number | 'all', data: string): void {
     if (to !== 'all') this.net.send(to, data);
-    else for (const p of this.lobby) if (p.id !== 0) this.net.send(p.id, data);
+    else for (const p of this.lobby) if (p.id !== 0 && !p.bot) this.net.send(p.id, data);
   }
 
   private broadcastLobby(): void {
@@ -211,11 +211,19 @@ export class HostSession {
     this.startVersus(option, (this.now() * 7919) % 2147483647 || 1);
   }
 
+  /** a match begins: a dedicated server's lobby shows it is running */
+  private running(on: boolean): void {
+    if (!this.server) return;
+    this.server.running = on;
+    this.server.startsIn = null;
+  }
+
   /** A versus match on `option`'s map with the whole lobby, bots included. */
   startVersus(option: VersusOption, seed: number): void {
     const def = FLOORS[option.map];
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
+    this.running(true);
     const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
@@ -256,7 +264,8 @@ export class HostSession {
         this.net.kick(from);
       };
       if (m.v !== PROTOCOL_VERSION) return reject('version');
-      if (this.sim) return reject('started');
+      // a dedicated server takes newcomers into its lobby for the next match; a LAN host has started without them
+      if (this.sim && !this.server) return reject('started');
       if (this.lobby.some(p => p.id === from)) return;
       // a full lobby with bots: a bot makes room for the human
       if (this.lobby.length >= MAX_PLAYERS && this.lobby.some(p => p.bot)) this.lobby.splice(this.lobby.map(p => !!p.bot).lastIndexOf(true), 1);
@@ -302,6 +311,7 @@ export class HostSession {
     // bots only play versus: a co-op run is for the humans in the lobby
     const humans = this.lobby.filter(p => !p.bot);
     this.vote = null;
+    this.running(true);
     this.sim = createSim(floor01, seed, {
       mode,
       unlocked,
@@ -348,7 +358,10 @@ export class HostSession {
   /** Back to the lobby after a run (the same players stay). */
   endRun(): void {
     this.sim = null;
+    this.running(false);
     for (const p of this.lobby) delete p.ready;
+    // players who came during the match push bots out again
+    this.syncBots();
     this.pending.clear();
     this.lastInput.clear();
     this.outEvents = [];

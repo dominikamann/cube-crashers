@@ -28,7 +28,11 @@ export const SERVER_MODES: ServerMode[] = ['coop', 'discovery', 'gungame', 'scor
 export interface ServerStatus {
   name: string;
   mode: ServerMode;
+  /** red against blue can happen here (so team wishes matter) */
+  teams: boolean;
   startsIn: number | null;
+  /** a match is running: newcomers wait for the next one */
+  running: boolean;
 }
 
 /** the answer to a server-list probe */
@@ -113,7 +117,7 @@ const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
 const validServer = (v: unknown) =>
-  v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && (v.startsIn === null || isNum(v.startsIn)));
+  v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)));
 const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && ['score', 'rounds', 'king', 'capture', 'gungame'].includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */

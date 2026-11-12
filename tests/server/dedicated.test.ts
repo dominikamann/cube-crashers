@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ClientSession, HostSession } from '../../src/net/session';
 import { createMemoryHub } from '../../src/net/transport';
 import { DedicatedServer, RESULT_SECONDS } from '../../src/server/dedicated';
-import { defaultConfig, type ServerConfig } from '../../src/server/config';
+import { defaultConfig, serverIdentity, type ServerConfig } from '../../src/server/config';
 import { DISCOVERY_MAPS } from '../../src/sim/systems/versus';
 import { DT } from '../../src/sim/types';
 
@@ -10,7 +10,7 @@ function setup(cfg: Partial<ServerConfig> = {}, clients = 1) {
   const hub = createMemoryHub();
   let now = 0;
   const config = { ...defaultConfig(), ...cfg };
-  const host = new HostSession(hub.host(), { name: config.name, now: () => now, dedicated: { name: config.name, mode: config.mode } });
+  const host = new HostSession(hub.host(), { name: config.name, now: () => now, dedicated: serverIdentity(config) });
   const server = new DedicatedServer(host, config, { now: () => now });
   const cs = Array.from({ length: clients }, (_, i) => new ClientSession(hub.client(), { name: `C${i}` }));
   hub.flush();
@@ -75,6 +75,33 @@ describe('the dedicated server', () => {
     run(2);
     expect(host.sim).toBeNull();
     expect(cs[0].server?.startsIn).toBeGreaterThan(15);
+  });
+
+  it('after a match it sends the end once, not a full snapshot every tick while the results show', () => {
+    const { host, cs, run } = setup({ mode: 'score' });
+    cs[0].setReady(true);
+    run(1);
+    let steps = 0;
+    const step = host.step.bind(host);
+    host.step = cmds => {
+      steps++;
+      step(cmds);
+    };
+    host.sim!.phase = 'won';
+    run(5);
+    expect(steps).toBe(0);
+  });
+
+  it('Discovery keeps a fixed arena and monster hordes when they are set', () => {
+    const { host, cs, run } = setup({ mode: 'discovery', map: 'candy', monsters: true });
+    for (let i = 0; i < 3; i++) {
+      cs[0].setReady(true);
+      run(1);
+      expect(host.sim!.map.id).toBe('candy');
+      expect(host.sim!.versus?.chaos).toBe(true);
+      host.sim!.phase = 'won';
+      run(RESULT_SECONDS + 1);
+    }
   });
 
   it('gun game moves on to the next map each match', () => {

@@ -35,10 +35,11 @@ function startHost({
       // the game's own client sends no Origin header; browsers always do, so web pages are kept out
       verifyClient: info => !info.origin && peers.size < maxPeers,
     });
-    let nextPeer = 1;
     wss.on('error', reject);
     wss.on('connection', ws => {
-      const peer = nextPeer++;
+      // the smallest free number: peers stay far below the bots' ids (1000 and up) on a server that runs for weeks
+      let peer = 1;
+      while (peers.has(peer)) peer++;
       const info = { ws, admitted: false, alive: true, windowStart: Date.now(), count: 0 };
       peers.set(peer, info);
       onPeer(peer, true);

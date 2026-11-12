@@ -6,7 +6,7 @@ import { APP_VERSION } from '../../src/version';
 
 function server(clients = 1) {
   const hub = createMemoryHub();
-  const host = new HostSession(hub.host(), { name: 'Server', dedicated: { name: 'Dominiks Server', mode: 'gungame' } });
+  const host = new HostSession(hub.host(), { name: 'Server', dedicated: { name: 'Dominiks Server', mode: 'gungame', teams: false } });
   const cs = Array.from({ length: clients }, (_, i) => new ClientSession(hub.client(), { name: `C${i}` }));
   hub.flush();
   return { hub, host, cs };
@@ -43,7 +43,7 @@ describe('a dedicated server session', () => {
     expect(host.allReady()).toBe(true);
     host.setStartsIn(17);
     hub.flush();
-    expect(cs[1].server).toEqual({ name: 'Dominiks Server', mode: 'gungame', startsIn: 17 });
+    expect(cs[1].server).toEqual({ name: 'Dominiks Server', mode: 'gungame', teams: false, startsIn: 17, running: false });
     expect(cs[1].lobby.every(p => p.ready)).toBe(true);
   });
 
@@ -67,6 +67,48 @@ describe('a dedicated server session', () => {
     t.send(0, JSON.stringify({ type: 'info' }));
     hub.flush();
     expect(got[0]).toMatchObject({ players: 7, bots: 5 });
+  });
+
+  it('a player who comes while a match runs waits in the lobby and plays the next one', () => {
+    const { hub, host, cs } = server(1);
+    host.setAutoFill(4);
+    host.startVersus({ mode: 'ffa', rule: 'gungame', map: 'neon' }, 5);
+    hub.flush();
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    expect(late.status).toBe('lobby');
+    expect(late.server?.running).toBe(true);
+    expect(host.sim!.players.some(p => p.name === 'Late')).toBe(false);
+    // the others keep playing
+    expect(cs[0].status).toBe('playing');
+    host.endRun();
+    host.startVersus({ mode: 'ffa', rule: 'gungame', map: 'candy' }, 6);
+    hub.flush();
+    expect(late.status).toBe('playing');
+    expect(host.sim!.players.some(p => p.name === 'Late')).toBe(true);
+    // a bot made room: still 4
+    expect(host.sim!.players).toHaveLength(4);
+  });
+
+  it('a LAN host still turns away players once the game started', () => {
+    const hub = createMemoryHub();
+    const host = new HostSession(hub.host(), { name: 'Host' });
+    host.start(1);
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    expect(late.status).toBe('rejected');
+  });
+
+  it('lobby messages go to people, never to bot ids', () => {
+    const hub = createMemoryHub();
+    const sent: (number | 'all')[] = [];
+    const t = hub.host();
+    const spy = { ...t, send: (to: number | 'all', d: string) => (sent.push(to), t.send(to, d)) };
+    const host = new HostSession(spy, { name: 'S', dedicated: { name: 'S', mode: 'score', teams: false } });
+    new ClientSession(hub.client(), { name: 'C' });
+    hub.flush();
+    host.setAutoFill(4);
+    expect(sent.some(to => typeof to === 'number' && to >= 1000)).toBe(false);
   });
 
   it('a LAN host answers a probe too, counting itself', () => {

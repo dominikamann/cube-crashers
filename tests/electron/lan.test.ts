@@ -12,6 +12,19 @@ afterEach(() => {
 });
 
 describe('desktop LAN server', () => {
+  it('reuses free peer numbers, so they stay small however many come and go (bots use 1000 and up)', async () => {
+    const peers: number[] = [];
+    const host = await lan.startHost({ port: 0, onMessage: () => {}, onPeer: (peer: number, joined: boolean) => joined && peers.push(peer) });
+    cleanup.push(() => host.stop());
+    for (let i = 0; i < 30; i++) {
+      const c = await lan.connect(`127.0.0.1:${host.port}`, { onMessage: () => {}, onClose: () => {} });
+      await wait(20);
+      c.close();
+      await wait(20);
+    }
+    expect(Math.max(...peers)).toBeLessThan(5);
+  });
+
   it('probes a server for the online list: its answer and the round trip, or null when nobody is there', async () => {
     const host = await lan.startHost({
       port: 0,

@@ -5,7 +5,7 @@ import type { Transport } from '../net/transport';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { DT } from '../sim/types';
 import { APP_VERSION } from '../version';
-import { HELP, parseConfig, type ServerConfig } from './config';
+import { HELP, parseConfig, serverIdentity, type ServerConfig } from './config';
 import { DedicatedServer } from './dedicated';
 
 /** The dedicated server: `node cube-crashers-server.mjs --mode gungame` (see --help). */
@@ -42,8 +42,8 @@ async function main() {
     port: cfg.port,
     onMessage: (from, data) => onMessage(from, data),
     onPeer: (peer, joined) => onPeer(peer, joined),
-    // 8 players plus room to tell a few more that it is full, and for server-list probes
-    maxPeers: MAX_PLAYERS + 8,
+    // 8 players plus plenty of room for server-list probes (short-lived) and for telling more that it is full
+    maxPeers: MAX_PLAYERS + 56,
   }).catch(err => {
     console.error(`error: cannot listen on port ${cfg.port} (${(err as Error).message})`);
     process.exit(1);
@@ -57,7 +57,7 @@ async function main() {
     close: () => net.stop(),
   };
   const log = (line: string) => console.log(`${new Date().toISOString().slice(0, 19).replace('T', ' ')}  ${line}`);
-  const host = new HostSession(transport, { name: cfg.name, dedicated: { name: cfg.name, mode: cfg.mode } });
+  const host = new HostSession(transport, { name: cfg.name, dedicated: serverIdentity(cfg) });
   const server = new DedicatedServer(host, cfg, { log });
 
   log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.mode}, port ${net.port}`);

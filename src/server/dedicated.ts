@@ -29,6 +29,8 @@ export class DedicatedServer {
     host.viewMode = cfg.view;
     host.difficulty = cfg.difficulty;
     host.setAutoFill(cfg.mode === 'coop' ? 0 : cfg.bots);
+    if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
+    if (cfg.mode === 'coop' && (cfg.map || cfg.monsters || cfg.teams)) this.log('note: --map, --monsters and --teams are for versus; co-op always runs the tower');
   }
 
   private humans(): number {
@@ -54,8 +56,11 @@ export class DedicatedServer {
     const i = this.step++;
     const map = this.cfg.map ?? DISCOVERY_MAPS[i % DISCOVERY_MAPS.length];
     switch (this.cfg.mode) {
-      case 'discovery':
-        return discovery(i);
+      case 'discovery': {
+        // every rule in turn; a fixed arena and monster hordes still hold
+        const d = discovery(i);
+        return { ...d, map: this.cfg.map ?? d.map, chaos: d.chaos || this.cfg.monsters };
+      }
       case 'gungame':
         return { mode: 'ffa', rule: 'gungame', map };
       case 'capture':
@@ -86,12 +91,14 @@ export class DedicatedServer {
       this.log('everybody left: back to the lobby');
       return this.backToLobby();
     }
+    // the match is over and its last snapshot went out with the final step: just wait out the results
     if (s.phase !== 'playing') {
       this.overSince ??= this.now();
-      if (this.now() - this.overSince >= RESULT_SECONDS * 1000) return this.backToLobby();
+      if (this.now() - this.overSince >= RESULT_SECONDS * 1000) this.backToLobby();
+      return;
     }
     const cmds: Command[] = [];
-    if (s.phase === 'playing') for (const b of this.bots) cmds.push(...b(s));
+    for (const b of this.bots) cmds.push(...b(s));
     this.host.step(cmds);
     // nobody watches on the server: drop what a screen would show
     this.host.takeEvents();
