@@ -83,3 +83,11 @@ describe('key bindings', () => {
     expect(keyHints({ ...DEFAULT_BINDINGS, up: 'ArrowUp' })['key.move']).toBe('↑/A/S/D');
   });
 });
+
+describe('the map key', () => {
+  it('M shows or hides the minimap, and it can be rebound like the others', () => {
+    expect(DEFAULT_BINDINGS.map).toBe('KeyM');
+    const { bindings } = assignKey(DEFAULT_BINDINGS, 'map', 'KeyN');
+    expect(bindings.map).toBe('KeyN');
+  });
+});

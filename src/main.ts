@@ -402,6 +402,9 @@ function startGame() {
       const fp1on = split && padCtl2.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(1, fp1on ? { yaw: padCtl2.yaw, pitch: padCtl2.pitch } : null);
       fpCross[0].style.display = fp0on && mode === 'playing' && !replay ? '' : 'none';
+      // in first person the minimap shrinks and fades so it does not get in the way; the map key hides it
+      document.body.classList.toggle('fp', fp0on && !split);
+      document.body.classList.toggle('no-map', !settings.showMap);
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
       fpClick.style.display = fp0on && mode === 'playing' && !replay && !padActive && fp0 === keyboard && document.pointerLockElement !== canvas ? '' : 'none';
       showCockpit(0, fp0on && mode === 'playing' && !replay, localId());
@@ -908,6 +911,11 @@ function startGame() {
       return;
     }
     if (mode === 'playing' && e.code === settings.bindings.zoom && !e.repeat) zoomedOut = !zoomedOut;
+    // the map key: the minimap off or on again, remembered
+    if (mode === 'playing' && e.code === settings.bindings.map && !e.repeat) {
+      settings.showMap = !settings.showMap;
+      saveSettings(settings);
+    }
     // V (or the player's view key): first person on or off; the mouse gets captured to turn the view
     // (not when the LAN host fixed the view)
     const fixedView = role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false;

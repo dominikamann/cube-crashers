@@ -373,3 +373,7 @@ body.versus .toast.final { font-size: clamp(11px, 1.5vw, 17px); text-shadow: 2px
 .ranking { max-width: calc(100vw - 32px); }
 body.versus .down { top: 130px; transform: translateX(-50%); font-size: 13px; }
 .rush-box { border-color: var(--pink); background: rgba(60, 0, 40, 0.4); }
+
+/* the minimap: smaller and see-through in first person, gone when the player switched it off */
+body.fp .mapbox { transform: scale(0.62); transform-origin: bottom right; opacity: 0.55; }
+body.no-map .mapbox { display: none; }

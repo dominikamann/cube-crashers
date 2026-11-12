@@ -421,6 +421,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
 | `Z` | Zoom out / in |
+| `M` | Show or hide the minimap (in first person it is smaller and see-through anyway) |
 | `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
