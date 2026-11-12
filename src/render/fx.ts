@@ -228,6 +228,7 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'towerFired':
             if (e.kind === 'laser') beam(e.pos, 2.1, e.target, 0.4, 0xff8c42, 0.09);
             if (e.kind === 'frost') burst(e.pos, 1.8, 12, [0xc8f4ff, 0x7fdcff], 5, 0.1);
+            if (e.kind === 'bumper') ring(e.pos, 2.4, [0xff2bd6, 0xffe14a]);
             break;
           case 'rareFired': {
             const p = s.players.find(x => x.id === e.playerId);
@@ -250,6 +251,16 @@ export function createFx(scene: THREE.Scene): Fx {
             if (pos) burst(pos, 1, 30, [0xffc928, 0xd19a00, 0xffffff], 4, 0.12);
             break;
           }
+          case 'teslaChain':
+            // a jagged bolt from the coil through every monster it jumped to
+            for (let i = 1; i < e.points.length; i++) {
+              const a = e.points[i - 1], b = e.points[i];
+              const mid = { x: (a.x + b.x) / 2 + (Math.random() - 0.5) * 0.6, z: (a.z + b.z) / 2 + (Math.random() - 0.5) * 0.6 };
+              beam(a, i === 1 ? 1.95 : 0.8, mid, 1.1, 0x9fd0ff, 0.09);
+              beam(mid, 1.1, b, 0.8, 0x9fd0ff, 0.09);
+              burst(b, 0.8, 4, [0x9fd0ff, 0xffffff], 2, 0.06, 0.4);
+            }
+            break;
           case 'magnetPull':
             // a magnetic beam and sparks drawn in where the monsters gather
             beam(e.from, 0.8, e.to, 0.6, 0xff5e8a, 0.1);

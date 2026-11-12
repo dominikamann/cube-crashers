@@ -1,8 +1,10 @@
 import { rivals, VERSUS } from './versus';
 import { damagePlayer } from './player';
-import { BUILD_TICKS, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
+import { BUILD_TICKS, BUMPER, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TESLA, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
 import { DT, TICK_RATE, type Intent, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
-import { hasLos } from '../map/tilemap';
+import { BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
+import { PLAYER_RADIUS } from '../config/balance';
+import { airborne } from './rare';
 import { dist, nearestEnemy, targets } from '../util';
 import { damageEnemy } from './combat';
 
@@ -127,6 +129,47 @@ function fire(s: SimState, t: Tower): boolean {
         land: { radius: POPCORN_RADIUS, damage: def.damage },
       });
       s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target });
+      return true;
+    }
+    case 'tesla': {
+      const first = nearestEnemy(s, t.pos, def.range);
+      if (!first || !hasLos(s.map, t.pos, first.pos)) return false;
+      const points = [{ ...t.pos }];
+      const hit = new Set<number>();
+      let e: typeof first | undefined = first;
+      let damage = def.damage;
+      for (let i = 0; e && i <= TESLA.jumps; i++) {
+        hit.add(e.id);
+        points.push({ ...e.pos });
+        const from: typeof first = e;
+        damageEnemy(s, from, damage, t.kind);
+        damage *= TESLA.falloff;
+        e = targets(s).filter(o => !hit.has(o.id) && dist(o.pos, from.pos) <= TESLA.hop).sort((a, b) => dist(a.pos, from.pos) - dist(b.pos, from.pos))[0];
+      }
+      s.events.push({ type: 'teslaChain', points });
+      return true;
+    }
+    case 'bumper': {
+      const near = targets(s).filter(e => dist(t.pos, e.pos) <= def.range + e.radius);
+      const pushed = t.ownerId === undefined ? [] : rivals(s, t.ownerId).filter(r => !airborne(r) && dist(r.pos, t.pos) <= def.range);
+      if (near.length === 0 && pushed.length === 0) return false;
+      const away = (q: { x: number; z: number }) => {
+        const dx = q.x - t.pos.x, dz = q.z - t.pos.z;
+        const d = Math.hypot(dx, dz) || 1;
+        return { x: dx / d, z: dz / d };
+      };
+      for (const e of near) {
+        damageEnemy(s, e, def.damage, t.kind);
+        if (e.kind === 'megaBlock' || e.kind === 'wormSegment') continue;
+        const a = away(e.pos);
+        e.knock = { x: a.x * BUMPER.knock, z: a.z * BUMPER.knock };
+      }
+      for (const r of pushed) {
+        const a = away(r.pos);
+        moveCircle(s.map, r.pos, a.x * BUMPER.rivalPush, a.z * BUMPER.rivalPush, PLAYER_RADIUS, BLOCKS_WALKER);
+        damagePlayer(s, r, def.damage * VERSUS.towerScale, 'other', t.ownerId);
+      }
+      s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...t.pos } });
       return true;
     }
     case 'frost': {

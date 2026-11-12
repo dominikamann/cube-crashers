@@ -461,7 +461,7 @@ for the rest of the floor.
 ### Towers
 
 Stand on a pad and press **E** (controller: **X**): the towers open with the first one selected. Choose with
-the mouse wheel, **1–3** or ◀ ▶, press **E** again to build it, or simply keep holding **E** to build the
+the mouse wheel, **1–5** or ◀ ▶, press **E** again to build it, or simply keep holding **E** to build the
 selected one right away. You pay right away, then a scaffold goes up: keep **holding E** for about 2.5 seconds
 until the tower stands. If you let go, it stays half-built and you can finish it later. A tower only fires
 once it is finished. Towers are solid: you walk round them, and work on them from right beside them.
@@ -471,6 +471,8 @@ once it is finished. Towers are solid: you walk round them, and work on them fro
 | **Laser Tower** | 40 | 40 / 60 | Fast single-target laser. |
 | **Frost Machine** | 50 | 50 / 75 | Slows monsters to half speed. |
 | **Popcorn Mortar** | 60 | 60 / 90 | Lobs shells that hit everything in an area. |
+| **Bumper** | 45 | 45 / 68 | Knocks monsters around it away like a pinball bumper (into walls, ouch). |
+| **Tesla Coil** | 70 | 70 / 105 | Lightning that jumps from monster to monster, up to four in a row. |
 
 - **Upgrade:** press E next to a finished tower and E again. Each level gives +50 % damage and health, +1 range
   and fires faster. The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing

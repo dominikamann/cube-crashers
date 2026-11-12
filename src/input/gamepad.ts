@@ -22,7 +22,8 @@ const TRIGGER_FIRE = 0.35;
 const AIM_NEAR = 3;
 const AIM_FAR = 8;
 /** the build menu's cards from left to right; left/right moves the selection along them */
-export const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
+export { TOWER_ORDER } from '../sim/config/towers';
+import { TOWER_ORDER } from '../sim/config/towers';
 /** d-pad in the elevator shop: offers 1 to 4 */
 const DPAD_SHOP = [PAD.LEFT, PAD.UP, PAD.RIGHT, PAD.DOWN];
 

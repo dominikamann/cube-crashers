@@ -13,7 +13,12 @@ export const TOWERS: Record<TowerKind, TowerDef> = {
   laser: { cost: 40, hp: 40, range: 7, cooldown: 0.4, damage: 6 },
   popcorn: { cost: 60, hp: 40, range: 9, cooldown: 2, damage: 10 },
   frost: { cost: 50, hp: 40, range: 5, cooldown: 1.5, damage: 0 },
+  tesla: { cost: 70, hp: 40, range: 5.5, cooldown: 1.3, damage: 10 },
+  bumper: { cost: 45, hp: 70, range: 2.6, cooldown: 1.4, damage: 3 },
 };
+
+/** the build menu's cards from left to right (keys 1–5) */
+export const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost', 'tesla', 'bumper'];
 
 /** ticks of holding E to build a new tower (60 ticks = 1 s) */
 export const BUILD_TICKS = 150;
@@ -43,6 +48,10 @@ export function towerStats(kind: TowerKind, level: number): TowerDef {
 export const POPCORN_FLIGHT = 0.8;
 export const POPCORN_RADIUS = 2;
 export const FROST_SLOW_SECONDS = 2;
+/** the lightning jumps to up to `jumps` more monsters within `hop` tiles of the last one, each hit a quarter weaker */
+export const TESLA = { jumps: 3, hop: 2.8, falloff: 0.75 };
+/** knocks monsters out of its ring (and rivals a step back in versus) */
+export const BUMPER = { knock: 14, rivalPush: 1.2 };
 
 /** towers are solid: players stay this far from the middle (plus their own radius), still inside BUILD_RADIUS */
 export const TOWER_SOLID_RADIUS = 0.5;

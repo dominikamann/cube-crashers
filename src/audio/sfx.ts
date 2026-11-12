@@ -12,6 +12,8 @@ export type SoundId =
   | 'tower_laser'
   | 'tower_popcorn'
   | 'tower_frost'
+  | 'tower_tesla'
+  | 'tower_bumper'
   | 'playerHit'
   | 'playerDown'
   | 'playerRespawn'
@@ -140,6 +142,13 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 300, freqEnd: 150, attack: 0.002, sustain: 0.03, decay: 0.1, volume: 0.18 },
   ],
   tower_frost: [{ wave: 'triangle', freq: 2000, freqEnd: 2400, attack: 0.02, sustain: 0.1, decay: 0.2, volume: 0.05, vibrato: { rate: 30, depth: 60 } }],
+  // a crackling zap
+  tower_tesla: [
+    { wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.06, decay: 0.08, volume: 0.12, lowpass: 6000 },
+    { wave: 'sawtooth', freq: 220, freqEnd: 180, attack: 0.001, sustain: 0.08, decay: 0.05, volume: 0.06, vibrato: { rate: 60, depth: 80 } },
+  ],
+  // a pinball BOING
+  tower_bumper: [{ wave: 'square', freq: 300, freqEnd: 700, attack: 0.002, sustain: 0.04, decay: 0.12, volume: 0.1 }],
   playerHit: [{ wave: 'square', freq: 300, freqEnd: 150, attack: 0.001, sustain: 0.02, decay: 0.06, volume: 0.07 }],
   playerDown: [{ wave: 'square', freq: 600, freqEnd: 80, attack: 0.005, sustain: 0.3, decay: 0.2, volume: 0.14 }],
   playerRespawn: notes('triangle', [523, 659, 784, 1047], 0.06, 0.15, 0.12),
@@ -282,6 +291,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'railFired':
       // the zap itself comes with the shot; this is the crack where the beam ends
       return one('enemyHit', 0.6);
+    case 'teslaChain':
+      return one('tower_tesla');
     case 'magnetPull':
       // the hum comes with the shot; this is the clack of things pulled together
       return one('enemyHit', 0.45);

@@ -3,15 +3,15 @@ import { instantUse } from './context';
 import { aimDistance, clampPitch, forwardOf, lookOf, MOUSE_TURN, PITCH_START, viewMove, yawOf } from './first-person';
 import type { Command, SimEvent, SimState, TowerKind, Vec2 } from '../sim/types';
 
-/** the build menu's cards from left to right */
-const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
+import { TOWER_ORDER } from '../sim/config/towers';
 
 export const BUILD_HOLD_MS = 150;
 /** keep holding E this long on an empty pad and the preselected (first) tower gets built */
 export const AUTO_BUILD_MS = 700;
 /** the card that is preselected when the build menu opens */
 export const DEFAULT_TOWER: TowerKind = 'laser';
-const TOWER_KEYS: Record<string, TowerKind> = { Digit1: 'laser', Digit2: 'popcorn', Digit3: 'frost', Numpad1: 'laser', Numpad2: 'popcorn', Numpad3: 'frost' };
+/** 1–5 (or the number pad) pick a card in the open build menu */
+const TOWER_KEYS: Record<string, TowerKind> = Object.fromEntries(TOWER_ORDER.flatMap((k, i) => [[`Digit${i + 1}`, k], [`Numpad${i + 1}`, k]]));
 
 /** Turns key state into sim commands. Times are passed in so it can be tested without a DOM. */
 export class Keyboard {

@@ -1,8 +1,6 @@
 import { t } from '../i18n';
-import { MAX_TOWER_LEVEL, TOWERS, towerStats, upgradeCost } from '../sim/config/towers';
+import { MAX_TOWER_LEVEL, TOWER_ORDER as ORDER, TOWERS, towerStats, upgradeCost } from '../sim/config/towers';
 import type { SimEvent, SimState, TowerKind } from '../sim/types';
-
-const ORDER: TowerKind[] = ['laser', 'popcorn', 'frost'];
 
 export interface BuildMenu {
   update(s: SimState, open: boolean, events: SimEvent[], localId: number, padId: number | null, selected: TowerKind): void;

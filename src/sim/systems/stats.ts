@@ -6,6 +6,8 @@ export function killCategory(source: DamageSource): KillCategory {
     case 'laser':
     case 'popcorn':
     case 'frost':
+    case 'tesla':
+    case 'bumper':
       return 'tower';
     case 'kart':
       return 'kart';

@@ -7,6 +7,7 @@ import { GATE_PAD, padAtPos, quietSim, rel, run } from './helpers';
 import { ENEMIES } from '../../src/sim/config/enemies';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, REPAIR_PER_SECOND, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../../src/sim/config/towers';
 
+const TANK = ENEMIES.tank.hp;
 const PAD = padAtPos(quietSim(), GATE_PAD.x, GATE_PAD.z);
 const build = (padId: number, tower: TowerKind): Command => ({ type: 'build', playerId: 0, padId, tower });
 
@@ -115,6 +116,37 @@ describe('tower behaviour', () => {
     const e = spawnEnemy(s, 'tank', rel(pad, -2, -2));
     stepSim(s, []);
     expect(e.slowUntil - s.tick).toBeGreaterThan(110);
+  });
+
+  it('the tesla coil zaps the nearest monster and the lightning jumps on to the ones close to it', () => {
+    const { s, p, pad } = onPad(TOWERS.tesla.cost);
+    stepSim(s, [build(PAD, 'tesla')]);
+    s.towers[0].buildLeft = 0;
+    p.pos = rel(pad, 12, 0);
+    const first = spawnEnemy(s, 'tank', rel(pad, -2, -2));
+    const second = spawnEnemy(s, 'tank', rel(pad, -3.5, -3));
+    const far = spawnEnemy(s, 'tank', rel(pad, -3.5, -7));
+    for (const e of [first, second, far]) e.speed = 0;
+    stepSim(s, []);
+    expect(first.hp).toBe(TANK - TOWERS.tesla.damage);
+    expect(second.hp).toBeLessThan(TANK);
+    expect(second.hp).toBeGreaterThan(first.hp);
+    expect(far.hp).toBe(TANK);
+    expect(s.events).toContainEqual(expect.objectContaining({ type: 'teslaChain' }));
+  });
+
+  it('the bumper knocks the monsters around it away', () => {
+    const { s, p, pad } = onPad(TOWERS.bumper.cost);
+    stepSim(s, [build(PAD, 'bumper')]);
+    s.towers[0].buildLeft = 0;
+    p.pos = rel(pad, 12, 0);
+    // on the open side (a monster bumped into a wall stops there)
+    const e = spawnEnemy(s, 'tank', rel(pad, 1.6, 0));
+    e.speed = 0;
+    const before = Math.hypot(e.pos.x - pad.x, e.pos.z - pad.z);
+    run(s, 30);
+    expect(Math.hypot(e.pos.x - pad.x, e.pos.z - pad.z)).toBeGreaterThan(before + 1);
+    expect(e.hp).toBeLessThan(TANK);
   });
 
   it('popcorn mortar damages enemies in an area', () => {

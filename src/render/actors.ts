@@ -134,6 +134,18 @@ function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; hea
     head.position.y = 1.4;
     head.rotation.x = -0.5;
     lightColor = 0xffe14a;
+  } else if (kind === 'tesla') {
+    // a copper coil on a dark base, a glowing ball on top
+    root.add(box(1.1, 0.5, 1.1, lambert(0x3a3550), 0, 0.45, 0));
+    for (let i = 0; i < 4; i++) root.add(box(0.62 - i * 0.06, 0.16, 0.62 - i * 0.06, lambert(i % 2 ? 0xb06a2a : 0xd88a3a), 0, 0.8 + i * 0.22, 0));
+    head = box(0.5, 0.5, 0.5, glowMat(0x9fd0ff, 1.6), 0, 1.95, 0);
+    lightColor = 0x9fd0ff;
+  } else if (kind === 'bumper') {
+    // a pinball bumper: a fat ring with a glowing cap
+    root.add(box(1.2, 0.35, 1.2, lambert(0xffffff), 0, 0.3, 0));
+    root.add(box(1.0, 0.5, 1.0, lambert(0xff2bd6), 0, 0.72, 0));
+    head = box(0.7, 0.25, 0.7, glowMat(0xffe14a, 1.4), 0, 1.1, 0);
+    lightColor = 0xff2bd6;
   } else {
     root.add(box(1.1, 0.6, 1.1, lambert(0xbfe9ff), 0, 0.5, 0));
     root.add(box(0.7, 0.7, 0.7, glowMat(0x5fc8f0, 0.5), 0, 1.1, 0));
@@ -389,6 +401,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (building) return;
     if (t.kind === 'laser') v.head.rotation.y = time * 2;
     if (t.kind === 'frost') v.head.position.y = 1.85 + Math.sin(time * 2) * 0.1;
+    if (t.kind === 'tesla') v.head.rotation.y = time * 3;
+    // the bumper's cap squashes after each bump
+    if (t.kind === 'bumper') v.head.scale.y = 1 + 0.6 * Math.max(0, t.cooldown - 1);
     v.body.rotation.z = t.hp < t.maxHp * 0.5 ? Math.sin(time * 30) * 0.02 : 0;
     setGlow(v.root, theme.glow);
   }

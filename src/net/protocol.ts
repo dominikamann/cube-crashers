@@ -1,5 +1,6 @@
 import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
+import { TOWER_ORDER } from '../sim/config/towers';
 import type { Command, Difficulty, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
 import type { SnapState } from './snapshot';
 
@@ -177,7 +178,7 @@ export function parseMessage(raw: string): Message | null {
 
 const finite = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const vec = (v: unknown): v is { x: number; z: number } => isObj(v) && finite(v.x) && finite(v.z);
-const TOWER_KINDS = new Set(['laser', 'popcorn', 'frost']);
+const TOWER_KINDS = new Set<string>(TOWER_ORDER);
 /** generous bounds for aim points: the map plus a margin */
 const AIM_MIN = 0;
 const AIM_MAX = 70;
