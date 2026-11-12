@@ -100,6 +100,8 @@ export interface SimOptions {
   mode?: RunMode;
   /** versus (PvP): free for all or teams, score race or last cube standing */
   versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> };
+  /** Boss Rush: the map of each boss, instead of their own floors */
+  rushMaps?: string[];
   /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
   countdown?: boolean;
   /** unlocked items (profile ids); leave out to allow everything */
@@ -116,7 +118,7 @@ export const COUNTDOWN_TICKS = 6 * TICK_RATE;
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
   const mode = opts.mode ?? 'quick';
-  const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map(b => b.map) : [firstMap.id];
+  const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map((b, i) => (opts.rushMaps?.[i] && FLOORS[opts.rushMaps[i]] ? opts.rushMaps[i] : b.map)) : [firstMap.id];
   const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : mode === 'bossrush' ? FLOORS[floors[0]].map : firstMap;
   const s: SimState = {
     tick: 0,

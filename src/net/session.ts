@@ -306,25 +306,27 @@ export class HostSession {
     }
   }
 
-  start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run'): void {
+  start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run', brawlMap = 'arena', rushMaps?: string[]): void {
     this.difficulty = difficulty;
     const unlocked = [...this.unlocked];
     // bots only play versus: a co-op run is for the humans in the lobby
     const humans = this.lobby.filter(p => !p.bot);
     this.vote = null;
     this.running(true);
-    // (the Boss Brawl is always in the Mega Block Arena)
-    this.sim = createSim(mode === 'brawl' ? FLOORS.arena.map : floor01, seed, {
+    // (the Boss Brawl is in the Mega Block Arena, or on the map the host picked)
+    const mapId = mode === 'brawl' && FLOORS[brawlMap] ? brawlMap : undefined;
+    this.sim = createSim(mapId ? FLOORS[mapId].map : floor01, seed, {
       mode,
       unlocked,
       difficulty,
+      rushMaps,
       countdown: true,
       players: humans.length,
       ids: humans.map(p => p.id),
       names: humans.map(p => p.name),
       colors: humans.map(p => p.color),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode });
+    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode, mapId, maps: rushMaps });
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -436,9 +438,10 @@ export class ClientSession {
         this.viewMode = m.view ?? 'both';
         this.lobby = m.players;
         this.vote = null;
-        this.view = createSim(m.versus && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
+        this.view = createSim((m.versus || m.mode === 'brawl') && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
           mode: m.versus ? 'versus' : m.mode && ['quick', 'brawl', 'bossrush', 'endless'].includes(m.mode) ? m.mode : 'run',
           versus: m.versus,
+          rushMaps: Array.isArray(m.maps) ? m.maps.filter((x): x is string => typeof x === 'string') : undefined,
           unlocked: m.unlocked ?? [],
           difficulty: m.difficulty,
           players: m.players.length,

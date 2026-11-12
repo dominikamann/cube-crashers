@@ -103,7 +103,11 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     const ids: number[] = [];
     // (in a brawl the chain is laid toward the middle of the arena, away from the wall behind it)
     const toMiddle = at && centre.z < s.map.h / 2 ? 1 : -1;
-    for (let i = 0; i < BOSS.wormSegments; i++) ids.push(spawnEnemy(s, 'wormSegment', { x: centre.x, z: centre.z + toMiddle * i * BOSS.wormSpacing }).id);
+    for (let i = 0; i < BOSS.wormSegments; i++) {
+      const pos = { x: centre.x, z: centre.z + toMiddle * i * BOSS.wormSpacing };
+      // on a map with walls in the way each segment starts on the nearest free floor
+      ids.push(spawnEnemy(s, 'wormSegment', at ? nearestFree(s.map, pos, 0.5, BLOCKS_ENEMY) : pos).id);
+    }
     // the bar and the phases count from what the segments really have
     b = { kind, maxHp: ids.reduce((sum, id) => sum + (byId(s, id)?.hp ?? 0), 0), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
   }
@@ -166,10 +170,15 @@ function updateBrawl(s: SimState): void {
   const n = Math.min(br.queue.length, s.rng.next() < 0.5 ? 1 : 2);
   br.wave++;
   // they come in where the players are not: the spots furthest from anyone
-  const spots = [-7, 0, 7].flatMap(dx => [0.32, 0.68].map(fz => ({ x: s.map.w / 2 + dx, z: s.map.h * fz })));
+  // (the map's waypoints are open floor on every map; the arena has its own spots)
+  const fixed = [-7, 0, 7].flatMap(dx => [0.32, 0.68].map(fz => ({ x: s.map.w / 2 + dx, z: s.map.h * fz })));
+  const spots = s.map.id === 'arena' || s.map.waypoints.length < 2 ? fixed : s.map.waypoints.map(w => ({ ...w }));
   const clear = (q: Vec2) => Math.min(...s.players.map(p => dist(p.pos, q)));
   spots.sort((a, b) => clear(b) - clear(a));
-  for (let i = 0; i < n; i++) spawnBoss(s, br.queue.shift()!, spots[i]);
+  const first = spots[0];
+  // two of them keep some room between each other
+  const second = spots.find(q => dist(q, first) >= 6) ?? spots[1];
+  for (let i = 0; i < n; i++) spawnBoss(s, br.queue.shift()!, i === 0 ? first : second);
 }
 
 function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks): void {

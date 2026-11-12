@@ -24,7 +24,7 @@ import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
 import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
-import { FLOORS } from './sim/config/floors';
+import { BOSS_RUSH, FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
@@ -37,7 +37,7 @@ import { KillCamRecorder, type KillCamPlayback } from './killcam';
 import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
-import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, versusMapFor } from './ui/screens';
+import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './ui/screens';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -184,7 +184,7 @@ function startGame() {
     startMode: (coop: 'brawl' | 'bossrush' | 'endless') => {
       if (!host) return;
       lanBots = [];
-      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop);
+      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop, coop === 'brawl' ? brawlMapFor(settings.brawlMap) : undefined, coop === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined);
       enterPlay();
     },
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
@@ -688,12 +688,12 @@ function startGame() {
     const names = split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
     // "Single floor" plays the map chosen on the title screen
-    // (the Boss Brawl is always in the Mega Block Arena)
-    const first = mode === 'brawl' ? FLOORS.arena.map : mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
+    // (the Boss Brawl is in the Mega Block Arena, or on the map picked for it)
+    const first = mode === 'brawl' ? FLOORS[brawlMapFor(settings.brawlMap)].map : mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
     solo = dailyRun
       ? // the same run for everyone today: fixed seed and difficulty, every weapon
         createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, countdown: true })
-      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, countdown: !params.has('capture') });
+      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, countdown: !params.has('capture'), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
   }

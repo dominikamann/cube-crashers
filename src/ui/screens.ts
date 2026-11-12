@@ -25,6 +25,10 @@ export interface Settings {
   versusBots: Difficulty;
   /** the LAN host's pick in the lobby: which game Start begins */
   lanGame: 'run' | 'bossrush' | 'brawl' | 'endless' | 'versus';
+  /** where the Boss Brawl is fought: a map id, or the random choice */
+  brawlMap: string;
+  /** where the Boss Rush is fought: 'own' (each boss on its own floor), a map id, or the random choice */
+  rushMap: string;
   /** on foot, W walks toward the crosshair instead of up the screen (karts never steer with the mouse) */
   steerWithMouse: boolean;
   /** first person: how fast the mouse (or touchpad) turns the view */
@@ -89,7 +93,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -112,6 +116,24 @@ export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'roo
 /** the map choice "rotation": a random arena for every match, a new one after each */
 export const MAP_ROTATION = 'random';
 
+/** where a Boss Brawl can be fought: the arena first (the default), then every other floor with room for it */
+export const BRAWL_MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'jungle', 'servers', 'underwater'];
+
+/** The map of a Boss Brawl: the chosen one, or a random one. */
+export function brawlMapFor(choice: string, random: () => number = Math.random): string {
+  if (choice === MAP_ROTATION) return BRAWL_MAPS[Math.floor(random() * BRAWL_MAPS.length)];
+  return BRAWL_MAPS.includes(choice) ? choice : BRAWL_MAPS[0];
+}
+
+/** the Boss Rush's map choice "each boss on its own floor" (the default) */
+export const RUSH_OWN = 'own';
+
+/** The maps of a Boss Rush, one per boss: undefined for their own floors, else the chosen map or a random one each. */
+export function rushMapsFor(choice: string, bosses: number, random: () => number = Math.random): string[] | undefined {
+  if (choice === MAP_ROTATION) return Array.from({ length: bosses }, () => BRAWL_MAPS[Math.floor(random() * BRAWL_MAPS.length)]);
+  return BRAWL_MAPS.includes(choice) ? Array.from({ length: bosses }, () => choice) : undefined;
+}
+
 /** The arena to play on: the chosen one, or with the rotation a random one that is not `last`. */
 export function versusMapFor(choice: string, last: string | null, random: () => number = Math.random): string {
   if (choice !== MAP_ROTATION) return choice;
@@ -131,6 +153,8 @@ export function loadSettings(): Settings {
     loaded.colorBlind = loaded.colorBlind === true;
     if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'low';
     if (!['run', 'bossrush', 'brawl', 'endless', 'versus'].includes(loaded.lanGame)) loaded.lanGame = 'run';
+    if (!BRAWL_MAPS.includes(loaded.brawlMap) && loaded.brawlMap !== MAP_ROTATION) loaded.brawlMap = 'arena';
+    if (!BRAWL_MAPS.includes(loaded.rushMap) && loaded.rushMap !== MAP_ROTATION) loaded.rushMap = RUSH_OWN;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
     // settings saved before discovery was the versus default get it once
     if (!loaded.discoveryDefault) loaded = { ...loaded, versusDiscovery: true, discoveryDefault: true };
@@ -717,6 +741,22 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
+  /** the Boss Brawl's map as one small button: a click goes on to the next (the arena, random, then every other floor) */
+  const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap') => {
+    const options = key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...BRAWL_MAPS] : [BRAWL_MAPS[0], MAP_ROTATION, ...BRAWL_MAPS.slice(1)];
+    const name = settings[key] === MAP_ROTATION ? t('setup.random') : settings[key] === RUSH_OWN ? t('setup.ownFloors') : t(FLOORS[settings[key]].name as 'floor.plaza');
+    const c = document.createElement('button');
+    c.className = 'chip small';
+    c.textContent = `${t('setup.map')}: ${name} \u203a`;
+    c.addEventListener('click', () => {
+      actions.click();
+      settings[key] = options[(options.indexOf(settings[key]) + 1) % options.length];
+      changed();
+      redraw();
+    });
+    parent.append(c);
+  };
+
   /** the versus match the settings describe (the map rotation picks a random arena) */
   const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos });
   /** the arena of the last match started from the lobby (the rotation picks another one) */
@@ -838,6 +878,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         rush.className = 'daily-box rush-box';
         text(rush, 'div', 'setup-label', t('bossrush.title'));
         text(rush, 'p', 'mode-hint', t('bossrush.sub'));
+        brawlMapChip(rush, () => setupScreen(mode, lan), 'rushMap');
         const rb = button(rush, t('bossrush.play'), actions.bossRush);
         rb.classList.add('small');
         cards.append(rush);
@@ -846,6 +887,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         brawl.className = 'daily-box rush-box';
         text(brawl, 'div', 'setup-label', t('brawl.title'));
         text(brawl, 'p', 'mode-hint', t('brawl.sub'));
+        brawlMapChip(brawl, () => setupScreen(mode, lan));
         const bb = button(brawl, t('brawl.play'), actions.bossBrawl);
         bb.classList.add('small');
         cards.append(brawl);
@@ -1072,6 +1114,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
             chip(botsRow, '+', false, () => stepTo(at + 1));
           } else {
+            if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
+            if (settings.lanGame === 'bossrush') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'rushMap');
             const diffRow = rowOf(t('settings.difficulty'));
             for (const d of DIFFICULTIES) chip(diffRow, t(`difficulty.${d}` as 'difficulty.medium'), d === difficulty, () => lan.setDifficulty(d));
           }

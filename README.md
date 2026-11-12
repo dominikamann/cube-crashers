@@ -228,7 +228,8 @@ ring around itself and stomps under everyone. At the difficulty you set; its own
 **Boss Brawl** (also on the Tower Run page) puts every boss into the Mega Block Arena: one or two at a time, by
 the dice, and some of them twice. After each wave you get a breather and a heart; now and then a stray shark
 swims through. One boss lives only here: the **Rhino**, which charges like mad and flings whoever it hits
-across the arena. Best with friends.
+across the arena. Best with friends. The arena is the default map; a click on the map button picks another floor or a random
+one. The Boss Rush has the same button: each boss on its own floor, all on one map, or a random map each.
 
 ## Daily Run
 

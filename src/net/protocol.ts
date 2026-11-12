@@ -108,7 +108,7 @@ export type HostMessage =
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote; server?: ServerStatus }
   | ({ type: 'info' } & ServerInfo)
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; maps?: string[]; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
