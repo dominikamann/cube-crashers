@@ -1,6 +1,7 @@
 import type { VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
+import { ALL_WEAPONS } from './sim/config/weapons';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
@@ -45,7 +46,7 @@ document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 /** dev: puts the camera on a circle round a figure (set once the renderer exists) */
-let showroom: ((at: { x: number; z: number; height: number; radius: number; still?: boolean }) => void) | null = null;
+let showroom: ((at: { x: number; z: number; height: number; radius: number; angle?: number }) => void) | null = null;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 // the interface grows with big screens (see ui/scale.ts)
 const applyUiZoom = () => document.documentElement.style.setProperty('--ui-zoom', String(uiZoom(innerWidth, innerHeight)));
@@ -1210,7 +1211,7 @@ function applyDemo(sim: SimState) {
     });
   }
   // ?demo=cast: ten players in a row, facing the camera that looks at them from the front (&h=… and &r=… set
-  // its height and distance, &turn=1 lets it circle them)
+  // its height and distance, &angle=… looks from another side, &turn=1 lets it circle them)
   // &pose=down|kart|unicorn|jump|fly|climb|dash|win puts them all in that state, &fp=1 looks at them through
   // the first player's eyes, &view=top from the game's own camera
   if (params.get('demo') === 'cast') {
@@ -1222,6 +1223,13 @@ function applyDemo(sim: SimState) {
     const row = sim.players.slice(fp ? 1 : 0);
     const gap = Number(params.get('gap')) || 1.5;
     const pose = params.get('pose');
+    // &weapon=bomb|rare|…: what they all hold (&weapon=cycle: each the next one of the list, starting at &shift=…)
+    const held = [...ALL_WEAPONS, 'rare'];
+    for (const [i, p] of sim.players.entries()) {
+      const weapon = params.get('weapon') === 'cycle' ? held[(i + (Number(params.get('shift')) || 0)) % held.length] : params.get('weapon');
+      if (weapon === 'rare') Object.assign(p, { rare: { kind: 'slushMachine', until: Number.MAX_SAFE_INTEGER, cooldown: 0 }, rareSelected: true });
+      else if (weapon) Object.assign(p, { weapons: [{ kind: weapon as WeaponKind, level: 2, cooldown: 0 }], selected: 0 });
+    }
     // one of every character, or (&cast=bots) ten bots, or (&cast=auto) what the game picks for ten names
     const kinds = params.get('cast') === 'earned' ? [...EARNED_CHARACTERS, ...FREE_CHARACTERS] : FREE_CHARACTERS;
     if (!params.has('cast') || params.get('cast') === 'earned') sim.players.forEach((p, i) => (p.character = kinds[(i + (Number(params.get('from')) || 0)) % kinds.length]));
@@ -1235,7 +1243,7 @@ function applyDemo(sim: SimState) {
       if (pose === 'fly') Object.assign(p, { jetpack: true, jetFuel: 9999, flying: true });
       if (pose === 'pack') p.jetpack = true;
       if (pose === 'dash') Object.assign(p, { dashTicks: 600, dashDir: { x: 0, z: 0 } });
-      if (pose === 'climb') p.climb = { ticks: 100000, top: { ...p.pos } };
+      if (pose === 'climb') p.climb = { ticks: 30, top: { ...p.pos } };
     });
     // the first player steps back and looks at the others
     if (fp) sim.players[0].pos = { x: at.x, z: at.z + (Number(params.get('back')) || 3.2) };
@@ -1249,7 +1257,7 @@ function applyDemo(sim: SimState) {
           p.vehicleId = v.id;
         }
       });
-    if (!fp && !top) showroom?.({ x: at.x + (Number(params.get('x')) || 0), z: at.z, height: Number(params.get('h')) || 2.2, radius: Number(params.get('r')) || 9, still: !params.has('turn') });
+    if (!fp && !top) showroom?.({ x: at.x + (Number(params.get('x')) || 0), z: at.z, height: Number(params.get('h')) || 2.2, radius: Number(params.get('r')) || 9, angle: params.has('turn') ? undefined : ((Number(params.get('angle')) || 0) * Math.PI) / 180 });
   }
   // ?demo=garage: every vehicle in a row next to the player (to look at them)
   if (params.get('demo') === 'garage') {

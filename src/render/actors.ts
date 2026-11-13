@@ -36,7 +36,7 @@ export interface Actors {
 }
 
 /** how far the weapon in a figure's hand is scaled up from the first-person model */
-const HELD_SCALE = 1.45;
+const HELD_SCALE = 1.2;
 // three little stars that circle over a downed player
 const dizzyGeo = new THREE.BoxGeometry(0.11, 0.11, 0.11);
 const dizzyMat = glowMat(0xffe14a, 1.6);
@@ -534,7 +534,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     animate(v.figure, { t: time + p.id * 1.7, step: v.step, pace: v.pace, ahead: v.ahead, aside: v.aside, idle: v.idle, air, land: v.land, dash: v.dash, down, driving, climbing: !!p.climb, win: won, kick: v.kick });
     // a winner turns on the spot
     v.body.rotation.y = v.yaw + (won ? time * 5 : 0);
-    v.held.visible = !down;
+    v.held.visible = !down && !won;
     v.held.position.z = v.figure.model.hand[2] + v.kick * 0.1;
     v.held.rotation.x = v.kick * 0.3;
     v.dizzy.visible = down;

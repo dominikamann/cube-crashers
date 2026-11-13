@@ -2,6 +2,7 @@ import { DOMINIK } from './monster-parts';
 import * as THREE from 'three';
 import type { BossKind, PowerupKind, SimEvent, SimState, Vec2 } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
+import { playerColor } from './palette';
 import { glowMat, InstancedPool } from './pool';
 import type { Theme } from './theme';
 
@@ -449,7 +450,7 @@ export function createFx(scene: THREE.Scene): Fx {
       }
       // dash trail, jetpack exhaust and smoke from damaged karts
       for (const p of s.players) {
-        if (p.dashTicks > 0) burst(p.pos, 0.6, 3, [0x2bf0ff, 0xffffff], 1, 0.14, 0.3);
+        if (p.dashTicks > 0) burst(p.pos, 0.6, 3, [playerColor(p.color), 0xffffff], 1, 0.14, 0.3);
         if (p.flying) burst(p.pos, 2.3, 2, [0xff9f2e, 0xffe14a, 0x888899], 0.8, 0.14, -0.6);
       }
       for (const v of s.vehicles) {

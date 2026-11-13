@@ -123,7 +123,7 @@ const HUMANS: Record<Exclude<CharacterId, 'babyDino' | 'dominik'>, Model> = {
       // a big helmet with a glass visor, a stripe over the top and a radio antenna
       const head = s.part('head', [0, 0.94, 0], 'body');
       head.box(STEEL, 0.4, 0.06, 0.36, 0, 0.96, 0).box(c, 0.58, 0.5, 0.54, 0, 1.24, 0).box(WHITE, 0.14, 0.03, 0.56, 0, 1.495, 0);
-      head.box(DARK, 0.48, 0.3, 0.04, 0, 1.24, -0.27).glow(0x2bf0ff, 1.3, 0.42, 0.22, 0.03, 0, 1.24, -0.285).glow(0xffffff, 1.6, 0.1, 0.05, 0.02, -0.12, 1.3, -0.3);
+      head.box(DARK, 0.48, 0.3, 0.04, 0, 1.24, -0.27).glow(0x1f9fd0, 0.45, 0.42, 0.22, 0.03, 0, 1.24, -0.285).glow(0xbff6ff, 1.1, 0.12, 0.05, 0.02, -0.11, 1.3, -0.3).glow(0xbff6ff, 1.1, 0.05, 0.05, 0.02, 0.0, 1.3, -0.3);
       head.pair(WHITE, 0.06, 0.18, 0.2, 0.31, 1.22, 0.02);
       head.box(DARK, 0.03, 0.2, 0.03, 0.2, 1.59, 0.12).glow(0xff5a5f, 1.5, 0.07, 0.07, 0.07, 0.2, 1.71, 0.12);
     },
@@ -511,7 +511,7 @@ const BOTS: Record<BotChassis, Model> = {
     build(s, { c, l }, look) {
       const body = s.part('body');
       // one fat wheel under a fork, and a body that balances on it
-      s.part('wheel', [0, 0.3, 0], 'body').box(IRON, 0.2, 0.52, 0.52, 0, 0.3, 0).box(IRON, 0.2, 0.52, 0.52, 0, 0.3, 0, [Math.PI / 4, 0, 0]).box(c, 0.24, 0.2, 0.2, 0, 0.3, 0).box(STEEL, 0.26, 0.08, 0.08, 0, 0.3, 0);
+      s.part('wheel', [0, 0.3, 0], 'body').box(IRON, 0.2, 0.44, 0.44, 0, 0.3, 0).box(IRON, 0.2, 0.44, 0.44, 0, 0.3, 0, [Math.PI / 4, 0, 0]).box(c, 0.24, 0.2, 0.2, 0, 0.3, 0).box(STEEL, 0.26, 0.08, 0.08, 0, 0.3, 0);
       body.pair(STEEL, 0.06, 0.42, 0.08, 0.15, 0.5, 0).box(STEEL, 0.5, 0.4, 0.4, 0, 0.86, 0).box(c, 0.38, 0.24, 0.04, 0, 0.88, -0.21).glow(l, 1.5, 0.08, 0.08, 0.03, 0, 0.88, -0.235);
       body.pair(c, 0.14, 0.12, 0.26, 0.31, 1.0, 0).box(IRON, 0.3, 0.26, 0.08, 0, 0.86, 0.24);
       claws(s, 0.34, 1.0);
