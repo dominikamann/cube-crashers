@@ -29,6 +29,7 @@ import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { BOSS_RUSH, FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
+import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
@@ -620,8 +621,7 @@ function startGame() {
 
   /** tickets for this run go into the local profile (in LAN games every player earns their own) */
   function earnTickets(s: SimState): number {
-    const floors = s.run.floor + (s.phase === 'won' ? 1 : 0);
-    const n = ticketsForRun({ score: s.score, floors, difficulty: s.difficulty });
+    const n = ticketsForRun({ score: s.score, floors: floorsCleared(s).cleared, difficulty: s.difficulty });
     profile.tickets += n;
     newUnlocks = rewardForRun(profile, { mode: s.run.mode, won: s.phase === 'won' });
     storeProfile();
@@ -651,6 +651,7 @@ function startGame() {
         won: true,
         mode: 'versus',
         floors: 0,
+        floorsTotal: 0,
         difficulty: s.difficulty,
         headline: label,
         ranking: [...s.players]
@@ -672,7 +673,8 @@ function startGame() {
       unlocked: newUnlocks,
       won: s.phase === 'won',
       mode: s.run.mode,
-      floors: s.run.floor + (s.phase === 'won' ? 1 : 0),
+      floors: floorsCleared(s).cleared,
+      floorsTotal: floorsCleared(s).total,
       difficulty: s.difficulty,
       ranking: [...s.players]
         .sort((a, b) => b.stats.score - a.stats.score)

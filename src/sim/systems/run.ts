@@ -18,6 +18,21 @@ export function initRun(s: SimState, mode: RunMode, floors: string[]): void {
   s.theme = floorDef(s.map.id)?.theme ?? 'plaza';
 }
 
+/**
+ * Where a run stands, for the display: on floor `n` of its floors (the shop counts to the floor before it), or in
+ * game `n` of the games between them (one after every floor but the last). Both totals come from the run's own
+ * list of floors.
+ */
+export function runProgress(s: SimState): { stage: 'floor' | 'between'; n: number; total: number } {
+  const between = s.run.stage !== 'floor' && s.run.stage !== 'shop';
+  return { stage: between ? 'between' : 'floor', n: s.run.floor + 1, total: s.run.floors.length - (between ? 1 : 0) };
+}
+
+/** How many floors of the run are done, out of how many it has. */
+export function floorsCleared(s: SimState): { cleared: number; total: number } {
+  return { cleared: s.run.floor + (s.phase === 'won' ? 1 : 0), total: s.run.floors.length };
+}
+
 /** The elevator was reached: the next stage of the run, or the end of it. */
 /** what comes after floor i of a run, before the shop */
 export const INTERMISSIONS: ('race' | 'lane' | 'maze' | 'shaft')[] = ['race', 'lane', 'maze', 'shaft'];
