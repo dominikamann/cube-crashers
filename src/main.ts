@@ -1164,6 +1164,8 @@ function startGame() {
   if (params.has('split')) settings.localPlayers = 2;
   // dev: ?map=race starts a Single floor demo on that map
   if (params.get('map')) settings.quickMap = params.get('map')!;
+  // dev: &split=1 starts with two players on this screen
+  if (import.meta.env.DEV && params.has('split')) settings.localPlayers = 2;
   // dev: ?versus=team|ffa starts a versus match with bots right away
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';

@@ -99,6 +99,8 @@ function makeSky(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
 export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRenderer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // the shadows are drawn when a frame asks for them (see render), not again with every drawing of the scene
+  renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   const scene = new THREE.Scene();
@@ -364,6 +366,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       fill.position.set(mid.x - 10, 12, mid.z - 6);
       fill.target.position.copy(mid);
 
+      // the sun is the same for every view, so its shadows are drawn once per frame; again for a view only if
+      // it or the one before it hides something that casts one (a first-person player's own figure)
+      let hidBefore = false;
       views.forEach((v, i) => {
         if (views.length > 1) {
           renderer.setViewport(i * vw, 0, vw, h);
@@ -380,6 +385,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         const hidden = v.fp !== null ? [actors.playerModel(v.id), lob ? undefined : actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
         const shown = hidden.map(o => o.visible);
         for (const o of hidden) o.visible = false;
+        if (i === 0 || hidden.length > 0 || hidBefore) renderer.shadowMap.needsUpdate = true;
+        hidBefore = hidden.length > 0;
         v.composer!.render();
         hidden.forEach((o, k) => (o.visible = shown[k]));
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
