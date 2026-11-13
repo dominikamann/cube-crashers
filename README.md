@@ -686,7 +686,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
-| **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **The Kraken** | Boss of the Sunken Arcade. Crawls straight at you over walls and barriers, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
@@ -847,6 +847,7 @@ docs/         gameplay GIF and screenshots
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
 - [x] The Tarantula Queen and her brood, an FPS counter and a graphics test that picks the best setting
+- [x] Shots with a height (aim up at a jetpack, down from one), bosses that climb and keep apart, a lighter picture on Medium to Ultra: version 1.0
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
