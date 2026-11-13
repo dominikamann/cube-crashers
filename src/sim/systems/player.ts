@@ -1,3 +1,4 @@
+import { webSlow } from './webs';
 import { TOWER_SOLID_RADIUS } from '../config/towers';
 import {
   BOOST_FACTOR,
@@ -277,7 +278,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     } else if (moveDir) {
       const boost = s.tick < p.boostUntil ? BOOST_FACTOR : 1;
       const carry = carryingCube(s, p) ? VERSUS.carrySpeed : 1;
-      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * carry * turbo * Math.min(len, 1);
+      const speed = PLAYER_SPEED * (1 + 0.12 * p.perks.speed) * boost * carry * turbo * webSlow(s, p) * Math.min(len, 1);
       // in the air you clear barriers (low walls), only real walls stop you
       moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, p.air > 0 ? BLOCKS_AIR : BLOCKS_WALKER);
     }

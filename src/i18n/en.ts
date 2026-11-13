@@ -184,6 +184,7 @@ export const en = {
   'boss.kraken': 'The Kraken',
   'boss.rhino': 'Rhino Rampage',
   'boss.dominik': 'Angry Dominik',
+  'boss.spider': 'Tarantula Queen',
   'toast.dominikJoined': 'Angry Dominik joined the game',
   'toast.dominikLeft': 'Angry Dominik left the game',
   'floor.jungle': 'Pixel Jungle',

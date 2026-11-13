@@ -7,6 +7,7 @@ import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossSta
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
+import { spinWeb } from './webs';
 import { aloft } from './rare';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
@@ -72,6 +73,15 @@ export const BOSS = {
   hammerFling: 5,
   /** how often the crate he leaves holds his hammer */
   hammerChance: 0.8,
+  /** the Tarantula Queen: she pounces, spins webs and strikes with her fangs; when she falls she bursts into her
+   *  brood, and the fight is over when the last of them is gone */
+  spiderHp: 2100,
+  spiderSpeed: 3.1,
+  spiderRadius: 1.25,
+  spiderBrood: 16,
+  /** she calls this many of them to her side with every phase */
+  spiderCall: 4,
+  spiderFangs: 5,
   rexHp: 1600,
   rexSpeed: 1.75,
   rexPhaseSpeed: 1.2,
@@ -105,7 +115,7 @@ const SCHOOL: HordeComp = [{ kind: 'fish', count: 7 }, { kind: 'shark', count: 1
 const byId = (s: SimState, id: number) => s.enemies.find(e => e.id === id);
 
 function bodies(s: SimState, b: BossState): Enemy[] {
-  const ids = b.kind === 'worm' ? b.worms.flat() : b.enemyId !== null ? [b.enemyId] : [];
+  const ids = b.kind === 'worm' ? b.worms.flat() : b.brood ? b.brood : b.enemyId !== null ? [b.enemyId] : [];
   return ids.map(id => byId(s, id)).filter((e): e is Enemy => e !== undefined && e.hp > 0);
 }
 
@@ -134,6 +144,13 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
       e.radius = 1.3;
       e.speed *= BOSS.rexSpeed;
     }
+    b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
+  } else if (kind === 'spider') {
+    // the Tarantula Queen walks like a tank in the rules too, with a body of her own
+    const e = spawnEnemy(s, 'tank', centre);
+    e.hp = e.maxHp = BOSS.spiderHp * hpScale(s);
+    e.radius = BOSS.spiderRadius;
+    e.speed = BOSS.spiderSpeed;
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else if (kind === 'dominik') {
     // Angry Dominik walks like a tank in the rules, but is a body of his own
@@ -176,7 +193,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
 export const WILD_WAKE = 9;
 
 export const BRAWL = {
-  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino'] as BossKind[],
+  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider'] as BossKind[],
   /** this many of them come a second time */
   extra: 2,
   dominikChance: 0.25,
@@ -288,6 +305,33 @@ function attack(s: SimState, b: BossState): void {
       }
     } else {
       for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
+    }
+  } else if (b.kind === 'spider') {
+    // (burst already: the brood fights by itself)
+    const spider = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
+    if (!spider) return;
+    const roll = s.rng.next();
+    const near = alive.reduce((a, c) => (dist(c.pos, spider.pos) < dist(a.pos, spider.pos) ? c : a));
+    if (roll < 0.34 && !b.leap) {
+      // the pounce: she jumps at one of the players and comes down on them
+      voice();
+      megaLeap(s, s.rng.pick(alive), b);
+    } else if (roll < 0.7) {
+      // webs: one under every player and one where they are heading, so there is no walking away from them
+      voice();
+      for (const p of alive.slice(0, 4)) {
+        spinWeb(s, p.pos);
+        spinWeb(s, { x: p.pos.x + p.facing.x * 4, z: p.pos.z + p.facing.z * 4 });
+      }
+    } else {
+      // the fangs: a strike all round her, and a line of them at whoever is nearest
+      const d = dist(spider.pos, near.pos) || 1;
+      const dir = { x: (near.pos.x - spider.pos.x) / d, z: (near.pos.z - spider.pos.z) / d };
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        telegraph(s, { x: spider.pos.x + Math.cos(a) * 2.8, z: spider.pos.z + Math.sin(a) * 2.8 }, 1.4, BOSS.strikeDamage, 45);
+      }
+      for (let i = 1; i <= BOSS.spiderFangs; i++) telegraph(s, { x: spider.pos.x + dir.x * (2 + i * BOSS.waveStep), z: spider.pos.z + dir.z * (2 + i * BOSS.waveStep) }, 1.2, BOSS.strikeDamage, 45 + i * 4);
     }
   } else if (b.kind === 'dominik') {
     const dom = byId(s, b.enemyId!);
@@ -461,7 +505,7 @@ function resolveWorms(s: SimState, b: BossState): void {
 
 /** The Mega Block jumps at `p`: a big ring warns where it comes down, a moment later it lands there. */
 export function megaLeap(s: SimState, p: Player, b: BossState | null = s.boss): void {
-  const boss = b && b.kind === 'megaBlock' ? byId(s, b.enemyId!) : undefined;
+  const boss = b && (b.kind === 'megaBlock' || b.kind === 'spider') && b.enemyId !== null ? byId(s, b.enemyId) : undefined;
   if (!b || !boss) return;
   b.leap = { from: { ...boss.pos }, to: { ...p.pos }, start: s.tick, land: s.tick + BOSS.leapTicks };
   telegraph(s, p.pos, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
@@ -594,6 +638,20 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
+  if (living.length === 0 && b.kind === 'spider' && !b.brood) {
+    // the Tarantula Queen bursts: her brood swarms out of her, and has to be beaten to the last one
+    b.enemyId = null;
+    b.leap = null;
+    b.brood = [];
+    for (let i = 0; i < BOSS.spiderBrood; i++) {
+      const a = (i / BOSS.spiderBrood) * Math.PI * 2, r = 0.8 + (i % 3) * 0.7;
+      b.brood.push(spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * r, z: b.lastPos.z + Math.sin(a) * r }, 0.3, BLOCKS_ENEMY)).id);
+    }
+    // (the bar is the brood from here on)
+    b.maxHp = hpOf(s, b);
+    s.events.push({ type: 'bossBurst', pos: { ...b.lastPos }, kind: b.kind });
+    return;
+  }
   if (living.length === 0) {
     if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
@@ -629,6 +687,12 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     // the Mega Block gets angrier: faster with every phase
     if (b.kind === 'megaBlock') for (const e of living) e.speed *= BOSS.megaPhaseSpeed;
     if (b.kind === 'rex') for (const e of living) e.speed *= BOSS.rexPhaseSpeed;
+    // the Tarantula Queen calls some of her brood to her side (they are not part of the last swarm)
+    if (b.kind === 'spider' && b.enemyId !== null && !b.wild)
+      for (let i = 0; i < BOSS.spiderCall; i++) {
+        const a = (i / BOSS.spiderCall) * Math.PI * 2;
+        spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
+      }
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0 && !b.wild) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }

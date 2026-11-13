@@ -16,13 +16,19 @@ function killBoss(s: SimState) {
   const ids = b.kind === 'worm' ? b.worms.flat() : [b.enemyId!];
   for (const e of s.enemies) if (ids.includes(e.id)) e.hp = 0;
   stepSim(s, []);
+  // (the Tarantula Queen bursts into her brood first: they go too)
+  if (s.boss?.brood) {
+    for (const e of s.enemies) if (s.boss.brood.includes(e.id)) e.hp = 0;
+    stepSim(s, []);
+    stepSim(s, []);
+  }
 }
 
 describe('Boss Rush', () => {
-  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, King Rex, then Angry Dominik', () => {
-    expect(BOSS_RUSH.map(b => b.boss)).toEqual(['megaBlock', 'worm', 'kraken', 'rhino', 'rex', 'dominik']);
+  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, the Tarantula Queen, King Rex, then Angry Dominik', () => {
+    expect(BOSS_RUSH.map(b => b.boss)).toEqual(['megaBlock', 'worm', 'kraken', 'rhino', 'spider', 'rex', 'dominik']);
     const s = bossRush();
-    expect(s.run.floors).toHaveLength(6);
+    expect(s.run.floors).toHaveLength(7);
     expect(s.boss?.kind).toBe('megaBlock');
     expect(s.nests).toHaveLength(0);
   });
@@ -56,7 +62,7 @@ describe('Boss Rush', () => {
 
   it('King Rex is a giant T-Rex: it roars and the ground cracks under the players', () => {
     const s = bossRush();
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       killBoss(s);
       floorCleared(s);
       s.run.shop!.ready.push(...s.players.map(p => p.id));
@@ -77,7 +83,7 @@ describe('Boss Rush', () => {
 
   it('beating the last boss wins the rush', () => {
     const s = bossRush();
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       killBoss(s);
       floorCleared(s);
       s.run.shop!.ready.push(...s.players.map(p => p.id));

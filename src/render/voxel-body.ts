@@ -29,7 +29,7 @@ const round = (u: number, v: number, w: number, p: number, limit = 1.1) => Math.
 const BELLY: [number, number, number] = [1.45, 1.4, 1.2];
 
 /** a body that is not a monster kind of its own: the Rhino is a rammer in the game's rules */
-export type BodyKind = EnemyKind | 'rhino' | 'dominik' | 'dominikHead';
+export type BodyKind = EnemyKind | 'rhino' | 'dominik' | 'dominikHead' | 'spider';
 
 /**
  * Angry Dominik is made from photos. His head: four pixel portraits (front, both sides, back, see
@@ -197,6 +197,19 @@ const SHAPES: Partial<Record<BodyKind, Shape>> = {
       const hair = portraitAt(HEAD_BACK, HEAD_RUNS.back, Math.round(HEAD.H * 0.3) + (pick % Math.round(HEAD.H * 0.25)), 0.25 + ((pick * 31) % 50) / 100) ?? seen;
       return mix(seen, hair, crown);
     },
+  },
+  // the Tarantula Queen: a big round abdomen behind a smaller front body, dark and hairy, with orange bands across
+  // the abdomen (her eight legs, her fangs and her eyes are parts)
+  spider: {
+    n: [14, 10, 22],
+    inside: (u, v, w) => (u / 0.98) ** 2 + ((v - 0.05) / 0.95) ** 2 + ((w + 0.36) / 0.62) ** 2 <= 1 || (u / 0.66) ** 2 + ((v + 0.12) / 0.66) ** 2 + ((w - 0.56) / 0.42) ** 2 <= 1,
+    tone: (u, v, w) => (w < 0.2 && v > 0.15 && Math.floor((w + 1.2) * 6) % 2 === 0 && Math.abs(u) < 0.75 ? [3.6, 1.9, 0.6] : v < -0.5 ? 0.7 : w > 0.75 ? 1.25 : 1),
+  },
+  // one of her brood: the same in small, two round lumps
+  spiderling: {
+    n: [6, 5, 8],
+    inside: (u, v, w) => (u / 0.95) ** 2 + (v / 0.95) ** 2 + ((w + 0.35) / 0.6) ** 2 <= 1 || (u / 0.7) ** 2 + ((v + 0.1) / 0.7) ** 2 + ((w - 0.55) / 0.42) ** 2 <= 1,
+    tone: (_u, v, w) => (w < 0.1 && v > 0.3 ? [3.4, 1.8, 0.6] : 1),
   },
   // a rhino: a heavy barrel with a hump over the shoulders, and a long head held low that narrows to a square
   // lip; a lighter belly and dark folds where its armour plates meet (legs, horns, ears and tail are parts)

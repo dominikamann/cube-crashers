@@ -41,6 +41,7 @@ const BOSS_WRECK: Record<BossKind, number[]> = {
   rex: [0x6a8f3a, 0x6a8f3a, 0x9fd35a, 0x47632a, 0x47632a, 0xf2ead8, 0xd9c58a],
   kraken: [0xd04a8a, 0xd04a8a, 0xff6ab0, 0x8e2f5e, 0x8e2f5e, 0xffd9e8],
   dominik: [0x1b1c21, 0x1b1c21, 0x1b1c21, 0xd3936e, 0xd3936e, 0x20295c, 0x20295c, 0x2bc8ff, 0xd62bff, 0x8a919e, 0x4a3222],
+  spider: [0x3a2a22, 0x3a2a22, 0x241a15, 0x5a4034, 0xd9701e, 0xd9701e, 0xff3b3b],
   rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
 };
 
@@ -326,6 +327,13 @@ export function createFx(scene: THREE.Scene): Fx {
             break;
           case 'hammerSlam':
             slams.push({ at: { ...e.pos }, in: (e.at - s.tick) / TICK_RATE, rings: 0 });
+            break;
+          case 'bossBurst':
+            // she bursts: pieces of her shell, a splash of green, and the brood runs out of it
+            chunks(e.pos, 1.2, 34, BOSS_WRECK[e.kind], 8, 0.22, 0.5);
+            burst(e.pos, 1, 40, [0x8fd14a, 0xc8f07a, 0x4a7a22], 6, 0.14, 0.7);
+            ring(e.pos, 4, [0xc8f07a, 0xffffff]);
+            addShake(0.7);
             break;
           case 'eggHatch':
             // the shell flies apart

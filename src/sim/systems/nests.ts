@@ -99,6 +99,7 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   s.eggs = [];
+  s.webs = [];
   s.mini = null;
   s.wild = null;
   s.heart = null;
