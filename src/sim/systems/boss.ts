@@ -451,6 +451,12 @@ function attack(s: SimState, b: BossState): void {
 /** how much faster a worm of this many segments crawls than a whole one */
 export const wormPace = (segments: number) => 1 + BOSS.wormShortBoost * Math.max(0, 1 - (segments - BOSS.wormMinSplit) / (BOSS.wormSegments - BOSS.wormMinSplit));
 
+/**
+ * how wide the worm's head is to the walls: a little less than it is. A head as wide as a gap of one tile fits it
+ * only when it is in the very middle, and so it stood in front of doorways without ever getting in
+ */
+const WORM_GAP = 0.4;
+
 /** Moves the worms: each head steers toward the players, the body follows like a chain. */
 function moveWorms(s: SimState, b: BossState): void {
   const field = s.flow?.field;
@@ -463,7 +469,7 @@ function moveWorms(s: SimState, b: BossState): void {
     const wiggle = Math.sin(s.tick * 0.08 + head.id) * 0.5;
     dir = { x: dir.x - dir.z * wiggle, z: dir.z + dir.x * wiggle };
     const slow = (head.slowUntil > s.tick ? 0.5 : 1) * wormPace(segs.length);
-    moveCircle(s.map, head.pos, (dir.x * BOSS.wormSpeed * slow + head.knock.x) * DT, (dir.z * BOSS.wormSpeed * slow + head.knock.z) * DT, head.radius, BLOCKS_ENEMY);
+    moveCircle(s.map, head.pos, (dir.x * BOSS.wormSpeed * slow + head.knock.x) * DT, (dir.z * BOSS.wormSpeed * slow + head.knock.z) * DT, WORM_GAP, BLOCKS_ENEMY);
     head.knock.x *= 0.85;
     head.knock.z *= 0.85;
     if (dir.x !== 0 || dir.z !== 0) head.dir = dir;

@@ -15,7 +15,8 @@ function closest(map: string, kind: BossKind, seed: number): number {
   s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
   spawnBoss(s, kind);
   s.players[0].invulnUntil = 1e9;
-  const id = s.boss!.enemyId!;
+  // (the worm: its head)
+  const id = s.boss!.enemyId ?? s.boss!.worms[0][0];
   let best = Infinity;
   for (let i = 0; i < 60 * 60; i++) {
     stepSim(s, []);
@@ -27,7 +28,7 @@ function closest(map: string, kind: BossKind, seed: number): number {
 }
 
 describe('big bosses do not get stuck on the way to the players', () => {
-  for (const kind of ['rex', 'rhino', 'megaBlock', 'kraken'] as BossKind[])
+  for (const kind of ['rex', 'rhino', 'megaBlock', 'kraken', 'worm', 'dominik', 'spider'] as BossKind[])
     for (const map of MAPS)
       it(`${kind} on ${map}`, () => {
         expect(closest(map, kind, 3)).toBeLessThan(5);
