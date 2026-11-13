@@ -147,6 +147,9 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
  * Boss Brawl: every boss comes to the Mega Block Arena, one or two at a time by the dice, some of them twice.
  * A cleared wave gives a breather and a heart, then the next comes in. Now and then a shark swims through.
  */
+/** how close a player comes before a waiting wild boss goes for them */
+export const WILD_WAKE = 9;
+
 export const BRAWL = {
   kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino'] as BossKind[],
   /** this many of them come a second time */
@@ -449,7 +452,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   if (b.kind === 'worm') resolveWorms(s, b);
   if (living.length === 0) {
     if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
-    s.events.push({ type: 'bossDead', pos: { ...b.lastPos } });
+    s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
     dropCoins(s, b.lastPos, BOSS.deathCoins);
     if (s.bosses) {
       // a brawl: the others fight on; the wave is cleared when the last of them falls
@@ -461,6 +464,11 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
       return;
     }
     s.boss = null;
+    if (b.wild) {
+      // a wild boss of the Tower Run: the elevator is open already, and it leaves a crate behind
+      s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) } });
+      return;
+    }
     s.elevatorOpen = true;
     s.events.push({ type: 'elevatorOpen' });
     return;
@@ -474,7 +482,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     if (b.kind === 'megaBlock') for (const e of living) e.speed *= BOSS.megaPhaseSpeed;
     if (b.kind === 'rex') for (const e of living) e.speed *= BOSS.rexPhaseSpeed;
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
-    if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
+    if (entries.length > 0 && !b.wild) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }
   if (b.nextSchoolAt !== undefined && s.tick >= b.nextSchoolAt) {
     // the Kraken calls the sea: a new school sweeps in from somewhere away from the players
@@ -482,6 +490,19 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     const sea = s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0).length;
     const entries = s.map.waypoints.filter(w => s.players.every(p => dist(w, p.pos) > 10));
     if (sea < BOSS.seaCap && s.enemies.length + 8 <= ENEMY_CAP && entries.length > 0) spawnHorde(s, s.rng.pick(entries), SCHOOL, { rush: true });
+  }
+  if (b.waiting !== undefined) {
+    // a wild boss waits by the elevator until someone comes near or hurts it
+    const body = living[0];
+    const near = s.players.some(p => p.downUntil === null && dist(p.pos, body.pos) <= WILD_WAKE);
+    if (!near && body.hp >= body.maxHp) {
+      b.nextAttackAt = s.tick + TICK_RATE;
+      // (no charge and no stomp of its own either)
+      body.cooldownUntil = Math.max(body.cooldownUntil, s.tick + TICK_RATE);
+      return;
+    }
+    body.speed = b.waiting;
+    b.waiting = undefined;
   }
   if (s.tick >= b.nextAttackAt) {
     attack(s, b);

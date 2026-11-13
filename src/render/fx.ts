@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { PowerupKind, SimEvent, SimState, Vec2 } from '../sim/types';
+import type { BossKind, PowerupKind, SimEvent, SimState, Vec2 } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
 import { glowMat, InstancedPool } from './pool';
 import type { Theme } from './theme';
@@ -26,6 +26,15 @@ interface Beam {
 }
 
 const MAX_PARTICLES = 3000;
+
+/** what a boss is made of: the colours of the pieces it bursts into (its body in a few shades, and its horns, teeth or spikes) */
+const BOSS_WRECK: Record<BossKind, number[]> = {
+  megaBlock: [0x5b4a8a, 0x5b4a8a, 0x7b5fd1, 0x3d3163, 0x3d3163, 0xff3b5c, 0xffe14a],
+  worm: [0x7b4fd1, 0x7b4fd1, 0x8f63ff, 0x4f3391, 0xf2ead8, 0xf2ead8, 0x7dfcff],
+  rex: [0x6a8f3a, 0x6a8f3a, 0x9fd35a, 0x47632a, 0x47632a, 0xf2ead8, 0xd9c58a],
+  kraken: [0xd04a8a, 0xd04a8a, 0xff6ab0, 0x8e2f5e, 0x8e2f5e, 0xffd9e8],
+  rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
+};
 
 /** the colours of the unicorn's trail */
 const RAINBOW = [0xff5a5f, 0xffa23b, 0xffe14a, 0x3bd16f, 0x3d8bfd, 0xb15cff];
@@ -93,6 +102,29 @@ export function createFx(scene: THREE.Scene): Fx {
         size: size * (0.6 + rand() * 0.6),
         color: colors[Math.floor(rand() * colors.length)],
         spin: rand() * 10,
+      });
+    }
+  }
+
+  /** pieces of something that blew apart: thrown high and wide, they tumble, bounce and lie about for a moment */
+  function chunks(pos: Vec2, y: number, count: number, colors: number[], speed: number, minSize: number, maxSize: number) {
+    count = Math.ceil(count * Math.max(0.5, particleScale));
+    for (let i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
+      const a = rand() * Math.PI * 2;
+      const sp = speed * (0.25 + rand() * 0.9);
+      const life = 1.3 + rand() * 1.1;
+      particles.push({
+        x: pos.x + Math.cos(a) * rand() * 1.2,
+        y: y + rand() * 1.4,
+        z: pos.z + Math.sin(a) * rand() * 1.2,
+        vx: Math.cos(a) * sp,
+        vy: 5 + rand() * 7,
+        vz: Math.sin(a) * sp,
+        life,
+        maxLife: life,
+        size: minSize + rand() * (maxSize - minSize),
+        color: colors[Math.floor(rand() * colors.length)],
+        spin: 4 + rand() * 10,
       });
     }
   }
@@ -189,10 +221,17 @@ export function createFx(scene: THREE.Scene): Fx {
             ring(e.pos, e.radius, [0xffe14a, 0xff8c42]);
             addShake(Math.min(0.4, 0.08 * e.radius));
             break;
-          case 'bossDead':
-            burst(e.pos, 1.5, 300, [0x7b4fd1, 0xff2bd6, 0xffe14a, 0x2bf0ff, 0xffffff], 9, 0.22);
-            addShake(0.6);
+          case 'bossDead': {
+            // it blows apart: big pieces of its own body fly off and tumble across the floor, small bits rain
+            // down after them, a flash and a shockwave where it stood
+            const body = BOSS_WRECK[e.kind ?? 'megaBlock'];
+            chunks(e.pos, 1.6, 46, body, 10, 0.34, 0.75);
+            chunks(e.pos, 1.2, 150, body, 7, 0.12, 0.24);
+            burst(e.pos, 1.5, 30, [0xffffff, 0xffe9a8], 6, 0.2);
+            ring(e.pos, 6, [0xffffff, 0xffe14a]);
+            addShake(0.8);
             break;
+          }
           case 'wormSplit':
             burst(e.pos, 0.6, 40, [0x7b4fd1, 0xff2bd6], 5, 0.18);
             addShake(0.2);

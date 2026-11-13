@@ -392,6 +392,10 @@ export interface BossState {
   worms: number[][];
   nextAttackAt: number;
   lastPos: Vec2;
+  /** a wild boss of the Tower Run: the floor does not end with it */
+  wild?: boolean;
+  /** a wild boss waits by the elevator until someone comes near or hurts it: the speed it gets back then */
+  waiting?: number;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */
   grab?: { playerId: number; until: number } | null;
   /** the Mega Block in mid-leap: from where to where, and when it lands */
@@ -628,7 +632,7 @@ export type SimEvent =
   | { type: 'krakenGrab'; playerId: number }
   | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }
-  | { type: 'bossDead'; pos: Vec2 }
+  | { type: 'bossDead'; pos: Vec2; kind?: BossKind }
   | { type: 'wormSplit'; pos: Vec2 }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
@@ -671,6 +675,8 @@ export interface SimState {
   logoEgg?: { hits: number; given: number } | null;
   /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
   heart?: { pos: Vec2 } | null;
+  /** Tower Run: the wild boss that breaks in on this floor when the first nest falls */
+  wild?: { kind: BossKind } | null;
   nextJetpackAt: number;
   /** when the game next rolls for a unicorn to turn up */
   nextUnicornAt?: number;

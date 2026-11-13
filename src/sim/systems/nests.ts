@@ -37,6 +37,7 @@ import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { placeHiddenHeart } from './heart';
+import { planWildBoss, releaseWildBoss } from './wild-boss';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
 
 const eliteBonus = (s: SimState) => floorDef(s.map.id)?.eliteBonus ?? 0;
@@ -96,6 +97,7 @@ export function setupFloor(s: SimState): void {
   // all timers count from now: later floors start long after tick 0
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
+  s.wild = null;
   s.heart = null;
   s.logoEgg = null;
   const def = floorDef(s.map.id);
@@ -161,6 +163,7 @@ export function setupFloor(s: SimState): void {
   placeStartJetpack(s);
   s.nextPowerupAt = s.tick + POWERUP.firstTicks;
   if (s.run.mode === 'run') placeHiddenHeart(s);
+  planWildBoss(s);
 }
 
 function besideNest(s: SimState, n: Nest): Vec2 {
@@ -187,6 +190,8 @@ function destroyNest(s: SimState, n: Nest): void {
     return;
   }
   if (s.nests.every(x => x.state === 'destroyed')) {
+    // the doors open, but on some floors a wild boss now waits in front of them
+    releaseWildBoss(s);
     s.elevatorOpen = true;
     s.events.push({ type: 'elevatorOpen' });
   }
