@@ -382,6 +382,10 @@ export interface Blast {
   createdAt: number;
   at: number;
   damage: number;
+  /** it throws whoever it hurts away from `from`, up to `dist` tiles (Angry Dominik's hammer) */
+  fling?: { from: Vec2; dist: number };
+  /** no warning on the floor and none to hear (his thrown hammer: the hammer in the air is the warning) */
+  hidden?: boolean;
 }
 
 export interface BossState {
@@ -645,6 +649,11 @@ export type SimEvent =
   | { type: 'dominikLeft'; pos: Vec2 }
   /** Angry Dominik throws his hammer: out to `to` and back */
   | { type: 'hammerThrow'; from: Vec2; to: Vec2 }
+  /** Angry Dominik raises his hammer for a slam: it meets the floor at tick `at` */
+  | { type: 'hammerSlam'; pos: Vec2; at: number }
+  /** his eyes take aim, and then they burn: once each per laser */
+  | { type: 'laserAim'; pos: Vec2 }
+  | { type: 'laserFire'; pos: Vec2 }
   /** a baby dino breaks out of its egg */
   | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }

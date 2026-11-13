@@ -20,11 +20,12 @@ import {
   RUSH_BASE_SIZE,
   RUSH_INTERVAL_TICKS,
   RUSH_SIZE_PER_ALARM,
+  PLAYER_RADIUS,
   START_CLEAR_RADIUS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
 import { BOSS_RUSH, floorDef } from '../config/floors';
-import { BLOCKS_WALKER, type FloorMap } from '../map/tilemap';
+import { BLOCKS_WALKER, moveCircle, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -326,7 +327,18 @@ function respawnNest(s: SimState, n: Nest): void {
 export function updateBlasts(s: SimState): void {
   s.blasts = s.blasts.filter(b => {
     if (s.tick < b.at) return true;
+    const before = b.fling ? s.players.map(p => (p.downUntil === null ? p.hp : -1)) : [];
     explode(s, b.pos, b.radius, { player: b.damage }, 'explosion');
+    // a blast that flings (Angry Dominik's hammer) throws whoever it hurt away from where the blow came from;
+    // in small steps, so a wall stops the flight
+    if (b.fling)
+      s.players.forEach((p, i) => {
+        if (before[i] < 0 || (p.hp >= before[i] && p.downUntil === null)) return;
+        const dx = p.pos.x - b.fling!.from.x, dz = p.pos.z - b.fling!.from.z, d = Math.hypot(dx, dz);
+        const dir = d > 1e-6 ? { x: dx / d, z: dz / d } : { x: 0, z: 1 };
+        for (let k = 0; k < b.fling!.dist * 2; k++) moveCircle(s.map, p.pos, dir.x * 0.5, dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
+        s.events.push({ type: 'kartRam', pos: { ...p.pos } });
+      });
     return false;
   });
 }

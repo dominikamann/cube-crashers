@@ -7,6 +7,7 @@ import { BOSS, laserAngle, laserHits, spawnBoss } from '../../src/sim/systems/bo
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { MINI, releaseMiniDominik } from '../../src/sim/systems/mini-dominik';
 import { fireRare } from '../../src/sim/systems/rare';
+import { Tile } from '../../src/sim/map/tilemap';
 import type { SimState } from '../../src/sim/types';
 
 function fight(seed = 4): SimState {
@@ -58,6 +59,25 @@ describe('Angry Dominik', () => {
     for (let i = 0; i < 30; i++) stepSim(s, []);
     expect(p.hp).toBeLessThan(hp);
     for (let i = 0; i < 20; i++) stepSim(s, []);
+    expect(s.boss!.laser ?? null).toBeNull();
+  });
+
+  it('his eyes are heard once as they take aim and once as they start to burn', () => {
+    const s = fight();
+    s.players[0].invulnUntil = 1e9;
+    s.boss!.laser = null;
+    const next = s.rng.next.bind(s.rng);
+    s.rng.next = () => (s.tick >= s.boss!.nextAttackAt ? 0.1 : next());
+    s.boss!.nextAttackAt = s.tick;
+    let aims = 0, fires = 0;
+    for (let i = 0; i < BOSS.laser.aimTicks + BOSS.laser.burnTicks + 10; i++) {
+      if (i > 0) s.boss!.nextAttackAt = s.tick + 1000;
+      stepSim(s, []);
+      aims += s.events.filter(e => e.type === 'laserAim').length;
+      fires += s.events.filter(e => e.type === 'laserFire').length;
+    }
+    expect(aims).toBe(1);
+    expect(fires).toBe(1);
     expect(s.boss!.laser ?? null).toBeNull();
   });
 
@@ -143,5 +163,78 @@ describe('a small Angry Dominik from the wall', () => {
     expect(s.mini ?? null).toBeNull();
     expect(s.enemies.includes(body)).toBe(false);
     void joined;
+  });
+});
+
+describe("Angry Dominik's hammer", () => {
+  /** a fight in which his next attack is the one `roll` picks (0.5: the throw, 0.9: the slam), with the player `away` tiles in front of him */
+  function strike(roll: number, away: number): { s: SimState; from: { x: number; z: number } } {
+    const s = fight();
+    const dom = bodyOf(s);
+    dom.speed = 0;
+    const p = s.players[0];
+    p.pos = { x: dom.pos.x, z: dom.pos.z + away };
+    p.hp = p.maxHp = 1e6;
+    // (the dice are fixed for the tick in which he attacks: the first roll there picks the attack)
+    const next = s.rng.next.bind(s.rng);
+    s.rng.next = () => (s.tick >= s.boss!.nextAttackAt ? roll : next());
+    s.boss!.nextAttackAt = s.tick;
+    return { s, from: { ...dom.pos } };
+  }
+  const still = (s: SimState, ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      s.boss!.nextAttackAt = s.tick + 1000;
+      stepSim(s, []);
+    }
+  };
+
+  it('throws a player it hits several tiles away from him, and hurts', () => {
+    const { s, from } = strike(0.9, BOSS.hammerRings[0]);
+    const p = s.players[0];
+    const before = { ...p.pos };
+    stepSim(s, []);
+    expect(s.blasts.some(b => b.fling)).toBe(true);
+    still(s, BOSS.warnTicks + 5);
+    expect(p.hp).toBeLessThan(p.maxHp);
+    expect(Math.hypot(p.pos.x - from.x, p.pos.z - from.z) - Math.hypot(before.x - from.x, before.z - from.z)).toBeGreaterThan(3);
+  });
+
+  it('a wall stops the flight', () => {
+    const { s, from } = strike(0.9, BOSS.hammerRings[0]);
+    const p = s.players[0];
+    stepSim(s, []);
+    // a wall across his path, two tiles behind him
+    const row = Math.floor(p.pos.z) + 2;
+    for (let x = 0; x < s.map.w; x++) s.map.tiles[row * s.map.w + x] = Tile.Wall;
+    still(s, BOSS.warnTicks + 5);
+    expect(p.hp).toBeLessThan(p.maxHp);
+    expect(p.pos.z).toBeLessThan(row);
+    expect(p.pos.z).toBeGreaterThan(from.z + BOSS.hammerRings[0]);
+  });
+
+  it('his lightning hurts but throws no one', () => {
+    // (far outside the rings: only the bolt that falls where the player stands reaches)
+    const { s } = strike(0.9, 13);
+    const p = s.players[0];
+    const before = { ...p.pos };
+    stepSim(s, []);
+    still(s, BOSS.warnTicks + 20);
+    expect(p.hp).toBeLessThan(p.maxHp);
+    expect(p.pos).toEqual(before);
+  });
+
+  it('gives no warning on the floor for the throw (the hammer in the air is the warning), but one for the rings', () => {
+    const thrown = strike(0.5, 4).s;
+    stepSim(thrown, []);
+    const line = thrown.blasts.filter(b => b.fling);
+    expect(line).toHaveLength(BOSS.hammerLine * 2);
+    expect(line.every(b => b.hidden)).toBe(true);
+    // (the lightning that comes with it still warns)
+    expect(thrown.events.filter(e => e.type === 'blastWarning')).toHaveLength(thrown.blasts.length - line.length);
+    const slammed = strike(0.9, 4).s;
+    stepSim(slammed, []);
+    expect(slammed.blasts.filter(b => b.fling).length).toBeGreaterThan(10);
+    expect(slammed.blasts.some(b => b.hidden)).toBe(false);
+    expect(slammed.events.filter(e => e.type === 'blastWarning')).toHaveLength(slammed.blasts.length);
   });
 });

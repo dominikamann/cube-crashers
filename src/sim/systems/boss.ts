@@ -3,7 +3,7 @@ import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '..
 import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
-import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
+import { DT, TICK_RATE, type Blast, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
@@ -68,6 +68,8 @@ export const BOSS = {
   /** his hammer: thrown out in a line and back again, or brought down for three rings of shockwaves */
   hammerLine: 7,
   hammerRings: [3, 5.6, 8.2],
+  /** how far a blow of his hammer throws a player it hits */
+  hammerFling: 5,
   /** how often the crate he leaves holds his hammer */
   hammerChance: 0.8,
   rexHp: 1600,
@@ -228,9 +230,9 @@ function updateBrawl(s: SimState): void {
   for (let i = 0; i < n; i++) spawnBoss(s, br.queue.shift()!, i === 0 ? first : second);
 }
 
-function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks): void {
-  s.blasts.push({ id: s.nextId++, pos: { ...pos }, radius, createdAt: s.tick, at: s.tick + delay, damage });
-  s.events.push({ type: 'blastWarning', pos: { ...pos }, radius });
+function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks, more: Pick<Blast, 'fling' | 'hidden'> = {}): void {
+  s.blasts.push({ id: s.nextId++, pos: { ...pos }, radius, createdAt: s.tick, at: s.tick + delay, damage, ...more });
+  if (!more.hidden) s.events.push({ type: 'blastWarning', pos: { ...pos }, radius });
 }
 
 function attack(s: SimState, b: BossState): void {
@@ -301,25 +303,30 @@ function attack(s: SimState, b: BossState): void {
       const side = s.rng.next() < 0.5 ? 1 : -1;
       const sweep = L.sweep * (b.phase >= 3 ? 1.5 : 1);
       b.laser = { startAt: s.tick, fireAt: s.tick + L.aimTicks, endAt: s.tick + L.aimTicks + L.burnTicks, from: Math.atan2(dir.z, dir.x) - (side * sweep) / 2, sweep: side * sweep };
+      s.events.push({ type: 'laserAim', pos: { ...dom.pos } });
     } else if (roll < 0.67) {
-      // the hammer flies out in a line and comes back the same way
+      // the hammer flies out in a line and comes back the same way, throwing whoever it hits away from him.
+      // Nothing on the floor warns of it: the hammer in the air is the warning
       voice();
       const n = BOSS.hammerLine;
+      const blow = { fling: { from: { ...dom.pos }, dist: BOSS.hammerFling }, hidden: true };
       const at = (i: number) => ({ x: dom.pos.x + dir.x * (1 + i * BOSS.waveStep), z: dom.pos.z + dir.z * (1 + i * BOSS.waveStep) });
       for (let i = 1; i <= n; i++) {
-        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + i * 4);
-        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + i * 4, blow);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16, blow);
       }
       s.events.push({ type: 'hammerThrow', from: { ...dom.pos }, to: at(n) });
     } else {
       // the hammer comes down: rings of shockwaves run outward, one after the other (and, once hurt, lightning
-      // strikes around every player)
+      // strikes around every player); they throw whoever they hit away from him
       voice();
+      // (for the eye and the ear only: when the hammer's head meets the floor, with the first ring)
+      s.events.push({ type: 'hammerSlam', pos: { ...dom.pos }, at: s.tick + BOSS.warnTicks });
       BOSS.hammerRings.forEach((r, k) => {
         const n = Math.round(r * 2.4);
         for (let i = 0; i < n; i++) {
           const a = ((i + (k % 2) * 0.5) / n) * Math.PI * 2;
-          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.dominikDamage, BOSS.warnTicks + k * 22);
+          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.dominikDamage, BOSS.warnTicks + k * 22, { fling: { from: { ...dom.pos }, dist: BOSS.hammerFling } });
         }
       });
     }
@@ -490,6 +497,7 @@ function laser(s: SimState, b: BossState): void {
   dom.dir = { x: Math.cos(a), z: Math.sin(a) };
   dom.stuckUntil = Math.max(dom.stuckUntil, s.tick + 2);
   if (s.tick < l.fireAt) return;
+  if (s.tick === l.fireAt) s.events.push({ type: 'laserFire', pos: { ...dom.pos } });
   for (const p of s.players) if (p.downUntil === null && !aloft(s, p) && !p.perched && laserHits(s, b, p.pos)) damagePlayer(s, p, BOSS.laser.dps * DT, 'shot');
 }
 
