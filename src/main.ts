@@ -1,5 +1,6 @@
 import type { VersusOption } from './net/protocol';
-import { MAX_PLAYERS } from './sim/config/balance';
+import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
+import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
@@ -44,7 +45,7 @@ document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 /** dev: puts the camera on a circle round a figure (set once the renderer exists) */
-let showroom: ((at: { x: number; z: number; height: number; radius: number }) => void) | null = null;
+let showroom: ((at: { x: number; z: number; height: number; radius: number; still?: boolean }) => void) | null = null;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 // the interface grows with big screens (see ui/scale.ts)
 const applyUiZoom = () => document.documentElement.style.setProperty('--ui-zoom', String(uiZoom(innerWidth, innerHeight)));
@@ -697,8 +698,10 @@ function startGame() {
     role = 'solo';
     setSplit(settings.localPlayers === 2);
     const fixed = Number(params.get('seed'));
-    const names = split ? [playerName(), t('split.player2')] : [playerName()];
-    const colors = settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
+    // dev: ?demo=cast lines up a full house of players to look at
+    const cast = import.meta.env.DEV && params.get('demo') === 'cast';
+    const names = cast ? Array.from({ length: MAX_PLAYERS }, (_, i) => `${params.get('cast') === 'bots' ? 'Bot' : 'P'} ${'ABCDEFGHIJ'[i]}`) : split ? [playerName(), t('split.player2')] : [playerName()];
+    const colors = cast ? undefined : settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
     // "Single floor" plays the map chosen on the title screen
     // (the Boss Brawl is in the Mega Block Arena, or on the map picked for it)
     const first = mode === 'brawl' ? FLOORS[brawlMapFor(settings.brawlMap)].map : mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
@@ -708,6 +711,7 @@ function startGame() {
       : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, countdown: !params.has('capture'), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
+    if (cast && params.has('fp')) keyboard.setFirstPerson(true, { x: 0, z: -1 });
   }
 
   // ---------- LAN ----------
@@ -1199,6 +1203,48 @@ function applyDemo(sim: SimState) {
       else p.pos = { x: spot.tx + 0.5 + (spot.along === 'x' ? spot.w / 2 : 0) + spot.facing.x * 3, z: spot.tz + 0.5 + (spot.along === 'z' ? spot.w / 2 : 0) + spot.facing.z * 3 };
       sim.enemies = [];
     });
+  }
+  // ?demo=cast: ten players in a row, facing the camera that looks at them from the front (&h=… and &r=… set
+  // its height and distance, &turn=1 lets it circle them)
+  // &pose=down|kart|unicorn|jump|fly|climb|dash|win puts them all in that state, &fp=1 looks at them through
+  // the first player's eyes, &view=top from the game's own camera
+  if (params.get('demo') === 'cast') {
+    sim.enemies = [];
+    sim.nests = [];
+    sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    const fp = params.has('fp'), top = params.get('view') === 'top';
+    const at = { x: sim.players[0].pos.x, z: sim.players[0].pos.z };
+    const row = sim.players.slice(fp ? 1 : 0);
+    const gap = Number(params.get('gap')) || 1.5;
+    const pose = params.get('pose');
+    // one of every character, or (&cast=bots) ten bots, or (&cast=auto) what the game picks for ten names
+    const kinds = params.get('cast') === 'earned' ? [...EARNED_CHARACTERS, ...FREE_CHARACTERS] : FREE_CHARACTERS;
+    if (!params.has('cast') || params.get('cast') === 'earned') sim.players.forEach((p, i) => (p.character = kinds[(i + (Number(params.get('from')) || 0)) % kinds.length]));
+    row.forEach((p, i) => {
+      p.pos = { x: at.x + (i - (row.length - 1) / 2) * gap, z: at.z };
+      p.aim = p.facing = { x: 0, z: 1 };
+      p.aimPoint = { x: p.pos.x, z: p.pos.z + 4 };
+      p.invulnUntil = 0;
+      if (pose === 'down') p.downUntil = Number.MAX_SAFE_INTEGER;
+      if (pose === 'jump') p.air = Math.round(JUMP_TICKS * (0.3 + 0.07 * i));
+      if (pose === 'fly') Object.assign(p, { jetpack: true, jetFuel: 9999, flying: true });
+      if (pose === 'pack') p.jetpack = true;
+      if (pose === 'dash') Object.assign(p, { dashTicks: 600, dashDir: { x: 0, z: 0 } });
+      if (pose === 'climb') p.climb = { ticks: 100000, top: { ...p.pos } };
+    });
+    // the first player steps back and looks at the others
+    if (fp) sim.players[0].pos = { x: at.x, z: at.z + (Number(params.get('back')) || 3.2) };
+    if (pose === 'win') sim.phase = 'won';
+    if (pose === 'kart' || pose === 'unicorn' || pose === 'hoverboard' || pose === 'roller')
+      void import('./sim/systems/vehicles').then(m => {
+        sim.vehicles = [];
+        for (const p of row) {
+          const v = m.addVehicle(sim, pose === 'kart' ? 'kart' : pose, p.pos, 0);
+          v.driverId = p.id;
+          p.vehicleId = v.id;
+        }
+      });
+    if (!fp && !top) showroom?.({ x: at.x + (Number(params.get('x')) || 0), z: at.z, height: Number(params.get('h')) || 2.2, radius: Number(params.get('r')) || 9, still: !params.has('turn') });
   }
   // ?demo=garage: every vehicle in a row next to the player (to look at them)
   if (params.get('demo') === 'garage') {

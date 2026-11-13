@@ -12,6 +12,10 @@ import { zoneTiles } from '../sim/systems/nests';
 import { KART } from '../sim/systems/vehicles';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
+import { looksFor, type Look } from '../characters';
+import { animate, buildFigure } from './cast';
+import { bake, FIGURE_GLOW, FIGURE_LIT } from './figure';
+import { weaponModel, type HeldKind } from './viewmodel';
 import type { Theme } from './theme';
 import { NORMAL, palette, playerColor } from './palette';
 
@@ -31,55 +35,31 @@ export interface Actors {
   setMap(map: FloorMap): void;
 }
 
-function makePlayer(color: number) {
+/** how far the weapon in a figure's hand is scaled up from the first-person model */
+const HELD_SCALE = 1.45;
+// three little stars that circle over a downed player
+const dizzyGeo = new THREE.BoxGeometry(0.11, 0.11, 0.11);
+const dizzyMat = glowMat(0xffe14a, 1.6);
+
+function makePlayer(color: number, look: Look) {
   const root = new THREE.Group();
-  const body = new THREE.Group();
   const pal = palette();
-  const hue = playerColor(color);
-  const suit = lambert(hue);
-  const trim = lambert(new THREE.Color(hue).lerp(new THREE.Color(0xffffff), 0.45).getHex());
-  const skin = lambert(0xffd2a8);
-  const dark = lambert(0x2a2a50);
-  const white = lambert(0xc4c9d8);
-  // legs swing from the hip, each with a boot
-  const leg = (x: number) => {
-    const g = new THREE.Group();
-    g.add(box(0.2, 0.3, 0.2, dark, 0, -0.15, 0), box(0.23, 0.14, 0.3, white, 0, -0.35, -0.04));
-    g.position.set(x, 0.42, 0);
-    body.add(g);
-    return g;
-  };
-  const legL = leg(-0.13), legR = leg(0.13);
-  // the suit: chest with an emblem, a belt with a buckle, shoulder pads, a small pack
-  body.add(box(0.6, 0.5, 0.38, suit, 0, 0.72, 0));
-  body.add(box(0.62, 0.08, 0.4, dark, 0, 0.47, 0), box(0.12, 0.08, 0.03, glowMat(0xffcf3a, 0.8), 0, 0.47, -0.2));
-  body.add(box(0.2, 0.06, 0.03, white, 0, 0.84, -0.195), box(0.06, 0.2, 0.03, white, 0, 0.77, -0.195));
-  body.add(box(0.22, 0.12, 0.3, trim, -0.4, 0.96, 0), box(0.22, 0.12, 0.3, trim, 0.4, 0.96, 0));
-  body.add(box(0.36, 0.34, 0.12, dark, 0, 0.74, 0.25));
-  // arms hang from the shoulder, with gloves; the right one holds the blaster out in front
-  const arm = (x: number) => {
-    const g = new THREE.Group();
-    g.add(box(0.15, 0.34, 0.15, suit, 0, -0.2, 0), box(0.17, 0.12, 0.17, white, 0, -0.42, 0));
-    g.position.set(x, 0.92, 0);
-    body.add(g);
-    return g;
-  };
-  const armL = arm(-0.4), armR = arm(0.4);
-  armR.rotation.x = 1.25;
-  // the head: a face under a helmet with a glowing visor, a stripe and an antenna
-  body.add(box(0.44, 0.4, 0.44, skin, 0, 1.24, 0), box(0.14, 0.03, 0.02, dark, 0, 1.11, -0.225));
-  body.add(box(0.5, 0.2, 0.5, suit, 0, 1.47, 0), box(0.5, 0.32, 0.14, suit, 0, 1.3, 0.2));
-  body.add(box(0.1, 0.22, 0.52, white, 0, 1.475, 0));
-  body.add(box(0.48, 0.12, 0.08, glowMat(0x2bf0ff, 1.5), 0, 1.31, -0.23));
-  body.add(box(0.04, 0.2, 0.04, dark, 0.18, 1.66, 0.1), box(0.08, 0.08, 0.08, glowMat(0xff5a5f, 1.4), 0.18, 1.79, 0.1));
-  // the blaster arm always points at the crosshair
-  const gun = new THREE.Group();
-  gun.add(box(0.14, 0.16, 0.6, lambert(0x444455), 0.3, 0, -0.5));
-  gun.add(box(0.08, 0.14, 0.1, lambert(0x2a2a35), 0.3, -0.12, -0.3));
-  gun.add(box(0.16, 0.05, 0.3, glowMat(0x2bf0ff, 1.2), 0.3, 0.1, -0.5));
-  gun.add(box(0.1, 0.1, 0.12, glowMat(0xfff27a, 1.4), 0.3, 0, -0.84));
-  gun.position.y = 0.8;
-  root.add(body, gun);
+  const figure = buildFigure(look, playerColor(color));
+  const body = figure.parts.body;
+  // the weapon it holds: swapped for the model of the one that is selected
+  const held = new THREE.Group();
+  held.position.set(...figure.model.hand);
+  held.scale.setScalar(HELD_SCALE);
+  body.add(held);
+  root.add(body);
+  const dizzy = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const star = new THREE.Mesh(dizzyGeo, dizzyMat);
+    star.position.set(Math.cos((i * Math.PI * 2) / 3) * 0.32, 0, Math.sin((i * Math.PI * 2) / 3) * 0.32);
+    dizzy.add(star);
+  }
+  dizzy.visible = false;
+  root.add(dizzy);
 
   // the sword's slash: a glowing band that sweeps across the front and fades
   const swordMat = glowMat(0xff3bd6, 2.2);
@@ -109,6 +89,7 @@ function makePlayer(color: number) {
   const flame = box(0.22, 0.45, 0.22, glowMat(0xff9f2e, 3), 0, 0.15, 0.34);
   flame.castShadow = false;
   pack.add(flame);
+  pack.position.set(...figure.model.back);
   pack.visible = false;
   body.add(pack);
   // golden glint around a player holding a rare weapon
@@ -124,7 +105,12 @@ function makePlayer(color: number) {
     root.add(m);
     return m;
   });
-  return { color, pal, marks, legL, legR, armL, root, body, gun, sword, swordMat, swatter, paddle, light, pack, flame, glint, swordT: 1, swatT: 1, yaw: 0, lastX: 0, lastZ: 0 };
+  return {
+    color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, sword, swordMat, swatter, paddle, light, pack, flame, glint,
+    swordT: 1, swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN,
+    // what the animation remembers from frame to frame
+    step: 0, pace: 0, ahead: 0, aside: 0, idle: 0, land: 0, dash: 0, kick: 0, wasAir: false, lastCooldown: 0,
+  };
 }
 
 const scaffoldMat = new THREE.LineBasicMaterial({ color: 0xffcf3a });
@@ -330,7 +316,7 @@ const tileQuad = new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2);
 const ZONE_IDLE = new THREE.Color(0xff2bd6).multiplyScalar(0.55);
 const ZONE_LIT = new THREE.Color(0x2bf0ff).multiplyScalar(1.6);
 
-SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad);
+SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad).add(FIGURE_LIT).add(FIGURE_GLOW).add(dizzyGeo).add(dizzyMat);
 
 function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   const root = new THREE.Group();
@@ -400,6 +386,11 @@ function makeNest(map: FloorMap, pos: { x: number; z: number }) {
 
 export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const players = new Map<number, ReturnType<typeof makePlayer>>();
+  let looks = new Map<number, Look>();
+  let looksKey = '';
+  /** the winners of a versus match dance until the next one starts */
+  const winners = new Set<number>();
+  let lastTick = 0;
   const towers = new Map<number, ReturnType<typeof makeTower> & { built: number }>();
   const karts = new Map<number, ReturnType<typeof makeKart>>();
   const nests = new Map<number, ReturnType<typeof makeNest>>();
@@ -458,16 +449,16 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   elevator.visible = !['race', 'lane', 'maze'].includes(map.id);
   scene.add(elevator);
 
-  function updatePlayer(s: SimState, p: Player, theme: Theme, time: number, frameDt: number) {
+  function updatePlayer(s: SimState, p: Player, look: Look, theme: Theme, time: number, frameDt: number) {
     let v = players.get(p.id);
-    // a new suit colour (teams) or colour-blind mode switched: a new model
-    if (v && (v.color !== p.color || v.pal !== palette())) {
+    // a new suit colour (teams), another character or colour-blind mode switched: a new model
+    if (v && (v.color !== p.color || v.pal !== palette() || v.look.kind !== look.kind || v.look.face !== look.face || v.look.antenna !== look.antenna)) {
       scene.remove(v.root, v.light);
       disposeTree(v.root);
       v = undefined;
     }
     if (!v) {
-      v = makePlayer(p.color);
+      v = makePlayer(p.color, look);
       scene.add(v.root, v.light);
       players.set(p.id, v);
     }
@@ -505,23 +496,50 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.glint.rotation.y = time * 3;
     v.glint.scale.setScalar(1 + 0.1 * Math.sin(time * 8));
     v.yaw = Math.atan2(-p.aim.x, -p.aim.z);
-    v.body.rotation.y = v.yaw;
-    v.gun.rotation.y = v.yaw;
-    v.gun.visible = !down;
-    const moved = Math.hypot(p.pos.x - v.lastX, p.pos.z - v.lastZ) > 0.001;
+    // the weapon in its hand is the one that is selected
+    const weapon = p.weapons[p.selected];
+    const kind: HeldKind = p.rare && p.rareSelected ? 'rare' : (weapon?.kind ?? 'pixelBlaster');
+    if (v.heldKind !== kind) {
+      disposeTree(v.held);
+      v.held.clear();
+      v.held.add(bake(weaponModel(kind)));
+      v.heldKind = kind;
+      v.lastCooldown = 0;
+    }
+    // a fresh cooldown means a shot: the weapon kicks back
+    const cooldown = kind === 'rare' ? (p.rare?.cooldown ?? 0) : (weapon?.cooldown ?? 0);
+    if (cooldown > v.lastCooldown) v.kick = 1;
+    v.lastCooldown = cooldown;
+    v.kick = Math.max(0, v.kick - frameDt * 7);
+    // steps go by the ground covered, so feet do not slide; a jump in place (a respawn) is not a step
+    const dx = Number.isNaN(v.lastX) ? 0 : p.pos.x - v.lastX, dz = Number.isNaN(v.lastZ) ? 0 : p.pos.z - v.lastZ;
+    const dist = Math.hypot(dx, dz);
+    const moved = dist > 0.001 && dist < 2;
     v.lastX = p.pos.x;
     v.lastZ = p.pos.z;
-    const moving = (!driving && p.air === 0 && !p.flying && moved) || !!p.climb;
-    v.body.position.y = moving && !down ? Math.abs(Math.sin(time * 14)) * 0.06 : 0;
-    // legs and the free arm swing with the steps; sitting in a kart the legs point forward, in the air they trail
-    const swing = moving && !down ? Math.sin(time * 14) * 0.75 : 0;
-    const rest = driving ? 1.3 : p.flying || p.air > 0 ? -0.35 : 0;
-    v.legL.rotation.x = rest + swing;
-    v.legR.rotation.x = rest - swing;
-    v.armL.rotation.x = -swing * 0.8 + (p.air > 0 ? -1.2 : 0);
-    v.body.rotation.z = down ? Math.PI / 2 : 0;
-    if (down) v.body.position.y = 0.25;
-    v.body.scale.setScalar(driving ? 0.8 : 1);
+    const air = p.air > 0 || p.flying || sinking;
+    const moving = (!driving && !air && moved) || !!p.climb;
+    v.step += p.climb ? frameDt * 10 : moving ? dist * 2.6 : 0;
+    const ease = Math.min(1, frameDt * 10);
+    v.pace += ((moving ? 1 : 0) - v.pace) * ease;
+    // which way it goes, seen from itself: forward is where it aims
+    v.ahead += ((moved ? (dx * p.aim.x + dz * p.aim.z) / dist : 0) - v.ahead) * ease;
+    v.aside += ((moved ? (dx * -p.aim.z + dz * p.aim.x) / dist : 0) - v.aside) * ease;
+    if (v.wasAir && !air) v.land = 1;
+    v.wasAir = air;
+    v.land = Math.max(0, v.land - frameDt * 5);
+    v.dash = p.dashTicks > 0 ? 1 : Math.max(0, v.dash - frameDt * 6);
+    const won = !down && (s.phase === 'won' || winners.has(p.id));
+    v.idle = moved || air || down || driving || v.kick > 0 || won ? 0 : v.idle + frameDt;
+    animate(v.figure, { t: time + p.id * 1.7, step: v.step, pace: v.pace, ahead: v.ahead, aside: v.aside, idle: v.idle, air, land: v.land, dash: v.dash, down, driving, climbing: !!p.climb, win: won, kick: v.kick });
+    // a winner turns on the spot
+    v.body.rotation.y = v.yaw + (won ? time * 5 : 0);
+    v.held.visible = !down;
+    v.held.position.z = v.figure.model.hand[2] + v.kick * 0.1;
+    v.held.rotation.x = v.kick * 0.3;
+    v.dizzy.visible = down;
+    v.dizzy.position.y = Math.min(1.2, v.figure.model.height * 0.75);
+    v.dizzy.rotation.y = time * 4;
     // blink while invulnerable (not during the dash itself)
     const blinking = !down && s.tick < p.invulnUntil && p.dashTicks === 0;
     v.root.visible = !blinking || Math.floor(time * 12) % 2 === 0;
@@ -704,7 +722,17 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   return {
     update(s, events, theme, time, frameDt, localIds) {
-      for (const p of s.players) updatePlayer(s, p, theme, time, frameDt);
+      // a new match: nobody has won yet
+      if (s.tick < lastTick) winners.clear();
+      lastTick = s.tick;
+      for (const e of events) if (e.type === 'versusEnd') for (const id of e.winners) winners.add(id);
+      // who looks like what: worked out again only when someone joins, leaves or changes
+      const key = s.players.map(p => `${p.id}:${p.name}:${p.character ?? ''}`).join('|');
+      if (key !== looksKey) {
+        looks = looksFor(s.players);
+        looksKey = key;
+      }
+      for (const p of s.players) updatePlayer(s, p, looks.get(p.id)!, theme, time, frameDt);
       const here = new Set(s.players.map(p => p.id));
       for (const [id, v] of players) {
         if (here.has(id)) continue;

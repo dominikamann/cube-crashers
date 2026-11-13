@@ -12,9 +12,12 @@ export interface ViewModel {
   render(renderer: THREE.WebGLRenderer, aspect: number): void;
 }
 
-type Look = WeaponKind | 'rare';
+/** a weapon to show in a hand: one of the weapons, or the rare one a player carries */
+export type HeldKind = WeaponKind | 'rare';
+type Look = HeldKind;
 
-function makeModel(kind: Look): THREE.Group {
+/** The model of a weapon, pointing along -z with its grip at the origin (also what the figures of other players hold). */
+export function weaponModel(kind: HeldKind): THREE.Group {
   const g = new THREE.Group();
   const dark = lambert(0x2a2550);
   const metal = lambert(0x8a90a8);
@@ -140,7 +143,7 @@ export function createViewModel(): ViewModel {
       if (kind !== lastKind) {
         if (shown) hand.remove(shown);
         let m = models.get(kind);
-        if (!m) models.set(kind, (m = makeModel(kind)));
+        if (!m) models.set(kind, (m = weaponModel(kind)));
         hand.add(m);
         shown = m;
         lastKind = kind;
