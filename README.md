@@ -222,13 +222,13 @@ Between the floors the elevator takes you to a short game of its own, then to th
 ## Boss Rush
 
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
-**the Kraken** and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a
-ring around itself and stomps under everyone. At the difficulty you set; its own best list.
+**the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
+map) and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around
+itself and stomps under everyone. At the difficulty you set; its own best list.
 
 **Boss Brawl** (also on the Tower Run page) puts every boss into the Mega Block Arena: one or two at a time, by
 the dice, and some of them twice. After each wave you get a breather and a heart; now and then a stray shark
-swims through. One boss lives only here: the **Rhino**, which charges like mad and flings whoever it hits
-across the arena. Best with friends. The arena is the default map; a click on the map button picks another floor or a random
+swims through. The **Rhino** is in the mix too. Best with friends. The arena is the default map; a click on the map button picks another floor or a random
 one. The Boss Rush has the same button: each boss on its own floor, all on one map, or a random map each.
 
 ## Daily Run
@@ -631,6 +631,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush. | Red rings |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
