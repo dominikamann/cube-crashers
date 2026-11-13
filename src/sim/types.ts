@@ -474,6 +474,8 @@ export interface RunState {
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;
+  /** how many lives for everyone the team has bought in the shop so far: each one makes the next dearer */
+  creditsBought?: number;
   /** the Kart Rally, while it runs */
   race?: RaceState | null;
   /** Lane Defense, while it runs: the arcade cabinet's health and the waves sent so far */

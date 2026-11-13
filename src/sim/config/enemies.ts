@@ -44,9 +44,9 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   shark: { hp: 60, speed: 2.4, radius: 0.55, coins: 4, score: 50, contactDamage: 20 },
   // the boss of the Sunken Arcade: crawls after you and lashes out with its tentacles
   kraken: { hp: 2000, speed: 0.9, radius: 2, coins: 0, score: 2500, contactDamage: 40 },
-  megaBlock: { hp: 2000, speed: 1.3, radius: 1.6, coins: 0, score: 2000, contactDamage: 40 },
+  megaBlock: { hp: 1800, speed: 1.3, radius: 1.6, coins: 0, score: 2000, contactDamage: 40 },
   // moved by the boss system
-  wormSegment: { hp: 110, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },
+  wormSegment: { hp: 100, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },
 };
 
 export const ELITE = { hp: 5, radius: 1.4, contact: 1.5, score: 5 };

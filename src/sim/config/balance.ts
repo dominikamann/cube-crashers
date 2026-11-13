@@ -28,7 +28,7 @@ export const BOSS_BODY_RESIST = 0.25;
  */
 export const BOSS_HP = {
   teamStep: 0.75,
-  perLevel: 0.1,
+  perLevel: 0.12,
   final: 2,
   gate: { share: 0.03, bank: 1, excess: 0.2 },
 };
@@ -42,6 +42,8 @@ export const DASH_RECHARGE_TICKS = 72;
 export const COMBO_TICKS = 180;
 export const COMBO_STEP = 10;
 export const COMBO_MAX_MULT = 10;
+/** the combo multiplies the score in full, but a coin's worth only by this share of it (x10 on the score: x3.25 on the coins) */
+export const COMBO_COIN_SHARE = 0.25;
 
 export const COIN_LIFETIME_TICKS = 480;
 export const MAGNET_RADIUS = 2.5;

@@ -85,7 +85,7 @@ export const BOSS = {
   /** she calls this many of them to her side with every phase */
   spiderCall: 4,
   spiderFangs: 5,
-  rexHp: 1900,
+  rexHp: 1700,
   rexSpeed: 1.75,
   rexPhaseSpeed: 1.2,
   /** it attacks this much more often than the other bosses */
@@ -98,7 +98,7 @@ export const BOSS = {
   rexOuterRing: 12,
   rexOuterRadius: 8,
   /** the Rhino: a rammer grown to boss size that charges like mad (a charge that hits flings the player, see enemies.ts) */
-  rhinoHp: 1900,
+  rhinoHp: 1700,
   /** King Rex's roar: the ground cracks in a ring around it */
   roarRadius: 4.5,
 };

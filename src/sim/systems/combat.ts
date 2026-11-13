@@ -1,6 +1,6 @@
 import { shotAtWall } from './logo-egg';
 import { dropEliteCrate } from './offers';
-import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST, BOSS_HP } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_COIN_SHARE, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST, BOSS_HP } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
@@ -35,6 +35,11 @@ export function solidEdge(s: SimState, e: Enemy): number {
 
 export function comboMult(p: Player): number {
   return Math.min(COMBO_MAX_MULT, 1 + Math.floor(p.combo / COMBO_STEP));
+}
+
+/** What one coin of a monster is worth: a share of the combo multiplier, and a quarter more for every Coin Bonus perk. */
+export function coinValue(mult: number, greed: number): number {
+  return Math.round((1 + COMBO_COIN_SHARE * (mult - 1)) * (1 + 0.25 * greed));
 }
 
 export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): void {
@@ -96,7 +101,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   const points = Math.round(def.score * (e.elite ? ELITE.score : 1) * mult * DIFFICULTY[s.difficulty].score);
   s.score += points;
   if (p) p.stats.score += points;
-  dropCoins(s, e.pos, def.coins * (e.elite ? 3 : 1), Math.round(mult * (1 + 0.25 * greed)));
+  dropCoins(s, e.pos, def.coins * (e.elite ? 3 : 1), coinValue(mult, greed));
   if (e.kind === 'splitter' && s.enemies.filter(x => x.hp > 0).length + 2 <= ENEMY_CAP) {
     const r = ENEMIES.splitling.radius;
     for (const side of [-1, 1]) {

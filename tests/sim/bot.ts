@@ -32,9 +32,12 @@ export function createBot(): (s: SimState) => Command[] {
   return s => {
     const p = s.players[0];
     if (s.run.stage === 'shop') {
-      // buy whatever is affordable, then go
-      const offers = s.run.shop!.offers[p.id] ?? [];
-      const i = offers.findIndex(o => !o.sold && o.cost <= p.coins && o.kind !== 'credit');
+      // what keeps it alive first (a heal when hurt, a life when few are left), then whatever else is affordable
+      const shop = s.run.shop!;
+      const offers = shop.offers[p.id] ?? [];
+      const can = (kind: string) => offers.findIndex(o => o.kind === kind && !o.sold && o.cost <= p.coins);
+      const want = [p.hp < p.maxHp * 0.7 ? can('heal') : -1, (p.lives ?? 0) <= 2 && !shop.creditSold ? can('credit') : -1, can('weapon'), can('perk')];
+      const i = want.find(x => x >= 0) ?? -1;
       return i >= 0 ? [{ type: 'buy', playerId: 0, offer: i }] : [{ type: 'ready', playerId: 0 }];
     }
     if (p.downUntil !== null) return [];
