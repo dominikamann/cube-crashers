@@ -292,7 +292,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         v.bloom.threshold = theme.bloomThreshold;
       }
 
-      world.update(s, theme, time);
+      world.update(s, theme, time, events);
       entities.update(s, theme, time, events, frameDt);
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);

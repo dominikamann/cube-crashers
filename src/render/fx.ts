@@ -56,8 +56,6 @@ interface Beam {
 const MAX_PARTICLES = 3000;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
-/** what a floor gives off when his hammer comes down on it: dust and chips of stone */
-const FLOOR_CHIPS = [0x8a7f70, 0x6f665a, 0xb9ad98, 0x55504a];
 
 /** what a boss is made of: the colours of the pieces it bursts into (its body in a few shades, and its horns, teeth or spikes) */
 const BOSS_WRECK: Record<BossKind, number[]> = {
@@ -122,6 +120,33 @@ export function createFx(scene: THREE.Scene): Fx {
    * A monster bursts. Pieces of its own body (in its own colours, big and small) fly off and tumble, a flash
    * and a shockwave mark the spot, sparks spray out, and a stain stays on the floor for a while.
    */
+  // what the floor of this world gives off when something tears it up: chips in the colours of its tiles and
+  // of the earth under them, and dust in a paler tone of the same (set from the theme with every frame)
+  let floorChips: number[] = [], floorDust: number[] = [], floorDark = 0;
+  let floorOf = -1;
+  const readFloor = (theme: Theme) => {
+    if (floorOf === theme.roadA * 0x1000000 + theme.roadB) return;
+    floorOf = theme.roadA * 0x1000000 + theme.roadB;
+    floorChips = [theme.roadA, theme.roadB, tone(theme.roadA, 0.72), tone(theme.roadB, 0.5), tone(theme.roadA, 0.72)];
+    const pale = (c: number, k: number) => {
+      const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255, grey = (r + g + b) / 3;
+      const m = (v: number) => Math.min(255, Math.round((v * 0.6 + grey * 0.4) * k));
+      return (m(r) << 16) | (m(g) << 8) | m(b);
+    };
+    floorDust = [pale(theme.roadA, 1.12), pale(theme.roadB, 0.95), pale(theme.roadA, 0.8)];
+    floorDark = tone(theme.roadB, 0.32);
+  };
+  /**
+   * The floor is torn up at a spot: chips of it fly and tumble, dust in its colour billows low and rises, a ring
+   * of dust runs out along the ground.
+   */
+  function tearFloor(pos: Vec2, power: number) {
+    chunks(pos, 0.1, Math.round(9 * power), floorChips, 3.2 + power * 1.6, 0.06, 0.1 + power * 0.045);
+    burst(pos, 0.2, Math.round(12 * power), floorDust, 1.6 + power * 1.1, 0.2 + power * 0.03, 0.45);
+    burst(pos, 0.6, Math.round(5 * power), floorDust, 0.7, 0.26 + power * 0.03, 1.5);
+    pops.push({ x: pos.x, y: 0.08, z: pos.z, age: 0, life: 0.5, size: 1.6 + power * 1.5, color: floorDust[0], ring: true });
+  }
+
   function burstMonster(pos: Vec2, color: number, size: number, height: number, elite: boolean) {
     const dark = tone(color, 0.55), bright = tone(color, 1.5), glow = tone(color, 1.75);
     const amount = (elite ? 2.2 : 1) * Math.max(0.6, size);
@@ -302,6 +327,7 @@ export function createFx(scene: THREE.Scene): Fx {
       y = ty;
     }
     burst(at, 0.4, big ? 26 : 12, [0xffffff, 0x9fd0ff, 0x7dfcff], 6, 0.1, 0.8);
+    tearFloor(at, big ? 1.6 : 0.7);
     ring(at, big ? 4 : 2, [0xffffff, 0x9fd0ff]);
   }
   /** lightning still to come: a storm is a few bolts one after the other */
@@ -319,6 +345,7 @@ export function createFx(scene: THREE.Scene): Fx {
 
   return {
     update(s, events, theme, dt, time) {
+      readFloor(theme);
       // a galloping unicorn leaves a rainbow behind it
       for (const v of s.vehicles) {
         if (v.kind !== 'unicorn' || Math.hypot(v.vel.x, v.vel.z) < 3 || Math.floor(time * 30) % 2 !== 0) continue;
@@ -366,8 +393,8 @@ export function createFx(scene: THREE.Scene): Fx {
               const life = 0.25 + rand() * 0.3;
               particles.push({ x: e.pos.x, y: 0.4, z: e.pos.z, vx: Math.cos(a) * sp, vy: 2 + rand() * 6, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.08 + rand() * 0.06, color: i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xffe14a : 0xff8c42, spin: 0, spark: true });
             }
-            burst(e.pos, 0.3, Math.round(4 + r * 3), [0x4a4048, 0x6a5a5a, 0x2e2830], 2 + r, 0.14);
-            burst(e.pos, 0.8, Math.round(3 + r * 2), [0x5a5560, 0x7a7480], 0.8, 0.22, 1.6);
+            tearFloor(e.pos, Math.min(3, 0.5 + r * 0.5));
+            burst(e.pos, 0.9, Math.round(2 + r * 1.5), [0x3a3438, 0x55504f], 0.7, 0.24, 1.8);
             if (splats.length >= MAX_SPLATS) splats.shift();
             splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 4, size: r * 1.5, color: 0x241c1c, turn: rand() * Math.PI * 2 });
             addShake(Math.min(0.4, 0.08 * r));
@@ -576,8 +603,14 @@ export function createFx(scene: THREE.Scene): Fx {
           // the blow: the earth shakes, dust and chips of the floor fly, and lightning runs out from the hammer's
           // head along the floor like cracks
           addShake(1.7);
-          chunks(hit, 0.1, 30, FLOOR_CHIPS, 7, 0.07, 0.2);
-          burst(hit, 0.2, 46, [0xcfc4ae, 0xb9ad98, 0x9c9282], 4.5, 0.2, 0.55);
+          tearFloor(hit, 4);
+          // slabs of the floor are thrown up in a ring round the hammer's head and come down again
+          for (let c = 0; c < 9; c++) {
+            const a = (c / 9) * Math.PI * 2 + rand() * 0.4, d = 0.9 + rand() * 0.5;
+            chunks({ x: hit.x + Math.cos(a) * d, z: hit.z + Math.sin(a) * d }, 0.1, 2, floorChips, 2.2, 0.2, 0.34);
+          }
+          if (splats.length >= MAX_SPLATS) splats.shift();
+          splats.push({ x: hit.x, z: hit.z, age: 0, life: 7, size: 3.4, color: floorDark, turn: rand() * Math.PI * 2 });
           burst(hit, 0.3, 34, [0xffffff, 0x7dfcff, 0x9fd0ff], 9, 0.09, 1.1);
           ring(hit, 2.4, [0xffffff, 0x7dfcff]);
           for (let c = 0; c < 8; c++) {
@@ -595,8 +628,8 @@ export function createFx(scene: THREE.Scene): Fx {
         } else {
           // the second and the third ring: the ground still trembles
           addShake(0.55);
-          burst(hit, 0.15, 14, [0xcfc4ae, 0x9c9282], 3, 0.15, 0.4);
-          ring(m.at, BOSS.hammerRings[m.rings] * 0.5, [0xcfc4ae, 0xffffff]);
+          tearFloor(hit, 1.4);
+          ring(m.at, BOSS.hammerRings[m.rings] * 0.5, [floorDust[0], 0xffffff]);
         }
         m.rings++;
         m.in += 22 / TICK_RATE;

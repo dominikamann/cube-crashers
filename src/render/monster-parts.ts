@@ -343,11 +343,10 @@ export interface PartPose {
  * The Rhino (a rammer in the rules, with a body of its own) wears these: thick legs, a big horn and
  * a small one on its nose, ears, a heavy brow and a short tail.
  */
-const SPIDER_ORANGE = 0xd9701e;
 /** how far the Tarantula Queen's body is lifted on her legs */
 export const SPIDER_LIFT = 0.28;
+/** (her eight legs are drawn by themselves: each foot stands on the ground under it, see spider-legs.ts) */
 export const SPIDER_PARTS: Part[] = [
-  ...spiderLegs(1.75, 0.5, 0.82, [0.62, 0.3, -0.02, -0.34], 0.15, SPIDER_ORANGE),
   // the two feelers beside her jaws, and the fangs under them, which rise before she strikes
   { at: [-0.26, -0.28, 1.34], size: [0.14, 0.14, 0.42], color: 'dark', anim: 'sway', amp: 0.12 },
   { at: [0.26, -0.28, 1.34], size: [0.14, 0.14, 0.42], color: 'dark', anim: 'sway', ph: PI, amp: 0.12 },
