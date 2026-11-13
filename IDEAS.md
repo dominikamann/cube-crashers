@@ -62,7 +62,6 @@ into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
 
 - **Shopping Trolley**: two players, one pushes, one shoots.
 - **Mini Mech**: slow, stomps, can step over low walls.
-- A new look for the karts and the unicorn, in the finer voxel style of the monsters.
 
 ---
 
