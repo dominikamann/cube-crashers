@@ -502,6 +502,6 @@ body.no-map .mapbox { display: none; }
 .player-hp .bar > i[data-level='crit'] { background: var(--red); animation: hp-crit 0.6s ease-in-out infinite alternate; }
 @keyframes hp-crit { from { filter: brightness(1); } to { filter: brightness(1.45); } }
 
-/* the dash charges under the health bar say what they are */
-.dashes { align-items: center; }
-.dashes::before { content: 'DASH'; font-size: 7px; letter-spacing: 0.5px; color: var(--cyan); opacity: 0.85; margin-right: 2px; }
+/* the dash charges share the width of the health bar: one is a full bar, two are halves; a used one fills up
+   again as it recharges (see hud.ts) */
+.player-hp .dashes i { flex: 1; width: auto; }

@@ -11,7 +11,7 @@ import { t, type StringKey } from '../i18n';
 import { cssColor, isColorBlind, palette } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { JETPACK } from '../sim/config/rare';
-import { ALARM_MAX, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
+import { ALARM_MAX, DASH_RECHARGE_TICKS, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
@@ -287,6 +287,12 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         lastDash = dashKey;
         dashRow.innerHTML = '';
         for (let i = 0; i < maxDashCharges(p); i++) el('i', i < p.dashCharges ? 'on' : '', dashRow);
+      }
+      // the charge that is coming back fills up from the left
+      const charging = dashRow.children[p.dashCharges] as HTMLElement | undefined;
+      if (charging) {
+        const pct = Math.round(Math.max(0, Math.min(1, 1 - p.dashRecharge / DASH_RECHARGE_TICKS)) * 100);
+        charging.style.background = `linear-gradient(90deg, rgba(43, 240, 255, 0.55) ${pct}%, rgba(255, 255, 255, 0.13) ${pct}%)`;
       }
       const kart = p.vehicleId !== null ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
       // the rally's karts never run dry or break down: no gauges there
