@@ -76,11 +76,13 @@ export interface Fight {
   downs: number;
 }
 
-/** The scripted player fights the boss of `floor` (a map id) with one weapon at one level. */
-export function botFight(floor: string, weapon: WeaponKind, level: number, difficulty: Difficulty, seed = 3, final = false): Fight {
+/** The scripted player fights the boss of `floor` (a map id), or `boss` on that floor, with one weapon at one level. */
+export function botFight(floor: string, weapon: WeaponKind, level: number, difficulty: Difficulty, seed = 3, final = false, boss?: BossKind): Fight {
   const s = createSim(floor01, seed, { mode: 'run', difficulty });
   const index = final ? s.run.floors.length - 1 : 2;
   s.run.floors[index] = floor;
+  // (the floor's own boss, whatever the seed would pick, unless another one is asked for)
+  s.run.bosses = boss ? s.run.floors.map((_, i) => (i === index ? boss : null)) : undefined;
   s.players[0].weapons = [{ kind: weapon, level, cooldown: 0 }];
   // straight to that floor
   s.run.floor = index - 1;

@@ -141,7 +141,7 @@ export function setupFloor(s: SimState): void {
     // a boss floor: no nests, no rising alarm, just the boss and a few helpers
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     s.nests = [];
-    spawnBoss(s, rushBoss ?? def!.boss!);
+    spawnBoss(s, rushBoss ?? s.run.bosses?.[s.run.floor] ?? def!.boss!);
     // (the Boss Rush has nothing but crates and the shop to arm the team; a boss floor of the run is frugal)
     placeStartCrates(s, rushBoss ? undefined : DIFFICULTY[s.difficulty].crates.start);
     placeStartKarts(s);

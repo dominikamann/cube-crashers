@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { FLOORS, runFloors } from '../../src/sim/config/floors';
+import { FLOORS, RUN_BOSSES, runBosses, runFloors } from '../../src/sim/config/floors';
 import { BLOCKS_WALKER, isFree, Tile, tileAt, type FloorMap } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { grabPlayer, spawnBoss } from '../../src/sim/systems/boss';
+import { enterFloor } from '../../src/sim/systems/run';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Vec2 } from '../../src/sim/types';
 import { quietSim, rel } from './helpers';
@@ -58,6 +59,44 @@ describe('the new worlds', () => {
     expect([...seen[3]].sort()).toEqual(['highway', 'neon', 'servers']);
     expect([...seen[4]]).toEqual(['rooftop']);
     expect(runFloors(7)).toEqual(runFloors(7));
+  });
+
+  it('and its bosses too: the arena has the Mega Block or the Rhino, the roof ends with the worm, King Rex or the Tarantula Queen', () => {
+    const mid = new Set<string>(), last = new Set<string>(), pairs = new Set<string>();
+    for (let seed = 1; seed < 400; seed++) {
+      const floors = runFloors(seed), bosses = runBosses(seed, floors);
+      expect(bosses).toHaveLength(floors.length);
+      floors.forEach((id, i) => {
+        // a boss exactly where the floor is a boss floor, and one that floor can have
+        if (FLOORS[id].kind === 'boss') expect(RUN_BOSSES[id]).toContain(bosses[i]);
+        else expect(bosses[i]).toBeNull();
+      });
+      const own = bosses.filter(Boolean);
+      expect(new Set(own).size).toBe(own.length);
+      expect(own).not.toContain('dominik');
+      mid.add(bosses[2]!);
+      last.add(bosses[4]!);
+      pairs.add(`${bosses[2]}+${bosses[4]}`);
+      // under water it is always the Kraken
+      if (floors[2] === 'underwater') expect(bosses[2]).toBe('kraken');
+    }
+    expect([...mid].sort()).toEqual(['kraken', 'megaBlock', 'rhino']);
+    expect([...last].sort()).toEqual(['rex', 'spider', 'worm']);
+    expect(pairs.size).toBe(9);
+    expect(runBosses(7, runFloors(7))).toEqual(runBosses(7, runFloors(7)));
+  });
+
+  it('a run meets the bosses its seed picked, and a single floor its own', () => {
+    for (const seed of [8, 16, 24, 40]) {
+      const s = createSim(FLOORS.floor01.map, seed, { mode: 'run' });
+      expect(s.run.bosses).toEqual(runBosses(seed, s.run.floors));
+      enterFloor(s, 2);
+      expect(s.boss?.kind).toBe(s.run.bosses![2]);
+      enterFloor(s, 4);
+      expect(s.boss?.kind).toBe(s.run.bosses![4]);
+    }
+    expect(createSim(FLOORS.arena.map, 16).boss?.kind).toBe('megaBlock');
+    expect(createSim(FLOORS.rooftop.map, 16).boss?.kind).toBe('worm');
   });
 });
 

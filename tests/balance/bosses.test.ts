@@ -89,6 +89,7 @@ describe('a boss cannot be burst down', () => {
 
   it('the last boss of a run takes no more a second in full than it would with single health', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
+    s.run.bosses = undefined;
     enterFloor(s, s.run.floors.length - 1);
     const b = s.boss!;
     expect(b.gateShare).toBeCloseTo(BOSS_HP.gate.share / BOSS_HP.final, 6);

@@ -78,7 +78,7 @@ export const BOSS = {
   hammerChance: 0.8,
   /** the Tarantula Queen: she pounces, spins webs and strikes with her fangs; when she falls she bursts into her
    *  brood, and the fight is over when the last of them is gone */
-  spiderHp: 2100,
+  spiderHp: 1800,
   spiderSpeed: 3.1,
   spiderRadius: 1.25,
   spiderBrood: 21,

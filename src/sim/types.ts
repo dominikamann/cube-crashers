@@ -472,6 +472,8 @@ export interface RunState {
   mode: RunMode;
   /** map ids of the floors of this run, in order */
   floors: string[];
+  /** Tower Run: the boss of each floor (null where there is none); left out, a boss floor has its own boss */
+  bosses?: (BossKind | null)[];
   floor: number;
   stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane' | 'maze';
   /** tick at which the current shaft or shop stage ends on its own */

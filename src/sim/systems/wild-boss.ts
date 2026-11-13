@@ -39,7 +39,7 @@ export function planWildBoss(s: SimState, always = false): void {
   s.wild = null;
   if (s.run.mode !== 'run' || floorDef(s.map.id)?.kind !== 'nests') return;
   // never a boss this run has a floor of its own for
-  const own = s.run.floors.map(id => floorDef(id)?.boss);
+  const own = s.run.floors.map((id, i) => s.run.bosses?.[i] ?? floorDef(id)?.boss);
   const kinds = (WILD.fits[s.map.id] ?? []).filter(k => !own.includes(k));
   if (kinds.length === 0) return;
   if (!always && dice(s, 0) >= (WILD.chance[s.run.floor] ?? WILD.chance[WILD.chance.length - 1])) return;

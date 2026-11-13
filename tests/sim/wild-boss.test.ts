@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
-import { FLOORS } from '../../src/sim/config/floors';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { BOSS, WILD_WAKE } from '../../src/sim/systems/boss';
 import { WILD, planWildBoss, releaseWildBoss } from '../../src/sim/systems/wild-boss';
@@ -40,7 +39,7 @@ describe('a wild boss in the Tower Run', () => {
         const s = createSim(floor01, seed, { mode: 'run', players: 1 });
         if (floor > 0) enterFloor(s, floor);
         if (!s.wild) continue;
-        const own = s.run.floors.map(id => FLOORS[id].boss).filter(Boolean);
+        const own = s.run.bosses!.filter(Boolean);
         expect(own).not.toContain(s.wild.kind);
         expect(WILD.fits[s.map.id]).toContain(s.wild.kind);
         seen.add(s.wild.kind);

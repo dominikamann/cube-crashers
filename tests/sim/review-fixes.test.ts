@@ -100,6 +100,8 @@ describe('blasts on the Segment Worm', () => {
 
   it('the worm starts with a full bar: its health counts what the segments really have', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
+    // (which boss ends a run goes by the seed: the roof's own one here)
+    s.run.bosses = undefined;
     enterFloor(s, 4);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
@@ -147,6 +149,7 @@ describe('solid bosses', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
     // the third floor is the arena or the sea bed, by the seed: take the arena
     s.run.floors[2] = 'arena';
+    s.run.bosses = undefined;
     enterFloor(s, 2);
     const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
     const p = s.players[0];
@@ -158,6 +161,7 @@ describe('solid bosses', () => {
   it('the Mega Block keeps you outside its corners too (in first person you never look inside it), and touching it still hurts', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
     s.run.floors[2] = 'arena';
+    s.run.bosses = undefined;
     enterFloor(s, 2);
     const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
     boss.speed = 0;
@@ -175,6 +179,7 @@ describe('solid bosses', () => {
   it('nor inside the Kraken', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
     s.run.floors[2] = 'underwater';
+    s.run.bosses = undefined;
     enterFloor(s, 2);
     const boss = s.enemies.find(e => e.kind === 'kraken')!;
     const p = s.players[0];

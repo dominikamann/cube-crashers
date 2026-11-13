@@ -13,6 +13,9 @@ import { rel, run } from './helpers';
 function bossFloor(kind: 'megaBlock' | 'worm', players = 1): SimState {
   const s = createSim(floor01, 4, { mode: 'run', players });
   const index = RUN_FLOORS.findIndex(id => FLOORS[id].boss === kind);
+  // the floors' own bosses, whatever the seed would pick
+  s.run.floors = [...RUN_FLOORS];
+  s.run.bosses = undefined;
   enterFloor(s, index);
   s.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
   s.hordes = [];

@@ -31,8 +31,16 @@ describe.skipIf(!process.env.BALANCE_REPORT)('balance report', () => {
   it('the scripted player against the bosses', () => {
     const out: string[] = ['', 'scripted player with the Pixel Blaster: seconds until the boss is down (x = lost)'];
     const cell = (f: { won: boolean; seconds: number }) => `${Math.round(f.seconds)}${f.won ? '' : 'x'}`;
-    for (const [name, floor, final] of [['megaBlock', 'arena', false], ['kraken', 'underwater', false], ['worm (final)', 'rooftop', true]] as const) {
-      for (const d of ['ultraLow', 'medium', 'ultraHigh'] as const) out.push(pad(name, 14) + pad(d, 11) + [1, 3, 5].map(l => pad(cell(botFight(floor, 'pixelBlaster', l, d, 3, final)))).join(''));
+    const fights = [
+      ['megaBlock', 'arena', false, undefined],
+      ['rhino', 'arena', false, 'rhino'],
+      ['kraken', 'underwater', false, undefined],
+      ['worm (final)', 'rooftop', true, undefined],
+      ['rex (final)', 'rooftop', true, 'rex'],
+      ['spider (final)', 'rooftop', true, 'spider'],
+    ] as const;
+    for (const [name, floor, final, boss] of fights) {
+      for (const d of ['ultraLow', 'medium', 'ultraHigh'] as const) out.push(pad(name, 16) + pad(d, 11) + [1, 3, 5].map(l => pad(cell(botFight(floor, 'pixelBlaster', l, d, 3, final, boss)))).join(''));
     }
     console.log(out.join('\n'));
   }, 900_000);
