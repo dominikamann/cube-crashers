@@ -114,9 +114,12 @@ export class Part {
     return this;
   }
 
-  /** a geometry made elsewhere (a voxel body): taken over, moved to the part's pivot */
+  /**
+   * A geometry made elsewhere (a voxel body), given in the part's own space (its pivot at the origin). One
+   * marked `userData.shared` belongs to all figures of its kind and is not disposed with a figure.
+   */
   solid(geometry: THREE.BufferGeometry): this {
-    this.solids.push(geometry.translate(-this.pivot[0], -this.pivot[1], -this.pivot[2]));
+    this.solids.push(geometry);
     return this;
   }
 

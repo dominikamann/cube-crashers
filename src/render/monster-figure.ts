@@ -27,13 +27,23 @@ interface Frame {
 /** a point of the monster in the figure's space */
 const place = (f: Frame, x: number, y: number, z: number): Vec3 => [-x * f.scale, (y + f.mid) * f.scale, -z * f.scale];
 
-/** a voxel body turned and scaled into the figure's space, tinted with `color` (white: as it is) */
-function body(kind: BodyKind, w: number, h: number, d: number, f: Frame, color: number, offset: Vec3 = [0, 0, 0]): THREE.BufferGeometry {
-  const g = voxelBody(kind, w, h, d).geometry;
-  g.translate(offset[0], offset[1] + f.mid, offset[2]).rotateY(Math.PI).scale(f.scale, f.scale, f.scale);
+/**
+ * A voxel body turned and scaled into the figure's space, tinted with `color` (white: as it is), with `pivot`
+ * (a point of the figure) moved to the origin. Built once per body, colour and pivot and shared by every
+ * figure that needs it: a voxel body has many thousand cubes.
+ */
+const bodies = new Map<string, THREE.BufferGeometry>();
+function body(kind: BodyKind, w: number, h: number, d: number, f: Frame, color: number, offset: Vec3 = [0, 0, 0], pivot: Vec3 = [0, 0, 0]): THREE.BufferGeometry {
+  const key = `${kind}:${color}`;
+  let g = bodies.get(key);
+  if (g) return g;
+  g = voxelBody(kind, w, h, d).geometry;
+  g.translate(offset[0], offset[1] + f.mid, offset[2]).rotateY(Math.PI).scale(f.scale, f.scale, f.scale).translate(-pivot[0], -pivot[1], -pivot[2]);
   const tint = new THREE.Color(color);
   const col = g.getAttribute('color');
   for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * tint.r, col.getY(i) * tint.g, col.getZ(i) * tint.b);
+  g.userData.shared = true;
+  bodies.set(key, g);
   return g;
 }
 
@@ -99,7 +109,7 @@ export function dominikFigure(s: Sculpt, c: number): void {
   s.part('body').solid(body('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth, f, 0xffffff));
   const neck = place(f, 0, DOMINIK.height / 2, DOMINIK.head.z);
   const head = s.part('head', neck, 'body');
-  head.solid(body('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d, f, 0xffffff, [0, DOMINIK.head.y, DOMINIK.head.z]));
+  head.solid(body('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d, f, 0xffffff, [0, DOMINIK.head.y, DOMINIK.head.z], neck));
   const band = place(f, 0, DOMINIK.head.y + DOMINIK.head.h * 0.2, DOMINIK.head.z);
   head.box(c, (DOMINIK.head.w + 0.05) * f.scale, 0.1 * f.scale, (DOMINIK.head.d + 0.05) * f.scale, band[0], band[1], band[2]);
   // the hammer stays with the boss: of the parts that sway with it only the forearm is kept, the sleeves take

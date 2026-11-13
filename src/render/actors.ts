@@ -135,7 +135,7 @@ const SHARED = new Set<object>();
 function disposeTree(root: THREE.Object3D): void {
   root.traverse(o => {
     const mesh = o as THREE.Mesh;
-    if (mesh.geometry && !SHARED.has(mesh.geometry)) mesh.geometry.dispose();
+    if (mesh.geometry && !SHARED.has(mesh.geometry) && !mesh.geometry.userData.shared) mesh.geometry.dispose();
     const mats = mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : [];
     for (const m of mats) if (!SHARED.has(m)) m.dispose();
   });

@@ -704,7 +704,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // dev: ?demo=cast lines up a full house of players to look at
     const cast = import.meta.env.DEV && params.get('demo') === 'cast';
-    const names = cast ? Array.from({ length: MAX_PLAYERS }, (_, i) => `${params.get('cast') === 'bots' ? 'Bot' : 'P'} ${'ABCDEFGHIJ'[i]}`) : split ? [playerName(), t('split.player2')] : [playerName()];
+    const names = cast ? Array.from({ length: MAX_PLAYERS }, (_, i) => `${params.get('cast') === 'bots' || (params.get('cast') === 'mix' && i % 2 === 1) ? 'Bot' : 'P'} ${'ABCDEFGHIJ'[i]}`) : split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = cast ? undefined : settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
     // the first player's own character; a second one on this computer gets what the game picks
     const characters = [ownedCharacter(profile, settings.character)];
@@ -1230,7 +1230,8 @@ function applyDemo(sim: SimState) {
       if (weapon === 'rare') Object.assign(p, { rare: { kind: 'slushMachine', until: Number.MAX_SAFE_INTEGER, cooldown: 0 }, rareSelected: true });
       else if (weapon) Object.assign(p, { weapons: [{ kind: weapon as WeaponKind, level: 2, cooldown: 0 }], selected: 0 });
     }
-    // one of every character, or (&cast=bots) ten bots, or (&cast=auto) what the game picks for ten names
+    // one of every character, or (&cast=earned) the two earned ones first, (&cast=bots) ten bots, (&cast=mix) players
+    // and bots in turn, (&cast=auto) what the game picks for ten names
     const kinds = params.get('cast') === 'earned' ? [...EARNED_CHARACTERS, ...FREE_CHARACTERS] : FREE_CHARACTERS;
     if (!params.has('cast') || params.get('cast') === 'earned') sim.players.forEach((p, i) => (p.character = kinds[(i + (Number(params.get('from')) || 0)) % kinds.length]));
     row.forEach((p, i) => {
