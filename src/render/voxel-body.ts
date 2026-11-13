@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { EnemyKind } from '../sim/types';
 import { BODY } from './dominik-body';
+import { DOMINIK, DOMINIK_NECK } from './dominik-limbs';
 import { HEAD_BACK, HEAD_FRONT, HEAD_LEFT, HEAD_RIGHT, type Portrait } from './dominik-face';
+import { solidVoxels } from './voxel-mesh';
 
 /**
  * Monster bodies built from many small cubes instead of one box: each kind has a shape (which cells of a
@@ -16,6 +18,10 @@ interface Shape {
   inside(u: number, v: number, w: number): boolean;
   /** brightness of the cube there (1 = the body colour), or a tint as [r, g, b] factors */
   tone?(u: number, v: number, w: number): number | [number, number, number];
+  /** no gaps between the cubes, and only the faces one can see: for a body that is a picture (Angry Dominik) */
+  solid?: boolean;
+  /** solid: how many like faces above one another may become one */
+  merge?: number;
 }
 
 /** a rounded box: p = 2 is a ball, higher values are boxier */
@@ -27,27 +33,45 @@ export type BodyKind = EnemyKind | 'rhino' | 'dominik' | 'dominikHead';
 
 /**
  * Angry Dominik is made from photos. His head: four pixel portraits (front, both sides, back, see
- * dominik-face.ts), one pixel a voxel. His body from the neck to the knees: what he looks like from the front
- * and from behind, and how deep he is in every row (dominik-body.ts); its voxels are twice the size of the
- * head's. Both are bodies of their own, drawn with the same pose. (Arms, lower legs, shoes and the hammer are
- * parts.) The material is white: the tones are the colours themselves.
+ * dominik-face.ts), one pixel a voxel; their outlines are its shape. His body from the neck to the knees: what
+ * he looks like from the front and from behind, and how deep he is in every row (dominik-body.ts). Both are
+ * bodies of their own, drawn with the same pose, and both are solid: no gaps between their voxels, so that
+ * they read as a picture of him and not as a grid. (The neck between them, the arms, the lower legs with the
+ * shoes and the hammer: dominik-limbs.ts.)
+ * The material is white: the tones are the colours themselves. His left is at +x (he looks along +z).
  */
-const rgb = (hex: number): [number, number, number] => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
-const DOM_SKIN = rgb(0xd9966e), DOM_HAIR = rgb(0x4a3222), DOM_SHIRT = rgb(0x2b2d33), DOM_SHORTS = rgb(0x2a336a);
-const pixel = (row: string, x: number): [number, number, number] | null => {
+type Rgb = [number, number, number];
+const rgb = (hex: number): Rgb => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+const DOM_SKIN = rgb(parseInt(BODY.skin, 16)), DOM_SHIRT = rgb(0x1b1c21), DOM_SHORTS = rgb(0x20295c);
+const pixel = (row: string, x: number): Rgb | null => {
   const c = row.slice(x * 6, x * 6 + 6);
   return c === '' || c === '......' ? null : rgb(parseInt(c, 16));
 };
-/** the pixel of a portrait at `x` (-1 at its left edge to 1 at its right) in the head's row `row` from its foot */
-const portrait = (p: Portrait, x: number, row: number): [number, number, number] | null => {
-  const px = Math.floor(((x + 1) / 2) * p.w), py = p.h - 1 - row;
-  return px < 0 || px >= p.w || py < 0 || py >= p.h ? null : pixel(p.rows[py], px);
+/** the stretch of pixels in each row of a picture: [first, last], or null for an empty row */
+const runsOf = (rows: string[], w: number): ([number, number] | null)[] =>
+  rows.map(row => {
+    let a = -1, b = -1;
+    for (let c = 0; c < w; c++)
+      if (pixel(row, c)) {
+        if (a < 0) a = c;
+        b = c;
+      }
+    return a < 0 ? null : [a, b];
+  });
+/** a line of numbers without its narrow bumps (those shorter than 2 * `r` + 1 entries): a profile without its nose */
+const withoutBumps = (line: number[], r: number): number[] => {
+  const pass = (src: number[], pick: (...v: number[]) => number) => src.map((_, i) => pick(...src.slice(Math.max(0, i - r), i + r + 1)));
+  return pass(pass(line, Math.min), Math.max);
 };
+const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+/** 0 at `lo`, 1 at `hi` (either may be the larger) */
+const step = (lo: number, hi: number, v: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+
 /** a body cell: its row from the top, its column as the camera in front of him saw it, its depth from his middle */
 const bodyCell = (u: number, v: number, w: number) => ({
   row: BODY.rows - 1 - Math.floor(((v + 1) / 2) * BODY.rows),
-  // (his right is on the left of a photo taken from the front)
-  col: BODY.cols - 1 - Math.floor(((u + 1) / 2) * BODY.cols),
+  // (his left is on the right of a photo taken from the front)
+  col: Math.floor(((u + 1) / 2) * BODY.cols),
   z: w * (BODY.deep / 2),
 });
 /** the stretches of body in each row of the front view: the trunk is one, the legs are two */
@@ -61,39 +85,117 @@ const bodyRuns: [number, number][][] = BODY.front.map(row => {
   return runs;
 });
 
+/**
+ * The head's shape, row by row from the top: as wide as the front portrait and as deep as the side one, round in
+ * between. Nose and ears are narrow bumps on those outlines; they stay narrow on the head too (a nose in the
+ * middle of the face, ears where the side portrait has them) instead of widening the whole row.
+ */
+const HEAD = (() => {
+  const W = HEAD_FRONT.w, D = HEAD_LEFT.w, H = HEAD_FRONT.h;
+  const front = runsOf(HEAD_FRONT.rows, W), side = runsOf(HEAD_LEFT.rows, D);
+  // (the left portrait has his nose on its left: depth is counted from the back of the head)
+  const rows = front.map((f, r) => (f && side[r] ? { x0: f[0], x1: f[1] + 1, z0: D - 1 - side[r]![1], z1: D - side[r]![0] } : null));
+  const line = (get: (r: NonNullable<(typeof rows)[number]>) => number, r: number) => {
+    const smooth = withoutBumps(rows.map(q => (q ? get(q) : -1e3)), r);
+    return rows.map((q, i) => (q ? Math.min(get(q), smooth[i]) : 0));
+  };
+  // without the ears (bumps of the width) and without the nose (a bump of the profile)
+  const right = line(q => -q.x0, 5).map(v => -v), left = line(q => q.x1, 5), face = line(q => q.z1, 7);
+  return { W, D, H, rows, right, left, face };
+})();
+/** how far to each side of the middle the nose is, and where along the head (0 at the back, 1 at the nose) the ears are */
+const NOSE_HALF = 3.4, EARS: [number, number] = [0.39, 0.52];
+/**
+ * The neck where it enters the head from below (see DOMINIK_NECK): half its width, its middle front to back and
+ * half its depth, in voxels of the head from the head's middle. Under the ears the head draws in toward it.
+ */
+const NECK = (() => {
+  const head = DOMINIK.head.h / HEAD_FRONT.h, chin = DOMINIK.head.y + DOMINIK.height / 2 - DOMINIK.head.h / 2;
+  return { rx: DOMINIK_NECK.w / 2 / head, cz: (DOMINIK_NECK.z + DOMINIK_NECK.lean * (chin - DOMINIK_NECK.foot) - DOMINIK.head.z) / head, rz: DOMINIK_NECK.d / 2 / head };
+})();
+/** the rows (from the top) down to which the head is hair all round except in front, and down to which it is hair behind */
+const CROWN: [number, number] = [Math.round(HEAD_FRONT.h * 0.2), Math.round(HEAD_FRONT.h * 0.36)];
+/** how many rows above the chin the head starts to draw in toward the neck */
+const JAW_ROWS = 9;
+/** a head cell: its row from the top, and where it is across and along that row (in voxels and as -1..1 of the row's oval) */
+const headCell = (u: number, v: number, w: number) => {
+  const row = HEAD.H - 1 - Math.floor(((v + 1) / 2) * HEAD.H);
+  const q = HEAD.rows[row];
+  if (!q) return null;
+  const x = ((u + 1) / 2) * HEAD.W, z = ((w + 1) / 2) * HEAD.D;
+  // under the ears the head draws in toward the neck: the jaw rises from the chin to it, and the back of the
+  // head runs down into the nape instead of ending as a ledge over it
+  const under = Math.max(0, (row + 1 - (HEAD.H - JAW_ROWS)) / JAW_ROWS);
+  const cx = (HEAD.right[row] + HEAD.left[row]) / 2, rx = ((HEAD.left[row] - HEAD.right[row]) / 2) * (1 - under) + Math.min((HEAD.left[row] - HEAD.right[row]) / 2, NECK.rx * 0.94) * under;
+  const back = q.z0 + (HEAD.D / 2 + NECK.cz - NECK.rz * 0.4 - q.z0) * under ** 1.6;
+  const cz = (back + HEAD.face[row]) / 2, rz = (HEAD.face[row] - back) / 2;
+  return { row, q, x, z, cx, nx: (x - cx) / Math.max(0.5, rx), nz: (z - cz) / Math.max(0.5, rz) };
+};
+/** the pixel of a portrait in `row` (from the top) at `t` along that row's stretch (0 to 1) */
+const portraitAt = (p: Portrait, runs: ([number, number] | null)[], row: number, t: number): Rgb | null => {
+  const run = runs[row];
+  if (!run) return null;
+  return pixel(p.rows[row], Math.max(run[0], Math.min(run[1], Math.floor(run[0] + t * (run[1] - run[0] + 1)))));
+};
+const HEAD_RUNS = { front: runsOf(HEAD_FRONT.rows, HEAD_FRONT.w), left: runsOf(HEAD_LEFT.rows, HEAD_LEFT.w), back: runsOf(HEAD_BACK.rows, HEAD_BACK.w), right: runsOf(HEAD_RIGHT.rows, HEAD_RIGHT.w) };
+
 const SHAPES: Partial<Record<BodyKind, Shape>> = {
   dominik: {
     n: [BODY.cols, BODY.rows, BODY.deep],
+    solid: true,
+    // (cloth in even tones: much of it merges)
+    merge: 3,
     inside: (u, v, w) => {
       const { row, col, z } = bodyCell(u, v, w);
       const run = bodyRuns[row]?.find(r => col >= r[0] && col <= r[1]);
       if (!run) return false;
-      // round in cross-section: as wide as the photo from the front shows, as deep as the one from the side
-      const [back, front] = BODY.depth[row];
-      const x = (col + 0.5 - (run[0] + run[1] + 1) / 2) / ((run[1] - run[0] + 1) / 2);
+      // round in cross-section: as wide as the photo from the front shows, as deep as its row says; the trunk
+      // is flat in front and behind over the middle of its width, and round only toward the sides
+      const [back, front, flat] = BODY.depth[row];
+      const x = Math.abs(col + 0.5 - (run[0] + run[1] + 1) / 2) / ((run[1] - run[0] + 1) / 2);
       const d = (z - (back + front) / 2) / Math.max(1, (front - back) / 2);
-      return Math.abs(x) ** 2.6 + Math.abs(d) ** 2.6 <= 1;
+      return (Math.max(0, x - flat) / (1 - flat)) ** 2.6 + Math.abs(d) ** 2.6 <= 1;
     },
     tone: (u, v, w) => {
       const { row, col, z } = bodyCell(u, v, w);
       const [back, front] = BODY.depth[row];
       const fromFront = z >= (back + front) / 2;
-      // (from behind his right is on the right)
+      // (from behind his left is on the left)
       return pixel(fromFront ? BODY.front[row] : BODY.back[row], fromFront ? col : BODY.cols - 1 - col) ?? pixel(BODY.front[row], col) ?? (row > BODY.rows * 0.58 ? DOM_SHORTS : DOM_SHIRT);
     },
   },
   dominikHead: {
-    n: [HEAD_FRONT.w, HEAD_FRONT.h, HEAD_LEFT.w],
-    // round, deeper than it is wide, a little narrower toward the chin
+    n: [HEAD.W, HEAD.H, HEAD.D],
+    solid: true,
     inside: (u, v, w) => {
-      const jaw = v < 0 ? 1 - 0.14 * v * v : 1;
-      return Math.abs(u / jaw) ** 2.4 + Math.abs(v) ** 2.4 + Math.abs(w / jaw) ** 2.4 <= 1;
+      const c = headCell(u, v, w);
+      if (!c) return false;
+      if (Math.abs(c.nx) ** 2.5 + Math.abs(c.nz) ** 2.5 <= 1) return true;
+      // the nose (and the lips): what the profile has in front of the face, rounded off to the sides
+      const out = c.z - HEAD.face[c.row], reach = c.q.z1 - HEAD.face[c.row];
+      if (out > 0 && out < reach && Math.abs(c.x - c.cx) <= NOSE_HALF * Math.sqrt(1 - (out / (reach + 0.5)) ** 2)) return true;
+      if (out > -3 && out <= 0 && reach > 0 && Math.abs(c.x - c.cx) <= NOSE_HALF) return true;
+      // the ears: what the front portrait has beside the head
+      const along = (c.z - c.q.z0) / (c.q.z1 - c.q.z0);
+      return along >= EARS[0] && along <= EARS[1] && c.x >= c.q.x0 && c.x <= c.q.x1 && Math.abs(c.nx) > 0.8 && Math.abs(c.nx) < 1.6;
     },
-    // each side of the head shows the portrait taken from there (a frontal photo has his right on its left)
+    // each side of the head shows the portrait taken from there, fading into the next one where they meet
     tone: (u, v, w) => {
-      const row = Math.floor(((v + 1) / 2) * HEAD_FRONT.h);
-      const px = w >= 0 && Math.abs(u) <= 0.84 ? portrait(HEAD_FRONT, -u, row) : w < 0 && Math.abs(u) <= 0.8 ? portrait(HEAD_BACK, u, row) : portrait(u > 0 ? HEAD_RIGHT : HEAD_LEFT, u > 0 ? w : -w, row);
-      return px ?? (row / HEAD_FRONT.h > 0.6 || w < -0.2 ? DOM_HAIR : DOM_SKIN);
+      const c = headCell(u, v, w);
+      if (!c) return DOM_SKIN;
+      const along = (c.z - c.q.z0) / (c.q.z1 - c.q.z0), across = (c.x - c.q.x0) / (c.q.x1 - c.q.x0);
+      const side = (c.nx > 0 ? portraitAt(HEAD_LEFT, HEAD_RUNS.left, c.row, 1 - along) : portraitAt(HEAD_RIGHT, HEAD_RUNS.right, c.row, along)) ?? DOM_SKIN;
+      const facing = c.nz >= 0 ? portraitAt(HEAD_FRONT, HEAD_RUNS.front, c.row, across) : portraitAt(HEAD_BACK, HEAD_RUNS.back, c.row, 1 - across);
+      // (at the corners behind, hair meets hair)
+      const seen = facing ? mix(facing, side, c.nz >= 0 ? step(0.74, 0.92, Math.abs(c.nx)) : step(0.78, 0.97, Math.abs(c.nx))) : side;
+      // the crown and the upper back of the skull are hair and nothing else: the light from above made the hair
+      // there as pale as skin in the photos. Hair from the back of his head covers it (the forehead and the
+      // hairline in front stay as they are)
+      const crown = Math.max(step(CROWN[0] + 2, CROWN[0] - 2, c.row) * step(0.9, 0.55, c.nz), step(CROWN[1] + 3, CROWN[1] - 3, c.row) * step(0.25, -0.1, c.nz));
+      if (crown <= 0) return seen;
+      const pick = Math.abs(Math.floor(c.x) * 7 + Math.floor(c.z) * 13 + c.row * 5);
+      const hair = portraitAt(HEAD_BACK, HEAD_RUNS.back, Math.round(HEAD.H * 0.3) + (pick % Math.round(HEAD.H * 0.25)), 0.25 + ((pick * 31) % 50) / 100) ?? seen;
+      return mix(seen, hair, crown);
     },
   },
   // a rhino: a heavy barrel with a hump over the shoulders, and a long head held low that narrows to a square
@@ -196,6 +298,8 @@ export interface VoxelBody {
   frontAt(x: number, y: number): number;
 }
 
+const solids = new Map<BodyKind, VoxelBody>();
+
 /** share of a cell a cube fills: the rest is the gap between the pixels */
 const FILL = 0.9;
 const hash = (i: number, j: number, k: number) => {
@@ -206,6 +310,9 @@ const hash = (i: number, j: number, k: number) => {
 /** The body of `kind` in a box of w x h x d tiles (a plain box for kinds without a shape). */
 export function voxelBody(kind: BodyKind, w: number, h: number, d: number): VoxelBody {
   const shape = SHAPES[kind];
+  // (a solid one takes a moment to build: it is built once and kept)
+  const kept = solids.get(kind);
+  if (kept) return kept;
   if (!shape) return { geometry: new THREE.BoxGeometry(w, h, d), frontAt: () => d / 2 };
   const [nx, ny, nz] = shape.n;
   const cx = w / nx, cy = h / ny, cz = d / nz;
@@ -213,6 +320,22 @@ export function voxelBody(kind: BodyKind, w: number, h: number, d: number): Voxe
     if (i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz) return false;
     return shape.inside(((i + 0.5) / nx) * 2 - 1, ((j + 0.5) / ny) * 2 - 1, ((k + 0.5) / nz) * 2 - 1);
   };
+  const frontAt = (fill: number) => (x: number, y: number) => {
+    const i = Math.max(0, Math.min(nx - 1, Math.floor((x + w / 2) / cx)));
+    const j = Math.max(0, Math.min(ny - 1, Math.floor((y + h / 2) / cy)));
+    for (let k = nz - 1; k >= 0; k--) if (at(i, j, k)) return (k + 0.5 + fill / 2) * cz - d / 2;
+    return d / 2;
+  };
+  if (shape.solid) {
+    const geometry = solidVoxels([nx, ny, nz], [cx, cy, cz], [-w / 2, -h / 2, -d / 2], (i, j, k) => {
+      if (!at(i, j, k)) return null;
+      const tone = shape.tone?.(((i + 0.5) / nx) * 2 - 1, ((j + 0.5) / ny) * 2 - 1, ((k + 0.5) / nz) * 2 - 1) ?? 1;
+      return typeof tone === 'number' ? [tone, tone, tone] : tone;
+    }, shape.merge ? 0 : 0.06, 0.85, shape.merge ?? 1);
+    const body = { geometry, frontAt: frontAt(1) };
+    solids.set(kind, body);
+    return body;
+  }
   const pos: number[] = [], nor: number[] = [], col: number[] = [], idx: number[] = [];
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const up = unit.getAttribute('position'), un = unit.getAttribute('normal'), ui = unit.getIndex()!;
@@ -242,13 +365,5 @@ export function voxelBody(kind: BodyKind, w: number, h: number, d: number): Voxe
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geometry.setIndex(idx);
-  return {
-    geometry,
-    frontAt(x, y) {
-      const i = Math.max(0, Math.min(nx - 1, Math.floor((x + w / 2) / cx)));
-      const j = Math.max(0, Math.min(ny - 1, Math.floor((y + h / 2) / cy)));
-      for (let k = nz - 1; k >= 0; k--) if (at(i, j, k)) return (k + 0.5 + FILL / 2) * cz - d / 2;
-      return d / 2;
-    },
-  };
+  return { geometry, frontAt: frontAt(FILL) };
 }

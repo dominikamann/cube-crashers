@@ -600,10 +600,10 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
   },
   dominik: {
     gait: 'walk',
-    hand: [0.27, 0.98, -0.52],
+    hand: [0.23, 1.14, -0.5],
     back: [0, 0.3, 0.0],
     down: 'back',
-    height: 1.63,
+    height: 1.64,
     build: (s, { c }) => dominikFigure(s, c),
     move(p, a) {
       // standing about: he looks round for someone to be angry at

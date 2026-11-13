@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
-import { addMonsterParts, DOMINIK, DOMINIK_LIFT, DOMINIK_PARTS, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
+import { createDominikLimbs, DOMINIK, DOMINIK_DEATH, HAMMER_FLIGHT, KNEEL } from './dominik-limbs';
+import { addMonsterParts, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
@@ -102,9 +103,18 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const domBodies = new InstancedPool(scene, domShape.geometry, domMat, 4);
   // (his head is a finer body of its own, moved to where it sits so that the same pose puts it there)
   const domHeadShape = voxelBody('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d);
-  domHeadShape.geometry.translate(0, DOMINIK.head.y, DOMINIK.head.z);
-  const domHeads = new InstancedPool(scene, domHeadShape.geometry, domMat, 4);
+  const domHeads = new InstancedPool(scene, domHeadShape.geometry.clone().translate(0, DOMINIK.head.y, DOMINIK.head.z), domMat, 4);
   const domFace = DOMINIK.front;
+  const domLimbs = createDominikLimbs(scene, domMat);
+  // (when each one's hammer left his hand: it is in the air for a while, see fx.ts)
+  const hammerThrownAt = new Map<number, number>();
+  // (and when each one's hammer meets the floor in a slam, and how far he is down on his knees for it)
+  const hammerLandsAt = new Map<number, number>();
+  const domKneel = new Map<number, number>();
+  // where each Angry Dominik (the boss) stood last, and the ones that have fallen: they stand in the lightning
+  // for a moment before they burst (see fx.ts)
+  const domStood = new Map<number, { x: number; z: number; yaw: number }>();
+  const domDying: { x: number; z: number; yaw: number; until: number }[] = [];
   const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
@@ -264,6 +274,37 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       rhinoBodies.begin();
       domBodies.begin();
       domHeads.begin();
+      domLimbs.begin();
+      for (const ev of events) {
+        if (ev.type !== 'hammerThrow' && ev.type !== 'hammerSlam') continue;
+        const from = ev.type === 'hammerThrow' ? ev.from : ev.pos;
+        const who = allBosses(s).find(b => b.kind === 'dominik' && b.enemyId !== null && s.enemies.some(e => e.id === b.enemyId && Math.hypot(e.pos.x - from.x, e.pos.z - from.z) < 0.5));
+        if (!who) continue;
+        if (ev.type === 'hammerThrow') hammerThrownAt.set(who.enemyId!, time);
+        else hammerLandsAt.set(who.enemyId!, time + (ev.at - s.tick) / TICK_RATE);
+      }
+      for (const ev of events) {
+        if (ev.type !== 'bossDead' || ev.kind !== 'dominik') continue;
+        const [id, last] = [...domStood].reduce<[number, { x: number; z: number; yaw: number }] | []>((best, c) => (!best[1] || Math.hypot(c[1].x - ev.pos.x, c[1].z - ev.pos.z) < Math.hypot(best[1].x - ev.pos.x, best[1].z - ev.pos.z) ? c : best), []);
+        if (id !== undefined) domStood.delete(id);
+        domDying.push({ x: ev.pos.x, z: ev.pos.z, yaw: last?.yaw ?? 0, until: time + DOMINIK_DEATH });
+      }
+      for (let i = domDying.length - 1; i >= 0; i--) {
+        const d = domDying[i];
+        if (time >= d.until) {
+          domDying.splice(i, 1);
+          continue;
+        }
+        // held by the lightning: he shakes, flashes white with every bolt and swells a little before he bursts,
+        // the hammer raised
+        const left = (d.until - time) / DOMINIK_DEATH;
+        const size = DOMINIK.scale * (1 + 0.12 * (1 - left) ** 3);
+        const tint = Math.sin(time * (30 + 50 * (1 - left))) > 0.55 - 0.9 * (1 - left) ? FLASH : undefined;
+        const shiver = Math.sin(time * 70) * 0.05 * (1.2 - left), y = (DOMINIK_LOOK.h / 2 + DOMINIK.lift) * size;
+        domHeads.addScaled(d.x, y, d.z, d.yaw, size, size, size, tint, 0, shiver);
+        domBodies.addScaled(d.x, y, d.z, d.yaw, size, size, size, tint, 0, shiver);
+        domLimbs.add({ id: -1 - i, x: d.x, y, z: d.z, yaw: d.yaw, sx: size, sy: size, sz: size, lean: 0, tilt: shiver, tint, phase: 0, still: true, attack: 1, laser: false, thrown: false, slam: false, kneel: 0 }, frameDt);
+      }
       const pal = palette();
       eyeMat.color.setHex(night > 0.5 ? 0xffffff : pal.eyes);
       // colour-blind mode: angry eyes and warnings flash hard on and off instead of only being red
@@ -362,14 +403,26 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
         const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
-        const y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : dominik ? DOMINIK_LIFT : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        let y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : dominik ? DOMINIK.lift : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held || dominik ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        // Angry Dominik drops to his knees as his hammer comes down on the floor, stays there for a moment and
+        // gets up again
+        const sinceLanding = dominik ? time - (hammerLandsAt.get(e.id) ?? -1e9) : 1e9;
+        const slam = sinceLanding > -0.13 && sinceLanding < 0.6;
+        let kneel = 0;
+        if (dominik) {
+          kneel = domKneel.get(e.id) ?? 0;
+          kneel += ((slam ? 1 : 0) - kneel) * (1 - Math.exp(-frameDt * (slam ? 26 : 5)));
+          domKneel.set(e.id, kneel);
+        }
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
-        const flashing = (flashUntil.get(e.id) ?? 0) > time;
+        // (Angry Dominik does not light up and does not wobble when he is hit: he stands firm)
+        const flashing = !dominik && (flashUntil.get(e.id) ?? 0) > time;
         // lean into a run or a charge, rear back before one (the Rhino lowers its head and points its horn ahead); a hit makes it wobble; a tank sways under its weight
         // a T-Rex throws its head back for the roar
-        const lean = held ? 0 : rhinoBoss && (e.state === 'charge' || winding) ? (winding ? 0.16 : 0.26) : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
+        const lean = kneel > 0.001 ? kneel * KNEEL.lean : held ? 0 : rhinoBoss && (e.state === 'charge' || winding) ? (winding ? 0.16 : 0.26) : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
         const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * (boss ? 0.02 : 0.05) : 0);
+        y -= kneel * KNEEL.drop * scale;
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
         const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;
@@ -380,12 +433,23 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         if (dominik) domHeads.addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
         (rhinoBoss ? rhinoBodies : dominik ? domBodies : bodies.get(e.kind)!).addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
-        addMonsterParts(partsLit, partsGlow, e.kind, isNight ? l.night : l.day, e.id, {
+        if (dominik) {
+          if (!small) domStood.set(e.id, { x: e.pos.x, z: e.pos.z, yaw });
+          const sinceThrow = time - (hammerThrownAt.get(e.id) ?? -1e9);
+          domLimbs.add({
+            id: e.id, x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
+            sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
+            lean, tilt, tint, phase: time * 8 + e.id * 1.7, still: held || winding || attack !== 0 || e.speed === 0, attack,
+            laser: allBosses(s).some(b => b.enemyId === e.id && b.laser),
+            thrown: sinceThrow >= HAMMER_FLIGHT[0] && sinceThrow < HAMMER_FLIGHT[1],
+            slam, kneel,
+          }, frameDt);
+        } else addMonsterParts(partsLit, partsGlow, e.kind, isNight ? l.night : l.day, e.id, {
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
-        }, rhinoBoss ? RHINO_PARTS : dominik ? DOMINIK_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
+        }, rhinoBoss ? RHINO_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';
@@ -462,6 +526,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       rhinoBodies.end();
       domBodies.end();
       domHeads.end();
+      domLimbs.end();
       // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
       const grabber = allBosses(s).find(b => b.kind === 'kraken' && b.grab);
       const grab = grabber?.grab ?? null;
@@ -537,6 +602,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         if (s.tick >= m.armedAt && Math.floor(time * 4) % 2 === 0) mineLights.add(m.pos.x, 0.32, m.pos.z);
       }
       for (const b of s.blasts) {
+        // (no warning on the floor for Angry Dominik's thrown hammer: the hammer in the air is the warning)
+        if (b.hidden) continue;
         blastRings.add(b.pos.x, 0.06, b.pos.z, 0, b.radius);
         blastFills.add(b.pos.x, 0.05, b.pos.z, 0, b.radius * Math.max(0.05, (s.tick - b.createdAt) / (b.at - b.createdAt)));
       }

@@ -57,6 +57,9 @@ export type SoundId =
   | `roar_${BossKind}`
   | 'growl_croc'
   | 'thunder'
+  | 'hammerSlam'
+  | 'laserAim'
+  | 'laserFire'
   | 'screech_monkey'
   | 'bossPhase'
   | 'bossDead'
@@ -282,6 +285,29 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 300, attack: 0.02, sustain: 0.5, decay: 1.6, volume: 0.55, lowpass: 420, at: 0.06 },
     { wave: 'sine', freq: 70, freqEnd: 28, attack: 0.02, sustain: 0.5, decay: 1.4, volume: 0.45, vibrato: { rate: 9, depth: 6 }, at: 0.06 },
     { wave: 'noise', freq: 200, attack: 0.1, sustain: 0.4, decay: 1.2, volume: 0.3, lowpass: 260, at: 0.7 },
+  ],
+  // Angry Dominik's hammer meets the floor, a second after he raises it (BOSS.warnTicks): the swish of the
+  // swing, then a heavy thud with a crack on top and a rumble that rolls away under it
+  hammerSlam: [
+    { wave: 'noise', freq: 900, attack: 0.1, sustain: 0.05, decay: 0.05, volume: 0.12, lowpass: 2400, at: 0.8 },
+    { wave: 'sine', freq: 95, freqEnd: 24, attack: 0.002, sustain: 0.12, decay: 0.7, volume: 0.9, at: 1 },
+    { wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.5, lowpass: 5000, at: 1 },
+    { wave: 'noise', freq: 220, attack: 0.01, sustain: 0.3, decay: 1.1, volume: 0.5, lowpass: 320, at: 1.02 },
+    { wave: 'sine', freq: 52, freqEnd: 30, attack: 0.02, sustain: 0.3, decay: 0.9, volume: 0.4, vibrato: { rate: 11, depth: 5 }, at: 1.05 },
+  ],
+  // Angry Dominik's eyes: a short rising charge while they aim (BOSS.laser.aimTicks), then the beam for as long
+  // as it burns (BOSS.laser.burnTicks), like an energy blade held still: a crackle as it lights, and a low hum of
+  // two tones a few hertz apart that beat against each other, with a soft waver
+  laserAim: [
+    { wave: 'sawtooth', freq: 70, freqEnd: 230, attack: 0.3, sustain: 0.4, decay: 0.12, volume: 0.07, lowpass: 900, vibrato: { rate: 14, depth: 5 } },
+    { wave: 'sine', freq: 280, freqEnd: 840, attack: 0.4, sustain: 0.3, decay: 0.1, volume: 0.05 },
+  ],
+  laserFire: [
+    { wave: 'noise', freq: 3200, attack: 0.001, sustain: 0.05, decay: 0.18, volume: 0.3, lowpass: 6000 },
+    { wave: 'sawtooth', freq: 140, freqEnd: 92, attack: 0.02, sustain: 0.1, decay: 0.1, volume: 0.12, lowpass: 1200 },
+    { wave: 'sawtooth', freq: 92, attack: 0.05, sustain: 1.3, decay: 0.22, volume: 0.13, lowpass: 520, vibrato: { rate: 5, depth: 2.5 } },
+    { wave: 'sawtooth', freq: 95.5, attack: 0.05, sustain: 1.3, decay: 0.22, volume: 0.13, lowpass: 520 },
+    { wave: 'square', freq: 184, attack: 0.08, sustain: 1.25, decay: 0.22, volume: 0.025, lowpass: 800, vibrato: { rate: 4, depth: 3 } },
   ],
   rare_thunderHammer: [
     { wave: 'noise', freq: 2500, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.4, lowpass: 5000 },
@@ -518,6 +544,15 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('dash', 0.7);
     case 'hammerThrow':
       return one('dash', 0.6);
+    case 'hammerSlam':
+      return one('hammerSlam');
+    case 'lightning':
+      // a short, sharp crack (the long thunder is for his arrival and his end)
+      return one('rare_thunderHammer', 1.25);
+    case 'laserAim':
+      return one('laserAim');
+    case 'laserFire':
+      return one('laserFire');
     case 'eggHatch':
       // the shell cracks, and a very small roar
       return [{ id: 'bubblePop', pitch: 0.8 }, { id: 'roar_rex', pitch: 2.4 }];

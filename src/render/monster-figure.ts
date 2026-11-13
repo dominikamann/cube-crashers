@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Part, Sculpt } from './figure';
-import { DOMINIK, DOMINIK_PARTS, MONSTER_LIFT, MONSTER_PARTS } from './monster-parts';
+import { DOMINIK, dominikPieces } from './dominik-limbs';
+import { MONSTER_LIFT, MONSTER_PARTS } from './monster-parts';
 import { voxelBody, type BodyKind } from './voxel-body';
 
 /**
@@ -8,7 +9,7 @@ import { voxelBody, type BodyKind } from './voxel-body';
  * not modelled again: their figures are put together from the monsters' own voxel bodies and parts, so they
  * change when the monsters do. A monster looks along +z, a figure along -z: everything is turned round.
  */
-type MonsterPart = (typeof DOMINIK_PARTS)[number];
+type MonsterPart = NonNullable<(typeof MONSTER_PARTS)[keyof typeof MONSTER_PARTS]>[number];
 type Vec3 = [number, number, number];
 
 function shade(base: number, how: MonsterPart['color']): number {
@@ -101,21 +102,47 @@ export function dinoFigure(s: Sculpt, c: number, l: number): void {
 }
 
 /**
- * Dominik at player size: the boss's body, head and limbs as the game draws them, without his hammer (he
- * holds the player's weapon), with sleeves and a headband in the player's colour.
+ * Dominik at player size: the boss's body, head, neck and limbs as the game draws them, without his hammer (he
+ * holds the player's weapon in his open right hand), with a headband and wristbands in the player's colour.
  */
 export function dominikFigure(s: Sculpt, c: number): void {
   const f: Frame = { scale: DOMINIK.small, mid: DOMINIK.height / 2 + DOMINIK.lift };
-  s.part('body').solid(body('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth, f, 0xffffff));
-  const neck = place(f, 0, DOMINIK.height / 2, DOMINIK.head.z);
-  const head = s.part('head', neck, 'body');
-  head.solid(body('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d, f, 0xffffff, [0, DOMINIK.head.y, DOMINIK.head.z], neck));
-  const band = place(f, 0, DOMINIK.head.y + DOMINIK.head.h * 0.2, DOMINIK.head.z);
-  head.box(c, (DOMINIK.head.w + 0.05) * f.scale, 0.1 * f.scale, (DOMINIK.head.d + 0.05) * f.scale, band[0], band[1], band[2]);
-  // the hammer stays with the boss: of the parts that sway with it only the forearm is kept, the sleeves take
-  // the player's colour
-  let forearm = false;
-  const limbs = DOMINIK_PARTS.filter(m => m.anim !== 'sway' || (!forearm && (forearm = true)));
-  const sleeves = limbs.filter(m => !m.anim && Math.abs(m.at[0]) > 0.4 && m.at[1] > 0.6);
-  parts(s, limbs.map(m => (sleeves.includes(m) ? { ...m, color: c } : m.anim === 'sway' ? { ...m, anim: undefined } : m)), f, 0xffffff);
+  const pieces = dominikPieces(), j = pieces.joints;
+  /** a piece of his that hangs from a joint, turned and scaled into the figure's space (the joint stays its origin) */
+  const hung = (key: string, g: THREE.BufferGeometry, down = 0) => {
+    let made = bodies.get(key);
+    if (!made) {
+      made = g.clone().translate(0, -down, 0).rotateY(Math.PI).scale(f.scale, f.scale, f.scale);
+      made.userData.shared = true;
+      bodies.set(key, made);
+    }
+    return made;
+  };
+  const b = s.part('body');
+  b.solid(body('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth, f, 0xffffff));
+  // (the neck is given in the body's frame, like the body itself)
+  let neckG = bodies.get('dominikNeck');
+  if (!neckG) {
+    neckG = pieces.neck.clone().translate(0, f.mid, 0).rotateY(Math.PI).scale(f.scale, f.scale, f.scale);
+    neckG.userData.shared = true;
+    bodies.set('dominikNeck', neckG);
+  }
+  b.solid(neckG);
+  const nape = place(f, 0, DOMINIK.height / 2, DOMINIK.head.z);
+  const head = s.part('head', nape, 'body');
+  head.solid(body('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d, f, 0xffffff, [0, DOMINIK.head.y, DOMINIK.head.z], nape));
+  const band = place(f, 0, DOMINIK.head.y + DOMINIK.head.h * 0.24, DOMINIK.head.z);
+  head.box(c, (DOMINIK.head.w + 0.04) * f.scale, 0.07 * f.scale, (DOMINIK.head.d + 0.04) * f.scale, band[0], band[1], band[2]);
+  // his left is at the monster's +x, which is the figure's -x: that arm swings (legL and armL are on that side);
+  // the right one holds the weapon
+  for (const left of [true, false]) {
+    const side = left ? 1 : -1;
+    const shoulder = place(f, side * j.shoulder.x, j.shoulder.y, j.shoulder.z);
+    const arm = s.part(left ? 'armL' : 'armR', shoulder, 'body');
+    arm.solid(hung('dominikUpper', pieces.upper)).solid(hung(left ? 'dominikForeL' : 'dominikForeR', left ? pieces.left : pieces.right, j.upperArm));
+    // a wristband in the player's colour (on the left the watch sits under it)
+    arm.box(c, 0.2 * f.scale, 0.07 * f.scale, 0.2 * f.scale, shoulder[0], shoulder[1] - (j.upperArm + 0.36) * f.scale, shoulder[2]);
+    const knee = place(f, side * j.knee.x, j.knee.y, j.knee.z);
+    s.part(left ? 'legL' : 'legR', knee, 'body').solid(hung('dominikLeg', pieces.leg));
+  }
 }

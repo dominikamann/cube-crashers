@@ -54,7 +54,7 @@ export interface GameRenderer {
    */
   setMouseLook(view: number, offset: { x: number; y: number } | null): void;
   /** dev: the camera circles this spot at eye level instead of following the player (to look at a figure); null ends it */
-  setShowroom(at: { x: number; z: number; height: number; radius: number; angle?: number } | null): void;
+  setShowroom(at: { x: number; z: number; height: number; radius: number; angle?: number; look?: number } | null): void;
   /** first person for view `view`, looking along `yaw` tilted by `pitch` (see input/first-person); null = the view from above */
   setFirstPerson(view: number, look: { yaw: number; pitch: number } | null): void;
   setQuality(q: GraphicsQuality): void;
@@ -246,7 +246,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   let night = 0;
   let time = 0;
-  let showroom: { x: number; z: number; height: number; radius: number; angle?: number } | null = null;
+  let showroom: { x: number; z: number; height: number; radius: number; angle?: number; look?: number } | null = null;
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
@@ -307,8 +307,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         if (showroom) {
           // a slow turn round the figure, with a look from a little above
           const a = showroom.angle ?? time * 0.45;
-          v.camera.position.set(showroom.x + Math.sin(a) * showroom.radius, showroom.height * 1.05, showroom.z + Math.cos(a) * showroom.radius);
-          v.camera.lookAt(showroom.x, showroom.height * 0.62, showroom.z);
+          // (or, with `look`, a close look at that height: his face, his hammer)
+          const look = showroom.look;
+          v.camera.position.set(showroom.x + Math.sin(a) * showroom.radius, look === undefined ? showroom.height * 1.05 : look + showroom.radius * 0.2, showroom.z + Math.cos(a) * showroom.radius);
+          v.camera.lookAt(showroom.x, look ?? showroom.height * 0.62, showroom.z);
           return;
         }
         const p = actors.playerPos(i);

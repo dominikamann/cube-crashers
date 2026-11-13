@@ -46,7 +46,7 @@ document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 /** dev: puts the camera on a circle round a figure (set once the renderer exists) */
-let showroom: ((at: { x: number; z: number; height: number; radius: number; angle?: number }) => void) | null = null;
+let showroom: ((at: { x: number; z: number; height: number; radius: number; angle?: number; look?: number }) => void) | null = null;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 // the interface grows with big screens (see ui/scale.ts)
 const applyUiZoom = () => document.documentElement.style.setProperty('--ui-zoom', String(uiZoom(innerWidth, innerHeight)));
@@ -528,6 +528,8 @@ function startGame() {
         // a boss fell while this player was in the game (not one that broke into a versus match, and not in a
         // replay): remembered, some characters can only be bought after
         if (e.type === 'bossDead' && e.kind && !s.versus && mode === 'playing' && s.players.some(p => p.id === localId()) && recordBossBeaten(profile, e.kind)) storeProfile();
+        // a boss fight is worth a log of its own, even if the run goes on or is left afterwards
+        if (e.type === 'bossDead' && role !== 'client' && (mode === 'playing' || mode === 'paused')) saveRunLog(buildRunLog(view(), 'bossDead', e.kind));
       }
       frameEvents = [];
     },
@@ -675,7 +677,8 @@ function startGame() {
     lastSoloMode = 'versus';
     setSplit(settings.localPlayers === 2);
     const humans = split ? 2 : 1;
-    const bots = Math.max(0, Math.min(MAX_PLAYERS, settings.versusSize) - humans);
+    // (a match needs two: alone there is always at least one bot)
+    const bots = Math.max(humans === 1 ? 1 : 0, Math.min(MAX_PLAYERS, settings.versusSize) - humans);
     const names = [playerName(), ...(split ? [t('split.player2')] : []), ...Array.from({ length: bots }, () => `Bot ${withDefaults({ name: '', color: null }).name}`)];
     const colors = settings.color !== null ? [settings.color] : undefined;
     // discovery: the next step of the rotation instead of the chosen match
@@ -925,6 +928,8 @@ function startGame() {
   }
 
   function toTitle() {
+    // a run that is left unfinished still leaves a log (how far it got, what hurt)
+    if ((mode === 'playing' || mode === 'paused') && role !== 'client' && view().phase === 'playing' && view().tick > 5 * 60) saveRunLog(buildRunLog(view(), 'left'));
     if (role !== 'solo') leaveLan(false);
     mode = 'title';
     setSplit(false);
@@ -1130,7 +1135,7 @@ function applyDemo(sim: SimState) {
     });
   }
   // ?demo=dominik: Angry Dominik on show. He stands still in the open and the camera circles him (&act=1: he
-  // fights, &r=… and &h=… set the circle's radius and height)
+  // fights, &act=stand: he attacks without leaving his spot, &r=… and &h=… set the circle's radius and height, &look=… the height it looks at from close by)
   if (params.get('demo') === 'dominik') {
     sim.enemies = [];
     sim.nests = [];
@@ -1141,12 +1146,13 @@ function applyDemo(sim: SimState) {
       const at = { x: sim.map.w / 2, z: sim.map.h / 2 };
       m.spawnBoss(sim, 'dominik', at);
       const body = sim.enemies.find(e => e.id === sim.boss?.enemyId);
-      if (body && !params.has('act')) {
+      if (body && params.get('act') !== '1') {
         body.speed = 0;
         body.dir = { x: 0, z: 1 };
-        sim.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
+        // (&act=stand: he stays where he is, but attacks)
+        if (!params.has('act')) sim.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
       }
-      showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7 });
+      showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
   // &mini=1: the small Angry Dominik from the wall logo, right away
