@@ -475,6 +475,10 @@ export interface RunState {
   floors: string[];
   floor: number;
   stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane' | 'maze';
+  /** the games between the floors of this run, in order (see run.ts): a different one after every floor */
+  between?: ('race' | 'lane' | 'maze' | 'shaft' | 'town')[];
+  /** the Town is being played as the game between two floors: a boss floor that is not one of the run's floors */
+  side?: boolean;
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;

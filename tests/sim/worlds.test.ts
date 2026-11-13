@@ -50,15 +50,13 @@ describe('the new worlds', () => {
   });
 
   it('a Tower Run picks each world from its choices by the seed: every run a little different', () => {
-    const seen = Array.from({ length: 6 }, () => new Set<string>());
+    const seen = [new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>()];
     for (let seed = 1; seed < 60; seed++) runFloors(seed).forEach((f, i) => seen[i].add(f));
     expect([...seen[0]]).toEqual(['floor01']);
-    // (the Town is always the second floor)
-    expect([...seen[1]]).toEqual(['waldsee']);
-    expect([...seen[2]].sort()).toEqual(['candy', 'jungle']);
-    expect([...seen[3]].sort()).toEqual(['arena', 'underwater']);
-    expect([...seen[4]].sort()).toEqual(['highway', 'neon', 'servers']);
-    expect([...seen[5]]).toEqual(['rooftop']);
+    expect([...seen[1]].sort()).toEqual(['candy', 'jungle']);
+    expect([...seen[2]].sort()).toEqual(['arena', 'underwater']);
+    expect([...seen[3]].sort()).toEqual(['highway', 'neon', 'servers']);
+    expect([...seen[4]]).toEqual(['rooftop']);
     expect(runFloors(7)).toEqual(runFloors(7));
   });
 });

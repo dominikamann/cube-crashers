@@ -7,7 +7,7 @@ import type { SimState } from '../../src/sim/types';
 
 /** a Tower Run of its usual floors, or with `extra` more on top */
 function runSim(extra = 0): SimState {
-  const s = createSim(floor01, 4, { mode: 'run' });
+  const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
   for (let i = 0; i < extra; i++) s.run.floors.push(s.run.floors[1]);
   return s;
 }

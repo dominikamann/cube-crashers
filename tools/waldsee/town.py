@@ -186,7 +186,7 @@ for h in used:
     a=(t.get('addr:street'),t.get('addr:housenumber'))
     if a in ADDR: col=ADDR[a]
     wall=round(2.9+1.5*h01(houses[h]['osm'],3),2)
-    if kind=='gate': wall=6.5
+    if kind=='gate': wall=9.5
     out.append({'id':remap[h],'kind':kind,'name':t.get('name',''),'col':col,'roof':roof,'wall':wall,'ang':round(ang,3),'cx':round(cxm+0.5,2),'cz':round(cym+0.5,2),'n':len(tiles)})
 
 pois={'T':[],'F':[],'named':[]}

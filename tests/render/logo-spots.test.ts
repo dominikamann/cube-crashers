@@ -6,7 +6,8 @@ import { logoSpots } from '../../src/sim/map/logo-spots';
 describe('AmannLabs logos', () => {
   let walls = 0, maps = 0;
   for (const [id, floor] of Object.entries(FLOORS)) {
-    if (floor.kind === 'shaft') continue;
+    // (no logos in the shaft, nor in the Town: there AmannLabs has a shop)
+    if (floor.kind === 'shaft' || id === 'waldsee') continue;
     const map = floor.map;
     const at = (x: number, z: number) => map.tiles[z * map.w + x];
     it(`${id}: one small logo on plain floor and at most one on a wall`, () => {

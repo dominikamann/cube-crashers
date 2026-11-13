@@ -25,7 +25,7 @@ function driveTo(s: SimState, id: number, i: number) {
 }
 
 function raceSim(players = 1): SimState {
-  const s = createSim(floor01, 4, { mode: 'run', players });
+  const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players });
   for (const n of s.nests) n.state = 'destroyed';
   s.enemies = [];
   floorCleared(s);
@@ -162,7 +162,7 @@ describe('the rally track', () => {
 describe('the starting grid of the kart rally', () => {
   /** a run of `scores.length` players with these scores (and these of them bots), at the start of the race */
   function grid(scores: number[], bots: number[] = []): SimState {
-    const s = createSim(floor01, 4, { mode: 'run', players: scores.length, bots: scores.map((_, i) => bots.includes(i)) });
+    const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: scores.length, bots: scores.map((_, i) => bots.includes(i)) });
     s.players.forEach((p, i) => (p.stats.score = scores[i]));
     for (const n of s.nests) n.state = 'destroyed';
     s.enemies = [];

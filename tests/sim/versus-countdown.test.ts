@@ -29,7 +29,7 @@ describe('the countdown that opens a game', () => {
   });
 
   it('a Tower Run waits too: the alarm and the nests start at GO', () => {
-    const s = createSim(floor01, 3, { mode: 'run', countdown: true });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], countdown: true });
     const alarm = s.alarm.nextAt - s.tick;
     for (let i = 0; i < COUNTDOWN_TICKS; i++) stepSim(s, []);
     expect(s.alarm.nextAt - s.tick).toBe(alarm);

@@ -13,7 +13,7 @@ const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /** a run on its first floor with all nests destroyed and the elevator open */
 function clearedRun(players = 1): SimState {
-  const s = createSim(floor01, 5, { mode: 'run', players });
+  const s = createSim(floor01, 5, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players });
   for (const n of s.nests) n.state = 'destroyed';
   s.elevatorOpen = true;
   s.enemies = [];
@@ -231,7 +231,7 @@ describe('a whole run', () => {
     // the scripted bot plays right at the edge on Medium: single seeds can fail, half of them must not
     const results: string[] = [];
     for (const seed of [1, 2, 4, 6]) {
-      const s = createSim(floor01, seed, { mode: 'run' });
+      const s = createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
       s.players[0].weapons = (['pixelBlaster', 'laserSword', 'candyCannon', 'bomb', 'discoBall', 'joystickBoomerang'] as const).map(kind => ({ kind, level: 5, cooldown: 0 }));
       const bot = createBot();
       for (let i = 0; i < 40 * 3600 && s.phase === 'playing'; i++) stepSim(s, bot(s));

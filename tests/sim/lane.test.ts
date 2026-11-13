@@ -10,7 +10,7 @@ import { run } from './helpers';
 
 /** a run whose second floor was just cleared: the lane comes next */
 function laneSim(players = 1): SimState {
-  const s = createSim(floor01, 4, { mode: 'run', players });
+  const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players });
   s.run.floor = 1;
   for (const n of s.nests) n.state = 'destroyed';
   s.enemies = [];
@@ -39,7 +39,7 @@ describe('lane defense', () => {
   });
 
   it('the waves vary (fast ones, tough ones, shooters, splitters...) and keep coming, even on Ultra Low', () => {
-    const s = createSim(floor01, 4, { mode: 'run', difficulty: 'ultraLow' });
+    const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], difficulty: 'ultraLow' });
     s.run.floor = 1;
     for (const n of s.nests) n.state = 'destroyed';
     s.enemies = [];

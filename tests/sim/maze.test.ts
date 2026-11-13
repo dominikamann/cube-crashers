@@ -11,7 +11,7 @@ import { createBot } from './bot';
 
 /** a run whose third floor was just cleared: the maze comes next */
 function mazeSim(players = 1): SimState {
-  const s = createSim(floor01, 4, { mode: 'run', players });
+  const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players });
   s.run.floor = 2;
   for (const n of s.nests) n.state = 'destroyed';
   s.enemies = [];
@@ -166,7 +166,7 @@ describe('glitch maze', () => {
     const s = mazeSim(2);
     s.players[1].pos = { ...MAZE_DOTS[s.run.maze!.pixels[5]] };
     stepSim(s, []);
-    const client = createSim(floor01, 4, { mode: 'run', players: 2 });
+    const client = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 2 });
     const snap = JSON.parse(serializeSnapshot(s, s.events));
     applySnapshot(client, snap.state);
     expect(client.map.id).toBe(floorMaze.id);

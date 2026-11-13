@@ -96,7 +96,7 @@ describe('reviving', () => {
   });
 
   it('a player out of lives is out, the others play on, and the next floor brings them back with one', () => {
-    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const s = createSim(floor01, 9, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 2 });
     const [a, b] = s.players;
     b.lives = 1;
     b.pos = rel(a.pos, 8, 0);
@@ -115,7 +115,7 @@ describe('reviving', () => {
   });
 
   it('who was out is back as soon as the floor is cleared, so they play the game between the floors too', () => {
-    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const s = createSim(floor01, 9, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 2 });
     const b = s.players[1];
     b.lives = 0;
     b.out = true;
@@ -141,7 +141,7 @@ describe('reviving', () => {
   });
 
   it('a life from the shop brings an out player back, and the next floor does not take it away', () => {
-    const s = createSim(floor01, 9, { mode: 'run', players: 2 });
+    const s = createSim(floor01, 9, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 2 });
     const b = s.players[1];
     b.lives = 0;
     b.out = true;

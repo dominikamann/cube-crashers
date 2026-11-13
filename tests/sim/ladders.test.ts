@@ -11,7 +11,7 @@ describe('ladders', () => {
   it('every world with walls has a few, each on the floor against a wall you can stand on', () => {
     for (const [id, def] of Object.entries(FLOORS)) {
       const list = ladders(def.map);
-      if (['race', 'lane', 'maze', 'shaft'].includes(def.kind)) {
+      if (['race', 'lane', 'maze', 'shaft'].includes(def.kind) || id === 'waldsee') {
         expect(list, id).toHaveLength(0);
         continue;
       }
@@ -43,7 +43,7 @@ describe('ladders', () => {
   });
 
   it('a climb under way does not carry over to the next floor', () => {
-    const s = createSim(FLOORS.floor01.map, 3, { mode: 'run', players: 1 });
+    const s = createSim(FLOORS.floor01.map, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 1 });
     const p = s.players[0];
     const l = ladders(s.map)[0];
     p.climb = { ticks: 10, top: { ...l.top } };

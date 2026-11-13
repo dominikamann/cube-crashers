@@ -29,6 +29,8 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
 const spotCache = new WeakMap<FloorMap, LogoSpot[]>();
 
 function findLogoSpots(map: FloorMap): LogoSpot[] {
+  // (none in the Town: there AmannLabs has a shop with its name over the door)
+  if (map.id === 'waldsee') return [];
   const at = (x: number, z: number) => (x < 0 || z < 0 || x >= map.w || z >= map.h ? Tile.Wall : map.tiles[z * map.w + x]);
   const points = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.map(n => n.pos), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
   let seed = 0;

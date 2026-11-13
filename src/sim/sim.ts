@@ -5,7 +5,7 @@ import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './
 import type { FloorMap } from './map/tilemap';
 import { BOSS_RUSH, FLOORS, RUN_FLOORS, runFloors } from './config/floors';
 import { Rng } from './rng';
-import { initRun, updateRunStage } from './systems/run';
+import { betweenOf, initRun, updateRunStage, type Between } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
 import { updateShaft } from './systems/shaft';
 import { updateRace } from './systems/race';
@@ -106,6 +106,8 @@ export interface SimOptions {
   versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1> };
   /** Boss Rush: the map of each boss, instead of their own floors */
   rushMaps?: string[];
+  /** the games between the floors, in order, instead of the ones the seed picks (tests, servers) */
+  between?: Between[];
   /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
   countdown?: boolean;
   /** unlocked items (profile ids); leave out to allow everything */
@@ -132,7 +134,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     tick: 0,
     seed,
     difficulty,
-    run: { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null },
+    run: { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null, ...(mode === 'run' ? { between: opts.between ?? betweenOf(seed, floors.length) } : {}) },
     theme: 'plaza',
     rng: new Rng(seed),
     map,
@@ -177,7 +179,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     events: [],
     flow: null,
   };
-  initRun(s, mode, floors);
+  initRun(s, mode, floors, opts.between);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];

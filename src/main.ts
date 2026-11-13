@@ -70,6 +70,8 @@ function startGame() {
   showroom = at => renderer.setShowroom(at);
   const smooth = createSmoother();
   const raceView = createRaceView();
+  // (the Town is played in first person too: one walks its streets)
+  const townView = createRaceView();
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
   const padCtl = new PadControls();
@@ -530,6 +532,11 @@ function startGame() {
           s.run.stage === 'race' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused'),
           [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
         );
+        // the Town is walked in first person, and stays so while one is there
+        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused');
+        const controls = [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }];
+        townView.update(inTown, controls);
+        if (inTown) for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
         if (keyboard.firstPerson && !wasFp && mode === 'playing' && !padActive) lockPointer(true);
       }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
@@ -730,6 +737,7 @@ function startGame() {
     const versus = s.run.mode === 'versus';
     const aimOf = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
     raceView.reset();
+    townView.reset();
     keyboard.setFirstPerson(versus, aimOf(localId()));
     padCtl.setFirstPerson(versus, aimOf(localId()));
     padCtl2.setFirstPerson(versus, aimOf(1));

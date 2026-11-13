@@ -20,14 +20,14 @@ describe('the hidden heart', () => {
 
   it('turns up only now and then in a Tower Run, never in a single floor or versus', () => {
     let seen = 0;
-    for (let seed = 1; seed <= 40; seed++) if (createSim(floor01, seed, { mode: 'run' }).heart) seen++;
+    for (let seed = 1; seed <= 40; seed++) if (createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] }).heart) seen++;
     expect(seen).toBeGreaterThan(40 * HEART.chance * 0.5);
     expect(seen).toBeLessThan(40 * HEART.chance * 1.6);
     expect(createSim(floor01, 3, { mode: 'quick' }).heart ?? null).toBeNull();
   });
 
   it('a heart nobody found is gone when the floor is cleared', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     placeHiddenHeart(s, true);
     for (const n of s.nests) n.state = 'destroyed';
     s.enemies = [];
@@ -36,7 +36,7 @@ describe('the hidden heart', () => {
   });
 
   it('whoever stands on it gives everyone a life (never more than you start with) and brings back who was out', () => {
-    const s = createSim(floor01, 3, { mode: 'run', players: 3 });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 3 });
     placeHiddenHeart(s, true);
     const [a, b, c] = s.players;
     a.lives = 3;

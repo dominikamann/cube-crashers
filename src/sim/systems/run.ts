@@ -13,8 +13,8 @@ import { buy, openShop, shopDone } from './shop';
 /** points for every floor cleared in a run */
 export const FLOOR_BONUS = 1000;
 
-export function initRun(s: SimState, mode: RunMode, floors: string[]): void {
-  s.run = { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null };
+export function initRun(s: SimState, mode: RunMode, floors: string[], between?: Between[]): void {
+  s.run = { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null, ...(mode === 'run' ? { between: between ?? betweenOf(s.seed, floors.length) } : {}) };
   s.theme = floorDef(s.map.id)?.theme ?? 'plaza';
 }
 
@@ -24,7 +24,7 @@ export function initRun(s: SimState, mode: RunMode, floors: string[]): void {
  * list of floors.
  */
 export function runProgress(s: SimState): { stage: 'floor' | 'between'; n: number; total: number } {
-  const between = s.run.stage !== 'floor' && s.run.stage !== 'shop';
+  const between = (s.run.stage !== 'floor' && s.run.stage !== 'shop') || !!s.run.side;
   return { stage: between ? 'between' : 'floor', n: s.run.floor + 1, total: s.run.floors.length - (between ? 1 : 0) };
 }
 
@@ -35,9 +35,34 @@ export function floorsCleared(s: SimState): { cleared: number; total: number } {
 
 /** The elevator was reached: the next stage of the run, or the end of it. */
 /** what comes after floor i of a run, before the shop */
-export const INTERMISSIONS: ('race' | 'lane' | 'maze' | 'shaft')[] = ['race', 'lane', 'maze', 'shaft'];
+export type Between = 'race' | 'lane' | 'maze' | 'shaft' | 'town';
+export const INTERMISSIONS: Between[] = ['race', 'lane', 'maze', 'shaft', 'town'];
+
+/**
+ * The games between the floors of a run: a different one after every floor, never the same twice (as long as
+ * there are enough of them), in an order the seed picks, so every run is a little different.
+ */
+export function betweenOf(seed: number, floors: number): Between[] {
+  const pool = [...INTERMISSIONS];
+  // a shuffle of its own from the seed, so the run's other random numbers stay as they were
+  let x = (Math.imul(seed | 0, 0x9e3779b1) ^ 0x5bd1e995) >>> 0;
+  for (let i = pool.length - 1; i > 0; i--) {
+    x = (Math.imul(x ^ (x >>> 15), 0x2c1b3c6d) + 0x297a2d39) >>> 0;
+    const j = x % (i + 1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return Array.from({ length: Math.max(0, floors - 1) }, (_, i) => pool[i % pool.length]);
+}
 
 export function floorCleared(s: SimState): void {
+  // the Town was the game between two floors: on to the shop, the run's floor stays the same
+  if (s.run.side) {
+    s.run.side = false;
+    s.score += FLOOR_BONUS;
+    backIn(s);
+    openShop(s);
+    return;
+  }
   const multi = s.run.mode === 'run' || s.run.mode === 'bossrush';
   const last = !multi || s.run.floor >= s.run.floors.length - 1;
   const seconds = s.tick / TICK_RATE;
@@ -61,8 +86,9 @@ export function floorCleared(s: SimState): void {
     return;
   }
   // between floors: a different game each time (the shaft ride where nothing else is planned yet)
-  const next = INTERMISSIONS[s.run.floor];
+  const next = (s.run.between ?? betweenOf(s.seed, s.run.floors.length))[s.run.floor];
   if (next === 'race') enterRace(s);
+  else if (next === 'town') enterTown(s);
   else if (next === 'lane') enterLane(s);
   else if (next === 'maze') enterMaze(s);
   else enterShaft(s);
@@ -70,10 +96,25 @@ export function floorCleared(s: SimState): void {
 
 /** Sets up floor `index` of the run; players keep their weapons, perks, coins and the team its credits. */
 export function enterFloor(s: SimState, index: number): void {
-  const def = FLOORS[s.run.floors[index]];
+  s.run.floor = index;
+  s.run.side = false;
+  enterMap(s, FLOORS[s.run.floors[index]]);
+  s.events.push({ type: 'floorStart', floor: index, mapId: s.map.id });
+}
+
+/**
+ * The Town as the game between two floors: a boss fight in the streets round the Hochstatt. It is set up like a
+ * floor, and when its elevator is reached the shop opens (see floorCleared).
+ */
+export function enterTown(s: SimState): void {
+  s.run.side = true;
+  enterMap(s, FLOORS.waldsee);
+  s.events.push({ type: 'floorStart', floor: s.run.floor, mapId: s.map.id });
+}
+
+function enterMap(s: SimState, def: (typeof FLOORS)[string]): void {
   s.map = def.map;
   s.theme = def.theme;
-  s.run.floor = index;
   s.run.stage = 'floor';
   s.run.shop = null;
   s.enemies = [];
@@ -122,7 +163,6 @@ export function enterFloor(s: SimState, index: number): void {
   // whoever went out in the game between the floors is back for the new floor, with one life
   backIn(s);
   setupFloor(s);
-  s.events.push({ type: 'floorStart', floor: index, mapId: s.map.id });
 }
 
 /** Between floors: the shop (the shaft ride comes before it). */

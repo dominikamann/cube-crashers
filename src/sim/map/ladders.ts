@@ -31,7 +31,8 @@ export function ladders(m: FloorMap): Ladder[] {
   let list = cache.get(m);
   if (list) return list;
   list = [];
-  if (!['race', 'lane', 'maze', 'shaft'].includes(m.id)) {
+  // (none in the Town: its walls are houses)
+  if (!['race', 'lane', 'maze', 'shaft', 'waldsee'].includes(m.id)) {
     const keepClear = [m.spawn, m.elevator, ...m.pads.map(p => p.pos), ...m.nestSpots.flatMap(n => [n.pos, ...n.entries]), ...m.vehicleSpots, ...m.powerSpots, ...m.crateSpots];
     const tile = (tx: number, tz: number) => (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h ? Tile.Wall : m.tiles[tz * m.w + tx]);
     const candidates: (Ladder & { r: number })[] = [];

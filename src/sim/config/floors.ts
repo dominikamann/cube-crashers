@@ -36,6 +36,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
+  // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight
   // (until the witch is built, King Rex stands in for her)
   [floorWaldsee.id]: { map: floorWaldsee, theme: 'waldsee', kind: 'boss', boss: 'rex', name: 'floor.waldsee', eliteBonus: 0.05 },
   [floorUnderwater.id]: { map: floorUnderwater, theme: 'underwater', kind: 'boss', boss: 'kraken', name: 'floor.underwater', eliteBonus: 0 },
@@ -46,13 +47,11 @@ export const FLOORS: Record<string, FloorDef> = {
 };
 
 /** the floors of a full run, bottom to top */
-export const RUN_FLOORS: string[] = [floor01.id, floorWaldsee.id, floorCandy.id, floorArena.id, floorNeon.id, floorRooftop.id];
+export const RUN_FLOORS: string[] = [floor01.id, floorCandy.id, floorArena.id, floorNeon.id, floorRooftop.id];
 
 /** the worlds each floor of a run can be: picked by the seed, so every run looks a little different (and every LAN player gets the same) */
 export const RUN_CHOICES: string[][] = [
   [floor01.id],
-  // (the Town is always the second floor: its witch waits there, see wild-boss.ts)
-  [floorWaldsee.id],
   [floorCandy.id, floorJungle.id],
   [floorArena.id, floorUnderwater.id],
   [floorNeon.id, floorHighway.id, floorServers.id],
@@ -62,7 +61,7 @@ export const RUN_CHOICES: string[][] = [
 /** the floors of one run, one of each floor's choices */
 export function runFloors(seed: number): string[] {
   // a different slice of the seed for each floor, so the choices do not move in step
-  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 1, 2, 4, 1][i]) % choices.length]);
+  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 2, 4, 1][i]) % choices.length]);
 }
 
 /** Boss Rush: every boss in a row, each on its own arena, with a shop between them */

@@ -156,26 +156,71 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   WALDSEE_TILES.forEach((_row, tz) => {
     for (let tx = 0; tx < WALDSEE_TILES[tz].length / 2; tx++) {
       const h = waldseeHouse(tx, tz);
-      if (!h) continue;
+      if (!h || h.kind === 'gate') continue;
       const top = h.wall + waldseeRoof(tx, tz);
       box(tx + 0.5, top - 0.28, tz + 0.5, 1.07, 0.72, 1.07, shade(parseInt(h.roof, 16), 0.96 + 0.08 * hash(tx, tz)));
     }
   });
 
-  // ---- the Wurzacher Tor: the old town gate, a tall square tower with a steep roof, the archway shut
+  // ---- the Wurzacher Tor, the old town gate: a tall white tower with grey stones up its corners, a round archway
+  // through it, a green clock with golden hands, over the clock a little red oriel with a green cap, and on top a
+  // stepped gable with a weather vane
   for (const h of WALDSEE_HOUSES) {
     if (h.kind !== 'gate') continue;
-    const top = h.wall + 1.9;
-    [3.4, 2.8, 2.2, 1.6, 1.0, 0.5].forEach((w, k) => box(h.cx, top + 0.2 + k * 0.55, h.cz, w, 0.56, w, shade(0x8a4a33, 0.95 + 0.03 * k)));
-    box(h.cx, top + 3.7, h.cz, 0.12, 0.9, 0.12, 0x3a3f52);
-    lamp(h.cx, top + 4.25, h.cz, 0.22, 0.22, 0.22, 0xffd76a);
-    // the arch toward the town (west), dark, with a gate of planks in it; a clock above
-    box(h.cx - 1.72, 1.5, h.cz, 0.12, 3, 2.2, 0x2f2a28);
-    box(h.cx - 1.76, 3.2, h.cz, 0.14, 0.5, 1.6, 0x2f2a28);
-    for (let k = -2; k <= 2; k++) box(h.cx - 1.8, 1.3, h.cz + k * 0.42, 0.06, 2.6, 0.36, k % 2 ? 0x6b4a32 : 0x7a5638);
-    box(h.cx - 1.74, 5, h.cz, 0.1, 0.9, 0.9, 0xf4f1ea);
-    lamp(h.cx - 1.8, 5, h.cz, 0.04, 0.5, 0.06, 0x2a2d33);
-    lamp(h.cx - 1.8, 5.1, h.cz + 0.12, 0.04, 0.06, 0.3, 0x2a2d33);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    WALDSEE_TILES.forEach((_row, tz) => {
+      for (let tx = 0; tx < WALDSEE_TILES[tz].length / 2; tx++)
+        if (waldseeHouse(tx, tz) === h) {
+          x0 = Math.min(x0, tx);
+          x1 = Math.max(x1, tx + 1);
+          z0 = Math.min(z0, tz);
+          z1 = Math.max(z1, tz + 1);
+        }
+    });
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, D = x1 - x0, W = z1 - z0, top = h.wall;
+    const white = 0xf4f1ea, grey = 0x8e9299, dark = 0x2f3540;
+    // the stones up the corners, long and short in turn
+    for (const [qx, qz] of [[x0, z0], [x0, z1], [x1, z0], [x1, z1]])
+      for (let k = 0; k * 0.5 < top - 0.4; k++) box(qx, 0.25 + k * 0.5, qz, k % 2 ? 0.5 : 0.72, 0.46, k % 2 ? 0.72 : 0.5, grey);
+    // the band under the gable, with its row of little arches
+    box(cx, top - 0.12, cz, D + 0.36, 0.3, W + 0.36, grey);
+    for (const fx of [x0 - 0.14, x1 + 0.14]) for (let k = 0; k < W * 2.5; k++) box(fx, top - 0.42, z0 + 0.2 + (k * (W - 0.4)) / (W * 2.5 - 1), 0.1, 0.3, 0.14, grey);
+    // the gable: steps going in from both sides, a grey cap on each, and the top block with the vane
+    const steps = 6, rise = 0.62;
+    for (let k = 0; k < steps; k++) {
+      const w = W * (1 - k / (steps + 0.6));
+      box(cx, top + rise * (k + 0.5), cz, D + 0.04, rise, w, white);
+      for (const side of [-1, 1]) box(cx, top + rise * (k + 1) + 0.05, cz + (side * w) / 2 - side * 0.14, D + 0.16, 0.12, 0.42, grey);
+    }
+    box(cx, top + rise * steps + 0.35, cz, D * 0.5, 0.7, 0.6, grey);
+    box(cx, top + rise * steps + 1.05, cz, 0.06, 0.8, 0.06, dark);
+    lamp(cx, top + rise * steps + 1.5, cz, 0.3, 0.12, 0.05, 0xd4a73a);
+    // the face toward the town (west): windows, the clock, the oriel, and the archway
+    const fx = x0 - 0.05;
+    for (const [y, dz] of [[2.6, -0.5], [2.6, 0.5], [4.3, 0], [5.9, -0.45], [5.9, 0.45], [6.9, 0], [top + rise * 1.5, -0.6], [top + rise * 1.5, 0.6], [top + rise * 3.4, 0]]) box(fx, y, cz + dz, 0.08, 0.42, 0.24, dark);
+    box(fx - 0.02, top - 1.35, cz, 0.1, 1.05, 1.05, 0x1f5f3a);
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      lamp(fx - 0.09, top - 1.35 + Math.cos(a) * 0.42, cz + Math.sin(a) * 0.42, 0.03, 0.09, 0.09, 0xf2c94c);
+    }
+    lamp(fx - 0.1, top - 1.2, cz, 0.03, 0.34, 0.06, 0xf2c94c);
+    lamp(fx - 0.1, top - 1.32, cz + 0.14, 0.03, 0.06, 0.3, 0xf2c94c);
+    for (const dz of [-0.75, 0.75]) box(fx, top - 1.2, cz + dz, 0.08, 0.36, 0.22, dark);
+    // (the oriel: a red box on the wall, tapering to a point below, a green cap above)
+    box(fx - 0.2, top + 0.55, cz, 0.5, 1.1, 0.5, 0xc2452d);
+    [0.4, 0.28, 0.16].forEach((w, k) => box(fx - 0.2, top - 0.12 - k * 0.2, cz, w, 0.2, w, 0xc2452d));
+    [0.6, 0.42, 0.24, 0.1].forEach((w, k) => box(fx - 0.2, top + 1.2 + k * 0.18, cz, w, 0.18, w, 0x2f7a4a));
+    box(fx - 0.46, top + 0.6, cz, 0.04, 0.3, 0.16, dark);
+    // (the archway: round at the top, a grey rim, dark inside with the pale wall of the passage behind)
+    const half = Math.min(1.25, W / 2 - 0.5);
+    box(fx - 0.01, 1.05, cz, 0.12, 2.1, half * 2, 0x3a3630);
+    [0.92, 0.72, 0.42].forEach((f, k) => box(fx - 0.01, 2.25 + k * 0.28, cz, 0.12, 0.3, half * 2 * f, 0x3a3630));
+    box(fx + 0.03, 0.9, cz, 0.06, 1.8, half * 1.2, 0xe9d9a0);
+    for (const side of [-1, 1]) box(fx - 0.06, 1.05, cz + side * (half + 0.12), 0.16, 2.1, 0.22, grey);
+    for (let k = 0; k <= 8; k++) {
+      const a = (k / 8) * Math.PI;
+      box(fx - 0.06, 2.1 + Math.sin(a) * 0.95, cz - Math.cos(a) * (half + 0.12), 0.16, 0.24, 0.3, grey);
+    }
   }
 
   // ---- trees: a trunk, a crown of leaves, and a bench all round the trunk
@@ -385,6 +430,15 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       box(cx, 2.42, cz, 0.38, 0.28, 0.38, 0xfff3d0, 0.8);
       box(cx, 2.66, cz, 0.3, 0.24, 0.3, 0x8fd6c0, 0.2);
       lamp(cx, 2.84, cz, 0.12, 0.12, 0.12, 0xd8322a);
+      continue;
+    }
+    if (s.kind === 'shop') {
+      // the little shop: a yellow awning, things in the window, its name in friendly letters
+      for (let k = 0; k < w * 4; k++) onFace(s, -w / 2 + (k + 0.5) / 4, 0.36, 2.25, 0.25, 0.07, 0.74, k % 2 ? 0xfdf6e3 : 0xf2c94c);
+      onFace(s, -0.7, 0.03, 1, 0.8, 2, 0.06, 0x7a5638);
+      onFace(s, 0.5, 0.03, 1.25, 1.2, 1.2, 0.05, 0xfff1c0, true);
+      for (const [a, c] of [[0.2, 0xd8322a], [0.5, 0x2f7a4a], [0.8, 0x2f5fbf]] as const) onFace(s, a, 0.1, 0.9, 0.16, 0.3, 0.1, c);
+      sign(s, s.text, 2.9, Math.min(2.6, w + 0.4), { back: '#fdf6e3', ink: '#b8322a', rim: '#f2c94c' });
       continue;
     }
     if (s.kind === 'hasen') {

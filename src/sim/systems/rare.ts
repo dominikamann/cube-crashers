@@ -47,7 +47,8 @@ export function placeStartJetpack(s: SimState): void {
 export function updateJetpacks(s: SimState): void {
   if (s.tick >= s.nextJetpackAt) {
     s.nextJetpackAt = s.tick + JETPACK.respawnTicks;
-    if (s.jetpacks.length === 0) placeJetpack(s, s.map.powerSpots);
+    // (none in the Town: one stays on the ground between its houses)
+    if (s.jetpacks.length === 0 && s.map.id !== 'waldsee') placeJetpack(s, s.map.powerSpots);
   }
   // from a kart or a unicorn too: you ride over it and have it on your back when you get out
   const alive = s.players.filter(p => p.downUntil === null);

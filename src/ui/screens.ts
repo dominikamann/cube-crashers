@@ -772,7 +772,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   /** maps for "Single floor": the floors of the tower in their order */
-  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 5), 'highway', RUN_FLOORS[5], 'jungle', 'servers', 'underwater', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
+  const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'jungle', 'servers', 'underwater', 'waldsee', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
   function lanScreen() {
     show('', s => {

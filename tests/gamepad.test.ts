@@ -155,7 +155,7 @@ describe('PadControls', () => {
   });
 
   it('in the shop the d-pad buys and A says ready', () => {
-    const s = createSim(floor01, 1, { mode: 'run' });
+    const s = createSim(floor01, 1, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     openShop(s);
     const c = new PadControls();
     expect(c.commands(pad({ down: [LEFT] }), s, 0, 0)).toEqual([{ type: 'buy', playerId: 0, offer: 0 }]);

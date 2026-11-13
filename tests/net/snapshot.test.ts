@@ -43,8 +43,8 @@ describe('snapshots', () => {
 describe('floor changes over the network', () => {
   it('switch the client to the map of the new floor', async () => {
     const { enterFloor } = await import('../../src/sim/systems/run');
-    const host = createSim(floor01, 3, { mode: 'run' });
-    const view = createSim(floor01, 3, { mode: 'run' });
+    const host = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
+    const view = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     stepSim(host, []);
     enterFloor(host, 1);
     stepSim(host, []);

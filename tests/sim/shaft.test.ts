@@ -8,7 +8,7 @@ import type { SimState } from '../../src/sim/types';
 import { aimAt, fire, run } from './helpers';
 
 function toShaft(): SimState {
-  const s = createSim(floor01, 5, { mode: 'run' });
+  const s = createSim(floor01, 5, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
   // the shaft follows the fourth floor (after the first three come Kart Rally, Lane Defense, Glitch Maze)
   s.run.floor = 3;
   for (const n of s.nests) n.state = 'destroyed';

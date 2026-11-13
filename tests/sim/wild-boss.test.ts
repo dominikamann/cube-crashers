@@ -9,7 +9,7 @@ import type { SimState } from '../../src/sim/types';
 
 /** a Tower Run on its second floor (the first one never has a wild boss) */
 function secondFloor(seed: number): SimState {
-  const s = createSim(floor01, seed, { mode: 'run', players: 1 });
+  const s = createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 1 });
   enterFloor(s, 1);
   return s;
 }
@@ -19,7 +19,7 @@ describe('a wild boss in the Tower Run', () => {
     const share = (floor: number) => {
       let n = 0;
       for (let seed = 1; seed <= 300; seed++) {
-        const s = createSim(floor01, seed, { mode: 'run', players: 1 });
+        const s = createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 1 });
         if (floor > 0) enterFloor(s, floor);
         if (s.wild) n++;
       }
@@ -37,7 +37,7 @@ describe('a wild boss in the Tower Run', () => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 200; seed++)
       for (const floor of [0, 1, 3]) {
-        const s = createSim(floor01, seed, { mode: 'run', players: 1 });
+        const s = createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 1 });
         if (floor > 0) enterFloor(s, floor);
         if (!s.wild) continue;
         const own = s.run.floors.map(id => FLOORS[id].boss).filter(Boolean);

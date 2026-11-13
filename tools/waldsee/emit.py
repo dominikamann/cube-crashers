@@ -17,7 +17,8 @@ for h in H.values():
     s,c=math.sin(h['ang']),math.cos(h['ang'])
     perp=lambda x,y: abs(-(x+0.5-h['cx'])*s+(y+0.5-h['cz'])*c)
     half=max(perp(x,y) for x,y in tiles)+0.5
-    for x,y in tiles: roof[y][x]=max(1,min(9,round(min(1.8,0.55*(half-perp(x,y)))/STEP)))
+    # (the gate tower has a stepped gable of its own, see waldsee-look.ts)
+    for x,y in tiles: roof[y][x]=0 if h['kind']=='gate' else max(1,min(9,round(min(1.8,0.55*(half-perp(x,y)))/STEP)))
 
 # --- the face of a house nearest to a spot: the run of its tiles along one side that have open floor before them.
 # Returns the middle of that run on the wall line, the way it faces, how long it is, and the house.
@@ -108,6 +109,8 @@ signs=[
  {'text':'Bank','kind':'bank',**face(MK['bank'])},
  {'text':'Polizei','kind':'police',**face(MK['police'],skip=(MK['czHouse'],))},
  {'text':'AmannLabs','kind':'amannlabs',**amann},
+ # the little shop on the way down to the bank
+ {'text':'Lädele','kind':'shop',**face((MK['bank'][0]+11,MK['bank'][1]-3))},
 ]
 
 # --- where the game puts things. In at the Wurzacher Tor, out by the elevator down at the bank. The witch dances
@@ -227,8 +230,8 @@ export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
 ];
 /** the front of the Czardas toward the square */
 export const WALDSEE_CZARDAS: WaldseeFace = %s;
-/** names over doors; 'amannlabs' is the shop by the fountain with robots in its window */
-export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'bank' | 'police' | 'amannlabs' })[] = [
+/** names over doors; 'amannlabs' is the shop by the fountain with robots behind its glass */
+export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'bank' | 'police' | 'amannlabs' | 'shop' })[] = [
 %s
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */

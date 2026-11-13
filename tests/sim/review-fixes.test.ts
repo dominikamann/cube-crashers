@@ -17,7 +17,7 @@ import { quietSim } from './helpers';
 
 describe('review fixes', () => {
   it('a later floor starts with fresh timers: no instant alarm, horde or powerup', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     s.tick = 9000;
     enterFloor(s, 1);
     const enemiesAtStart = s.enemies.length;
@@ -100,8 +100,8 @@ describe('blasts on the Segment Worm', () => {
   });
 
   it('the worm starts with a full bar: its health counts what the segments really have', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
-    enterFloor(s, 5);
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
+    enterFloor(s, 4);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
     // 18 segments of 100 on medium for one player: the bar is not counted twice or left unscaled
@@ -145,7 +145,7 @@ describe('per-player stats for the result screen', () => {
 
 describe('solid bosses', () => {
   it('a player cannot stand inside the Mega Block: it pushes them out to its edge', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     // the third floor is the arena or the sea bed, by the seed: take the arena
     s.run.floors[2] = 'arena';
     enterFloor(s, 2);
@@ -157,7 +157,7 @@ describe('solid bosses', () => {
   });
 
   it('the Mega Block keeps you outside its corners too (in first person you never look inside it), and touching it still hurts', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     s.run.floors[2] = 'arena';
     enterFloor(s, 2);
     const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
@@ -174,7 +174,7 @@ describe('solid bosses', () => {
   });
 
   it('nor inside the Kraken', () => {
-    const s = createSim(floor01, 3, { mode: 'run' });
+    const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     s.run.floors[2] = 'underwater';
     enterFloor(s, 2);
     const boss = s.enemies.find(e => e.kind === 'kraken')!;
