@@ -306,15 +306,15 @@ export class HostSession {
     }
   }
 
-  start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run', brawlMap = 'arena', rushMaps?: string[]): void {
+  start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run', pickedMap = 'arena', rushMaps?: string[]): void {
     this.difficulty = difficulty;
     const unlocked = [...this.unlocked];
     // bots only play versus: a co-op run is for the humans in the lobby
     const humans = this.lobby.filter(p => !p.bot);
     this.vote = null;
     this.running(true);
-    // (the Boss Brawl is in the Mega Block Arena, or on the map the host picked)
-    const mapId = mode === 'brawl' && FLOORS[brawlMap] ? brawlMap : undefined;
+    // (the Boss Brawl is in the Mega Block Arena, or on the map the host picked; a Single floor is the picked floor)
+    const mapId = (mode === 'brawl' || mode === 'quick') && Object.hasOwn(FLOORS, pickedMap) ? pickedMap : undefined;
     this.sim = createSim(mapId ? FLOORS[mapId].map : floor01, seed, {
       mode,
       unlocked,
@@ -438,7 +438,7 @@ export class ClientSession {
         this.viewMode = m.view ?? 'both';
         this.lobby = m.players;
         this.vote = null;
-        this.view = createSim((m.versus || m.mode === 'brawl') && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
+        this.view = createSim((m.versus || m.mode === 'brawl' || m.mode === 'quick') && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
           mode: m.versus ? 'versus' : m.mode && ['quick', 'brawl', 'bossrush', 'endless'].includes(m.mode) ? m.mode : 'run',
           versus: m.versus,
           rushMaps: Array.isArray(m.maps) ? m.maps.filter((x): x is string => typeof x === 'string') : undefined,

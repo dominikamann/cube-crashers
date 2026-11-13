@@ -284,11 +284,14 @@ Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop 
 1. *Settings → Your name*: enter a name (it is shown to the others).
 2. Click **LAN party → Host LAN game**. Your game shows up on the network automatically.
 3. In the lobby:
-   - **Co-op**: **Co-op run** starts the Tower Run together; the difficulty sits right next to it.
-   - **Versus**: **Versus…** opens the match setup (start it right away or **Let everyone vote** between two
-     matches for 30 seconds). **N players with bots** fills every match up with bots; friends who join take
-     a bot's place.
+   - **Game**: pick what to play: **Tower Run**, **Single floor**, **Boss Rush**, **Boss Brawl**, **Endless**
+     (once unlocked) or **Versus**. Nothing starts yet.
+   - **Map** and **Difficulty**: a Single floor, the Boss Rush and the Boss Brawl let you pick the map (click
+     the button to go on to the next one); every co-op game has its difficulty next to it.
+   - **Versus**: **Change…** opens the match setup (or **Let everyone vote** between two matches for 30
+     seconds). **Bots** fills every match up to that many players; friends who join take a bot's place.
    - **View**: *Both* (everyone switches with V), *First person* only or *Top view* only, for everyone.
+   - **Start** (right of **Leave**) begins the game for everyone.
 
 **Everyone else joins:**
 1. Enter a name in *Settings* as well.

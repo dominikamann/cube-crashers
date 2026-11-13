@@ -181,10 +181,10 @@ function startGame() {
       mode = 'lobby';
       drawHostLobby();
     },
-    startMode: (coop: 'brawl' | 'bossrush' | 'endless') => {
+    startMode: (coop: 'quick' | 'brawl' | 'bossrush' | 'endless') => {
       if (!host) return;
       lanBots = [];
-      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop, coop === 'brawl' ? brawlMapFor(settings.brawlMap) : undefined, coop === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined);
+      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop, coop === 'brawl' ? brawlMapFor(settings.brawlMap) : coop === 'quick' ? settings.quickMap : undefined, coop === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined);
       enterPlay();
     },
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),

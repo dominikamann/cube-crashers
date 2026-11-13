@@ -24,7 +24,7 @@ export interface Settings {
   /** versus: how well the bots play */
   versusBots: Difficulty;
   /** the LAN host's pick in the lobby: which game Start begins */
-  lanGame: 'run' | 'bossrush' | 'brawl' | 'endless' | 'versus';
+  lanGame: 'run' | 'quick' | 'bossrush' | 'brawl' | 'endless' | 'versus';
   /** where the Boss Brawl is fought: a map id, or the random choice */
   brawlMap: string;
   /** where the Boss Rush is fought: 'own' (each boss on its own floor), a map id, or the random choice */
@@ -152,7 +152,7 @@ export function loadSettings(): Settings {
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
     if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'low';
-    if (!['run', 'bossrush', 'brawl', 'endless', 'versus'].includes(loaded.lanGame)) loaded.lanGame = 'run';
+    if (!['run', 'quick', 'bossrush', 'brawl', 'endless', 'versus'].includes(loaded.lanGame)) loaded.lanGame = 'run';
     if (!BRAWL_MAPS.includes(loaded.brawlMap) && loaded.brawlMap !== MAP_ROTATION) loaded.brawlMap = 'arena';
     if (!BRAWL_MAPS.includes(loaded.rushMap) && loaded.rushMap !== MAP_ROTATION) loaded.rushMap = RUSH_OWN;
     loaded.servers = Array.isArray(loaded.servers) ? loaded.servers.map(a => (typeof a === 'string' ? normalizeAddress(a) : null)).filter((a): a is string => !!a).slice(0, 50) : [];
@@ -273,7 +273,7 @@ export interface JoinEntry {
 export interface LanActions {
   start(): void;
   /** another co-op game with everyone in the lobby: the Boss Brawl, the Boss Rush, Endless */
-  startMode(mode: 'brawl' | 'bossrush' | 'endless'): void;
+  startMode(mode: 'quick' | 'brawl' | 'bossrush' | 'endless'): void;
   leave(): void;
   setDifficulty(d: Difficulty): void;
   connect(target: string): void;
@@ -757,6 +757,21 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     parent.append(c);
   };
 
+  /** the map of a Single floor as one small button: a click goes on to the next floor */
+  const quickMapChip = (parent: HTMLElement, redraw: () => void) => {
+    if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
+    const c = document.createElement('button');
+    c.className = 'chip small';
+    c.textContent = `${t('setup.map')}: ${t(FLOORS[settings.quickMap].name as 'floor.plaza')}${FLOORS[settings.quickMap].kind === 'boss' ? ' \u2620' : ''} \u203a`;
+    c.addEventListener('click', () => {
+      actions.click();
+      settings.quickMap = QUICK_MAPS[(QUICK_MAPS.indexOf(settings.quickMap) + 1) % QUICK_MAPS.length];
+      changed();
+      redraw();
+    });
+    parent.append(c);
+  };
+
   /** the versus match the settings describe (the map rotation picks a random arena) */
   const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos });
   /** the arena of the last match started from the lobby (the rotation picks another one) */
@@ -1093,6 +1108,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           // one row for every game: the co-op ones and versus
           const games = rowOf(t('lobby.gameRow'));
           chip(games, t('mode.run'), settings.lanGame === 'run', () => pick('run'));
+          chip(games, t('mode.quick'), settings.lanGame === 'quick', () => pick('quick'));
           chip(games, t('bossrush.title'), settings.lanGame === 'bossrush', () => pick('bossrush'));
           chip(games, t('brawl.title'), settings.lanGame === 'brawl', () => pick('brawl'));
           if (profile.unlocked.includes('endless')) chip(games, t('mode.endless'), settings.lanGame === 'endless', () => pick('endless'));
@@ -1114,6 +1130,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
             chip(botsRow, '+', false, () => stepTo(at + 1));
           } else {
+            if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
             if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
             if (settings.lanGame === 'bossrush') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'rushMap');
             const diffRow = rowOf(t('settings.difficulty'));
