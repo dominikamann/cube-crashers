@@ -226,12 +226,12 @@ export const WALDSEE_ROOFS: string[] = [
   '54432000000000000000000000000000000000000000000000000009000000000006677777884696433666666661469986344320000000000000000000000000',
   '00100000000000000000000000000000000000053000000001357899000000000004444555554445555444444442469985376554300000000000000000000000',
   '00000000000000000000000000000000000009864200000003578999000000000001122222366677788822222222479985388876654000000000000000000000',
-  '00000000000000000000000000000000000999986400000005789999900000000006667778889999999999997531579975556778876670000000000000000000',
-  '00097000000020000000000000000000689999997531000057899999990000000088999999999999999999999753579975234456778589900000000000000000',
+  '00000000000000000000000000000000000999986400000005789999900000000096667778889999999999997531579975556778876670000000000000000000',
+  '00097000000020000000000000000000689999997531000057899999990000000098999999999999999999999753579975234456778589900000000000000000',
   '35896400012456000000000000000058668999999753000078999999970000000099999999999999999979999864589974999233456589999000000000000000',
   '35896401245678000000000000008637657999999864235689999999760000000099999999999999998468999986589964999976431689999640000000000000',
   '35896423567887600000000000478636755799999986356899999997640000000099999999888777760007999997689964999998653689999641600000000000',
-  '35896456788765400000000031469646854689999993568999999986420000000000877766665554440005799998689863999999875689999643653000000000',
+  '35896456788765400000000031469646854689999993568999999986420000000000999999965554440005799998689863999999875689999643653000000000',
   '35896418876543200000007642368745764468999995689999999864200000000000000000000022210004689999699863999999997699998634653360000000',
   '35896417654320000000046753368744675357999996899999998642000000000000000000000000000002469994799806799999994699998634652366400000',
   '35896415430000000000025764258753685335799968999999986000000000000000000000000000000000000094799800578999994699998614652356413000',
@@ -408,7 +408,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.56, cx: 85.15, cz: 87.01, ang: -1.365 },
   { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.33, cx: 79.78, cz: 90.02, ang: -1.4 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.3, cx: 76.54, cz: 86.67, ang: -1.211 },
-  { kind: 'house', name: "", col: 'f3f1ec', roof: 'b8623f', wall: 6.0, shut: '2f4a3a', cx: 74.78, cz: 44.15, ang: -0.27 },
+  { kind: 'house', name: "", col: 'f7f5ef', roof: 'c1573a', wall: 6.0, shut: '2f4a3a', cx: 74.78, cz: 44.15, ang: -0.27 },
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.56, cx: 121.4, cz: 74.87, ang: 1.501 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.3, cx: 102.66, cz: 63.16, ang: 0.296 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.07, cx: 93.95, cz: 58.05, ang: 0.251 },
@@ -421,7 +421,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'a9553a', wall: 4.54, cx: 84.2, cz: 22.49, ang: -1.56 },
 ];
 /** trees with a bench round the trunk (tiles) */
-export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [48, 55], [55, 54]];
+export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [48, 55], [55, 54]];
 /** the Federle-Brunnen: its two tiles, the basin on the first and the round block on the second */
 export const WALDSEE_FOUNTAIN: [number, number][] = [[42, 48], [43, 48]];
 /** parked cars, each two tiles long from its tile southward: the police car in front of the station */
@@ -429,7 +429,7 @@ export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind:
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
   { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
-  { name: "Eisdiele", at: [[65, 68], [65, 70], [67, 68], [67, 70]] },
+  { name: "Eisdiele", at: [[64, 63], [64, 65], [64, 67], [65, 68], [67, 68]] },
   { name: "Memo", at: [[30, 90], [30, 88], [28, 90]] },
 ];
 /** the front of the Czardas toward the square */
@@ -442,7 +442,7 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeu
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
-  { text: "AmannLabs", kind: 'amannlabs', x: 25.5, z: 50.0, dx: 0, dz: 1, len: 5 },
+  { text: "AmannLabs", kind: 'amannlabs', x: 26.5, z: 50.0, dx: 0, dz: 1, len: 5 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
   { text: "Lädele", kind: 'shop', x: 13.0, z: 70.5, dx: 1, dz: 0, len: 1 },
   { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
@@ -460,5 +460,23 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
 ];
 /** trees on the meadows by the lake and on its far side (tiles); nobody gets there */
 export const WALDSEE_SHORE_TREES: [number, number][] = [[91, 40], [90, 42], [89, 44]];
-/** the pedal boat on the lake behind the police lane, an angler standing on it (tiles), if the lake is there */
+/** houses that stand in the water at the lake's edge and are taken away: the lake is open there (house numbers) */
+export const WALDSEE_HIDDEN: number[] = [22, 23, 125, 118, 117, 5, 6, 116, 14, 2, 13, 26, 95, 97, 98, 104, 105, 121, 124, 123, 122, 96, 32, 108, 100, 43, 107, 106, 19, 109, 102, 30, 110, 119, 101, 103];
+/** lone grass tongues out in the water that are drowned, so the shore ends cleanly (tiles) */
+export const WALDSEE_DROWNED: [number, number][] = [
+  [87, 34], [88, 34], [89, 34], [90, 34], [91, 34],
+  [87, 35], [88, 35], [89, 35], [90, 35], [91, 35],
+  [93, 55], [94, 55], [95, 55], [96, 55], [95, 56], [96, 56],
+];
+/** a narrow cobbled side-alley cut beside the AmannLabs building, so it stands more on its own (tiles) */
+export const WALDSEE_ALLEY: [number, number][] = [
+  [22, 47], [22, 48], [22, 49], [22, 50],
+  [30, 44], [30, 45], [30, 46], [30, 47], [30, 48], [29, 49], [29, 50],
+];
+/** houses replaced by their own built model, so the generic town house is not drawn (house numbers) */
+export const WALDSEE_REPLACED: number[] = [62];
+/** the pedal boats on the lake behind the police lane, an angler standing on each (tiles), if the lake is there */
 export const WALDSEE_BOAT: [number, number] | null = [102, 45];
+export const WALDSEE_BOAT2: [number, number] | null = [106, 48];
+/** a shark's fin in the water to the right of the boats (tiles) */
+export const WALDSEE_SHARK: [number, number] | null = [103, 52];

@@ -216,9 +216,9 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
       return { day: raceLook, night: raceLook };
     }
     case 'waldsee':
-      // a summer day in Upper Swabia: grey cobbles, a soft blue sky; at night the lanterns
+      // a bright summer day in Upper Swabia: grey cobbles, a clear blue sky; at night the lanterns
       return {
-        day: { ...THEMES.day, background: 0xcfe6f2, skyTop: 0x5aa9e0, roadA: 0xc9c3b6, roadB: 0xc0baad, hemiGround: 0x7fae66, sunColor: 0xfff2dc, fogNear: 30, fogFar: 70 },
+        day: { ...THEMES.day, background: 0xa9d6f2, skyTop: 0x4a9fe0, roadA: 0xcac4b7, roadB: 0xc1bbae, hemiGround: 0x8fbe74, hemiIntensity: 1.35, sunColor: 0xfff4e0, sunIntensity: 2.3, fillIntensity: 0.5, fogNear: 40, fogFar: 120 },
         night: { ...THEMES.night, roadA: 0x55566a, roadB: 0x4e4f62 },
       };
     case 'jungle':

@@ -576,8 +576,11 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const px = Math.max(16, Math.min(48, Math.floor(4096 / Math.max(map.w, map.h))));
   // (in the Town there is floor under what stands in the way too: a tree, the fountain, a parked car)
   const floorTiles = cells.filter(c => c.tile === Tile.Floor || (map.id === 'waldsee' && c.tile === Tile.LowWall));
+  // (the cobbles go on behind a barrier, where the street is only painted on: it is drawn as floor, but no
+  // props grow there and it casts no shadow of its own)
+  const paved = map.id === 'waldsee' ? [...floorTiles, ...cells.filter(c => c.tile === Tile.Wall && waldseeGround(c.tx, c.tz) === 'street')] : floorTiles;
   const floorTex = canvasTexture(map.w * px, map.h * px, g => {
-    for (const c of floorTiles) paintFloorTile(g, look, c.tx, c.tz, c.tx * px, c.tz * px, px);
+    for (const c of paved) paintFloorTile(g, look, c.tx, c.tz, c.tx * px, c.tz * px, px);
     // soft contact shadows next to walls and barriers
     const blocks = (tx: number, tz: number) => {
       const t = tileOf(tx, tz);
@@ -710,7 +713,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
       idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
     };
-    for (const c of floorTiles) {
+    for (const c of paved) {
       const x = c.tx, z = c.tz;
       const u0 = x / map.w, u1 = (x + 1) / map.w, v0 = 1 - z / map.h, v1 = 1 - (z + 1) / map.h;
       quad([[x, 0, z], [x + 1, 0, z], [x, 0, z + 1], [x + 1, 0, z + 1]], [[u0, v0], [u1, v0], [u0, v1], [u1, v1]], 1);
@@ -781,7 +784,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   if (town) {
     const ground = new THREE.MeshLambertMaterial({ vertexColors: true });
     disposables.push(ground);
-    const beds = layer((t, c) => t === Tile.Wall && waldseeGround(c.tx, c.tz) !== 'house', ground, wallH, -0.4, false, wallGeo);
+    // (the street behind a barrier is painted on the floor, not a block of its own)
+    const beds = layer((t, c) => t === Tile.Wall && waldseeGround(c.tx, c.tz) !== 'house' && waldseeGround(c.tx, c.tz) !== 'street', ground, wallH, -0.4, false, wallGeo);
     beds.list.forEach((c, i) => beds.mesh.setColorAt(i, new THREE.Color(waldseeBlockColor(c.tx, c.tz))));
     beds.mesh.instanceColor!.needsUpdate = true;
     buildWaldseeTown(addToScene, disposables);
@@ -1085,7 +1089,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         const col = floorGeo.getAttribute('color') as THREE.BufferAttribute;
         // vertices are laid out per floor tile: its top quad, then its skirt quads (shade < 1)
         let v = 0;
-        for (const c of floorTiles) {
+        for (const c of paved) {
           color.setHex((c.tx + c.tz) & 1 ? theme.roadA : theme.roadB);
           // top quad
           for (let k = 0; k < 4; k++, v++) col.setXYZ(v, color.r * floorBaseShade[v * 3], color.g * floorBaseShade[v * 3], color.b * floorBaseShade[v * 3]);
