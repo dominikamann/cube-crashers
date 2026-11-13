@@ -319,6 +319,9 @@ const ZONE_LIT = new THREE.Color(0x2bf0ff).multiplyScalar(1.6);
 
 SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad).add(FIGURE_LIT).add(FIGURE_GLOW).add(FIGURE_SOLID).add(dizzyGeo).add(dizzyMat);
 
+/** how big a nest's pile of cubes is while its zone is held, against its full size */
+const NEST_HELD_SIZE = 0.4;
+
 function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   const root = new THREE.Group();
   const dark = lambert(0x2a1040);
@@ -686,17 +689,19 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     }
     const sincePlant = planted ? time - v.plantedAt : 99;
     const pop = sincePlant < 0.5 ? 1 + Math.sin((sincePlant / 0.5) * Math.PI) * 0.35 : 1;
-    // shakes harder the closer it gets to blowing up
-    const jitter = planted ? 0.08 + frac * 0.18 : 0.04;
+    // while its zone is held the pile draws in to a small, calm heap, so what is on screen is the zone (the
+    // charge's light and the heap's glow still say how close it is to blowing up)
+    const held = planted ? Math.max(NEST_HELD_SIZE, 1 - (sincePlant / 0.6) * (1 - NEST_HELD_SIZE)) : 1;
+    const jitter = 0.04 * held;
     v.cubes.forEach((c, i) => {
       const home = c.userData.home as THREE.Vector3;
       c.position.set(
-        home.x + Math.sin(time * 9 + i * 1.7) * jitter,
-        home.y + Math.sin(time * 5 + i) * jitter,
-        home.z + Math.cos(time * 7 + i * 2.3) * jitter,
+        home.x * held + Math.sin(time * 9 + i * 1.7) * jitter,
+        home.y * held + Math.sin(time * 5 + i) * jitter,
+        home.z * held + Math.cos(time * 7 + i * 2.3) * jitter,
       );
       c.rotation.y = Math.sin(time * 2 + i) * 0.3;
-      c.scale.setScalar(pop);
+      c.scale.setScalar(pop * held);
     });
     v.glow.emissiveIntensity = (1.2 + Math.sin(time * (planted ? 8 + frac * 14 : 3)) * 0.5) * Math.min(theme.glow, 1.5);
     v.charge.visible = planted;
