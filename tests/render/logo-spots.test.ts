@@ -31,6 +31,14 @@ describe('AmannLabs logos', () => {
           expect(at(x + s.facing.x, z + s.facing.z)).toBe(Tile.Floor);
         }
         expect(Math.hypot(s.tx - onFloor[0].tx, s.tz - onFloor[0].tz)).toBeGreaterThan(8);
+        // one flat face: the wall goes on straight for a block more at each end (no corner at the logo's edge),
+        // and the four blocks are of one height (heights change every four tiles)
+        for (const i of [-1, s.w]) {
+          const x = s.tx + (s.along === 'x' ? i : 0), z = s.tz + (s.along === 'z' ? i : 0);
+          expect(at(x, z), 'wall goes on').toBe(Tile.Wall);
+          expect(at(x + s.facing.x, z + s.facing.z), 'flat face goes on').toBe(Tile.Floor);
+        }
+        expect((s.along === 'x' ? s.tx : s.tz) % 4, 'one height').toBe(0);
         walls++;
       }
       maps++;

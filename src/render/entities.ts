@@ -484,12 +484,15 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        // the Tarantula Queen climbs: over a wall her body rises to stand on top of it (smoothly, as she goes up
-        // one side and down the other); a small spider hops when it pounces
+        // no boss walks through a wall or a barrier: where its body is over one it rises to stand on top of it
+        // (smoothly, as it goes up one side and down the other). The Tarantula Queen and the Kraken climb
+        // straight over everything; the others step onto what they brush past on their way round. A small
+        // spider hops when it pounces.
         let climb = 0;
-        if (spiderBoss) {
+        if (boss) {
           let top = 0;
-          for (const [ox, oz] of [[0, 0], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]]) {
+          const foot = e.kind === 'wormSegment' ? 0 : Math.min(0.8, e.radius * 0.6);
+          for (const [ox, oz] of [[0, 0], [foot, 0], [-foot, 0], [0, foot], [0, -foot]]) {
             const t = tileAt(s.map, e.pos.x + ox, e.pos.z + oz);
             if (t === Tile.Wall) top = Math.max(top, wallTop(s.map, e.pos.x + ox, e.pos.z + oz) + 0.4);
             else if (t === Tile.LowWall) top = Math.max(top, 0.5);

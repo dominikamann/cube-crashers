@@ -58,6 +58,8 @@ interface Model {
   hand: Vec3;
   /** how far behind its middle its back is (the jetpack sits there) and how high */
   back: Vec3;
+  /** how big its jetpack is, of the usual one (a slim figure wears a smaller one) */
+  pack?: number;
   /** how it lies when downed: on its side, on its back, on its face, upside down, or it stays up (and `move` does it) */
   down: 'side' | 'back' | 'front' | 'flip' | 'stay';
   /** its height (to lie down by, and for what sits on top) */
@@ -627,7 +629,8 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
   dominik: {
     gait: 'walk',
     hand: [0.23, 1.14, -0.5],
-    back: [0, 0.3, 0.0],
+    back: [0, 0.5, -0.07],
+    pack: 0.7,
     down: 'back',
     height: 1.64,
     build: (s, { c }) => dominikFigure(s, c),

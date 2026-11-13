@@ -11,6 +11,8 @@ export type LogoSpot =
   | { kind: 'wall'; tx: number; tz: number; w: number; along: 'x' | 'z'; facing: Vec2 };
 
 const SIZE = { w: 4, h: 1 };
+/** wall blocks come in a few heights, the same for every patch of this many tiles (see wallHeight in world.ts) */
+const HEIGHT_PATCH = 4;
 const FACINGS: Vec2[] = [{ x: 0, z: 1 }, { x: 0, z: -1 }, { x: 1, z: 0 }, { x: -1, z: 0 }];
 
 /**
@@ -50,7 +52,9 @@ function findLogoSpots(map: FloorMap): LogoSpot[] {
   const floor = pick(open.length ? open : floors, 0x51ed);
   if (!floor) return [];
 
-  const walls: LogoSpot[] = [];
+  // (a wall logo wants one flat face: the wall goes on straight for a block more at each end, so no corner is
+  // at the logo's edge, and its blocks are of one height; block heights change every HEIGHT_PATCH tiles)
+  const walls: LogoSpot[] = [], flat: LogoSpot[] = [], level: LogoSpot[] = [], best: LogoSpot[] = [];
   for (let tz = 0; tz < map.h; tz++)
     for (let tx = 0; tx < map.w; tx++)
       for (const facing of FACINGS) {
@@ -60,12 +64,24 @@ function findLogoSpots(map: FloorMap): LogoSpot[] {
           const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
           ok = at(x, z) === Tile.Wall && at(x + facing.x, z + facing.z) === Tile.Floor;
         }
-        if (ok) walls.push({ kind: 'wall', tx, tz, w: SIZE.w, along, facing });
+        if (!ok) continue;
+        const spot: LogoSpot = { kind: 'wall', tx, tz, w: SIZE.w, along, facing };
+        walls.push(spot);
+        const goesOn = [-1, SIZE.w].every(i => {
+          const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
+          return at(x, z) === Tile.Wall && at(x + facing.x, z + facing.z) === Tile.Floor;
+        });
+        const oneHeight = (along === 'x' ? tx : tz) % HEIGHT_PATCH === 0;
+        if (goesOn) flat.push(spot);
+        if (oneHeight) level.push(spot);
+        if (goesOn && oneHeight) best.push(spot);
       }
   // the two are spread over the map: the wall logo at least a third of the map's diagonal from the floor one
   // (where no wall is that far, the furthest there is)
   const apart = (w: LogoSpot) => Math.hypot(w.tx - floor.tx, w.tz - floor.tz);
-  const far = walls.filter(w => apart(w) >= Math.hypot(map.w, map.h) / 3);
+  const farOf = (list: LogoSpot[]) => list.filter(w => apart(w) >= Math.hypot(map.w, map.h) / 3);
+  // (the best kind of wall that is far enough away; with none that far, the furthest there is)
+  const far = [best, flat, level, walls].map(farOf).find(l => l.length) ?? [];
   const pool = far.length ? far : walls.slice().sort((a, b) => apart(b) - apart(a)).slice(0, 1);
   // a face toward the bottom of the map is seen from above too, not only in first person
   const south = pool.filter(w => w.kind === 'wall' && w.facing.z === 1);

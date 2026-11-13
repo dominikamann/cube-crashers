@@ -126,6 +126,8 @@ function heal(s: SimState, e: Enemy): void {
 export const RHINO_FLING = 9;
 /** how far the Tarantula Queen's legs reach from her middle: that much of her stays clear of the wall round the map */
 export const QUEEN_REACH = 2.2;
+/** and the Kraken's arms */
+export const KRAKEN_REACH = 2.4;
 /** how fast a charging monster can turn toward its target, in radians per second */
 export const CHARGE_STEER = 0.4;
 /** how wide a boss is to the walls while it squeezes through a gap */
@@ -321,7 +323,10 @@ export function updateEnemies(s: SimState): void {
   const players = s.players.filter(p => p.downUntil === null);
   const hordes = new Map(s.hordes.map(h => [h.id, h]));
   const alarmSpeed = 1 + ALARM_SPEED_STEP * s.alarm.level;
-  const queenId = allBosses(s).find(b => b.kind === 'spider')?.enemyId ?? -1;
+  // the bosses with many legs or arms climb: the Tarantula Queen and the Kraken (and how far each reaches from
+  // its middle: that much of it stays clear of the wall round the map)
+  const climbers = new Map<number, number>();
+  for (const b of allBosses(s)) if (b.enemyId !== null && (b.kind === 'spider' || b.kind === 'kraken')) climbers.set(b.enemyId, b.kind === 'spider' ? QUEEN_REACH : KRAKEN_REACH);
 
   const grid = new Map<number, Enemy[]>();
   for (const e of s.enemies) {
@@ -379,8 +384,9 @@ export function updateEnemies(s: SimState): void {
       continue;
     }
     if (e.state === 'move' && !isHeld) ({ dir, factor } = think(s, e, e.hordeId !== null ? hordes.get(e.hordeId) : undefined, players, field));
-    // the Tarantula Queen climbs over whatever is in her way: she goes straight for the nearest player
-    const climbs = e.id === queenId;
+    // a climber goes over whatever is in its way: straight for the nearest player
+    const reach = climbers.get(e.id);
+    const climbs = reach !== undefined;
     if (climbs && e.state === 'move' && !isHeld) {
       const prey = nearestPlayer(players, e.pos);
       if (prey && prey.d > 1.2) dir = unit(e.pos, prey.p.pos);
@@ -421,11 +427,10 @@ export function updateEnemies(s: SimState): void {
     if (vx !== 0 || vz !== 0) {
       const fromX = e.pos.x, fromZ = e.pos.z;
       if (climbs) {
-        // (no wall inside the map stops her; the wall round it is a border for her as for everyone: she slides
-        // along it)
-        // (she keeps her legs off it too: QUEEN_REACH from her middle)
-        const free = (x: number, z: number) => clearOfBorder(s.map, x, z, QUEEN_REACH);
-        if (!free(e.pos.x, e.pos.z)) e.pos = insideBorder(s.map, e.pos, QUEEN_REACH);
+        // (no wall inside the map stops it; the wall round it is a border for it as for everyone: it slides
+        // along it, and keeps its legs off it too)
+        const free = (x: number, z: number) => clearOfBorder(s.map, x, z, reach);
+        if (!free(e.pos.x, e.pos.z)) e.pos = insideBorder(s.map, e.pos, reach);
         if (free(e.pos.x + vx * DT, e.pos.z)) e.pos.x += vx * DT;
         if (free(e.pos.x, e.pos.z + vz * DT)) e.pos.z += vz * DT;
         continue;

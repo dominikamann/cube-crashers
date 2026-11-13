@@ -191,7 +191,9 @@ const SHAPES: Partial<Record<BodyKind, Shape>> = {
       // the crown and the upper back of the skull are hair and nothing else: the light from above made the hair
       // there as pale as skin in the photos. Hair from the back of his head covers it (the forehead and the
       // hairline in front stay as they are)
-      const crown = Math.max(step(CROWN[0] + 2, CROWN[0] - 2, c.row) * step(0.9, 0.55, c.nz), step(CROWN[1] + 3, CROWN[1] - 3, c.row) * step(0.25, -0.1, c.nz));
+      // (well above the hairline it is hair in front as well: his hair stands up there, and the light on it made
+      // pale patches)
+      const crown = Math.max(step(CROWN[0] - 1, CROWN[0] - 4, c.row), step(CROWN[0] + 2, CROWN[0] - 2, c.row) * step(0.9, 0.55, c.nz), step(CROWN[1] + 3, CROWN[1] - 3, c.row) * step(0.25, -0.1, c.nz));
       if (crown <= 0) return seen;
       const pick = Math.abs(Math.floor(c.x) * 7 + Math.floor(c.z) * 13 + c.row * 5);
       const hair = portraitAt(HEAD_BACK, HEAD_RUNS.back, Math.round(HEAD.H * 0.3) + (pick % Math.round(HEAD.H * 0.25)), 0.25 + ((pick * 31) % 50) / 100) ?? seen;

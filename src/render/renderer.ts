@@ -351,8 +351,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           const fx = -Math.sin(v.fp.yaw) * c, fz = -Math.cos(v.fp.yaw) * c;
           v.camPos.set(p.x, eyeY, p.z);
           v.camLook.set(p.x + fx * 10, eyeY + Math.sin(v.fp.pitch) * 10, p.z + fz * 10);
-          v.camera.position.copy(v.camPos).addScaledVector(shake, 0.3);
-          v.camera.lookAt(v.camLook);
+          // (a shake moves the eyes a little, up and down and sideways, but does not swing the view: what they
+          // look at moves with them)
+          v.camera.position.copy(v.camPos).addScaledVector(shake, 0.2);
+          v.camera.lookAt(wantLook.copy(v.camLook).addScaledVector(shake, 0.2));
           return;
         }
         wantPos.set(p.x + ox, 15 * v.zoom, p.z + oz + 11 * v.zoom);

@@ -90,6 +90,7 @@ function makePlayer(color: number, look: Look) {
   flame.castShadow = false;
   pack.add(flame);
   pack.position.set(...figure.model.back);
+  pack.scale.setScalar(figure.model.pack ?? 1);
   pack.visible = false;
   body.add(pack);
   // golden glint around a player holding a rare weapon
