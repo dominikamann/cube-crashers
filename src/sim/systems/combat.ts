@@ -12,6 +12,7 @@ import { dist, targets, allBosses } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
+import { aimShot, atHeightOf, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
 
 const HIT_PADDING = 0.15;
@@ -190,6 +191,7 @@ function hitPerched(s: SimState, p: Projectile): void {
 export function updateProjectiles(s: SimState): void {
   const keep = [];
   for (const p of s.projectiles) {
+    aimShot(s, p);
     if (p.behavior === 'lob') {
       const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
       p.pos.x = p.from!.x + (p.target!.x - p.from!.x) * t;
@@ -306,12 +308,12 @@ export function updateProjectiles(s: SimState): void {
     }
     // versus: shots hit rivals (each player once per shot; player marks are negative so they never clash with enemy ids)
     if (alive && s.versus && p.ownerId >= 0) {
-      // (a rival on a jetpack can be shot at like anyone, from the ground or from the air: you aim up at them.
-      // Only a jump takes you over a shot.)
+      // (a shot hits those at its height: it goes up to a rival on a jetpack it was aimed at and passes over
+      // the others, or runs along the floor under a flyer. A jump takes you over a shot on the floor.)
       for (const r of rivals(s, p.ownerId)) {
         const mark = -1 - r.id;
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || (r.air > 0 && !r.flying && !(r.descent ?? 0)) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        if (p.hitIds.includes(mark) || (r.air > 0 && !upInTheAir(r)) || !atHeightOf(p, r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
         damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SHOT_HEIGHT, aimedReach, shotLift } from '../../src/render/shot-height';
+import { SHOT_HEIGHT, aimedReach, shotLift } from '../../src/sim/systems/shot-height';
 
 describe('shots from above', () => {
   it('come down onto the nearest thing in the line of fire', () => {

@@ -13,7 +13,7 @@ import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
-import { aimedReach, shotLift, SHOT_HEIGHT } from './shot-height';
+import { shotHeight } from '../sim/systems/shot-height';
 import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -140,8 +140,6 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
-  /** shots fired from above: where from, how high, and how far until they are down (see shot-height.ts) */
-  const fired = new Map<number, { x: number; z: number; lift: number; end: number; reach: number; seen: boolean }>();
   const spiderLegs = createSpiderLegs(scene, lambert(0x17100d), lambert(0xd9701e));
   const webGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
   const webs = new Map<number, THREE.Mesh>();
@@ -664,43 +662,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       hostileMat.emissiveIntensity = 4 * Math.min(theme.glow, 1.4);
 
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
-      for (const f of fired.values()) f.seen = false;
       for (const p of s.projectiles) {
-        // a shot from above (from a jetpack, from the top of a wall) starts at its shooter's height and comes
-        // down in a straight line onto what it was aimed at; `up` is how far above its usual height it is now
-        let up = 0, dive = 0;
-        if (!p.hostile && p.ownerId >= 0) {
-          let f = fired.get(p.id);
-          if (!f) {
-            const o = s.players.find(x => x.id === p.ownerId);
-            const from = p.from ?? p.pos;
-            const lift = o && Math.hypot(o.pos.x - from.x, o.pos.z - from.z) < 3 ? (o.flying || (o.descent ?? 0) > 0 ? 2.5 : o.perched ? wallTop(s.map, o.pos.x, o.pos.z) : 0) : 0;
-            const others = s.players.filter(x => x.id !== p.ownerId && x.downUntil === null);
-            const low = [...s.enemies.map(e => e.pos), ...others.filter(x => !x.flying).map(x => x.pos)];
-            let reach = aimedReach(from, p.vel, low), end = 0;
-            // (aimed at someone up on a jetpack: the shot goes up to them, or stays up there)
-            const high = others.filter(x => x.flying).map(x => x.pos);
-            const toHigh = high.length ? aimedReach(from, p.vel, high) : Infinity;
-            if (toHigh < Math.min(reach, SHOT_HEIGHT.reach)) {
-              reach = toHigh;
-              end = 2.5;
-            }
-            fired.set(p.id, (f = { x: from.x, z: from.z, lift, end, reach, seen: true }));
-          }
-          f.seen = true;
-          if (f.lift > 0 || f.end > 0) {
-            if (p.behavior === 'lob') up = shotLift(f.lift, s.tick - p.launchedAt!, p.until - p.launchedAt!, f.end);
-            else if (p.behavior === 'boomerang') {
-              // (it comes back up to whoever threw it)
-              const o = s.players.find(x => x.id === p.ownerId);
-              up = shotLift(f.lift, o ? Math.hypot(p.pos.x - o.pos.x, p.pos.z - o.pos.z) : f.reach, f.reach);
-            } else {
-              const gone = Math.hypot(p.pos.x - f.x, p.pos.z - f.z);
-              up = shotLift(f.lift, gone, f.reach, f.end);
-              if (gone < f.reach) dive = Math.atan2(f.lift - f.end, f.reach);
-            }
-          }
-        }
+        // a shot has a height (see shot-height.ts): `up` is how far above the floor's shots it is now
+        const up = shotHeight(p);
+        const arc = p.arc;
+        const dive = arc && p.behavior !== 'lob' && Math.hypot(p.pos.x - arc.x, p.pos.z - arc.z) < arc.reach ? Math.atan2(arc.lift - arc.end, arc.reach) : 0;
         if (p.hostile) {
           // colour-blind mode: monster shots are also bigger than the players' bolts
           hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
@@ -736,7 +702,6 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           bolts.addScaled(p.pos.x, 0.6 + up, p.pos.z, yaw, 1, 1, 1, undefined, dive);
         }
       }
-      for (const [id, f] of fired) if (!f.seen) fired.delete(id);
       for (const a of s.areas) {
         const fade = Math.min(1, (a.until - s.tick) / 30);
         puddles.add(a.pos.x, 0.03, a.pos.z, 0, a.radius * (0.85 + 0.15 * fade));
