@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
 import { padAt } from '../sim/systems/towers';
-import type { SimState } from '../sim/types';
+import type { SimEvent, SimState } from '../sim/types';
 import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
 import { COLOR_BLIND, isColorBlind, NORMAL } from './palette';
@@ -23,7 +23,7 @@ export const LOW_WALL_HEIGHT = 0.5;
 const WALL_STEPS = [1, 1, 1.45, 1.9];
 
 export interface World {
-  update(s: SimState, theme: Theme, time: number): void;
+  update(s: SimState, theme: Theme, time: number, events?: SimEvent[]): void;
   /** low graphics: the decoration stays off, so weak machines only draw the tiles */
   setDetail(low: boolean): void;
   /** removes everything this world added to the scene */
@@ -607,6 +607,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; words: THREE.Mesh; wordsMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number }; glow: number } | null = null;
   /** the wall logos glow gently, like a sign */
   const logoMats: THREE.MeshBasicMaterial[] = [];
+  /** the wall logos wobble when a shot hits them, as long as they still have something to give */
+  const wallLogos: { mesh: THREE.Mesh; size: number; wobble: number }[] = [];
+  let wobbledAt = 0;
   const spots = logoSpots(map);
   if (spots.length) {
     loadMark()
@@ -685,6 +688,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     m.position.set(cx + spot.facing.x * 0.505, Math.min(0.5, top / 2), cz + spot.facing.z * 0.505);
     if (top < h) m.scale.setScalar(top / h);
     m.rotation.y = Math.atan2(spot.facing.x, spot.facing.z);
+    wallLogos.push({ mesh: m, size: m.scale.x, wobble: 0 });
     return m;
   }
   const floorGeo = (() => {
@@ -1019,8 +1023,20 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   let glitchStep = -1;
 
   return {
-    update(s, theme, time) {
+    update(s, theme, time, events) {
       for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
+      // a shot at the wall logo: it shakes and flares for a moment (the rules only report hits while the logo
+      // still has a prize left on this floor, see logo-egg.ts)
+      const hit = events?.some(e => e.type === 'logoHit');
+      const fade = Math.exp(-Math.max(0, Math.min(0.1, time - wobbledAt)) * 7);
+      wobbledAt = time;
+      for (const l of wallLogos) {
+        l.wobble = hit ? 1 : l.wobble * fade;
+        const w = l.wobble < 0.01 ? 0 : l.wobble;
+        l.mesh.scale.set(l.size * (1 + 0.14 * w * Math.sin(time * 34)), l.size * (1 - 0.1 * w * Math.sin(time * 34)), l.size);
+        l.mesh.rotation.z = 0.07 * w * Math.sin(time * 27);
+        if (w > 0) (l.mesh.material as THREE.MeshBasicMaterial).opacity = Math.min(1, 0.78 + 0.22 * Math.sin(time * 1.8) + 0.4 * w);
+      }
       if (logoMark) {
         // step on the logo and its A lights up, rises off the floor, grows and spins (and hurts monsters that
         // touch it, see logo-spin.ts); walk off and it settles again

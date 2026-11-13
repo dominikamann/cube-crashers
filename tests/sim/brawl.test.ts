@@ -18,9 +18,13 @@ const run = (s: SimState, n: number) => {
   }
   return events;
 };
-/** every boss body in the arena falls */
-const killWave = (s: SimState) => {
+/** every boss body in the arena falls (and the brood the Tarantula Queen bursts into); what happened on the way */
+const killWave = (s: SimState): SimEvent[] => {
   for (const e of s.enemies) if (isBossBody(s, e)) e.hp = 0;
+  const events = run(s, 1);
+  const brood = (s.bosses ?? []).flatMap(b => b.brood ?? []);
+  for (const e of s.enemies) if (brood.includes(e.id)) e.hp = 0;
+  return events;
 };
 
 describe('Boss Brawl', () => {
@@ -49,7 +53,7 @@ describe('Boss Brawl', () => {
     const events = run(s, 5);
     let waves = 1;
     for (let guard = 0; guard < 20 && !s.elevatorOpen; guard++) {
-      killWave(s);
+      events.push(...killWave(s));
       events.push(...run(s, 3));
       if (s.elevatorOpen) break;
       expect(s.bosses).toHaveLength(0);

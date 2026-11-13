@@ -12,6 +12,7 @@ import { dist, targets, allBosses } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
+import { aimShot, atHeightOf, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
 
 const HIT_PADDING = 0.15;
@@ -139,12 +140,17 @@ export function damageMany(s: SimState, hits: Enemy[], amount: number, source: D
   for (const e of hits) damageEnemy(s, e, amount * part(e), source, byPlayerId);
 }
 
-export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number): void {
+/** (`airRadius`: how far from the middle it also gets rivals up on a jetpack; 0 for what stays on the floor) */
+/** how much of a thrown bomb's blast reaches up to someone on a jetpack when it was thrown from the floor */
+export const AIR_BLAST = 0.5;
+
+export function damageInRadius(s: SimState, pos: Vec2, radius: number, amount: number, source: DamageSource, byPlayerId?: number, airRadius = 0): void {
   damageMany(s, targets(s).filter(e => dist(pos, e.pos) <= radius + e.radius), amount, source, byPlayerId);
   // versus: blasts, puddles and areas of a player hurt their rivals as well
   if (s.versus && byPlayerId !== undefined) {
     for (const r of rivals(s, byPlayerId)) {
-      if (!airborne(r) && dist(pos, r.pos) <= radius + PLAYER_RADIUS) damagePlayer(s, r, pvpDamage(amount), 'explosion', byPlayerId);
+      const hit = upInTheAir(r) ? airRadius > 0 && dist(pos, r.pos) <= airRadius : !airborne(r) && dist(pos, r.pos) <= radius + PLAYER_RADIUS;
+      if (hit) damagePlayer(s, r, pvpDamage(amount), 'explosion', byPlayerId);
     }
   }
 }
@@ -157,9 +163,10 @@ export function explode(
   damage: { enemy?: number; player?: number; tower?: number },
   source: DamageSource,
   byPlayerId?: number,
+  airRadius = 0,
 ): void {
   s.events.push({ type: 'explosion', pos: { ...pos }, radius });
-  if (damage.enemy) damageInRadius(s, pos, radius, damage.enemy, source, byPlayerId);
+  if (damage.enemy) damageInRadius(s, pos, radius, damage.enemy, source, byPlayerId, airRadius);
   if (damage.player) {
     for (const p of s.players) if (!airborne(p) && dist(p.pos, pos) <= radius) damagePlayer(s, p, damage.player, 'explosion');
   }
@@ -190,14 +197,18 @@ function hitPerched(s: SimState, p: Projectile): void {
 export function updateProjectiles(s: SimState): void {
   const keep = [];
   for (const p of s.projectiles) {
+    aimShot(s, p);
     if (p.behavior === 'lob') {
       const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
       p.pos.x = p.from!.x + (p.target!.x - p.from!.x) * t;
       p.pos.z = p.from!.z + (p.target!.z - p.from!.z) * t;
       if (s.tick >= p.until) {
         const land = p.land!;
+        // what is thrown goes off in the air as well: thrown from a jetpack it gets flyers in the whole blast,
+        // thrown from the floor only one who is right above it (mines and puddles stay on the floor)
+        const air = land.radius * ((p.arc?.lift ?? 0) > 0 ? 1 : AIR_BLAST);
         if (land.duration) {
-          if (land.impact) explode(s, p.target!, land.radius, { enemy: land.impact }, p.kind, owner(p.ownerId));
+          if (land.impact) explode(s, p.target!, land.radius, { enemy: land.impact }, p.kind, owner(p.ownerId), air);
           s.areas.push({
             id: s.nextId++,
             kind: p.kind,
@@ -211,7 +222,7 @@ export function updateProjectiles(s: SimState): void {
             slows: land.slows,
           });
         } else {
-          explode(s, p.target!, land.radius, { enemy: land.damage }, p.kind, owner(p.ownerId));
+          explode(s, p.target!, land.radius, { enemy: land.damage }, p.kind, owner(p.ownerId), air);
         }
         continue;
       }
@@ -306,10 +317,12 @@ export function updateProjectiles(s: SimState): void {
     }
     // versus: shots hit rivals (each player once per shot; player marks are negative so they never clash with enemy ids)
     if (alive && s.versus && p.ownerId >= 0) {
+      // (a shot hits those at its height: it goes up to a rival on a jetpack it was aimed at and passes over
+      // the others, or runs along the floor under a flyer. A jump takes you over a shot on the floor.)
       for (const r of rivals(s, p.ownerId)) {
         const mark = -1 - r.id;
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || airborne(r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        if (p.hitIds.includes(mark) || (r.air > 0 && !upInTheAir(r)) || !atHeightOf(p, r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
         damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {

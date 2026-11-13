@@ -19,6 +19,31 @@ interface Particle {
   size: number;
   color: number;
   spin: number;
+  /** a spark: small, bright and unlit, it does not bounce but burns out in the air */
+  spark?: boolean;
+}
+
+/** a flash of light or a shockwave on the floor: it grows from nothing to `size` and fades as it does */
+interface Pop {
+  x: number;
+  y: number;
+  z: number;
+  age: number;
+  life: number;
+  size: number;
+  color: number;
+  ring: boolean;
+}
+
+/** what a monster leaves on the floor where it burst: a stain in its own colour that dries away */
+interface Splat {
+  x: number;
+  z: number;
+  age: number;
+  life: number;
+  size: number;
+  color: number;
+  turn: number;
 }
 
 interface Beam {
@@ -31,8 +56,6 @@ interface Beam {
 const MAX_PARTICLES = 3000;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
-/** what a floor gives off when his hammer comes down on it: dust and chips of stone */
-const FLOOR_CHIPS = [0x8a7f70, 0x6f665a, 0xb9ad98, 0x55504a];
 
 /** what a boss is made of: the colours of the pieces it bursts into (its body in a few shades, and its horns, teeth or spikes) */
 const BOSS_WRECK: Record<BossKind, number[]> = {
@@ -68,6 +91,81 @@ export function createFx(scene: THREE.Scene): Fx {
   const particles: Particle[] = [];
   const cubeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x222222, roughness: 0.5 });
   const cubes = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), cubeMat, 1024, false);
+
+  // how a monster bursts: a flash, a shockwave over the floor, sparks, and a stain where it stood
+  const pops: Pop[] = [];
+  const splats: Splat[] = [];
+  const light = (color: number) => new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const flashes = new InstancedPool(scene, new THREE.IcosahedronGeometry(0.5, 1), light(0xffffff), 64, false);
+  const waves = new InstancedPool(scene, new THREE.RingGeometry(0.42, 0.5, 40).rotateX(-Math.PI / 2), light(0xffffff), 64, false);
+  const sparks = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), light(0xffffff), 512, false);
+  // (a stain is a ragged blot: a disc with an uneven edge)
+  const blot = new THREE.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2);
+  {
+    const at = blot.getAttribute('position');
+    for (let i = 1; i < at.count; i++) {
+      const k = 0.72 + 0.4 * Math.abs(Math.sin(i * 2.7));
+      at.setXYZ(i, at.getX(i) * k, at.getY(i), at.getZ(i) * k);
+    }
+  }
+  const stains = new InstancedPool(scene, blot, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), 64, false);
+  const MAX_SPLATS = 48;
+  const tone = (color: number, k: number) => {
+    // k < 1 darkens, k > 1 mixes toward white
+    const r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
+    const f = (c: number) => Math.round(k <= 1 ? c * k : c + (255 - c) * (k - 1));
+    return (f(r) << 16) | (f(g) << 8) | f(b);
+  };
+  /**
+   * A monster bursts. Pieces of its own body (in its own colours, big and small) fly off and tumble, a flash
+   * and a shockwave mark the spot, sparks spray out, and a stain stays on the floor for a while.
+   */
+  // what the floor of this world gives off when something tears it up: chips in the colours of its tiles and
+  // of the earth under them, and dust in a paler tone of the same (set from the theme with every frame)
+  let floorChips: number[] = [], floorDust: number[] = [], floorDark = 0;
+  let floorOf = -1;
+  const readFloor = (theme: Theme) => {
+    if (floorOf === theme.roadA * 0x1000000 + theme.roadB) return;
+    floorOf = theme.roadA * 0x1000000 + theme.roadB;
+    floorChips = [theme.roadA, theme.roadB, tone(theme.roadA, 0.72), tone(theme.roadB, 0.5), tone(theme.roadA, 0.72)];
+    const pale = (c: number, k: number) => {
+      const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255, grey = (r + g + b) / 3;
+      const m = (v: number) => Math.min(255, Math.round((v * 0.6 + grey * 0.4) * k));
+      return (m(r) << 16) | (m(g) << 8) | m(b);
+    };
+    floorDust = [pale(theme.roadA, 1.12), pale(theme.roadB, 0.95), pale(theme.roadA, 0.8)];
+    floorDark = tone(theme.roadB, 0.32);
+  };
+  /**
+   * The floor is torn up at a spot: chips of it fly and tumble, dust in its colour billows low and rises, a ring
+   * of dust runs out along the ground.
+   */
+  function tearFloor(pos: Vec2, power: number) {
+    chunks(pos, 0.1, Math.round(9 * power), floorChips, 3.2 + power * 1.6, 0.06, 0.1 + power * 0.045);
+    burst(pos, 0.2, Math.round(12 * power), floorDust, 1.6 + power * 1.1, 0.2 + power * 0.03, 0.45);
+    burst(pos, 0.6, Math.round(5 * power), floorDust, 0.7, 0.26 + power * 0.03, 1.5);
+    pops.push({ x: pos.x, y: 0.08, z: pos.z, age: 0, life: 0.5, size: 1.6 + power * 1.5, color: floorDust[0], ring: true });
+  }
+
+  function burstMonster(pos: Vec2, color: number, size: number, height: number, elite: boolean) {
+    const dark = tone(color, 0.55), bright = tone(color, 1.5), glow = tone(color, 1.75);
+    const amount = (elite ? 2.2 : 1) * Math.max(0.6, size);
+    pops.push({ x: pos.x, y: height * 0.55, z: pos.z, age: 0, life: 0.18, size: (1.5 + size * 1.6) * (elite ? 1.5 : 1), color: glow, ring: false });
+    pops.push({ x: pos.x, y: 0.06, z: pos.z, age: 0, life: 0.36, size: (2.4 + size * 2.4) * (elite ? 1.5 : 1), color: bright, ring: true });
+    // pieces of the body: a few big ones that tumble, many small ones
+    chunks(pos, height * 0.3, Math.round(5 * amount), [color, color, dark, bright], 4.2, 0.16 * Math.max(0.7, size), 0.3 * Math.max(0.7, size));
+    burst(pos, height * 0.5, Math.round(12 * amount), [color, dark, bright], elite ? 5.5 : 4, 0.11);
+    // sparks: fast and bright, gone in a moment
+    const n = Math.ceil((elite ? 26 : 10) * Math.max(0.6, size) * particleScale);
+    for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+      const a = rand() * Math.PI * 2, up = 0.3 + rand() * 1.1, sp = 5 + rand() * 6;
+      const life = 0.22 + rand() * 0.22;
+      particles.push({ x: pos.x, y: height * 0.5, z: pos.z, vx: Math.cos(a) * sp, vy: up * 5, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.07 + rand() * 0.05, color: elite && i % 2 ? 0xff5ae0 : i % 3 ? glow : 0xffffff, spin: 0, spark: true });
+    }
+    if (splats.length >= MAX_SPLATS) splats.shift();
+    splats.push({ x: pos.x, z: pos.z, age: 0, life: 5 + rand() * 2, size: (0.9 + size * 1.1) * (elite ? 1.4 : 1), color: dark, turn: rand() * Math.PI * 2 });
+    if (elite) addShake(0.22);
+  }
 
   const beams: Beam[] = [];
   /** Disco Balls in the air: each hangs over its owner for a moment, spinning and throwing light */
@@ -229,6 +327,7 @@ export function createFx(scene: THREE.Scene): Fx {
       y = ty;
     }
     burst(at, 0.4, big ? 26 : 12, [0xffffff, 0x9fd0ff, 0x7dfcff], 6, 0.1, 0.8);
+    tearFloor(at, big ? 1.6 : 0.7);
     ring(at, big ? 4 : 2, [0xffffff, 0x9fd0ff]);
   }
   /** lightning still to come: a storm is a few bolts one after the other */
@@ -246,6 +345,7 @@ export function createFx(scene: THREE.Scene): Fx {
 
   return {
     update(s, events, theme, dt, time) {
+      readFloor(theme);
       // a galloping unicorn leaves a rainbow behind it
       for (const v of s.vehicles) {
         if (v.kind !== 'unicorn' || Math.hypot(v.vel.x, v.vel.z) < 3 || Math.floor(time * 30) % 2 !== 0) continue;
@@ -254,11 +354,9 @@ export function createFx(scene: THREE.Scene): Fx {
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {
-            // it falls apart: chunky cubes that bounce away, then a puff of pixel dust
+            // it bursts: pieces of itself, a flash, a shockwave, sparks, and a stain on the floor
             const l = ENEMY_LOOK[e.kind];
-            const big = e.elite ? 50 : e.kind === 'tank' || e.kind === 'rammer' ? 26 : 14;
-            burst(e.pos, l.h / 2, big, [l.day, l.night, 0xffffff], e.elite ? 6 : 4, e.kind === 'splitling' ? 0.1 : 0.16);
-            burst(e.pos, l.h * 0.6, Math.round(big * 0.8), [l.day, l.night], 1.6, 0.06, 1.4);
+            burstMonster(e.pos, theme.pointLights > 0.5 ? l.night : l.day, Math.max(l.w, l.d), l.h, e.elite);
             break;
           }
           case 'enemyHit': {
@@ -282,11 +380,26 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'playerDown':
             addShake(0.3);
             break;
-          case 'explosion':
-            burst(e.pos, 0.3, Math.round(20 + e.radius * 14), [0xff8c42, 0xffe14a, 0xff3b3b, 0x553344], 3 + e.radius * 1.5, 0.2);
-            ring(e.pos, e.radius, [0xffe14a, 0xff8c42]);
-            addShake(Math.min(0.4, 0.08 * e.radius));
+          case 'explosion': {
+            // a ball of fire that flashes and is gone, a shockwave as wide as the blast, sparks, a little
+            // rubble and smoke, and a scorch mark on the floor
+            const r = e.radius;
+            pops.push({ x: e.pos.x, y: 0.5 + r * 0.15, z: e.pos.z, age: 0, life: 0.2, size: r * 1.7, color: 0xffd27a, ring: false });
+            pops.push({ x: e.pos.x, y: 0.4 + r * 0.1, z: e.pos.z, age: -0.03, life: 0.26, size: r * 1.1, color: 0xff7a2e, ring: false });
+            pops.push({ x: e.pos.x, y: 0.06, z: e.pos.z, age: 0, life: 0.34, size: r * 2.3, color: 0xffb34a, ring: true });
+            const n = Math.ceil((8 + r * 7) * particleScale);
+            for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+              const a = rand() * Math.PI * 2, sp = (3 + rand() * 5) * (0.6 + r * 0.3);
+              const life = 0.25 + rand() * 0.3;
+              particles.push({ x: e.pos.x, y: 0.4, z: e.pos.z, vx: Math.cos(a) * sp, vy: 2 + rand() * 6, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.08 + rand() * 0.06, color: i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xffe14a : 0xff8c42, spin: 0, spark: true });
+            }
+            tearFloor(e.pos, Math.min(3, 0.5 + r * 0.5));
+            burst(e.pos, 0.9, Math.round(2 + r * 1.5), [0x3a3438, 0x55504f], 0.7, 0.24, 1.8);
+            if (splats.length >= MAX_SPLATS) splats.shift();
+            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 4, size: r * 1.5, color: 0x241c1c, turn: rand() * Math.PI * 2 });
+            addShake(Math.min(0.4, 0.08 * r));
             break;
+          }
           case 'bossDead': {
             // it blows apart: big pieces of its own body fly off and tumble across the floor, small bits rain
             // down after them, a flash and a shockwave where it stood
@@ -300,6 +413,11 @@ export function createFx(scene: THREE.Scene): Fx {
               break;
             }
             const body = BOSS_WRECK[e.kind ?? 'megaBlock'];
+            // (with a flash and a shockwave of its own, far bigger than a monster's, and a stain)
+            pops.push({ x: e.pos.x, y: 1.6, z: e.pos.z, age: 0, life: 0.3, size: 9, color: 0xffffff, ring: false });
+            pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: 0, life: 0.55, size: 16, color: tone(body[0], 1.6), ring: true });
+            pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: -0.12, life: 0.6, size: 11, color: 0xffffff, ring: true });
+            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 9, size: 5.5, color: tone(body[0], 0.5), turn: rand() * Math.PI * 2 });
             chunks(e.pos, 1.6, 46, body, 10, 0.34, 0.75);
             chunks(e.pos, 1.2, 150, body, 7, 0.12, 0.24);
             burst(e.pos, 1.5, 30, [0xffffff, 0xffe9a8], 6, 0.2);
@@ -485,8 +603,14 @@ export function createFx(scene: THREE.Scene): Fx {
           // the blow: the earth shakes, dust and chips of the floor fly, and lightning runs out from the hammer's
           // head along the floor like cracks
           addShake(1.7);
-          chunks(hit, 0.1, 30, FLOOR_CHIPS, 7, 0.07, 0.2);
-          burst(hit, 0.2, 46, [0xcfc4ae, 0xb9ad98, 0x9c9282], 4.5, 0.2, 0.55);
+          tearFloor(hit, 4);
+          // slabs of the floor are thrown up in a ring round the hammer's head and come down again
+          for (let c = 0; c < 9; c++) {
+            const a = (c / 9) * Math.PI * 2 + rand() * 0.4, d = 0.9 + rand() * 0.5;
+            chunks({ x: hit.x + Math.cos(a) * d, z: hit.z + Math.sin(a) * d }, 0.1, 2, floorChips, 2.2, 0.2, 0.34);
+          }
+          if (splats.length >= MAX_SPLATS) splats.shift();
+          splats.push({ x: hit.x, z: hit.z, age: 0, life: 7, size: 3.4, color: floorDark, turn: rand() * Math.PI * 2 });
           burst(hit, 0.3, 34, [0xffffff, 0x7dfcff, 0x9fd0ff], 9, 0.09, 1.1);
           ring(hit, 2.4, [0xffffff, 0x7dfcff]);
           for (let c = 0; c < 8; c++) {
@@ -504,8 +628,8 @@ export function createFx(scene: THREE.Scene): Fx {
         } else {
           // the second and the third ring: the ground still trembles
           addShake(0.55);
-          burst(hit, 0.15, 14, [0xcfc4ae, 0x9c9282], 3, 0.15, 0.4);
-          ring(m.at, BOSS.hammerRings[m.rings] * 0.5, [0xcfc4ae, 0xffffff]);
+          tearFloor(hit, 1.4);
+          ring(m.at, BOSS.hammerRings[m.rings] * 0.5, [floorDust[0], 0xffffff]);
         }
         m.rings++;
         m.in += 22 / TICK_RATE;
@@ -590,6 +714,7 @@ export function createFx(scene: THREE.Scene): Fx {
       }
 
       cubes.begin();
+      sparks.begin();
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life -= dt;
@@ -598,19 +723,51 @@ export function createFx(scene: THREE.Scene): Fx {
           particles.pop();
           continue;
         }
-        p.vy -= 14 * dt;
+        p.vy -= (p.spark ? 9 : 14) * dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.z += p.vz * dt;
-        if (p.y < p.size / 2) {
+        if (!p.spark && p.y < p.size / 2) {
           p.y = p.size / 2;
           p.vy *= -0.35;
           p.vx *= 0.7;
           p.vz *= 0.7;
         }
         const k = Math.min(1, p.life / (p.maxLife * 0.4));
-        cubes.add(p.x, p.y, p.z, p.spin * p.life, p.size * k, p.color, p.spin * p.life * 0.7);
+        if (p.spark) sparks.add(p.x, p.y, p.z, 0, p.size * (0.4 + 0.6 * k), p.color);
+        else cubes.add(p.x, p.y, p.z, p.spin * p.life, p.size * k, p.color, p.spin * p.life * 0.7);
       }
+      sparks.end();
+      // the flashes and shockwaves grow fast and fade (their light is added to the picture: a darker colour
+      // is a fainter one), the stains dry up
+      flashes.begin();
+      waves.begin();
+      for (let i = pops.length - 1; i >= 0; i--) {
+        const f = pops[i];
+        f.age += dt;
+        if (f.age >= f.life) {
+          pops.splice(i, 1);
+          continue;
+        }
+        if (f.age < 0) continue;
+        const t = f.age / f.life, grow = 1 - (1 - t) ** 3;
+        (f.ring ? waves : flashes).add(f.x, f.y, f.z, 0, f.size * (f.ring ? grow : 0.35 + 0.65 * grow), tone(f.color, (1 - t) ** 1.5));
+      }
+      flashes.end();
+      waves.end();
+      stains.begin();
+      for (let i = splats.length - 1; i >= 0; i--) {
+        const b = splats[i];
+        b.age += dt;
+        if (b.age >= b.life) {
+          splats.splice(i, 1);
+          continue;
+        }
+        // it spreads in a blink, lies there, and shrinks away at the end
+        const k = Math.min(1, b.age / 0.12) * Math.min(1, (b.life - b.age) / 1.2);
+        stains.add(b.x, 0.035, b.z, b.turn, b.size * k, b.color);
+      }
+      stains.end();
       for (let i = discos.length - 1; i >= 0; i--) {
         const d = discos[i];
         d.age += dt;

@@ -279,6 +279,8 @@ export interface Projectile {
   travelled?: number;
   range?: number;
   returning?: boolean;
+  /** its way through the air: fired at (x, z) `lift` up, `end` up after `reach` (see shot-height.ts) */
+  arc?: { x: number; z: number; lift: number; end: number; reach: number };
   /** saw: wall bounces left */
   bounces?: number;
 }

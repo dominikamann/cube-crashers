@@ -12,6 +12,9 @@ import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { wallTop } from './world';
+import { createSpiderLegs } from './spider-legs';
+import { shotHeight } from '../sim/systems/shot-height';
+import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
@@ -137,6 +140,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
+  const spiderLegs = createSpiderLegs(scene, lambert(0x17100d), lambert(0xd9701e));
   const webGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
   const webs = new Map<number, THREE.Mesh>();
   // Angry Dominik: a body of his own too (a tank in the rules), the same one for the small one from the wall
@@ -155,6 +159,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // (and when each one's hammer meets the floor in a slam, and how far he is down on his knees for it)
   const hammerLandsAt = new Map<number, number>();
   const domKneel = new Map<number, number>();
+  /** how high the Tarantula Queen has climbed (she stands on the walls she crosses) */
+  const climbOf = new Map<number, number>();
   /** his steps follow the ground he covers, so his feet do not slide: where he was, and how far into his stride */
   const domWalk = new Map<number, { x: number; z: number; phase: number; moving: number }>();
   // where each Angry Dominik (the boss) stood last, and the ones that have fallen: they stand in the lightning
@@ -320,6 +326,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       rhinoBodies.begin();
       spiderMat.color.setHex(night > 0.5 ? SPIDER_LOOK.night : SPIDER_LOOK.day);
       spiderBodies.begin();
+      spiderLegs.begin();
       // the webs: they spread while they set, then lie there, and fade out at the end
       for (const [id, m] of webs)
         if (!s.webs?.some(w => w.id === id)) {
@@ -393,6 +400,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       eyes.begin();
       pupils.begin();
       plates.begin();
+      /** how high the ground is at a spot: the floor, a barrier, or the top of a wall (the Tarantula Queen's feet stand on it) */
+      const groundAt = (gx: number, gz: number) => {
+        const t = tileAt(s.map, gx, gz);
+        return t === Tile.Wall ? wallTop(s.map, gx, gz) + 0.4 : t === Tile.LowWall ? 0.5 : 0;
+      };
       const leapOf = (id: number) => allBosses(s).find(b => b.enemyId === id)?.leap ?? null;
       const heads = new Set(allBosses(s).flatMap(b => b.worms.map(w => w[0])));
       // where each segment sits in its worm: [index, length]
@@ -472,7 +484,20 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : (e.kind === 'megaBlock' || spiderBoss) && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * (spiderBoss ? 4.4 : 3.2) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
+        // the Tarantula Queen climbs: over a wall her body rises to stand on top of it (smoothly, as she goes up
+        // one side and down the other); a small spider hops when it pounces
+        let climb = 0;
+        if (spiderBoss) {
+          let top = 0;
+          for (const [ox, oz] of [[0, 0], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]]) {
+            const t = tileAt(s.map, e.pos.x + ox, e.pos.z + oz);
+            if (t === Tile.Wall) top = Math.max(top, wallTop(s.map, e.pos.x + ox, e.pos.z + oz) + 0.4);
+            else if (t === Tile.LowWall) top = Math.max(top, 0.5);
+          }
+          climb = (climbOf.get(e.id) ?? 0) + (top - (climbOf.get(e.id) ?? 0)) * Math.min(1, frameDt * 7);
+          climbOf.set(e.id, climb);
+        } else if (e.kind === 'spiderling' && e.state === 'charge') climb = Math.sin(Math.PI * Math.max(0, Math.min(1, 1 - e.chargeLeft / 4.5))) * 0.8;
+        const hover = climb + (e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : (e.kind === 'megaBlock' || spiderBoss) && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * (spiderBoss ? 4.4 : 3.2) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0);
         let y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : spiderBoss ? SPIDER_LIFT : dominik ? DOMINIK.lift : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held || dominik ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         // Angry Dominik drops to his knees as his hammer comes down on the floor, stays there for a moment and
         // gets up again
@@ -502,6 +527,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const tint = flashing || blinking ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
         if (dominik) domHeads.addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
+        if (spiderBoss) spiderLegs.add(e.id, e.pos.x, y * pulse, e.pos.z, yaw, scale, groundAt, frameDt, !!leapOf(e.id), tint);
         (rhinoBoss ? rhinoBodies : spiderBoss ? spiderBodies : dominik ? domBodies : bodies.get(e.kind)!).addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
         if (dominik) {
           if (!small) domStood.set(e.id, { x: e.pos.x, z: e.pos.z, yaw });
@@ -604,6 +630,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const k of KINDS) bodies.get(k)!.end();
       rhinoBodies.end();
       spiderBodies.end();
+      spiderLegs.end();
       domBodies.end();
       domHeads.end();
       domLimbs.end();
@@ -636,26 +663,30 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
 
       for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
       for (const p of s.projectiles) {
+        // a shot has a height (see shot-height.ts): `up` is how far above the floor's shots it is now
+        const up = shotHeight(p);
+        const arc = p.arc;
+        const dive = arc && p.behavior !== 'lob' && Math.hypot(p.pos.x - arc.x, p.pos.z - arc.z) < arc.reach ? Math.atan2(arc.lift - arc.end, arc.reach) : 0;
         if (p.hostile) {
           // colour-blind mode: monster shots are also bigger than the players' bolts
           hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
           continue;
         }
         if (p.behavior === 'saw') {
-          saws.add(p.pos.x, 0.5, p.pos.z, time * 25);
+          saws.add(p.pos.x, 0.5 + up, p.pos.z, time * 25);
           for (let i = 0; i < 4; i++) {
             const a = time * 25 + (i * Math.PI) / 2;
-            peps.add(p.pos.x + Math.cos(a) * 0.28, 0.56, p.pos.z + Math.sin(a) * 0.28, a);
+            peps.add(p.pos.x + Math.cos(a) * 0.28, 0.56 + up, p.pos.z + Math.sin(a) * 0.28, a);
           }
           continue;
         }
         if (p.kind === 'bubblegumBazooka' || p.kind === 'bubbleWand') {
-          gums.add(p.pos.x, 0.7, p.pos.z, 0, p.kind === 'bubbleWand' ? 0.25 + 0.03 * Math.sin(time * 12) : 0.35);
+          gums.add(p.pos.x, 0.7 + up, p.pos.z, 0, p.kind === 'bubbleWand' ? 0.25 + 0.03 * Math.sin(time * 12) : 0.35);
           continue;
         }
         if (p.behavior === 'lob') {
           const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
-          const y = 0.6 + 4 * 2.5 * t * (1 - t);
+          const y = 0.6 + up + 4 * 2.5 * t * (1 - t);
           if (p.kind === 'popcorn') popcorns.add(p.pos.x, y, p.pos.z, time * 6, 1, undefined, time * 5);
           else if (p.kind === 'bomb') bombs.add(p.pos.x, y, p.pos.z, time * 5, 1, undefined, time * 7);
           else hotdogs.add(p.pos.x, y, p.pos.z, time * 4, 1, undefined, time * 8);
@@ -663,12 +694,12 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
         const yaw = Math.atan2(p.vel.x, p.vel.z);
         if (p.behavior === 'boomerang') {
-          boomerangs.add(p.pos.x, 0.7, p.pos.z, time * 18);
-          boomerangs.add(p.pos.x, 0.7, p.pos.z, time * 18 + Math.PI / 2);
+          boomerangs.add(p.pos.x, 0.7 + up, p.pos.z, time * 18);
+          boomerangs.add(p.pos.x, 0.7 + up, p.pos.z, time * 18 + Math.PI / 2);
         } else if (p.kind === 'candyCannon') {
-          candies.add(p.pos.x, 0.6, p.pos.z, time * 10, 1, CANDY_COLORS[p.id % CANDY_COLORS.length]);
+          candies.add(p.pos.x, 0.6 + up, p.pos.z, time * 10, 1, CANDY_COLORS[p.id % CANDY_COLORS.length]);
         } else {
-          bolts.add(p.pos.x, 0.6, p.pos.z, yaw);
+          bolts.addScaled(p.pos.x, 0.6 + up, p.pos.z, yaw, 1, 1, 1, undefined, dive);
         }
       }
       for (const a of s.areas) {

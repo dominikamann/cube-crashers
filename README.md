@@ -19,29 +19,61 @@ with up to nine friends on your LAN or online, together against the monsters or 
 **Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
 **first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
-![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
-
-![Versus in first person: everyone for themselves in Neon City](docs/design/versus.gif)
+<table>
+  <tr>
+    <td width="50%"><img src="docs/design/neon.webp" width="100%" alt="Gameplay: holding a nest zone in Neon City" /></td>
+    <td width="50%"><img src="docs/design/versus.webp" width="100%" alt="Versus from above: everyone for themselves in Neon City" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Tower Run: hold the nest zone in Neon City</sub></td>
+    <td align="center"><sub>Versus: everyone for themselves</sub></td>
+  </tr>
+</table>
 
 <table>
   <tr>
-    <td><img src="docs/design/candy.gif" alt="Candy Factory with conveyor belts" /></td>
-    <td><img src="docs/design/arena.gif" alt="Boss fight against the Mega Block" /></td>
+    <td colspan="2"><img src="docs/design/screenshots/first-person-plaza.webp" alt="First person: a versus match on the Arcade Plaza" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Press V and the same game is a first-person shooter: Versus on the Arcade Plaza</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/screenshots/first-person-gun-game.webp" alt="First person: Gun Game on the Neon Highway, a Steamroller coming at you" /></td>
+    <td><img src="docs/design/screenshots/first-person-candy.webp" alt="First person: a versus match in the Candy Factory" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Gun Game on the Neon Highway: a rival in a Steamroller</sub></td>
+    <td align="center"><sub>Candy Factory in first person</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><img src="docs/design/candy.webp" alt="Candy Factory with conveyor belts" /></td>
+    <td><img src="docs/design/arena.webp" alt="Boss fight against the Mega Block" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Candy Factory: conveyor belts push everyone around</sub></td>
     <td align="center"><sub>Mega Block Arena: the first boss</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/gameplay.gif" alt="Holding a nest zone on the Arcade Plaza" /></td>
-    <td><img src="docs/design/rooftop.gif" alt="Boss fight against the Segment Worm on the rooftop" /></td>
+    <td><img src="docs/design/gameplay.webp" alt="Holding a nest zone on the Arcade Plaza" /></td>
+    <td><img src="docs/design/rooftop.webp" alt="Boss fight against the Segment Worm on the rooftop" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Arcade Plaza: hold the zone while the hordes storm in</sub></td>
     <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/race.gif" alt="Kart Rally between floors" /></td>
+    <td><img src="docs/design/screenshots/king-rex.webp" alt="Boss fight against King Rex in Neon City" /></td>
+    <td><img src="docs/design/screenshots/rhino.webp" alt="Boss fight against the Rhino in the Pixel Jungle" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>King Rex: snaps, stomps and roars</sub></td>
+    <td align="center"><sub>The Rhino: lowers its head and charges</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/race.webp" alt="Kart Rally between floors" /></td>
     <td><img src="docs/design/lane.gif" alt="Lane Defense: hold the lane, save the arcade cabinet" /></td>
   </tr>
   <tr>
@@ -49,8 +81,8 @@ with up to nine friends on your LAN or online, together against the monsters or 
     <td align="center"><sub>Lane Defense: keep the arcade cabinet alive</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/maze.gif" alt="Glitch Maze: collect pixels, dodge the ghosts" /></td>
-    <td><img src="docs/design/highway.gif" alt="Neon Highway" /></td>
+    <td><img src="docs/design/maze.webp" alt="Glitch Maze: collect pixels, dodge the ghosts" /></td>
+    <td><img src="docs/design/highway.webp" alt="Neon Highway" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Glitch Maze: no weapons, just you, the pixels and the ghosts</sub></td>
@@ -228,7 +260,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
 
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
-map), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
+map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
 under everyone, and at the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
@@ -268,6 +300,7 @@ the whole team.
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
+- **Graphics:** four levels. **Test now** tries them on your computer and keeps the best one that runs smoothly (it also runs once by itself on the first start); **Show FPS** puts the frames a second in the corner.
 - **Character:** who you are: an astronaut, a knight, a cat, a rubber duck, an arcade cabinet, a cube, a joystick,
   a ghost, a mushroom or a soda cup. *Automatic* gives everyone in a match a different one. A look only: every
   character is as fast, as tough and as easy to hit as the others, and holds every weapon. Bots are always
@@ -622,7 +655,7 @@ Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, 
 
 ## Monsters
 
-![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.gif)
+![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.webp)
 
 All monsters are original voxel creatures, built from many small cubes, with feet, arms, tails and wings that
 move. Every dangerous attack is announced first: the eyes glow red, and the ground shows where it will hit.
@@ -647,6 +680,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
@@ -805,6 +839,7 @@ docs/         gameplay GIF and screenshots
 - [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
+- [x] The Tarantula Queen and her brood, an FPS counter and a graphics test that picks the best setting
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!

@@ -1,4 +1,6 @@
-import { ALARM_SPEED_STEP, BOMBER, CROC, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
+import { clearOfBorder, insideBorder } from '../map/border';
+import { spinWeb } from './webs';
+import { ALARM_SPEED_STEP, BOMBER, CROC, SPIDERLING, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
@@ -122,12 +124,14 @@ function heal(s: SimState, e: Enemy): void {
 
 /** how far the Rhino's charge throws a player it hits */
 export const RHINO_FLING = 9;
+/** how far the Tarantula Queen's legs reach from her middle: that much of her stays clear of the wall round the map */
+export const QUEEN_REACH = 2.2;
 /** how fast a charging monster can turn toward its target, in radians per second */
 export const CHARGE_STEER = 0.4;
 /** how wide a boss is to the walls while it squeezes through a gap */
 const SQUEEZE_RADIUS = 0.45;
 /** how this monster charges: the rammer's long run or the crocodile's short lunge */
-const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : RAMMER);
+const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : e.kind === 'spiderling' ? SPIDERLING : RAMMER);
 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
 function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
@@ -159,10 +163,15 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
   }
   const hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, e.radius, BLOCKS_ENEMY);
   e.chargeLeft -= step;
+  // (a small spider that has pounced sometimes leaves a small web where it lands)
+  const landed = () => {
+    if (e.kind === 'spiderling' && s.rng.next() < SPIDERLING.webChance) spinWeb(s, e.pos, SPIDERLING.web);
+  };
   const stun = (ticks: number) => {
     e.state = 'stunned';
     e.stateUntil = s.tick + ticks;
     e.cooldownUntil = s.tick + RAMMER.cooldownTicks;
+    landed();
   };
   for (const p of players) {
     if (aloft(s, p) || p.perched || s.tick < p.invulnUntil) continue;
@@ -186,6 +195,7 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
   else if (e.chargeLeft <= 0) {
     e.state = 'move';
     e.cooldownUntil = s.tick + RAMMER.cooldownTicks;
+    landed();
   }
 }
 
@@ -217,6 +227,7 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
       return chase;
     case 'rammer':
     case 'croc':
+    case 'spiderling':
     case 'shark': {
       const c = chargeOf(e);
       if (los && d < c.range && s.tick >= e.cooldownUntil) {
@@ -310,6 +321,7 @@ export function updateEnemies(s: SimState): void {
   const players = s.players.filter(p => p.downUntil === null);
   const hordes = new Map(s.hordes.map(h => [h.id, h]));
   const alarmSpeed = 1 + ALARM_SPEED_STEP * s.alarm.level;
+  const queenId = allBosses(s).find(b => b.kind === 'spider')?.enemyId ?? -1;
 
   const grid = new Map<number, Enemy[]>();
   for (const e of s.enemies) {
@@ -343,7 +355,7 @@ export function updateEnemies(s: SimState): void {
         explode(s, e.pos, TREX.radius, { player: TREX.damage, tower: TREX.tower }, 'explosion');
       } else if (e.state === 'windup' && e.kind === 'monkey') {
         throwCoconut(s, e, players);
-      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark')) {
+      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark' || e.kind === 'spiderling')) {
         e.state = 'charge';
         e.chargeLeft = chargeOf(e).distance;
       } else {
@@ -367,6 +379,12 @@ export function updateEnemies(s: SimState): void {
       continue;
     }
     if (e.state === 'move' && !isHeld) ({ dir, factor } = think(s, e, e.hordeId !== null ? hordes.get(e.hordeId) : undefined, players, field));
+    // the Tarantula Queen climbs over whatever is in her way: she goes straight for the nearest player
+    const climbs = e.id === queenId;
+    if (climbs && e.state === 'move' && !isHeld) {
+      const prey = nearestPlayer(players, e.pos);
+      if (prey && prey.d > 1.2) dir = unit(e.pos, prey.p.pos);
+    }
     if (factor > 0 && (dir.x !== 0 || dir.z !== 0)) e.dir = dir;
 
     const slow = e.slowUntil > s.tick ? 0.5 : 1;
@@ -402,6 +420,16 @@ export function updateEnemies(s: SimState): void {
     }
     if (vx !== 0 || vz !== 0) {
       const fromX = e.pos.x, fromZ = e.pos.z;
+      if (climbs) {
+        // (no wall inside the map stops her; the wall round it is a border for her as for everyone: she slides
+        // along it)
+        // (she keeps her legs off it too: QUEEN_REACH from her middle)
+        const free = (x: number, z: number) => clearOfBorder(s.map, x, z, QUEEN_REACH);
+        if (!free(e.pos.x, e.pos.z)) e.pos = insideBorder(s.map, e.pos, QUEEN_REACH);
+        if (free(e.pos.x + vx * DT, e.pos.z)) e.pos.x += vx * DT;
+        if (free(e.pos.x, e.pos.z + vz * DT)) e.pos.z += vz * DT;
+        continue;
+      }
       const hit = moveCircle(s.map, e.pos, vx * DT, vz * DT, e.radius, BLOCKS_ENEMY);
       // a boss too wide for the way ahead squeezes through instead of standing still: the maps are built for
       // small monsters, and the path it follows may lead through a gap narrower than its body

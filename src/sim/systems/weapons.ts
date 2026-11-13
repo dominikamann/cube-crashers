@@ -176,7 +176,8 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       const hits = nearestEnemies(s, p.pos, DISCO.range, n);
       hitMany(s, hits, damage, w.kind, p.id);
       const near = rivals(s, p.id)
-        .filter(r => !airborne(r) && dist(r.pos, p.pos) <= DISCO.range && hasLos(s.map, p.pos, r.pos))
+        // (it hangs in the air and flashes all round: rivals on a jetpack are not out of its reach, only a jump is)
+        .filter(r => (r.flying || (r.descent ?? 0) > 0 || !airborne(r)) && dist(r.pos, p.pos) <= DISCO.range && hasLos(s.map, p.pos, r.pos))
         .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))
         .slice(0, Math.max(0, n - hits.length));
       for (const r of near) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
