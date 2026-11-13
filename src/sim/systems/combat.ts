@@ -1,6 +1,6 @@
 import { clearSpot } from './ground';
 import { shotAtWall } from './logo-egg';
-import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
+import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST, BOSS_HP } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
@@ -56,7 +56,16 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   if (e.hp <= 0) return;
   // maze ghosts are only crashed by touching them while powered up
   if (e.kind === 'ghost') return;
-  if (isBossBody(s, e) && (source === 'stomp' || source === 'kart')) amount *= BOSS_BODY_RESIST;
+  if (isBossBody(s, e)) {
+    if (source === 'stomp' || source === 'kart') amount *= BOSS_BODY_RESIST;
+    // a boss cannot be burst down: beyond what it takes in full right now, a hit counts only in part
+    const boss = allBosses(s).find(b => b.enemyId === e.id || (e.kind === 'wormSegment' && b.worms.some(w => w.includes(e.id))));
+    if (boss) {
+      const full = Math.min(amount, boss.gate ?? boss.maxHp * BOSS_HP.gate.share * BOSS_HP.gate.bank);
+      boss.gate = (boss.gate ?? boss.maxHp * BOSS_HP.gate.share * BOSS_HP.gate.bank) - full;
+      amount = full + (amount - full) * BOSS_HP.gate.excess;
+    }
+  }
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;
   s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt });
@@ -116,14 +125,14 @@ export function hitMany(s: SimState, hits: Enemy[], base: number, source: Damage
   for (const e of hits) hitEnemy(s, e, base * part(e), source, ownerId);
 }
 
-/** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter. */
+/** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter (not on a boss: nobody can help standing next to one). */
 export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSource, ownerId: number): void {
   const owner = s.players.find(p => p.id === ownerId);
   if (!owner) {
     damageEnemy(s, e, base, source);
     return;
   }
-  const close = dist(owner.pos, e.pos) <= CLOSE_RANGE + e.radius;
+  const close = !isBossBody(s, e) && dist(owner.pos, e.pos) <= CLOSE_RANGE + e.radius;
   let amount = base * (close ? CLOSE_BONUS : 1);
   // a shielder's shield takes most of what comes from the front
   if (e.kind === 'shielder') {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOTDOG } from '../../src/sim/config/weapons';
+import { BLASTER, HOTDOG } from '../../src/sim/config/weapons';
 import { stepSim } from '../../src/sim/sim';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Command, HeldWeapon, WeaponKind } from '../../src/sim/types';
@@ -292,7 +292,7 @@ describe('weapons', () => {
     expect(outside.hp).toBe(TANK);
   });
 
-  it('adds 20 % damage per level', () => {
+  it('raises the damage with the level (the Pixel Blaster by its own table)', () => {
     const s = quietSim();
     const p = s.players[0];
     p.pos.z = 66.5;
@@ -300,7 +300,7 @@ describe('weapons', () => {
     const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -6));
     stepSim(s, [aimAt(e.pos), fire]);
     run(s, 40);
-    expect(e.hp).toBeCloseTo(TANK - dmg('pixelBlaster') * 1.2, 6);
+    expect(e.hp).toBeCloseTo(TANK - dmg('pixelBlaster') * BLASTER.power[1], 6);
   });
 
   it('splitter leaves two splitlings', () => {

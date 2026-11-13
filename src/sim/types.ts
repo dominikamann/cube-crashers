@@ -420,6 +420,8 @@ export interface BossState {
   brood?: number[];
   /** the Kraken: when it next calls a school of fish and sharks */
   nextSchoolAt?: number;
+  /** how much damage it still takes in full right now; the rest of a burst counts only in part (BOSS_HP.gate) */
+  gate?: number;
 }
 
 export interface Vehicle {

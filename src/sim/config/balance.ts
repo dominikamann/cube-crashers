@@ -19,6 +19,20 @@ export const STOMP_KNOCKBACK = 6;
 /** bosses take only this share of stomp and kart damage: they have to be shot */
 export const BOSS_BODY_RESIST = 0.25;
 
+/**
+ * How tough a boss is. Its health follows the firepower it meets, so a fight stays a fight: most of a player's
+ * worth for every extra player, a little for every level of the best weapon each player carries (less than the
+ * level gives the weapon: a better weapon always wins sooner), and double on the last floor of a Tower Run.
+ * `gate`: a boss cannot be burst down. It takes `share` of its health a second in full (up to `bank` seconds'
+ * worth saved up); of what hits it beyond that, only `excess` counts.
+ */
+export const BOSS_HP = {
+  teamStep: 0.75,
+  perLevel: 0.1,
+  final: 2,
+  gate: { share: 0.03, bank: 1, excess: 0.2 },
+};
+
 export const DASH_TICKS = 9;
 /** 4 tiles in 0.15 s */
 export const DASH_SPEED = 4 / (DASH_TICKS / 60);

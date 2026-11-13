@@ -10,9 +10,8 @@ import { BOSS_BODY_RESIST, STOMP_DAMAGE } from '../../src/sim/config/balance';
 import { updateTowers } from '../../src/sim/systems/towers';
 import { takeCard } from '../../src/sim/systems/offers';
 import { enterFloor } from '../../src/sim/systems/run';
-import { bossHp } from '../../src/sim/systems/boss';
+import { bossHp, bossScale } from '../../src/sim/systems/boss';
 import { ENEMIES } from '../../src/sim/config/enemies';
-import { hpScale } from '../../src/sim/systems/coop';
 import { quietSim } from './helpers';
 
 describe('review fixes', () => {
@@ -104,8 +103,8 @@ describe('blasts on the Segment Worm', () => {
     enterFloor(s, 4);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
-    // 18 segments of 100 on medium for one player: the bar is not counted twice or left unscaled
-    expect(s.boss!.maxHp).toBeCloseTo(18 * ENEMIES.wormSegment.hp * hpScale(s), 5);
+    // 18 segments on medium for one player, on the last floor: the bar is not counted twice or left unscaled
+    expect(s.boss!.maxHp).toBeCloseTo(18 * ENEMIES.wormSegment.hp * bossScale(s), 5);
     expect(s.boss!.phase).toBe(1);
   });
 

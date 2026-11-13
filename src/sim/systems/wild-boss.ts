@@ -13,7 +13,9 @@ export const WILD = {
   /** how likely one is per floor of the run: rare at the bottom, more likely the higher the team is */
   chance: [0.15, 0.3, 0.4, 0.5, 0.6],
   /** its health, as a share of the real boss's */
-  hp: 0.35,
+  hp: 0.7,
+  /** and in a versus match, where it is a nuisance on the side and nobody fights it together */
+  versusHp: 0.4,
   /**
    * which bosses suit which world: the Rhino needs room to charge, King Rex is at home in the city, the jungle
    * and between the machines. (The Kraken needs water, the Segment Worm a wide roof and the Mega Block is too
@@ -75,6 +77,6 @@ export function spawnWild(s: SimState, kind: BossKind, spot: { x: number; z: num
   if (!b) return null;
   b.wild = true;
   const body = s.enemies.find(e => e.id === b.enemyId);
-  if (body) body.hp = body.maxHp = b.maxHp = body.maxHp * WILD.hp;
+  if (body) body.hp = body.maxHp = b.maxHp = body.maxHp * (s.versus ? WILD.versusHp : WILD.hp);
   return b;
 }
