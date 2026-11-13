@@ -1,0 +1,36 @@
+# Keeps the dependencies up to date: one pull request a week per group, and security fixes as they come.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # the small steps of everything in one pull request
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # three.js changes its shaders between versions, and the picture's last pass edits one of them
+      # (src/render/post.ts): it is updated by hand, with a look at the picture
+      - dependency-name: three
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: '@types/three'
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+
+  # the base image of the dedicated server
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
