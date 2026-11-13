@@ -329,6 +329,7 @@ export function updateBlasts(s: SimState): void {
     if (s.tick < b.at) return true;
     const before = b.fling ? s.players.map(p => (p.downUntil === null ? p.hp : -1)) : [];
     explode(s, b.pos, b.radius, { player: b.damage }, 'explosion');
+    if (b.bolt) s.events.push({ type: 'lightning', pos: { ...b.pos } });
     // a blast that flings (Angry Dominik's hammer) throws whoever it hurt away from where the blow came from;
     // in small steps, so a wall stops the flight
     if (b.fling)

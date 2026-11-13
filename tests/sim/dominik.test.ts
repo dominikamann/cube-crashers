@@ -137,6 +137,21 @@ describe('Angry Dominik', () => {
   });
 });
 
+describe('his lightning', () => {
+  it('comes down as a bolt where each of those strikes lands', () => {
+    const s = fight();
+    s.players[0].invulnUntil = 1e9;
+    let bolts = 0, marked = 0;
+    for (let i = 0; i < 30 * 60; i++) {
+      stepSim(s, []);
+      bolts += s.events.filter(e => e.type === 'lightning').length;
+      marked = Math.max(marked, s.blasts.filter(b => b.bolt).length);
+    }
+    expect(marked).toBeGreaterThan(0);
+    expect(bolts).toBeGreaterThan(0);
+  });
+});
+
 describe('a small Angry Dominik from the wall', () => {
   it('comes out, is nearly impossible to beat, and is gone again after half a minute', () => {
     const s = createSim(floor01, 1, { mode: 'quick', players: 1 });

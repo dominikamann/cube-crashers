@@ -386,6 +386,8 @@ export interface Blast {
   fling?: { from: Vec2; dist: number };
   /** no warning on the floor and none to hear (his thrown hammer: the hammer in the air is the warning) */
   hidden?: boolean;
+  /** it comes down as a bolt of lightning (the strikes that fall with Angry Dominik's attacks) */
+  bolt?: boolean;
 }
 
 export interface BossState {
@@ -651,6 +653,8 @@ export type SimEvent =
   | { type: 'hammerThrow'; from: Vec2; to: Vec2 }
   /** Angry Dominik raises his hammer for a slam: it meets the floor at tick `at` */
   | { type: 'hammerSlam'; pos: Vec2; at: number }
+  /** a bolt of lightning strikes the floor */
+  | { type: 'lightning'; pos: Vec2 }
   /** his eyes take aim, and then they burn: once each per laser */
   | { type: 'laserAim'; pos: Vec2 }
   | { type: 'laserFire'; pos: Vec2 }

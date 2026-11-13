@@ -230,7 +230,7 @@ function updateBrawl(s: SimState): void {
   for (let i = 0; i < n; i++) spawnBoss(s, br.queue.shift()!, i === 0 ? first : second);
 }
 
-function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks, more: Pick<Blast, 'fling' | 'hidden'> = {}): void {
+function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay = BOSS.warnTicks, more: Pick<Blast, 'fling' | 'hidden' | 'bolt'> = {}): void {
   s.blasts.push({ id: s.nextId++, pos: { ...pos }, radius, createdAt: s.tick, at: s.tick + delay, damage, ...more });
   if (!more.hidden) s.events.push({ type: 'blastWarning', pos: { ...pos }, radius });
 }
@@ -333,10 +333,10 @@ function attack(s: SimState, b: BossState): void {
     // whatever he does, lightning comes with it, so keeping one's distance is no shelter: a bolt where each
     // player stands and, the more he is hurt, more of them where they are running to and around them
     for (const q of alive) {
-      telegraph(s, q.pos, 1.5, BOSS.dominikDamage, BOSS.warnTicks + 14);
+      telegraph(s, q.pos, 1.5, BOSS.dominikDamage, BOSS.warnTicks + 14, { bolt: true });
       for (let i = 1; i < b.phase + 1; i++) {
         const a = s.rng.next() * Math.PI * 2, r = s.rng.next() * 2.2;
-        telegraph(s, { x: q.pos.x + q.facing.x * 2.6 * i + Math.cos(a) * r, z: q.pos.z + q.facing.z * 2.6 * i + Math.sin(a) * r }, 1.4, BOSS.dominikDamage, BOSS.warnTicks + 14 + i * 9);
+        telegraph(s, { x: q.pos.x + q.facing.x * 2.6 * i + Math.cos(a) * r, z: q.pos.z + q.facing.z * 2.6 * i + Math.sin(a) * r }, 1.4, BOSS.dominikDamage, BOSS.warnTicks + 14 + i * 9, { bolt: true });
       }
     }
   } else if (b.kind === 'rex' || b.kind === 'rhino') {

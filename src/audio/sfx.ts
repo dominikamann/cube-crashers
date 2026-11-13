@@ -546,6 +546,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('dash', 0.6);
     case 'hammerSlam':
       return one('hammerSlam');
+    case 'lightning':
+      // a short, sharp crack (the long thunder is for his arrival and his end)
+      return one('rare_thunderHammer', 1.25);
     case 'laserAim':
       return one('laserAim');
     case 'laserFire':

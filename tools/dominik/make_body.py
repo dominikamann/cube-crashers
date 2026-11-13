@@ -29,13 +29,14 @@ NAVY = (0x20, 0x29, 0x5c)      # the shorts
 CHEST = (54, 30)               # the mark on the shirt: its width in voxels, and the row its top is in
 KNEE_LEG = (16.5, 13.5)        # a leg of the shorts at the knee: its middle and half its width, from his middle
 KNEE_DEEP = (-15, 13)          # and how far it reaches to the back and to the front there
-TEXT = 'WWW.AMANNLABS.EU'
+TEXT = 'www.amannlabs.eu'
+# small letters, seven rows high (the upper two only for l and b), narrow: most are three voxels wide
 FONT = {
-    'W': ['X...X', 'X...X', 'X...X', 'X...X', 'X.X.X', 'X.X.X', '.X.X.'], 'M': ['X...X', 'XX.XX', 'X.X.X', 'X.X.X', 'X...X', 'X...X', 'X...X'],
-    'A': ['.XX.', 'X..X', 'X..X', 'XXXX', 'X..X', 'X..X', 'X..X'], 'N': ['X..X', 'XX.X', 'XX.X', 'X.XX', 'X.XX', 'X..X', 'X..X'],
-    'L': ['X...', 'X...', 'X...', 'X...', 'X...', 'X...', 'XXXX'], 'B': ['XXX.', 'X..X', 'X..X', 'XXX.', 'X..X', 'X..X', 'XXX.'],
-    'S': ['.XXX', 'X...', 'X...', '.XX.', '...X', '...X', 'XXX.'], 'E': ['XXXX', 'X...', 'X...', 'XXX.', 'X...', 'X...', 'XXXX'],
-    'U': ['X..X', 'X..X', 'X..X', 'X..X', 'X..X', 'X..X', '.XX.'], '.': ['.', '.', '.', '.', '.', 'X', 'X'],
+    'w': ['.....', '.....', 'X...X', 'X...X', 'X.X.X', 'X.X.X', '.X.X.'], 'm': ['.....', '.....', 'XX.X.', 'X.X.X', 'X.X.X', 'X.X.X', 'X.X.X'],
+    'a': ['...', '...', 'XX.', '..X', '.XX', 'X.X', '.XX'], 'n': ['...', '...', 'XX.', 'X.X', 'X.X', 'X.X', 'X.X'],
+    'l': ['X', 'X', 'X', 'X', 'X', 'X', 'X'], 'b': ['X..', 'X..', 'XX.', 'X.X', 'X.X', 'X.X', 'XX.'],
+    's': ['...', '...', '.XX', 'X..', '.X.', '..X', 'XX.'], 'e': ['...', '...', '.X.', 'X.X', 'XXX', 'X..', '.XX'],
+    'u': ['...', '...', 'X.X', 'X.X', 'X.X', 'X.X', '.XX'], '.': ['.', '.', '.', '.', '.', '.', 'X'],
 }
 
 def load(f, dark):

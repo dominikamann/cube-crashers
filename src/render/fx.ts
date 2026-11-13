@@ -321,6 +321,10 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'hammerThrow':
             hammers.push({ from: e.from, to: e.to, age: 0 });
             break;
+          case 'lightning':
+            bolt(e.pos);
+            addShake(0.18);
+            break;
           case 'hammerSlam':
             slams.push({ at: { ...e.pos }, in: (e.at - s.tick) / TICK_RATE, rings: 0 });
             break;

@@ -102,6 +102,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   dominikLeft: { type: 'dominikLeft', pos: p },
   hammerThrow: { type: 'hammerThrow', from: p, to: p },
   hammerSlam: { type: 'hammerSlam', pos: p, at: 0 },
+  lightning: { type: 'lightning', pos: p },
   laserAim: { type: 'laserAim', pos: p },
   laserFire: { type: 'laserFire', pos: p },
   wormSplit: { type: 'wormSplit', pos: p },
