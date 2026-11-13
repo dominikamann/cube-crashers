@@ -18,7 +18,7 @@ const hold: Command = { type: 'hold', playerId: 0 };
 function nestSim(state: 'idle' | 'planted' = 'idle', progress = 0): SimState {
   const s = quietSim();
   const spot = s.map.nestSpots.find(n => n.pos.x === 35.5 && n.pos.z === 5.5)!;
-  s.nests = [{ id: 1, spotId: spot.id, pos: { ...spot.pos }, state, progress, nextSpawnAt: 1e9, nextRushAt: 1e9, nextBlastAt: state === 'planted' ? 0 : 1e9 }];
+  s.nests = [{ id: 1, spotId: spot.id, pos: { ...spot.pos }, state, progress, nextSpawnAt: 1e9, nextRushAt: 1e9 }];
   s.players[0].pos = rel(spot.pos, 1.5, 0);
   return s;
 }
@@ -123,7 +123,7 @@ describe('holding', () => {
 
     s.alarm.level = 2;
     s.enemies = [];
-    // the nest's own blasts must not knock the holder down while we wait for the next wave
+    // nothing may knock the holder down while we wait for the next wave
     s.players[0].invulnUntil = 1e9;
     run(s, RUSH_INTERVAL_TICKS + 5);
     expect(s.enemies.length).toBeGreaterThanOrEqual(10);
@@ -259,34 +259,15 @@ describe('elevator', () => {
   });
 });
 
-describe('nest defence', () => {
-  it('blasts the spot where a holder stands, after a visible warning', () => {
+describe('a held nest', () => {
+  it('does nothing to whoever holds its zone: no warning rings, no blasts, even standing still', () => {
     const s = nestSim('planted');
     const p = s.players[0];
-    const events = run(s, 240);
-    expect(events.some(e => e.type === 'blastWarning')).toBe(true);
-    expect(p.hp).toBeLessThanOrEqual(80);
-  });
-
-  it('misses a holder who keeps moving inside the zone', () => {
-    const s = nestSim('planted');
-    const p = s.players[0];
-    const nest = s.nests[0].pos;
-    let angle = 0;
-    for (let i = 0; i < 600; i++) {
-      // walk in a circle around the nest
-      angle = Math.atan2(p.pos.z - nest.z, p.pos.x - nest.x);
-      stepSim(s, [{ type: 'move', playerId: 0, dir: { x: -Math.sin(angle), z: Math.cos(angle) } }]);
-    }
-    expect(d(p.pos, nest)).toBeLessThan(6);
+    const events = run(s, 600);
+    expect(events.some(e => e.type === 'blastWarning')).toBe(false);
+    expect(s.blasts).toHaveLength(0);
     expect(p.hp).toBe(100);
     expect(s.nests[0].progress).toBe(600);
   });
-
-  it('stops when nobody is in the zone', () => {
-    const s = nestSim('planted');
-    s.players[0].pos = rel(s.nests[0].pos, 0, 12);
-    const events = run(s, 600);
-    expect(events.some(e => e.type === 'blastWarning')).toBe(false);
-  });
 });
+

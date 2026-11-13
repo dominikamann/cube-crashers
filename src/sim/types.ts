@@ -166,6 +166,8 @@ export interface Player {
   combo: number;
   comboUntil: number;
   perks: Record<PerkKind, number>;
+  /** how many things this player has bought in the shops of the run: each makes the next dearer */
+  bought?: number;
   vehicleId: number | null;
   boostUntil: number;
   rapidUntil: number;
@@ -381,7 +383,6 @@ export interface Nest {
   progress: number;
   nextSpawnAt: number;
   nextRushAt: number;
-  nextBlastAt: number;
   /** endless mode: when a destroyed nest comes back somewhere else */
   respawnAt?: number;
 }
@@ -426,6 +427,10 @@ export interface BossState {
   brood?: number[];
   /** the Kraken: when it next calls a school of fish and sharks */
   nextSchoolAt?: number;
+  /** how much damage it still takes in full right now; the rest of a burst counts only in part (BOSS_HP.gate) */
+  gate?: number;
+  /** the share of its health it takes in full a second (left out: BOSS_HP.gate.share) */
+  gateShare?: number;
 }
 
 export interface Vehicle {
@@ -473,11 +478,15 @@ export interface RunState {
   mode: RunMode;
   /** map ids of the floors of this run, in order */
   floors: string[];
+  /** Tower Run: the boss of each floor (null where there is none); left out, a boss floor has its own boss */
+  bosses?: (BossKind | null)[];
   floor: number;
   stage: 'floor' | 'shaft' | 'shop' | 'race' | 'lane' | 'maze';
   /** tick at which the current shaft or shop stage ends on its own */
   stageUntil: number;
   shop: ShopState | null;
+  /** how many lives for everyone the team has bought in the shop so far: each one makes the next dearer */
+  creditsBought?: number;
   /** the Kart Rally, while it runs */
   race?: RaceState | null;
   /** Lane Defense, while it runs: the arcade cabinet's health and the waves sent so far */
@@ -699,6 +708,8 @@ export interface SimState {
   mines: Mine[];
   coins: Coin[];
   crates: Crate[];
+  /** how many more elites drop a crate on this floor (left out: every one does) */
+  eliteCrates?: number;
   offers: Offer[];
   towers: Tower[];
   nests: Nest[];

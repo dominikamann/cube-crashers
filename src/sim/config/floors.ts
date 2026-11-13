@@ -60,6 +60,33 @@ export function runFloors(seed: number): string[] {
   return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 2, 4, 1][i]) % choices.length]);
 }
 
+/**
+ * The bosses a boss floor of a Tower Run can have, picked by the seed like the worlds: the Mega Block's arena is
+ * also where the Rhino has room to charge, and on the roof the run ends with the Segment Worm, King Rex or the
+ * Tarantula Queen. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
+ * of each list is the floor's own boss: the one a Single floor has.
+ */
+export const RUN_BOSSES: Record<string, BossKind[]> = {
+  [floorArena.id]: ['megaBlock', 'rhino'],
+  [floorUnderwater.id]: ['kraken'],
+  [floorRooftop.id]: ['worm', 'rex', 'spider'],
+};
+
+/** the boss of each floor of one run (none on a floor without one), by the seed; no boss comes twice */
+export function runBosses(seed: number, floors: string[]): (BossKind | null)[] {
+  const taken: BossKind[] = [];
+  let nth = 0;
+  return floors.map(id => {
+    const own = FLOORS[id]?.boss;
+    if (!own) return null;
+    const choices = (RUN_BOSSES[id] ?? [own]).filter(k => !taken.includes(k));
+    // a different slice of the seed than the worlds use, and another one for each boss floor
+    const boss = choices.length > 0 ? choices[Math.floor(seed / (8 << nth++)) % choices.length] : own;
+    taken.push(boss);
+    return boss;
+  });
+}
+
 /** Boss Rush: every boss in a row, each on its own arena, with a shop between them */
 export const BOSS_RUSH: { map: string; boss: BossKind }[] = [
   { map: floorArena.id, boss: 'megaBlock' },

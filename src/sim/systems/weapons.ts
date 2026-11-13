@@ -46,7 +46,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       for (let i = 0; i < bolts; i++) {
         const off = (i - (bolts - 1) / 2) * 0.25;
         const pos = { x: p.pos.x - p.aim.z * off, z: p.pos.z + p.aim.x * off };
-        s.projectiles.push(bolt(s, p, w, pos, p.aim, BLASTER.speed, BLASTER.range, damage));
+        s.projectiles.push(bolt(s, p, w, pos, p.aim, BLASTER.speed, BLASTER.range, (def.damage * BLASTER.power[w.level - 1]) / bolts));
       }
       return true;
     }

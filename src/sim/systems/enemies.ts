@@ -66,6 +66,16 @@ function nearestPlayer(players: Player[], pos: Vec2): { p: Player; d: number } |
   return best;
 }
 
+/** how far a monster that aims sees (the same as when it decides to attack, see think) */
+const SIGHT = 12;
+/** a shot or a throw called off because nobody is in sight any more: this long until the next try */
+const LOST_SIGHT_TICKS = 20;
+
+/** The living players this monster sees: in reach of its eyes, with no wall in between. */
+function inSight(s: SimState, e: Enemy, players: Player[]): Player[] {
+  return players.filter(p => dist(p.pos, e.pos) < SIGHT && hasLos(s.map, e.pos, p.pos));
+}
+
 function startWindup(s: SimState, e: Enemy, target: Vec2, ticks: number, state: 'windup' | 'fuse'): void {
   e.state = state;
   e.stateUntil = s.tick + ticks;
@@ -138,8 +148,9 @@ const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
 function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
   e.state = 'move';
-  e.cooldownUntil = s.tick + MONKEY.cooldownTicks;
-  const target = nearestPlayer(players, e.pos);
+  // only at someone it still sees: a coconut does not come over a wall from a monkey nobody can see
+  const target = nearestPlayer(inSight(s, e, players), e.pos);
+  e.cooldownUntil = s.tick + (target ? MONKEY.cooldownTicks : LOST_SIGHT_TICKS);
   if (!target) return;
   const pos = { ...target.p.pos };
   s.blasts.push({ id: s.nextId++, pos, radius: MONKEY.radius, createdAt: s.tick, at: s.tick + MONKEY.flightTicks, damage: MONKEY.damage });
@@ -210,7 +221,7 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
   const target = nearestPlayer(players, e.pos);
   if (!target) return still;
   const { p, d } = target;
-  const los = d < 12 && hasLos(s.map, e.pos, p.pos);
+  const los = d < SIGHT && hasLos(s.map, e.pos, p.pos);
   const chase = { dir: d < 1.5 && los ? unit(e.pos, p.pos) : flowDir(s.map, field, e.pos), factor: 1 };
 
   switch (e.kind) {
@@ -349,8 +360,11 @@ export function updateEnemies(s: SimState): void {
         continue;
       }
       if (e.state === 'windup' && e.kind === 'shooter') {
-        shoot(s, e);
-        e.cooldownUntil = s.tick + SHOOTER.cooldownTicks;
+        // it fires only while it still sees someone: whoever stepped behind a wall is safe from it, and it
+        // comes looking instead (see think: without sight it walks toward the players)
+        const sees = inSight(s, e, players).length > 0;
+        if (sees) shoot(s, e);
+        e.cooldownUntil = s.tick + (sees ? SHOOTER.cooldownTicks : LOST_SIGHT_TICKS);
         e.state = 'move';
       } else if (e.state === 'windup' && e.kind === 'teleporter') {
         blink(s, e, players);

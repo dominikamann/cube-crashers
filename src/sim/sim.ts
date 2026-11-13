@@ -3,7 +3,7 @@ import { PLAYER_HP } from './config/balance';
 import { DIFFICULTY } from './config/difficulty';
 import { addPlayer, defaultName, registerPlayerFactory, updateRevives } from './systems/coop';
 import type { FloorMap } from './map/tilemap';
-import { BOSS_RUSH, FLOORS, RUN_FLOORS, runFloors } from './config/floors';
+import { BOSS_RUSH, FLOORS, RUN_FLOORS, runBosses, runFloors } from './config/floors';
 import { Rng } from './rng';
 import { initRun, updateRunStage } from './systems/run';
 import { updateConveyors } from './systems/conveyors';
@@ -178,6 +178,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     flow: null,
   };
   initRun(s, mode, floors);
+  if (mode === 'run') s.run.bosses = runBosses(seed, floors);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
