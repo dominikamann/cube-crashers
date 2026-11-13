@@ -48,6 +48,7 @@ def near(px,py):
         if math.hypot(px-ax-u*dx,py-ay-u*dy)<=r: return True
     return False
 GARDEN,WATER=-2,-3
+KNOWN_NAMES=('Rathaus Bad Waldsee','Kornhaus','Pfarrkirche St. Peter','Vötschenturm Stadtmauer','Schloss Waldsee')
 grid=[['#']*N for _ in range(N)]; owner=[[GARDEN]*N for _ in range(N)]
 for y in range(N):
     for x in range(N):
@@ -70,6 +71,30 @@ for y in range(N):
 for i in range(N):
     for x,y in ((i,0),(i,N-1),(0,i),(N-1,i)):
         if owner[y][x]==-1: owner[y][x]=GARDEN
+# no way is narrower than two tiles: a kart is 1.4 wide. Where a lane is one tile, the garden beside it gives way,
+# or else the house (it loses a strip of 2.9 metres there)
+def run(x,y,dx,dy):
+    n=1
+    for s in (1,-1):
+        k=1
+        while 0<x+dx*k*s<N-1 and 0<y+dy*k*s<N-1 and grid[y+dy*k*s][x+dx*k*s]=='.': n+=1; k+=1
+    return n
+for _ in range(2):
+    opened=[]
+    for y in range(1,N-1):
+        for x in range(1,N-1):
+            if grid[y][x]!='.': continue
+            for dx,dy in ((1,0),(0,1)):
+                if run(x,y,dx,dy)>1: continue
+                sides=[(x+dx,y+dy),(x-dx,y-dy)]
+                sides=[p for p in sides if 0<p[0]<N-1 and 0<p[1]<N-1 and owner[p[1]][p[0]]!=WATER]
+                if not sides: continue
+                # a garden first; of two houses, the one that is not a landmark
+                def cost(p):
+                    o=owner[p[1]][p[0]]
+                    return 0 if o==GARDEN else 2 if houses[o]['tags'].get('name') in KNOWN_NAMES else 1
+                opened.append(min(sides,key=cost))
+    for x,y in opened: grid[y][x]='.'; owner[y][x]=-1
 used=sorted({owner[y][x] for y in range(N) for x in range(N) if owner[y][x]>=0})
 remap={h:i for i,h in enumerate(used)}
 # colours: the ones known from photos, by name or address; the rest from the old town's range of plaster tones
