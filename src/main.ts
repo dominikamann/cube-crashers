@@ -1097,11 +1097,20 @@ function startGame() {
   }
 }
 
-/** Dev helper (?demo=1|rare|nest&warp=ticks): armed player with coins. */
+/** Dev helper (?demo=1|rare|nest&warp=ticks, &boss=kind): armed player with coins. */
 function applyDemo(sim: SimState) {
   const all: WeaponKind[] = ['pixelBlaster', 'laserSword', 'candyCannon', 'bananaMine', 'bomb', 'discoBall'];
   sim.players[0].weapons = all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
+  // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
+  const bossKind = params.get('boss');
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino'].includes(bossKind)) {
+    sim.enemies = [];
+    sim.nests = [];
+    sim.boss = null;
+    sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    void import('./sim/systems/boss').then(m => m.spawnBoss(sim, bossKind as 'rex'));
+  }
   // ?demo=win: a quick floor that is won right away (to look at the result screen)
   if (params.get('demo') === 'win') {
     for (const n of sim.nests) n.state = 'destroyed';

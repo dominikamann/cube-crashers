@@ -48,6 +48,9 @@ export interface ShopActions {
 const isFinalFloor = (s: SimState) => (s.run.mode === 'run' || s.run.mode === 'bossrush') && s.run.floor === s.run.floors.length - 1;
 const bossLabel = (kind: string) => t(`boss.${kind}` as 'boss.worm');
 
+/** how the health bar is coloured: fine above half, getting dangerous above a quarter, critical below */
+export const hpLevel = (share: number): 'ok' | 'warn' | 'crit' => (share > 0.5 ? 'ok' : share > 0.25 ? 'warn' : 'crit');
+
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const layer = el('div', 'ui-layer hud ui-scaled', root);
   // the opening of a versus match: what is played, and 5 4 3 2 1 GO!
@@ -276,6 +279,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       hpNumber.textContent = String(Math.max(0, Math.ceil(p.hp)));
       // colour-blind mode: the bar also darkens from light blue to dark orange as health drops
       hpFill.style.background = isColorBlind() ? cssColor(palette().health(p.hp / p.maxHp)) : '';
+      // green is fine, orange is getting dangerous, red is critical
+      hpFill.dataset.level = hpLevel(p.hp / p.maxHp);
       danger.style.display = p.hp < 30 && p.downUntil === null && s.phase === 'playing' ? '' : 'none';
       const dashKey = `${p.dashCharges}/${maxDashCharges(p)}`;
       if (dashKey !== lastDash) {
