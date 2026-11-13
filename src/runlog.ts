@@ -1,3 +1,5 @@
+import { bossHp } from './sim/systems/boss';
+import { allBosses } from './sim/util';
 import { browserStore } from './profile';
 import { TICK_RATE, type KillCategory, type PerkKind, type SimState, type WeaponKind } from './sim/types';
 
@@ -9,6 +11,10 @@ export interface RunLog {
   difficulty: string;
   mode: string;
   result: 'won' | 'lost' | 'playing';
+  /** the boss of the fight, if there was one: which, its phase and the share of its health it had left (0 = beaten) */
+  boss?: { kind: string; phase: number; left: number } | null;
+  /** why the log was written before the run ended: a boss fell, or the game was left */
+  note?: 'bossDead' | 'left';
   durationSeconds: number;
   score: number;
   credits: number;
@@ -30,7 +36,7 @@ export interface RunLog {
   samples: { t: number; distance: number; idleSeconds: number; kills: number; alarm: number }[];
 }
 
-export function buildRunLog(s: SimState): RunLog {
+export function buildRunLog(s: SimState, note?: RunLog['note'], fallen?: string): RunLog {
   const p = s.players[0];
   let prev = { distance: 0, idleTicks: 0, kills: 0 };
   const samples = s.stats.samples.map(x => {
@@ -51,6 +57,8 @@ export function buildRunLog(s: SimState): RunLog {
     difficulty: s.difficulty,
     mode: s.run.mode,
     result: s.phase,
+    boss: s.boss ? { kind: s.boss.kind, phase: s.boss.phase, left: Math.round((bossHp(s) / Math.max(1, allBosses(s).reduce((n, b) => n + b.maxHp, 0))) * 100) / 100 } : fallen ? { kind: fallen, phase: 3, left: 0 } : null,
+    ...(note ? { note } : {}),
     durationSeconds: s.tick / TICK_RATE,
     score: s.score,
     credits: s.credits,

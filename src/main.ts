@@ -523,6 +523,8 @@ function startGame() {
       }
       for (const e of frameEvents) {
         if ((e.type === 'gameWon' || e.type === 'gameLost') && (mode === 'playing' || mode === 'paused')) finish(e.type === 'gameWon');
+        // a boss fight is worth a log of its own, even if the run goes on or is left afterwards
+        if (e.type === 'bossDead' && role !== 'client' && (mode === 'playing' || mode === 'paused')) saveRunLog(buildRunLog(view(), 'bossDead', e.kind));
       }
       frameEvents = [];
     },
@@ -916,6 +918,8 @@ function startGame() {
   }
 
   function toTitle() {
+    // a run that is left unfinished still leaves a log (how far it got, what hurt)
+    if ((mode === 'playing' || mode === 'paused') && role !== 'client' && view().phase === 'playing' && view().tick > 5 * 60) saveRunLog(buildRunLog(view(), 'left'));
     if (role !== 'solo') leaveLan(false);
     mode = 'title';
     setSplit(false);
