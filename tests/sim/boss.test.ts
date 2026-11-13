@@ -4,6 +4,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { createSim } from '../../src/sim/sim';
 import { BOSS, bossHp, megaLeap } from '../../src/sim/systems/boss';
 import { damageEnemy } from '../../src/sim/systems/combat';
+import { BOSS_HP } from '../../src/sim/config/balance';
 import { damagePlayer } from '../../src/sim/systems/player';
 import { enterFloor } from '../../src/sim/systems/run';
 import type { Enemy, SimEvent, SimState } from '../../src/sim/types';
@@ -12,6 +13,9 @@ import { rel, run } from './helpers';
 function bossFloor(kind: 'megaBlock' | 'worm', players = 1): SimState {
   const s = createSim(floor01, 4, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players });
   const index = RUN_FLOORS.findIndex(id => FLOORS[id].boss === kind);
+  // the floors' own bosses, whatever the seed would pick
+  s.run.floors = [...RUN_FLOORS];
+  s.run.bosses = undefined;
   enterFloor(s, index);
   s.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
   s.hordes = [];
@@ -67,7 +71,7 @@ describe('Mega Block', () => {
   it('scales its health with the team and the difficulty', () => {
     const one = bossFloor('megaBlock', 1);
     const four = bossFloor('megaBlock', 4);
-    expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * 1.45);
+    expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * (1 + 3 * BOSS_HP.teamStep));
   });
 
   it('leaps at a player: a big ring warns where it lands, and it comes down there', () => {
@@ -89,7 +93,8 @@ describe('Mega Block', () => {
     const s = bossFloor('megaBlock');
     const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
     const speed = boss.speed;
-    damageEnemy(s, boss, boss.maxHp * 0.4, 'pixelBlaster', 0);
+    // (set, not dealt: a boss takes one big hit only in part)
+    boss.hp = boss.maxHp * 0.6;
     run(s, 3);
     expect(boss.speed).toBeGreaterThan(speed * 1.2);
   });
@@ -97,7 +102,7 @@ describe('Mega Block', () => {
   it('enters each phase once and calls reinforcements', () => {
     const s = bossFloor('megaBlock');
     const boss = s.enemies.find(e => e.kind === 'megaBlock')!;
-    damageEnemy(s, boss, boss.maxHp * 0.4, 'pixelBlaster', 0);
+    boss.hp = boss.maxHp * 0.6;
     const events = run(s, 3);
     expect(events.filter(e => e.type === 'bossPhase')).toEqual([{ type: 'bossPhase', phase: 2 }]);
     expect(s.enemies.length).toBeGreaterThan(1);

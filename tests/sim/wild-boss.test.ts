@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
-import { FLOORS } from '../../src/sim/config/floors';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { WILD_WAKE } from '../../src/sim/systems/boss';
+import { BOSS, WILD_WAKE } from '../../src/sim/systems/boss';
 import { WILD, planWildBoss, releaseWildBoss } from '../../src/sim/systems/wild-boss';
 import { enterFloor } from '../../src/sim/systems/run';
 import type { SimState } from '../../src/sim/types';
@@ -40,7 +39,7 @@ describe('a wild boss in the Tower Run', () => {
         const s = createSim(floor01, seed, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'], players: 1 });
         if (floor > 0) enterFloor(s, floor);
         if (!s.wild) continue;
-        const own = s.run.floors.map(id => FLOORS[id].boss).filter(Boolean);
+        const own = s.run.bosses!.filter(Boolean);
         expect(own).not.toContain(s.wild.kind);
         expect(WILD.fits[s.map.id]).toContain(s.wild.kind);
         seen.add(s.wild.kind);
@@ -64,7 +63,7 @@ describe('a wild boss in the Tower Run', () => {
     expect(s.boss?.wild).toBe(true);
     expect(s.wild).toBeNull();
     const body = s.enemies.find(e => e.id === s.boss!.enemyId)!;
-    expect(body.maxHp).toBeLessThan(1600 * WILD.hp + 1);
+    expect(body.maxHp).toBeLessThan(BOSS.rexHp * WILD.hp + 1);
     expect(Math.hypot(body.pos.x - s.map.elevator.x, body.pos.z - s.map.elevator.z)).toBeLessThan(10);
     // far away: it stands still and does not attack
     p.invulnUntil = 1e9;

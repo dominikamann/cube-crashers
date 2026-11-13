@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { DIFFICULTIES, DIFFICULTY } from '../../src/sim/config/difficulty';
 import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, reachable, Tile, tileAt } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { SHOP } from '../../src/sim/systems/shop';
+import { SHOP, creditPrice, healPrice, openShop, perkPrice, shopRate, weaponPrice } from '../../src/sim/systems/shop';
 import { addKart } from '../../src/sim/systems/vehicles';
 import { damagePlayer } from '../../src/sim/systems/player';
 import type { Command, SimState, Vec2 } from '../../src/sim/types';
@@ -189,6 +190,78 @@ describe('the shop', () => {
     expect(s.credits).toBe(credits + 2);
     expect(s.players.map(p => p.lives)).toEqual([4, 4]);
     expect(s.players[1].coins).toBe(1000);
+  });
+
+  it('asks more for a weapon level the higher it is, more for a perk the more of it you have, and more on every floor', () => {
+    expect(weaponPrice(2, 0)).toBeGreaterThan(weaponPrice(1, 0));
+    expect(weaponPrice(4, 0)).toBeGreaterThanOrEqual(weaponPrice(1, 0) * 1.5);
+    expect(perkPrice(2, 0)).toBeGreaterThan(perkPrice(0, 0));
+    for (let floor = 1; floor < 5; floor++) {
+      expect(weaponPrice(1, floor)).toBeGreaterThan(weaponPrice(1, floor - 1));
+      expect(healPrice(floor)).toBeGreaterThan(healPrice(floor - 1));
+      expect(creditPrice(0, floor, 1)).toBeGreaterThan(creditPrice(0, floor - 1, 1));
+    }
+    // what the shop shows is what these say
+    const s = shop(0);
+    const p = s.players[0];
+    const offers = s.run.shop!.offers[0];
+    const weapon = offers.find(o => o.kind === 'weapon')!;
+    const prices = DIFFICULTY.medium.prices;
+    expect(weapon.cost).toBe(weaponPrice(p.weapons.find(w => w.kind === weapon.weapon)!.level, 0, prices));
+    expect(offers.find(o => o.kind === 'perk')!.cost).toBe(perkPrice(0, 0, prices));
+    expect(offers.find(o => o.kind === 'heal')!.cost).toBe(healPrice(0, prices));
+    // the harder levels, with their bigger hordes and more coins, ask more
+    expect(DIFFICULTIES.map(d => DIFFICULTY[d].prices)).toEqual([...DIFFICULTIES.map(d => DIFFICULTY[d].prices)].sort((a, b) => a - b));
+    expect(healPrice(0, DIFFICULTY.ultraHigh.prices)).toBeGreaterThan(healPrice(0, DIFFICULTY.ultraLow.prices));
+  });
+
+  it('makes everything dearer for a player with each thing they buy, at once and in the shops to come', () => {
+    const s = shop(100_000);
+    const offers = s.run.shop!.offers[0];
+    const heal = offers.findIndex(o => o.kind === 'heal'), perk = offers.findIndex(o => o.kind === 'perk');
+    const before = offers[perk].cost, other = s.run.shop!.offers[1][perk].cost;
+    stepSim(s, [buy(0, heal)]);
+    expect(s.players[0].bought).toBe(1);
+    expect(offers[perk].cost).toBe(perkPrice(0, 0, shopRate(s, s.players[0])));
+    expect(offers[perk].cost).toBeGreaterThan(before);
+    // what is sold keeps the price it went for, and the other player's prices are their own
+    expect(offers[heal].cost).toBe(healPrice(0, DIFFICULTY.medium.prices));
+    expect(s.run.shop!.offers[1][perk].cost).toBe(other);
+    expect(shopRate(s, s.players[0])).toBeCloseTo(DIFFICULTY.medium.prices * (1 + SHOP.perPurchase), 6);
+  });
+
+  it('the life for everyone is the dearest offer, dearer for a bigger team and dearer every time one is bought', () => {
+    const s = shop(100_000);
+    const offers = s.run.shop!.offers[0];
+    const life = offers.find(o => o.kind === 'credit')!;
+    expect(life.cost).toBe(creditPrice(0, 0, 2, DIFFICULTY.medium.prices));
+    expect(creditPrice(0, 0, 2)).toBeGreaterThan(creditPrice(0, 0, 1));
+    for (const o of offers) if (o !== life) expect(life.cost).toBeGreaterThanOrEqual(o.cost * 2);
+    stepSim(s, [buy(0, offers.indexOf(life))]);
+    expect(s.run.creditsBought).toBe(1);
+    // the next shop: one floor higher, and one life bought before
+    for (const id of [0, 1]) stepSim(s, [{ type: 'ready', playerId: id }]);
+    run(s, 2);
+    expect(s.run.floor).toBe(1);
+    // (straight to the shop after this floor: which game comes between the floors is not this test's business)
+    openShop(s);
+    expect(s.run.stage).toBe('shop');
+    const next = s.run.shop!.offers[0].find(o => o.kind === 'credit')!;
+    expect(next.cost).toBe(creditPrice(1, 1, 2, shopRate(s, s.players[0])));
+    expect(next.cost).toBeGreaterThan(life.cost * 2);
+  });
+
+  it('keeps its flat, low prices in the Boss Rush, where there is little to earn', () => {
+    const s = createSim(floor01, 5, { mode: 'bossrush' });
+    s.enemies = [];
+    s.boss = null;
+    s.elevatorOpen = true;
+    s.players[0].pos = { ...s.map.elevator };
+    stepSim(s, []);
+    expect(s.run.stage).toBe('shop');
+    const offers = s.run.shop!.offers[0];
+    expect(offers.find(o => o.kind === 'credit')!.cost).toBe(SHOP.rush.creditCost);
+    expect(offers.find(o => o.kind === 'heal')!.cost).toBe(SHOP.rush.healCost);
   });
 
   it('heals fully', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepSim } from '../../src/sim/sim';
-import { comboMult, damageEnemy } from '../../src/sim/systems/combat';
+import { comboMult, damageEnemy, coinValue } from '../../src/sim/systems/combat';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { damagePlayer } from '../../src/sim/systems/player';
 import { dash, jump, move, quietSim, rel, run } from './helpers';
@@ -115,7 +115,7 @@ describe('combo', () => {
     }
   }
 
-  it('reaches x2 after 10 kills and doubles coin value and score', () => {
+  it('reaches x2 after 10 kills and doubles the score', () => {
     const s = quietSim();
     const p = s.players[0];
     killBlobs(s, 9);
@@ -125,9 +125,19 @@ describe('combo', () => {
     expect(comboMult(p)).toBe(2);
     expect(s.events).toContainEqual({ type: 'comboUp', playerId: 0, mult: 2 });
     expect(s.score).toBe(110);
-    expect(s.coins[s.coins.length - 1].value).toBe(2);
     expect(s.stats.maxCombo).toBe(10);
     expect(s.stats.kills.weapon).toBe(10);
+  });
+
+  it('makes coins worth more too, but only by a quarter of what it does to the score', () => {
+    expect([1, 2, 3, 5, 7, 10].map(m => coinValue(m, 0))).toEqual([1, 1, 2, 2, 3, 3]);
+    // every Coin Bonus perk adds a quarter on top
+    expect(coinValue(1, 3)).toBe(2);
+    expect(coinValue(10, 3)).toBe(6);
+    const s = quietSim();
+    s.players[0].combo = 100;
+    killBlobs(s, 1);
+    expect(s.coins[s.coins.length - 1].value).toBe(coinValue(10, 0));
   });
 
   it('is capped at x10', () => {

@@ -24,7 +24,7 @@ describe('versus chaos with a boss', () => {
     expect(['rex', 'rhino']).toContain(s.boss!.kind);
     expect(s.boss!.wild).toBe(true);
     expect(s.boss!.waiting).toBeUndefined();
-    expect(s.boss!.maxHp).toBeLessThan(1600);
+    expect(s.boss!.maxHp).toBeLessThan(1000);
   });
 
   it('beating it does not end the match, and the next one takes its time', () => {

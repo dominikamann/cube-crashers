@@ -78,6 +78,8 @@ export function floorCleared(s: SimState): void {
   s.events.push({ type: 'floorCleared', floor: s.run.floor });
   // the floor is done: whoever was out is back, with one life, for the game between the floors and the next floor
   backIn(s);
+  // (the games between the floors hand out what they like)
+  s.eliteCrates = undefined;
   // a hidden heart nobody found stays behind
   s.heart = null;
   // Boss Rush: no games in between, just the shop before the next boss

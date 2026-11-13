@@ -177,10 +177,11 @@ See [Development](#development). You need Node.js 20 or newer.
    elevator. Arrows at the screen edge point to the nearest nests, and each nest has a pink light beam.
 3. **Destroy every nest:**
    - Walk up to a nest and **hold E for one second** to plant a charge (a bar shows the progress). The nest
-     turns red and starts shaking.
+     turns red and draws in to a small heap, so what you see is the zone.
    - Now **hold the zone** for 25 seconds: the floor tiles around the nest, framed in pink. They light up
      one by one as you hold it. Hordes storm in from the approaches, so build **towers** on the pads nearby.
-   - The nest fights back: a red ring marks where it will blast next, right under your feet. **Keep moving.**
+   - The nest itself does nothing to you while you hold it: what comes for you are the hordes. Monsters that
+     shoot or throw only do so while they see you, so a wall between you and them is cover; they come looking.
    - If you leave the zone, the counter slowly runs back, but the charge stays.
 4. When all nests are gone the **elevator opens**. Step in to clear the floor and ride up to the next one.
 
@@ -200,9 +201,12 @@ best weapon, best combo, towers built, coins collected, revives and downs.
   launch a kart over.
 - **Glitch floor** (purple, with a crossed-out monster) stops monsters but hurts you. Jump over it.
 - **Boost pads** (blue with a lightning bolt) make karts faster.
-- **Combo:** keep killing without a 3-second break. The multiplier (up to ×10) boosts coins and score.
+- **Combo:** keep killing without a 3-second break. The multiplier (up to ×10) boosts the score, and makes
+  coins worth more too (up to about ×3).
 - **Crates** open into three cards: pick a new weapon, a weapon level-up or a perk by walking into it. Very
-  rarely a **golden card** gives you a rare weapon for 60 seconds.
+  rarely a **golden card** gives you a rare weapon for 60 seconds. They are scarce: one or two lie around on a
+  floor, every second nest leaves one (the first one does), and only one or two elites of a floor drop one
+  (see [Difficulty](#difficulty)).
 
 ---
 
@@ -212,12 +216,12 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 |---|---|---|---|
 | 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
-| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
+| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block** *or* the **Rhino** in the arena, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
-| 5 | Rooftop | **Final boss: Segment Worm** | – |
+| 5 | Rooftop | **Final boss: Segment Worm**, **King Rex** *or* the **Tarantula Queen** | – |
 
-Which world each floor is depends on the run (its seed), so no two runs look quite the same; on the LAN
-everyone gets the same ones. Every world can also be played on its own under **Single floor**.
+Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
+look quite the same; no boss comes twice in a run, and on the LAN everyone gets the same ones. Every world can also be played on its own under **Single floor**.
 
 **Wild bosses:** now and then a smaller boss waits by the elevator once the last nest has fallen: rarely on
 the first floor, more often the higher you are. It is never a boss your run has a floor for, and always one that
@@ -245,8 +249,11 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
-  or +1 life for everyone (expensive, once per shop). Buy with **1–4** or a click, press **Enter** when you
-  are ready. The shop closes after 25 seconds or when everyone is ready.
+  or +1 life for everyone (the dearest offer, once per shop). Buy with **1–4** or a click, press **Enter** when
+  you are ready. The shop closes after 25 seconds or when everyone is ready. Coins are meant to be a decision:
+  every shop is dearer than the one before, a weapon level costs more the higher it is, everything you buy makes
+  the rest dearer for you, and the life for everyone costs more every time the team buys one (and more for a
+  bigger team). The harder levels, where bigger hordes leave more coins, ask more for everything.
 - **Mega Block:** a huge armoured block with three phases, faster in each. It stomps (red rings), from phase 2
   it **leaps at you** (a big ring shows where it lands), it sends shockwaves along lines (a cross of four in phase 3)
   and calls reinforcements. Get out of the marked areas.
@@ -256,9 +263,14 @@ Between the floors the elevator takes you to a short game of its own, then to th
   about from the start, the Kraken keeps calling new ones, faster each phase, and a big school at each new phase.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
-- The **Segment Worm is the final boss**. Bosses shrug off stomps and kart rams (a quarter of the damage), so bring your weapons.
+- The boss of the last floor is the **final boss**: it has twice the health. Bosses shrug off stomps and kart
+  rams (a quarter of the damage), so bring your weapons.
+- **A boss is a fight for every team:** its health grows with the number of players (three quarters of a boss
+  for every extra player) and a little with the level of the best weapon each player carries (less than the
+  level gives the weapon, so a better weapon always wins sooner). And no boss can be burst down: it takes about
+  3 % of its health a second in full, and only a fifth of whatever hits it beyond that.
 - Weapons, perks, coins and lives come with you to the next floor. Towers, karts, monsters and the alarm start
-  fresh. Beat the Segment Worm and take the last elevator to win the run.
+  fresh. Beat the final boss and take the last elevator to win the run.
 
 ---
 
@@ -575,7 +587,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 
 | Weapon | What it does |
 |---|---|
-| **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels. |
+| **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels (two at level 3, three at level 5, together three times the damage of level 1). |
 | **Laser Sword** | Wide swing toward the crosshair. |
 | **Candy Cannon** | Spread of candy pellets. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
@@ -589,7 +601,8 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Magnet Glove** | Pulls the monsters in front of you together at the crosshair (then throw a bomb). Yanks rivals toward you. |
 | **Yo-yo Launcher** | Out and straight back on its string, hitting on both ways. Short and quick. |
 
-Hits from up close (within 3 tiles) deal **50 % more damage**.
+Hits from up close (within 3 tiles) deal **50 % more damage** to monsters (not to bosses, which you cannot
+help standing next to).
 
 ### Rare weapons (golden cards, 60 seconds, key `Q`)
 
@@ -679,7 +692,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Hunter** | Fast, goes straight for you. | – |
 | **Armor Block** | Slow and very tough. | – |
 | **Splitter** | Splits into two small splitlings. | – |
-| **Shooter** | Keeps its distance and fires slow red bullets. Jump over them. | Aim line on the ground |
+| **Shooter** | Keeps its distance and fires slow red bullets, only while it sees you: walls stop its sight and its shots. Jump over them. | Aim line on the ground |
 | **Bomber** | Runs at you and blows up. Shoot it first and it explodes among its friends. | Blinking fuse, red ring |
 | **Rammer** | Charges at you and turns a little as it runs; stunned when it hits a wall. A small step aside is not enough: run. | Red lane on the ground |
 | **Glitch Swarmer** | Small and weak, flies over walls during the shaft ride. | – |
@@ -687,19 +700,19 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Healer** | Stays back and mends the monsters around it. Take it out first. | Green cross, green sparkles |
 | **Teleporter** | Shimmers, then blinks right next to you. | It flickers before it blinks |
 | **Crocodile** | Heavy and tough. Lunges a short way with a snap of its jaws. | Red lane on the ground |
-| **Monkey** | Keeps its distance and throws coconuts that burst where you stood. | Red ring where it lands |
+| **Monkey** | Keeps its distance and throws coconuts that burst where you stood, only while it sees you. | Red ring where it lands |
 | **T-Rex** | The biggest of them all: roars, then stomps everything around it. Shows up once the alarm has risen. | Red ring around it |
 | **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls straight at you over walls and barriers, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
-| **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
+| **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl, and the final boss of some Tower Runs. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
-| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
-| **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
-| **Mega Block** | Boss of floor 3. | Red rings, marked lines |
-| **Segment Worm** | Boss of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
-| **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
+| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Charges like mad and flings whoever it hits. | Red lane on the ground |
+| **King Rex** | The last boss of the Boss Rush; in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
+| **Mega Block** | Boss of floor 3 (in some runs the Rhino or the Kraken takes its place). | Red rings, marked lines |
+| **Segment Worm** | One of the three final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
+| **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
 
 ---
 
@@ -707,13 +720,16 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 
 Chosen on the title screen (alone) or in the lobby (by the host).
 
-| Level | Monster health | Monster damage | Horde size | Lives | Alarm speed | Points |
-|---|---|---|---|---|---|---|
-| Ultra Low | ×0.5 | ×0.35 | ×0.5 | 4 | half speed | ×0.5 |
-| Low | ×0.75 | ×0.5 | ×0.65 | 3 | slower | ×0.75 |
-| Medium | ×1 | ×1 | ×1 | 3 | normal | ×1 |
-| High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
-| Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |
+| Level | Monster health | Boss health | Monster damage | Horde size | Lives | Alarm speed | Points | Crates on a floor (lying around + nests + elites) | Shop prices |
+|---|---|---|---|---|---|---|---|---|---|
+| Ultra Low | ×0.5 | ×0.8 | ×0.35 | ×0.5 | 4 | half speed | ×0.5 | 1 + 2 + 1 | ×1 |
+| Low | ×0.75 | ×0.9 | ×0.5 | ×0.65 | 3 | slower | ×0.75 | 1 + 2 + 1 | ×1.25 |
+| Medium | ×1 | ×1 | ×1 | ×1 | 3 | normal | ×1 | 2 + 2 + 1 | ×1.75 |
+| High | ×1.25 | ×1.2 | ×1.25 | ×1.2 | 3 | faster | ×1.5 | 2 + 2 + 2 | ×2 |
+| Ultra High | ×1.5 | ×1.4 | ×1.5 | ×1.4 | 2 | much faster | ×2 | 2 + 2 + 2 | ×2.25 |
+
+Bosses are closer together across the levels than the monsters, so a boss is a fight on Ultra Low too (see
+[the run](#the-run-five-floors-a-different-game-between-them-shop-bosses) for how its health follows the team).
 
 On **Ultra Low** and **Low** you heal slowly (6 or 3 health per second) after 4 seconds without being hit;
 half as fast while a boss is after you.

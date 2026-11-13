@@ -33,9 +33,12 @@ export function createBot(): (s: SimState) => Command[] {
   return s => {
     const p = s.players[0];
     if (s.run.stage === 'shop') {
-      // buy whatever is affordable, then go
-      const offers = s.run.shop!.offers[p.id] ?? [];
-      const i = offers.findIndex(o => !o.sold && o.cost <= p.coins && o.kind !== 'credit');
+      // what keeps it alive first (a heal when hurt, a life when few are left), then whatever else is affordable
+      const shop = s.run.shop!;
+      const offers = shop.offers[p.id] ?? [];
+      const can = (kind: string) => offers.findIndex(o => o.kind === kind && !o.sold && o.cost <= p.coins);
+      const want = [p.hp < p.maxHp * 0.7 ? can('heal') : -1, (p.lives ?? 0) <= 2 && !shop.creditSold ? can('credit') : -1, can('weapon'), can('perk')];
+      const i = want.find(x => x >= 0) ?? -1;
       return i >= 0 ? [{ type: 'buy', playerId: 0, offer: i }] : [{ type: 'ready', playerId: 0 }];
     }
     if (p.downUntil !== null) return [];
@@ -51,32 +54,36 @@ export function createBot(): (s: SimState) => Command[] {
       return [{ type: 'move', playerId: 0, dir: flowDir(s.map, field, p.pos) }];
     }
     if (s.run.stage === 'maze' && s.run.maze) {
-      // Glitch Maze: head for the nearest pixel, run from a ghost that gets close (unless powered up)
+      // Glitch Maze: the shortest way to a pixel that keeps clear of the ghosts (the maze has no clock: a bot
+      // that walks into them is sent back to the start for ever), straight at them while powered up
       const maze = s.run.maze;
       const powered = s.tick < maze.powerUntil;
-      const ghost = s.enemies.filter(e => e.kind === 'ghost').sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos))[0];
-      if (ghost && !powered && d(ghost.pos, p.pos) < 3) {
-        const len = d(ghost.pos, p.pos) || 1;
-        return [{ type: 'move', playerId: 0, dir: { x: (p.pos.x - ghost.pos.x) / len, z: (p.pos.z - ghost.pos.z) / len } }];
-      }
-      let best = -1, bestD = Infinity;
-      for (const i of maze.pixels) {
-        const dd = Math.abs(MAZE_DOTS[i].x - p.pos.x) + Math.abs(MAZE_DOTS[i].z - p.pos.z);
-        if (dd < bestD) {
-          bestD = dd;
-          best = i;
-        }
-      }
-      if (best < 0) return [];
-      // a pixel lies where four tiles meet: aim for the middle of one of them, walking by collects it
-      const target = { x: MAZE_DOTS[best].x + 0.5, z: MAZE_DOTS[best].z + 0.5 };
-      const key = `maze:${best}`;
+      const ghosts = s.enemies.filter(e => e.kind === 'ghost');
+      const dots = maze.pixels.map(i => ({ x: MAZE_DOTS[i].x + 0.5, z: MAZE_DOTS[i].z + 0.5 }));
+      if (dots.length === 0) return [];
+      // a pixel lies where four tiles meet: walking by the middle of one of them collects it
+      const near = dots.reduce((a, c) => (d(c, p.pos) < d(a, p.pos) ? c : a));
+      if (d(near, p.pos) < 1.2) return [{ type: 'move', playerId: 0, dir: { x: near.x - p.pos.x, z: near.z - p.pos.z } }];
+      const key = `maze:${Math.floor(s.tick / 10)}`;
       if (key !== fieldKey || !field) {
         fieldKey = key;
-        field = buildFlowField(s.map, [target], BLOCKS_WALKER);
+        const danger = new Set<number>();
+        if (!powered)
+          for (const g of ghosts)
+            for (let oz = -3; oz <= 3; oz++)
+              for (let ox = -3; ox <= 3; ox++) {
+                const tx = Math.floor(g.pos.x) + ox, tz = Math.floor(g.pos.z) + oz;
+                if (Math.hypot(tx + 0.5 - g.pos.x, tz + 0.5 - g.pos.z) <= 3 && (tx !== Math.floor(p.pos.x) || tz !== Math.floor(p.pos.z))) danger.add(tz * s.map.w + tx);
+              }
+        field = buildFlowField(s.map, dots, BLOCKS_WALKER, danger);
       }
-      const close = d(target, p.pos) < 1.2;
-      return [{ type: 'move', playerId: 0, dir: close ? { x: target.x - p.pos.x, z: target.z - p.pos.z } : flowDir(s.map, field, p.pos) }];
+      const way = flowDir(s.map, field, p.pos);
+      if (way.x !== 0 || way.z !== 0) return [{ type: 'move', playerId: 0, dir: way }];
+      // no way that is clear: away from the nearest ghost
+      const ghost = ghosts.sort((a, b) => d(a.pos, p.pos) - d(b.pos, p.pos))[0];
+      if (!ghost) return [];
+      const len = d(ghost.pos, p.pos) || 1;
+      return [{ type: 'move', playerId: 0, dir: { x: (p.pos.x - ghost.pos.x) / len, z: (p.pos.z - ghost.pos.z) / len } }];
     }
     const cmds: Command[] = [];
     const enemies = s.enemies.filter(e => e.hp > 0);
@@ -108,14 +115,15 @@ export function createBot(): (s: SimState) => Command[] {
 
     let move = { x: 0, z: 0 };
     // a boss floor has no nest: keep the boss at shooting range and circle it
-    const bossId = s.boss ? (s.boss.enemyId ?? s.boss.worms[0]?.[0]) : undefined;
-    const boss = bossId === undefined ? undefined : s.enemies.find(e => e.id === bossId && e.hp > 0);
+    // (of the Segment Worm: any segment still alive, of whichever worm it has split into)
+    const bossIds = s.boss ? (s.boss.enemyId !== null ? [s.boss.enemyId] : s.boss.worms.flat()) : [];
+    const boss = s.enemies.find(e => bossIds.includes(e.id) && e.hp > 0);
     const atNest = nest && goal === nest.pos && d(nest.pos, p.pos) < 2.2;
     const holding = nest && goal === nest.pos && nest.state === 'planted' && d(nest.pos, p.pos) < 4.5;
     if (atNest && nest.state === 'idle') {
       cmds.push({ type: 'hold', playerId: 0 });
     } else if (holding) {
-      // keep circling inside the zone (the nest blasts whoever stands still) and lean away from what is close
+      // keep circling inside the zone (a moving target for the rushes) and lean away from what is close
       const rx = p.pos.x - nest.pos.x, rz = p.pos.z - nest.pos.z;
       const r = Math.hypot(rx, rz) || 1;
       const pull = (3.2 - r) * 0.8;
@@ -136,6 +144,19 @@ export function createBot(): (s: SimState) => Command[] {
     } else {
       move = d(goal, p.pos) < 1.2 ? { x: goal.x - p.pos.x, z: goal.z - p.pos.z } : flowDir(s.map, field, p.pos);
     }
+    // out of a marked area before it goes off (a boss's strike, a coconut, a stomp): the one thing every
+    // player learns first
+    const blast = s.blasts.filter(b => !b.hidden && d(b.pos, p.pos) < b.radius + 0.4).sort((a, b) => a.at - b.at)[0];
+    if (blast) {
+      const bx = p.pos.x - blast.pos.x, bz = p.pos.z - blast.pos.z, bl = Math.hypot(bx, bz);
+      // (standing in its very middle: any way out will do, the one it was walking first)
+      const ml = Math.hypot(move.x, move.z);
+      const on = ml > 0.05 ? { x: move.x / ml, z: move.z / ml } : { x: 1, z: 0 };
+      // (mostly straight out of it, a little the way it was going, so it does not back into what it kept away from)
+      move = bl > 0.05 ? { x: bx / bl + on.x * 0.5, z: bz / bl + on.z * 0.5 } : on;
+    }
+    // up on a wall top (a jump took it there) the way along the floor says nothing: step off toward the goal
+    if (p.perched && move.x === 0 && move.z === 0) move = { x: goal.x - p.pos.x, z: goal.z - p.pos.z };
     cmds.push({ type: 'move', playerId: 0, dir: move });
 
     // build a tower when standing on a free pad with coins to spare

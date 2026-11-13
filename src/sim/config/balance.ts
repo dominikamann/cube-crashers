@@ -19,6 +19,21 @@ export const STOMP_KNOCKBACK = 6;
 /** bosses take only this share of stomp and kart damage: they have to be shot */
 export const BOSS_BODY_RESIST = 0.25;
 
+/**
+ * How tough a boss is. Its health follows the firepower it meets, so a fight stays a fight: most of a player's
+ * worth for every extra player, a little for every level of the best weapon each player carries (less than the
+ * level gives the weapon: a better weapon always wins sooner), and double on the last floor of a Tower Run.
+ * `gate`: a boss cannot be burst down. It takes `share` of its health a second in full (up to `bank` seconds'
+ * worth saved up); of what hits it beyond that, only `excess` counts. (The last floor's boss takes the same
+ * amount a second in full as it would with single health, so its double health is double the fight.)
+ */
+export const BOSS_HP = {
+  teamStep: 0.75,
+  perLevel: 0.12,
+  final: 2,
+  gate: { share: 0.03, bank: 1, excess: 0.2 },
+};
+
 export const DASH_TICKS = 9;
 /** 4 tiles in 0.15 s */
 export const DASH_SPEED = 4 / (DASH_TICKS / 60);
@@ -28,6 +43,8 @@ export const DASH_RECHARGE_TICKS = 72;
 export const COMBO_TICKS = 180;
 export const COMBO_STEP = 10;
 export const COMBO_MAX_MULT = 10;
+/** the combo multiplies the score in full, but a coin's worth only by this share of it (x10 on the score: x3.25 on the coins) */
+export const COMBO_COIN_SHARE = 0.25;
 
 export const COIN_LIFETIME_TICKS = 480;
 export const MAGNET_RADIUS = 2.5;
@@ -101,9 +118,6 @@ export const ELEVATOR_RADIUS = 1.5;
 export const CREDIT_BONUS = 500;
 export const PAR_SECONDS = 360;
 export const TIME_BONUS_PER_SECOND = 10;
-
-/** a planted nest fights back: it blasts the ground under whoever holds the zone */
-export const NEST_DEFENCE = { firstTicks: 90, intervalTicks: 100, intervalPerAlarm: 10, warnTicks: 50, radius: 2.0, damage: 25 };
 
 export const MAX_PLAYERS = 10;
 /** a downed teammate can be helped up for this long */

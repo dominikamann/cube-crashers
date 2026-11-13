@@ -1,11 +1,12 @@
 import { clearSpot } from './ground';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
+import { BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
-import { hpScale } from './coop';
+import { DIFFICULTY } from '../config/difficulty';
+import { ENEMIES } from '../config/enemies';
 import { layEggs } from './eggs';
 import { clearOfBorder, insideBorder } from '../map/border';
 import { KRAKEN_REACH, QUEEN_REACH } from './enemies';
@@ -60,7 +61,7 @@ export const BOSS = {
   seaCap: 30,
   /** King Rex: how much faster than a common T-Rex, and how much faster again with each phase */
   /** Angry Dominik, the very last boss: laser eyes and a hammer */
-  dominikHp: 3200,
+  dominikHp: 4200,
   dominikSpeed: 3.4,
   /** what his hammer and his lightning do, and how much more often he attacks than the other bosses */
   dominikDamage: 42,
@@ -77,14 +78,14 @@ export const BOSS = {
   hammerChance: 0.8,
   /** the Tarantula Queen: she pounces, spins webs and strikes with her fangs; when she falls she bursts into her
    *  brood, and the fight is over when the last of them is gone */
-  spiderHp: 2100,
+  spiderHp: 1800,
   spiderSpeed: 3.1,
   spiderRadius: 1.25,
   spiderBrood: 21,
   /** she calls this many of them to her side with every phase */
   spiderCall: 4,
   spiderFangs: 5,
-  rexHp: 1600,
+  rexHp: 1700,
   rexSpeed: 1.75,
   rexPhaseSpeed: 1.2,
   /** it attacks this much more often than the other bosses */
@@ -97,10 +98,23 @@ export const BOSS = {
   rexOuterRing: 12,
   rexOuterRadius: 8,
   /** the Rhino: a rammer grown to boss size that charges like mad (a charge that hits flings the player, see enemies.ts) */
-  rhinoHp: 1500,
+  rhinoHp: 1700,
   /** King Rex's roar: the ground cracks in a ring around it */
   roarRadius: 4.5,
 };
+
+/** the last floor of a Tower Run: its boss has double the health */
+const finalFloor = (s: SimState) => s.run.mode === 'run' && s.run.floor === s.run.floors.length - 1;
+
+/** the factor on a boss's health, for the team in the game right now (see BOSS_HP) */
+export function bossScale(s: SimState): number {
+  const best = s.players.map(p => Math.max(1, ...p.weapons.map(w => w.level)));
+  const arms = best.length > 0 ? best.reduce((n, l) => n + l, 0) / best.length : 1;
+  const final = finalFloor(s);
+  // (rivals in a versus match do not fight it as a team: there it grows like any monster)
+  const team = 1 + (s.versus ? TEAM_HP_STEP : BOSS_HP.teamStep) * Math.max(0, s.players.length - 1);
+  return DIFFICULTY[s.difficulty].bossHp * team * (1 + BOSS_HP.perLevel * (arms - 1)) * (final ? BOSS_HP.final : 1);
+}
 
 const REINFORCEMENTS: Record<2 | 3, HordeComp> = {
   2: [{ kind: 'blob', count: 8 }, { kind: 'shooter', count: 2 }],
@@ -134,15 +148,17 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
   let b: BossState;
   if (kind === 'megaBlock' || kind === 'rex' || kind === 'kraken' || kind === 'rhino') {
     const e = spawnEnemy(s, kind === 'rex' ? 'trex' : kind === 'rhino' ? 'rammer' : kind, centre);
+    // (a boss's health goes by its own scale, not the monsters')
+    e.hp = e.maxHp = ENEMIES[e.kind].hp * bossScale(s);
     if (kind === 'rhino') {
       // the Rhino: a rammer grown to boss size, faster on its feet
-      e.hp = e.maxHp = BOSS.rhinoHp * hpScale(s);
+      e.hp = e.maxHp = BOSS.rhinoHp * bossScale(s);
       e.radius = 1.3;
       e.speed *= 1.5;
     }
     if (kind === 'rex') {
       // King Rex: a T-Rex grown to boss size
-      e.hp = e.maxHp = BOSS.rexHp * hpScale(s);
+      e.hp = e.maxHp = BOSS.rexHp * bossScale(s);
       e.radius = 1.3;
       e.speed *= BOSS.rexSpeed;
     }
@@ -150,14 +166,14 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
   } else if (kind === 'spider') {
     // the Tarantula Queen walks like a tank in the rules too, with a body of her own
     const e = spawnEnemy(s, 'tank', centre);
-    e.hp = e.maxHp = BOSS.spiderHp * hpScale(s);
+    e.hp = e.maxHp = BOSS.spiderHp * bossScale(s);
     e.radius = BOSS.spiderRadius;
     e.speed = BOSS.spiderSpeed;
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else if (kind === 'dominik') {
     // Angry Dominik walks like a tank in the rules, but is a body of his own
     const e = spawnEnemy(s, 'tank', centre);
-    e.hp = e.maxHp = BOSS.dominikHp * hpScale(s);
+    e.hp = e.maxHp = BOSS.dominikHp * bossScale(s);
     e.radius = BOSS.dominikRadius;
     e.speed = BOSS.dominikSpeed;
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
@@ -168,12 +184,16 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     for (let i = 0; i < BOSS.wormSegments; i++) {
       const pos = { x: centre.x, z: centre.z + toMiddle * i * BOSS.wormSpacing };
       // on a map with walls in the way each segment starts on the nearest free floor
-      ids.push(spawnEnemy(s, 'wormSegment', at ? nearestFree(s.map, pos, 0.5, BLOCKS_ENEMY) : pos).id);
+      const seg = spawnEnemy(s, 'wormSegment', at ? nearestFree(s.map, pos, 0.5, BLOCKS_ENEMY) : pos);
+      seg.hp = seg.maxHp = ENEMIES.wormSegment.hp * bossScale(s);
+      ids.push(seg.id);
     }
     // the bar and the phases count from what the segments really have
     b = { kind, maxHp: ids.reduce((sum, id) => sum + (byId(s, id)?.hp ?? 0), 0), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
   }
   b.nextAttackAt = s.tick + 3 * TICK_RATE;
+  // (the last boss's double health is not twice as quick to shoot off: what it takes in full a second stays the same)
+  if (finalFloor(s)) b.gateShare = BOSS_HP.gate.share / BOSS_HP.final;
   if (kind === 'kraken') {
     // the sea bed is alive: a few schools already swim about, away from where the players come in
     const far = s.map.waypoints.filter(w => dist(w, s.map.spawn) > 12 && dist(w, centre) > 6);
@@ -672,6 +692,9 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
 }
 
 function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
+  // what it takes in full fills up again (see BOSS_HP.gate)
+  const perSecond = b.maxHp * (b.gateShare ?? BOSS_HP.gate.share);
+  b.gate = Math.min(perSecond * BOSS_HP.gate.bank, (b.gate ?? Infinity) + perSecond / TICK_RATE);
   drag(s, b, intents);
   leap(s, b);
   laser(s, b);
