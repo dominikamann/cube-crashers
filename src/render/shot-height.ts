@@ -32,7 +32,10 @@ export function aimedReach(from: Vec2, dir: Vec2, targets: Vec2[]): number {
   return Math.max(SHOT_HEIGHT.near, best === Infinity ? SHOT_HEIGHT.reach : best);
 }
 
-/** How far above its usual height a shot is that was fired `lift` up, after `travelled` of its way of `reach`. */
-export function shotLift(lift: number, travelled: number, reach: number): number {
-  return lift * Math.max(0, 1 - travelled / reach);
+/**
+ * How far above its usual height a shot is after `travelled` of its way of `reach`: it was fired `lift` up and
+ * is `end` up where it arrives (0: down on the floor; the height of someone on a jetpack it was aimed at).
+ */
+export function shotLift(lift: number, travelled: number, reach: number, end = 0): number {
+  return lift + (end - lift) * Math.min(1, Math.max(0, travelled / reach));
 }

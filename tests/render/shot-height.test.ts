@@ -18,4 +18,9 @@ describe('shots from above', () => {
     expect(shotLift(2.5, 5, 5)).toBe(0);
     expect(shotLift(2.5, 7, 5)).toBe(0);
   });
+  it('go up to someone on a jetpack, and stay up there', () => {
+    expect(shotLift(0, 2, 4, 2.5)).toBeCloseTo(1.25);
+    expect(shotLift(0, 6, 4, 2.5)).toBe(2.5);
+    expect(shotLift(2.5, 3, 4, 2.5)).toBe(2.5);
+  });
 });

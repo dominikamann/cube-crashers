@@ -14,9 +14,17 @@ function shotAt(s: SimState): void {
 }
 
 describe('shots at a rival in the air', () => {
-  it('from the ground they pass under a rival on a jetpack', () => {
+  it('from the ground they hit a rival on a jetpack: you aim up at them', () => {
     const s = match();
     s.players[1].flying = true;
+    shotAt(s);
+    updateProjectiles(s);
+    expect(s.players[1].hp).toBeLessThan(s.players[1].maxHp);
+  });
+
+  it('a jump still takes a rival over a shot', () => {
+    const s = match();
+    s.players[1].air = 10;
     shotAt(s);
     updateProjectiles(s);
     expect(s.players[1].hp).toBe(s.players[1].maxHp);

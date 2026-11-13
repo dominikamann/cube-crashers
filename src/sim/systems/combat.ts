@@ -306,13 +306,12 @@ export function updateProjectiles(s: SimState): void {
     }
     // versus: shots hit rivals (each player once per shot; player marks are negative so they never clash with enemy ids)
     if (alive && s.versus && p.ownerId >= 0) {
-      // (a rival in the air is out of reach from the ground, but not for someone who is up on a jetpack too)
-      const owner = s.players.find(x => x.id === p.ownerId);
-      const up = !!owner && (owner.flying || (owner.descent ?? 0) > 0);
+      // (a rival on a jetpack can be shot at like anyone, from the ground or from the air: you aim up at them.
+      // Only a jump takes you over a shot.)
       for (const r of rivals(s, p.ownerId)) {
         const mark = -1 - r.id;
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || (airborne(r) && !up) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        if (p.hitIds.includes(mark) || (r.air > 0 && !r.flying && !(r.descent ?? 0)) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
         damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {

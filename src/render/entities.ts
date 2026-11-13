@@ -141,7 +141,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     return t;
   })();
   /** shots fired from above: where from, how high, and how far until they are down (see shot-height.ts) */
-  const fired = new Map<number, { x: number; z: number; lift: number; reach: number; seen: boolean }>();
+  const fired = new Map<number, { x: number; z: number; lift: number; end: number; reach: number; seen: boolean }>();
   const spiderLegs = createSpiderLegs(scene, lambert(0x17100d), lambert(0xd9701e));
   const webGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
   const webs = new Map<number, THREE.Mesh>();
@@ -676,23 +676,28 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
             const from = p.from ?? p.pos;
             const lift = o && Math.hypot(o.pos.x - from.x, o.pos.z - from.z) < 3 ? (o.flying || (o.descent ?? 0) > 0 ? 2.5 : o.perched ? wallTop(s.map, o.pos.x, o.pos.z) : 0) : 0;
             const others = s.players.filter(x => x.id !== p.ownerId && x.downUntil === null);
-            const targets = lift > 0 ? [...s.enemies.map(e => e.pos), ...others.filter(x => !x.flying).map(x => x.pos)] : [];
-            let reach = lift > 0 ? aimedReach(from, p.vel, targets) : 1;
-            // (aimed at someone who is up in the air too: the shot stays up there)
+            const low = [...s.enemies.map(e => e.pos), ...others.filter(x => !x.flying).map(x => x.pos)];
+            let reach = aimedReach(from, p.vel, low), end = 0;
+            // (aimed at someone up on a jetpack: the shot goes up to them, or stays up there)
             const high = others.filter(x => x.flying).map(x => x.pos);
-            if (lift > 0 && high.length && aimedReach(from, p.vel, high) < Math.min(reach, SHOT_HEIGHT.reach)) reach = Infinity;
-            fired.set(p.id, (f = { x: from.x, z: from.z, lift, reach, seen: true }));
+            const toHigh = high.length ? aimedReach(from, p.vel, high) : Infinity;
+            if (toHigh < Math.min(reach, SHOT_HEIGHT.reach)) {
+              reach = toHigh;
+              end = 2.5;
+            }
+            fired.set(p.id, (f = { x: from.x, z: from.z, lift, end, reach, seen: true }));
           }
           f.seen = true;
-          if (f.lift > 0) {
-            if (p.behavior === 'lob') up = f.lift * (1 - Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!)));
+          if (f.lift > 0 || f.end > 0) {
+            if (p.behavior === 'lob') up = shotLift(f.lift, s.tick - p.launchedAt!, p.until - p.launchedAt!, f.end);
             else if (p.behavior === 'boomerang') {
               // (it comes back up to whoever threw it)
               const o = s.players.find(x => x.id === p.ownerId);
               up = shotLift(f.lift, o ? Math.hypot(p.pos.x - o.pos.x, p.pos.z - o.pos.z) : f.reach, f.reach);
             } else {
-              up = shotLift(f.lift, Math.hypot(p.pos.x - f.x, p.pos.z - f.z), f.reach);
-              if (up > 0 && f.reach < Infinity) dive = Math.atan2(f.lift, f.reach);
+              const gone = Math.hypot(p.pos.x - f.x, p.pos.z - f.z);
+              up = shotLift(f.lift, gone, f.reach, f.end);
+              if (gone < f.reach) dive = Math.atan2(f.lift - f.end, f.reach);
             }
           }
         }
