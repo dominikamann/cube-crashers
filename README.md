@@ -21,8 +21,8 @@ with up to nine friends on your LAN or online, together against the monsters or 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/design/neon.gif" width="100%" alt="Gameplay: holding a nest zone in Neon City" /></td>
-    <td width="50%"><img src="docs/design/versus.gif" width="100%" alt="Versus from above: everyone for themselves in Neon City" /></td>
+    <td width="50%"><img src="docs/design/neon.webp" width="100%" alt="Gameplay: holding a nest zone in Neon City" /></td>
+    <td width="50%"><img src="docs/design/versus.webp" width="100%" alt="Versus from above: everyone for themselves in Neon City" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Tower Run: hold the nest zone in Neon City</sub></td>
@@ -30,18 +30,16 @@ with up to nine friends on your LAN or online, together against the monsters or 
   </tr>
 </table>
 
-Press **V** and the same game is a first-person shooter:
-
 <table>
   <tr>
-    <td colspan="2"><img src="docs/design/screenshots/first-person-plaza.png" alt="First person: a versus match on the Arcade Plaza" /></td>
+    <td colspan="2"><img src="docs/design/screenshots/first-person-plaza.webp" alt="First person: a versus match on the Arcade Plaza" /></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><sub>First person on the Arcade Plaza: everyone for themselves, first to 15</sub></td>
+    <td colspan="2" align="center"><sub>Press V and the same game is a first-person shooter: Versus on the Arcade Plaza</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/screenshots/first-person-gun-game.png" alt="First person: Gun Game on the Neon Highway, a Steamroller coming at you" /></td>
-    <td><img src="docs/design/screenshots/first-person-candy.png" alt="First person: a versus match in the Candy Factory" /></td>
+    <td><img src="docs/design/screenshots/first-person-gun-game.webp" alt="First person: Gun Game on the Neon Highway, a Steamroller coming at you" /></td>
+    <td><img src="docs/design/screenshots/first-person-candy.webp" alt="First person: a versus match in the Candy Factory" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Gun Game on the Neon Highway: a rival in a Steamroller</sub></td>
@@ -51,31 +49,31 @@ Press **V** and the same game is a first-person shooter:
 
 <table>
   <tr>
-    <td><img src="docs/design/candy.gif" alt="Candy Factory with conveyor belts" /></td>
-    <td><img src="docs/design/arena.gif" alt="Boss fight against the Mega Block" /></td>
+    <td><img src="docs/design/candy.webp" alt="Candy Factory with conveyor belts" /></td>
+    <td><img src="docs/design/arena.webp" alt="Boss fight against the Mega Block" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Candy Factory: conveyor belts push everyone around</sub></td>
     <td align="center"><sub>Mega Block Arena: the first boss</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/gameplay.gif" alt="Holding a nest zone on the Arcade Plaza" /></td>
-    <td><img src="docs/design/rooftop.gif" alt="Boss fight against the Segment Worm on the rooftop" /></td>
+    <td><img src="docs/design/gameplay.webp" alt="Holding a nest zone on the Arcade Plaza" /></td>
+    <td><img src="docs/design/rooftop.webp" alt="Boss fight against the Segment Worm on the rooftop" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Arcade Plaza: hold the zone while the hordes storm in</sub></td>
     <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/screenshots/king-rex.png" alt="Boss fight against King Rex in Neon City" /></td>
-    <td><img src="docs/design/screenshots/rhino.png" alt="Boss fight against the Rhino in the Pixel Jungle" /></td>
+    <td><img src="docs/design/screenshots/king-rex.webp" alt="Boss fight against King Rex in Neon City" /></td>
+    <td><img src="docs/design/screenshots/rhino.webp" alt="Boss fight against the Rhino in the Pixel Jungle" /></td>
   </tr>
   <tr>
     <td align="center"><sub>King Rex: snaps, stomps and roars</sub></td>
     <td align="center"><sub>The Rhino: lowers its head and charges</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/race.gif" alt="Kart Rally between floors" /></td>
+    <td><img src="docs/design/race.webp" alt="Kart Rally between floors" /></td>
     <td><img src="docs/design/lane.gif" alt="Lane Defense: hold the lane, save the arcade cabinet" /></td>
   </tr>
   <tr>
@@ -83,8 +81,8 @@ Press **V** and the same game is a first-person shooter:
     <td align="center"><sub>Lane Defense: keep the arcade cabinet alive</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/design/maze.gif" alt="Glitch Maze: collect pixels, dodge the ghosts" /></td>
-    <td><img src="docs/design/highway.gif" alt="Neon Highway" /></td>
+    <td><img src="docs/design/maze.webp" alt="Glitch Maze: collect pixels, dodge the ghosts" /></td>
+    <td><img src="docs/design/highway.webp" alt="Neon Highway" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Glitch Maze: no weapons, just you, the pixels and the ghosts</sub></td>
@@ -657,7 +655,7 @@ Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, 
 
 ## Monsters
 
-![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.gif)
+![Every monster in a row: blob, hunter, tank, splitter, shooter, bomber, rammer, swarmer, shielder, healer, teleporter, crocodile, monkey and T-Rex](docs/design/monsters.webp)
 
 All monsters are original voxel creatures, built from many small cubes, with feet, arms, tails and wings that
 move. Every dangerous attack is announced first: the eyes glow red, and the ground shows where it will hit.
