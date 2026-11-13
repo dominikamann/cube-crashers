@@ -73,20 +73,24 @@ describe('kart rally', () => {
     expect(Math.hypot(again!.pos.x - c.x, again!.pos.z - c.z)).toBeLessThan(3);
   });
 
-  it('ends as soon as the fifth lap is done: solo earns a medal by the time it took, then the elevator shop opens', () => {
+  it('is three laps long', () => {
+    expect(RACE.laps).toBe(3);
+  });
+
+  it('ends as soon as the last lap is done: solo earns a medal by the time it took, then the elevator shop opens', () => {
     const s = raceSim();
     const coins = s.players[0].coins;
     for (let lap = 0; lap < RACE.laps - 1; lap++) for (const i of LAP) driveTo(s, 0, i);
     expect(s.run.stage).toBe('race');
-    // the fifth lap, finished in silver time
-    s.run.stageUntil = s.tick + RACE.maxTicks - (RACE.medals.gold.seconds + 20) * 60;
+    // the last lap, finished in silver time
+    s.run.stageUntil = s.tick + RACE.maxTicks - ((RACE.medals.gold.seconds + RACE.medals.silver.seconds) / 2) * 60;
     for (const i of LAP) driveTo(s, 0, i);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd', medal: 'silver' }));
     expect(s.players[0].coins).toBe(coins + RACE.laps * 0 + RACE.medals.silver.coins);
     expect(s.run.stage).toBe('shop');
   });
 
-  it('with several players the first to drive five laps wins, and the race ends right then', () => {
+  it('with several players the first to drive all the laps wins, and the race ends right then', () => {
     const s = raceSim(2);
     const before = s.players.map(p => p.coins);
     for (const i of LAP) driveTo(s, 1, i);

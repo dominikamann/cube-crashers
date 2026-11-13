@@ -7,18 +7,18 @@ import { addVehicle } from './vehicles';
 
 export const RACE = {
   /** the first to drive this many laps wins, and the race ends right then */
-  laps: 5,
+  laps: 3,
   /** the longest a race may take, in case nobody finishes */
-  maxTicks: 6 * 60 * TICK_RATE,
+  maxTicks: 4 * 60 * TICK_RATE,
   /** a wrecked kart is back on the track after this long */
   wreckTicks: 2 * TICK_RATE,
-  coinsPerLap: 15,
+  coinsPerLap: 25,
   winnerBonus: 50,
   /** playing alone: a medal for finishing the laps within this many seconds */
   medals: {
-    gold: { seconds: 80, coins: 100 },
-    silver: { seconds: 105, coins: 60 },
-    bronze: { seconds: 150, coins: 30 },
+    gold: { seconds: 48, coins: 100 },
+    silver: { seconds: 63, coins: 60 },
+    bronze: { seconds: 90, coins: 30 },
   },
   spawnEveryTicks: 4 * TICK_RATE,
   spawnCount: 3,
@@ -47,7 +47,7 @@ export function raceSeconds(s: SimState): number {
   return (RACE.maxTicks - (s.run.stageUntil - s.tick)) / TICK_RATE;
 }
 
-/** The Kart Rally between two floors: everyone in a kart, the first to drive five laps wins. */
+/** The Kart Rally between two floors: everyone in a kart, the first to drive three laps wins. */
 export function enterRace(s: SimState): void {
   s.run.stage = 'race';
   s.run.stageUntil = s.tick + RACE.maxTicks;
