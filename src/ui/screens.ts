@@ -727,8 +727,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       cards.className = 'mode-cards lan-cards';
       s.append(cards);
       for (const [title, sub, label_, fn, primary] of [
-        [t('lan.hostTitle'), t('lan.hostSub'), t('menu.host'), actions.host, true],
         [t('lan.joinTitle'), t('lan.joinSub'), t('menu.join'), actions.join, false],
+        [t('lan.hostTitle'), t('lan.hostSub'), t('menu.host'), actions.host, true],
       ] as [string, string, string, () => void, boolean][]) {
         const card = document.createElement('div');
         card.className = 'daily-box lan-box';
