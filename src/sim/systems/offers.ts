@@ -14,7 +14,10 @@ export const MIN_CARD_GAP = 1.6;
 export const CARD_ARM_TICKS = 30;
 export const OFFER_TICKS = 900;
 export const EMPTY_CRATE_COINS = 25;
+/** crates lying around at the start where the difficulty has no say: versus, Boss Rush, Boss Brawl */
 export const START_CRATES = 3;
+/** in the Tower Run and on a single floor, every nest of this many leaves a crate (the first one does) */
+export const NEST_CRATE_EVERY = 2;
 
 /** Adds the weapon or raises its level. Returns the level it has afterwards. */
 export function grantWeapon(p: Player, kind: WeaponKind): number {
@@ -99,12 +102,21 @@ export function takeCard(s: SimState, p: Player, card: Card): void {
   s.events.push({ type: 'cardPicked', playerId: p.id, card, level });
 }
 
-export function placeStartCrates(s: SimState): void {
+export function placeStartCrates(s: SimState, count = START_CRATES): void {
   const spots = [...s.map.crateSpots];
-  for (let i = 0; i < START_CRATES && spots.length > 0; i++) {
+  for (let i = 0; i < count && spots.length > 0; i++) {
     const [pos] = spots.splice(Math.floor(s.rng.next() * spots.length), 1);
     s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, pos) } });
   }
+}
+
+/** A fallen elite leaves a crate, as long as the floor still has one to give (see DifficultyDef.crates). */
+export function dropEliteCrate(s: SimState, pos: Vec2): void {
+  if (s.eliteCrates !== undefined) {
+    if (s.eliteCrates <= 0) return;
+    s.eliteCrates--;
+  }
+  s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, pos) } });
 }
 
 export function updateOffers(s: SimState): void {

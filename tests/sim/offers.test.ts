@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
 import { ALL_WEAPONS } from '../../src/sim/config/weapons';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { grantWeapon } from '../../src/sim/systems/offers';
+import { START_CRATES, grantWeapon } from '../../src/sim/systems/offers';
+import { DIFFICULTIES, DIFFICULTY } from '../../src/sim/config/difficulty';
+import { HOLD_TICKS } from '../../src/sim/config/balance';
+import { damageEnemy } from '../../src/sim/systems/combat';
+import { spawnEnemy } from '../../src/sim/systems/enemies';
+import { enterFloor } from '../../src/sim/systems/run';
 import { RARE } from '../../src/sim/config/rare';
 import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import type { Card, SimState } from '../../src/sim/types';
@@ -80,10 +85,55 @@ describe('crates', () => {
     RARE.cardChance = chance;
   });
 
-  it('are placed on three crate spots at the start of a floor', () => {
-    const s = createSim(floor01, 4);
-    expect(s.crates).toHaveLength(3);
-    for (const c of s.crates) expect(s.map.crateSpots.some(sp => sp.x === c.pos.x && sp.z === c.pos.z)).toBe(true);
+  it('are placed on crate spots at the start of a floor, as many as the difficulty gives', () => {
+    for (const difficulty of DIFFICULTIES) {
+      const s = createSim(floor01, 4, { difficulty });
+      expect(s.crates, difficulty).toHaveLength(DIFFICULTY[difficulty].crates.start);
+      for (const c of s.crates) expect(s.map.crateSpots.some(sp => sp.x === c.pos.x && sp.z === c.pos.z)).toBe(true);
+    }
+    expect(DIFFICULTY.ultraLow.crates.start).toBeLessThan(START_CRATES);
+  });
+
+  it('a boss floor of the Tower Run is as frugal; the Boss Rush and a versus match keep their three', () => {
+    const run = createSim(floor01, 4, { mode: 'run', difficulty: 'ultraLow' });
+    enterFloor(run, 2);
+    expect(run.boss).not.toBeNull();
+    expect(run.crates).toHaveLength(DIFFICULTY.ultraLow.crates.start);
+    // (the Mega Block Arena has two crate spots)
+    const rush = createSim(floor01, 4, { mode: 'bossrush', difficulty: 'ultraLow' });
+    expect(rush.crates).toHaveLength(Math.min(START_CRATES, rush.map.crateSpots.length));
+    expect(rush.crates.length).toBeGreaterThan(DIFFICULTY.ultraLow.crates.start);
+    expect(createSim(floor01, 4, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' } }).crates).toHaveLength(START_CRATES);
+  });
+
+  it('only so many elites of a floor leave one, by the difficulty; the others leave their coins', () => {
+    for (const difficulty of ['ultraLow', 'ultraHigh'] as const) {
+      const s = createSim(floor01, 4, { difficulty });
+      s.crates = [];
+      for (let i = 0; i < 5; i++) damageEnemy(s, spawnEnemy(s, 'blob', rel(s.players[0].pos, 6, i), { elite: true }), 1e6, 'pixelBlaster', 0);
+      expect(s.crates, difficulty).toHaveLength(DIFFICULTY[difficulty].crates.elites);
+      expect(s.coins.length).toBeGreaterThanOrEqual(5 * 3);
+    }
+  });
+
+  it('every second nest of a floor leaves one, the first one first; in Endless every nest does', () => {
+    const fall = (s: SimState) => {
+      s.crates = [];
+      const counts: number[] = [];
+      for (const n of s.nests) {
+        n.state = 'planted';
+        n.progress = HOLD_TICKS - 1;
+        s.players[0].pos = { ...n.pos };
+        s.players[0].invulnUntil = 1e9;
+        const before = s.crates.length;
+        stepSim(s, []);
+        expect(n.state).toBe('destroyed');
+        counts.push(s.crates.length - before);
+      }
+      return counts;
+    };
+    expect(fall(createSim(floor01, 4))).toEqual([1, 0, 1, 0]);
+    expect(fall(createSim(floor01, 4, { mode: 'endless' }))).toEqual([1, 1, 1, 1]);
   });
 });
 

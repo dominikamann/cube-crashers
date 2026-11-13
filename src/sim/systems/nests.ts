@@ -33,7 +33,7 @@ import { spawnBoss, startBrawl } from './boss';
 import { enterRace } from './race';
 import { enterLane } from './lane';
 import { enterMaze } from './maze';
-import { placeStartCrates } from './offers';
+import { NEST_CRATE_EVERY, placeStartCrates } from './offers';
 import { POWERUP } from './powerups';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
@@ -104,6 +104,8 @@ export function setupFloor(s: SimState): void {
   s.wild = null;
   s.heart = null;
   s.logoEgg = null;
+  // (only a nest floor of the Tower Run or a single floor rations its crates)
+  s.eliteCrates = undefined;
   const def = floorDef(s.map.id);
   if (def?.kind === 'maze') {
     // the Glitch Maze played on its own
@@ -141,7 +143,8 @@ export function setupFloor(s: SimState): void {
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     s.nests = [];
     spawnBoss(s, rushBoss ?? def!.boss!);
-    placeStartCrates(s);
+    // (the Boss Rush has nothing but crates and the shop to arm the team; a boss floor of the run is frugal)
+    placeStartCrates(s, rushBoss ? undefined : DIFFICULTY[s.difficulty].crates.start);
     placeStartKarts(s);
     s.nextPowerupAt = s.tick + POWERUP.firstTicks;
     s.look = rushBoss === 'dominik' ? 'night' : 'day';
@@ -162,7 +165,9 @@ export function setupFloor(s: SimState): void {
   const far = shuffled(s, s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS + 3));
   for (const w of far.slice(0, ROAMING_HORDES)) spawnHorde(s, w, roamingComp(s), { eliteChance: 0.25 + eliteBonus(s) });
   s.look = s.theme === 'neon' ? 'night' : 'day';
-  placeStartCrates(s);
+  const rationed = s.run.mode !== 'endless';
+  if (rationed) s.eliteCrates = DIFFICULTY[s.difficulty].crates.elites;
+  placeStartCrates(s, rationed ? DIFFICULTY[s.difficulty].crates.start : undefined);
   placeStartKarts(s);
   placeStartJetpack(s);
   s.nextPowerupAt = s.tick + POWERUP.firstTicks;
@@ -182,7 +187,9 @@ function destroyNest(s: SimState, n: Nest): void {
   s.events.push({ type: 'nestDestroyed', id: n.id, pos: { ...n.pos } });
   explode(s, n.pos, NEST_BLAST.radius, { enemy: NEST_BLAST.damage }, 'explosion');
   dropCoins(s, n.pos, NEST_BLAST.coins);
-  s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, { x: n.pos.x, z: n.pos.z + 1.5 }) } });
+  // every nest leaves coins; in a run every second one a crate as well, the first one first
+  const fallen = s.nests.filter(x => x.state === 'destroyed').length;
+  if (s.run.mode === 'endless' || (fallen - 1) % NEST_CRATE_EVERY === 0) s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, { x: n.pos.x, z: n.pos.z + 1.5 }) } });
   if (s.alarm.level > 0) {
     s.alarm.level--;
     s.events.push({ type: 'alarmChanged', level: s.alarm.level });

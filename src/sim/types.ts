@@ -694,6 +694,8 @@ export interface SimState {
   mines: Mine[];
   coins: Coin[];
   crates: Crate[];
+  /** how many more elites drop a crate on this floor (left out: every one does) */
+  eliteCrates?: number;
   offers: Offer[];
   towers: Tower[];
   nests: Nest[];
