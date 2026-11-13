@@ -13,7 +13,7 @@ import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
-import { aimedReach, shotLift } from './shot-height';
+import { aimedReach, shotLift, SHOT_HEIGHT } from './shot-height';
 import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -675,8 +675,13 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
             const o = s.players.find(x => x.id === p.ownerId);
             const from = p.from ?? p.pos;
             const lift = o && Math.hypot(o.pos.x - from.x, o.pos.z - from.z) < 3 ? (o.flying || (o.descent ?? 0) > 0 ? 2.5 : o.perched ? wallTop(s.map, o.pos.x, o.pos.z) : 0) : 0;
-            const targets = lift > 0 ? [...s.enemies.map(e => e.pos), ...s.players.filter(x => x.id !== p.ownerId && x.downUntil === null).map(x => x.pos)] : [];
-            fired.set(p.id, (f = { x: from.x, z: from.z, lift, reach: lift > 0 ? aimedReach(from, p.vel, targets) : 1, seen: true }));
+            const others = s.players.filter(x => x.id !== p.ownerId && x.downUntil === null);
+            const targets = lift > 0 ? [...s.enemies.map(e => e.pos), ...others.filter(x => !x.flying).map(x => x.pos)] : [];
+            let reach = lift > 0 ? aimedReach(from, p.vel, targets) : 1;
+            // (aimed at someone who is up in the air too: the shot stays up there)
+            const high = others.filter(x => x.flying).map(x => x.pos);
+            if (lift > 0 && high.length && aimedReach(from, p.vel, high) < Math.min(reach, SHOT_HEIGHT.reach)) reach = Infinity;
+            fired.set(p.id, (f = { x: from.x, z: from.z, lift, reach, seen: true }));
           }
           f.seen = true;
           if (f.lift > 0) {
@@ -687,7 +692,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
               up = shotLift(f.lift, o ? Math.hypot(p.pos.x - o.pos.x, p.pos.z - o.pos.z) : f.reach, f.reach);
             } else {
               up = shotLift(f.lift, Math.hypot(p.pos.x - f.x, p.pos.z - f.z), f.reach);
-              if (up > 0) dive = Math.atan2(f.lift, f.reach);
+              if (up > 0 && f.reach < Infinity) dive = Math.atan2(f.lift, f.reach);
             }
           }
         }
