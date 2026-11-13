@@ -3,7 +3,7 @@ import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '..
 import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
-import { DT, TICK_RATE, type Blast, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
+import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
@@ -312,8 +312,8 @@ function attack(s: SimState, b: BossState): void {
       const blow = { fling: { from: { ...dom.pos }, dist: BOSS.hammerFling }, hidden: true };
       const at = (i: number) => ({ x: dom.pos.x + dir.x * (1 + i * BOSS.waveStep), z: dom.pos.z + dir.z * (1 + i * BOSS.waveStep) });
       for (let i = 1; i <= n; i++) {
-        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + i * 4, blow);
-        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16, blow);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage * dominikHits(s.difficulty), BOSS.warnTicks + i * 4, blow);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage * dominikHits(s.difficulty), BOSS.warnTicks + (2 * n - i) * 4 + 16, blow);
       }
       s.events.push({ type: 'hammerThrow', from: { ...dom.pos }, to: at(n) });
     } else {
@@ -326,17 +326,17 @@ function attack(s: SimState, b: BossState): void {
         const n = Math.round(r * 2.4);
         for (let i = 0; i < n; i++) {
           const a = ((i + (k % 2) * 0.5) / n) * Math.PI * 2;
-          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.dominikDamage, BOSS.warnTicks + k * 22, { fling: { from: { ...dom.pos }, dist: BOSS.hammerFling } });
+          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.dominikDamage * dominikHits(s.difficulty), BOSS.warnTicks + k * 22, { fling: { from: { ...dom.pos }, dist: BOSS.hammerFling } });
         }
       });
     }
     // whatever he does, lightning comes with it, so keeping one's distance is no shelter: a bolt where each
     // player stands and, the more he is hurt, more of them where they are running to and around them
     for (const q of alive) {
-      telegraph(s, q.pos, 1.5, BOSS.dominikDamage, BOSS.warnTicks + 14, { bolt: true });
+      telegraph(s, q.pos, 1.5, BOSS.dominikDamage * dominikHits(s.difficulty), BOSS.warnTicks + 14, { bolt: true });
       for (let i = 1; i < b.phase + 1; i++) {
         const a = s.rng.next() * Math.PI * 2, r = s.rng.next() * 2.2;
-        telegraph(s, { x: q.pos.x + q.facing.x * 2.6 * i + Math.cos(a) * r, z: q.pos.z + q.facing.z * 2.6 * i + Math.sin(a) * r }, 1.4, BOSS.dominikDamage, BOSS.warnTicks + 14 + i * 9, { bolt: true });
+        telegraph(s, { x: q.pos.x + q.facing.x * 2.6 * i + Math.cos(a) * r, z: q.pos.z + q.facing.z * 2.6 * i + Math.sin(a) * r }, 1.4, BOSS.dominikDamage * dominikHits(s.difficulty), BOSS.warnTicks + 14 + i * 9, { bolt: true });
       }
     }
   } else if (b.kind === 'rex' || b.kind === 'rhino') {
@@ -467,6 +467,14 @@ export function megaLeap(s: SimState, p: Player, b: BossState | null = s.boss): 
   telegraph(s, p.pos, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
 }
 
+/**
+ * How hard Angry Dominik hits on each level, on top of what the level does to every monster's damage: he is
+ * tuned to be a hard fight on the easiest level already, so the harder ones add far less than they do elsewhere
+ * (there the players also have fewer lives and do not heal).
+ */
+const DOMINIK_HITS: Record<Difficulty, number> = { ultraLow: 1, low: 0.8, medium: 0.5, high: 0.45, ultraHigh: 0.42 };
+export const dominikHits = (d: Difficulty) => DOMINIK_HITS[d];
+
 /** where Angry Dominik's beam points at `tick` (the angle of its direction on the floor) */
 export function laserAngle(b: BossState, tick: number): number {
   const l = b.laser!;
@@ -498,7 +506,7 @@ function laser(s: SimState, b: BossState): void {
   dom.stuckUntil = Math.max(dom.stuckUntil, s.tick + 2);
   if (s.tick < l.fireAt) return;
   if (s.tick === l.fireAt) s.events.push({ type: 'laserFire', pos: { ...dom.pos } });
-  for (const p of s.players) if (p.downUntil === null && !aloft(s, p) && !p.perched && laserHits(s, b, p.pos)) damagePlayer(s, p, BOSS.laser.dps * DT, 'shot');
+  for (const p of s.players) if (p.downUntil === null && !aloft(s, p) && !p.perched && laserHits(s, b, p.pos)) damagePlayer(s, p, BOSS.laser.dps * dominikHits(s.difficulty) * DT, 'shot');
 }
 
 /** In mid-leap the Mega Block flies over everything in a straight line and comes down with a stomp. */

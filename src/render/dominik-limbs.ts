@@ -261,7 +261,7 @@ export function hammerGeometry(): { lit: THREE.BufferGeometry; glow: THREE.Buffe
  * On his knees for the slam: how far the body comes down, how far it leans forward, and how far the lower legs
  * fold back (so that the shins lie on the floor behind him)
  */
-export const KNEEL = { drop: 0.85, lean: 0.5, shins: 0.81 };
+export const KNEEL = { drop: 0.9, lean: 0.2, shins: 1.37 };
 /**
  * his hammer in the air: from when it leaves his hand to when he has it back, in seconds after the throw is
  * called. It follows the blows the rules deal along its line (see boss.ts and `hammerAlong`)

@@ -3,12 +3,13 @@ import { RARE } from '../../src/sim/config/rare';
 import { BOSS_RUSH, FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { BOSS, laserAngle, laserHits, spawnBoss } from '../../src/sim/systems/boss';
+import { DIFFICULTY } from '../../src/sim/config/difficulty';
+import { BOSS, dominikHits, laserAngle, laserHits, spawnBoss } from '../../src/sim/systems/boss';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { MINI, releaseMiniDominik } from '../../src/sim/systems/mini-dominik';
 import { fireRare } from '../../src/sim/systems/rare';
 import { Tile } from '../../src/sim/map/tilemap';
-import type { SimState } from '../../src/sim/types';
+import type { Difficulty, SimState } from '../../src/sim/types';
 
 function fight(seed = 4): SimState {
   const s = createSim(FLOORS.arena.map, seed, { mode: 'quick', players: 1 });
@@ -134,6 +135,19 @@ describe('Angry Dominik', () => {
     expect(near.maxHp - near.hp).toBeGreaterThan(chained.maxHp - chained.hp);
     expect(far.hp).toBe(far.maxHp);
     expect(fireRare(s, p)).toBe(false);
+  });
+});
+
+describe('he can be beaten on every level', () => {
+  it('his blows grow with the difficulty, but far less than the other monsters\' do', () => {
+    const hit = (d: Difficulty) => dominikHits(d) * DIFFICULTY[d].enemyDamage;
+    expect(hit('low')).toBeGreaterThan(hit('ultraLow'));
+    expect(hit('medium')).toBeGreaterThan(hit('low'));
+    expect(hit('ultraHigh')).toBeGreaterThan(hit('medium'));
+    // on Medium a blow is at most half again as hard as on Ultra Low (the plain scale would be nearly three times)
+    expect(hit('medium')).toBeLessThanOrEqual(hit('ultraLow') * 1.5);
+    expect(hit('ultraHigh')).toBeLessThanOrEqual(hit('ultraLow') * 2);
+    expect(dominikHits('ultraLow')).toBe(1);
   });
 });
 

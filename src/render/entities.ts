@@ -111,6 +111,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // (and when each one's hammer meets the floor in a slam, and how far he is down on his knees for it)
   const hammerLandsAt = new Map<number, number>();
   const domKneel = new Map<number, number>();
+  /** his steps follow the ground he covers, so his feet do not slide: where he was, and how far into his stride */
+  const domWalk = new Map<number, { x: number; z: number; phase: number; moving: number }>();
   // where each Angry Dominik (the boss) stood last, and the ones that have fallen: they stand in the lightning
   // for a moment before they burst (see fx.ts)
   const domStood = new Map<number, { x: number; z: number; yaw: number }>();
@@ -436,10 +438,19 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         if (dominik) {
           if (!small) domStood.set(e.id, { x: e.pos.x, z: e.pos.z, yaw });
           const sinceThrow = time - (hammerThrownAt.get(e.id) ?? -1e9);
+          let walk = domWalk.get(e.id);
+          if (!walk) domWalk.set(e.id, (walk = { x: e.pos.x, z: e.pos.z, phase: e.id * 1.7, moving: 0 }));
+          const stepped = Math.hypot(e.pos.x - walk.x, e.pos.z - walk.z) / scale;
+          walk.x = e.pos.x;
+          walk.z = e.pos.z;
+          // (a full stride for every 1.9 units of his own size; he counts as walking a moment longer than he
+          // moves, so the legs come to rest instead of snapping)
+          walk.phase += (stepped / 1.9) * Math.PI * 2;
+          walk.moving = stepped > 1e-4 ? 0.12 : Math.max(0, walk.moving - frameDt);
           domLimbs.add({
             id: e.id, x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
             sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
-            lean, tilt, tint, phase: time * 8 + e.id * 1.7, still: held || winding || attack !== 0 || e.speed === 0, attack,
+            lean, tilt, tint, phase: walk.phase, still: walk.moving <= 0, attack,
             laser: allBosses(s).some(b => b.enemyId === e.id && b.laser),
             thrown: sinceThrow >= HAMMER_FLIGHT[0] && sinceThrow < HAMMER_FLIGHT[1],
             slam, kneel,
