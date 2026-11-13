@@ -185,7 +185,7 @@ export function createPickups(scene: THREE.Scene): Pickups {
           mat.emissive.setHex(0xffffff);
           const cube = new THREE.Mesh(cubeGeo, mat);
           cube.castShadow = true;
-          const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: POWERUP_COLOR[pu.kind], transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+          const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: POWERUP_COLOR[pu.kind], transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true }));
           ring.position.y = 0.05;
           const root = new THREE.Group();
           root.add(cube, ring);

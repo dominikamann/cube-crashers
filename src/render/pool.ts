@@ -98,10 +98,22 @@ export class InstancedPool {
   }
 
   end(): void {
-    this.mesh.count = this.count;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    const m = this.mesh;
+    m.count = this.count;
+    // an empty pool is not drawn at all (the renderer would still set its material up, twice with shadows)
+    m.visible = this.count > 0;
+    if (this.count === 0) return;
+    // only the instances in use go to the graphics card, not the whole pool
+    sendRange(m.instanceMatrix, this.count * 16);
+    if (m.instanceColor) sendRange(m.instanceColor, this.count * 3);
   }
+}
+
+/** marks the first `count` numbers of an attribute as changed */
+function sendRange(attribute: THREE.BufferAttribute, count: number): void {
+  attribute.clearUpdateRanges();
+  attribute.addUpdateRange(0, count);
+  attribute.needsUpdate = true;
 }
 
 export const lambert = (color: number) => new THREE.MeshLambertMaterial({ color });

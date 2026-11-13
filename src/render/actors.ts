@@ -93,7 +93,7 @@ function makePlayer(color: number, look: Look) {
   pack.visible = false;
   body.add(pack);
   // golden glint around a player holding a rare weapon
-  const glint = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.72, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffc928, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+  const glint = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.72, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffc928, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true }));
   glint.position.y = 0.05;
   glint.visible = false;
   root.add(glint);
@@ -412,7 +412,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const dotGeo = new THREE.CircleGeometry(0.07, 12).rotateX(-Math.PI / 2);
   const reticles = [0, 1].map(() => {
     const group = new THREE.Group();
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthTest: false });
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthTest: false, forceSinglePass: true });
     const ringMesh = new THREE.Mesh(ringGeo, mat);
     const dot = new THREE.Mesh(dotGeo, mat);
     group.add(ringMesh, dot);
@@ -424,7 +424,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
   // versus: the king of the cube zone (a glowing disc with a rim) and the teams' cubes with their bases
   const kingRing = new THREE.Group();
-  const kingFillMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+  const kingFillMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
   kingRing.add(new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), kingFillMat));
   kingRing.add(new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), glowMat(0xffcf3a, 2)));
   kingRing.visible = false;

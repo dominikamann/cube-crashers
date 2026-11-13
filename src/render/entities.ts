@@ -174,7 +174,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const plateMat = lambert(0x5f6478);
   const plates = new InstancedPool(scene, new THREE.BoxGeometry(1.35, 0.18, 1.35), plateMat, 128);
 
-  const eliteMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+  const eliteMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.8, side: THREE.DoubleSide, forceSinglePass: true });
   const eliteRings = new InstancedPool(scene, new THREE.RingGeometry(0.85, 1, 20).rotateX(-Math.PI / 2), eliteMat, 32, false);
   const hornMat = glowMat(0xffe14a, 1.2);
   const horns = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.16, 0.5), hornMat, 64);
@@ -184,7 +184,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const fuseMat = glowMat(0xffe14a, 3);
   const fuses = new InstancedPool(scene, new THREE.BoxGeometry(0.12, 0.3, 0.12), fuseMat, 64, false);
   // telegraphs: where a rammer will charge, where a bomber will blow, where a shooter aims
-  const warnMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
+  const warnMat = new THREE.MeshBasicMaterial({ color: 0xff2b4b, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true });
   const lanes = new InstancedPool(scene, new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0, 0, 0.5), warnMat, 32, false);
   const blastRings = new InstancedPool(scene, new THREE.RingGeometry(0.9, 1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);
   const blastFills = new InstancedPool(scene, new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), warnMat, 32, false);

@@ -1,10 +1,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { FloorMap } from '../sim/map/tilemap';
 import type { SimEvent, SimState, Vec2 } from '../sim/types';
 import { createActors } from './actors';
@@ -16,6 +13,8 @@ import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
 import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
+import { AmbientPass, FinishPass, GlowPass, SmoothScenePass } from './post';
+import { attachPerfRenderer } from '../dev/perf-probe';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -76,27 +75,6 @@ const ZOOM_OUT = 1.5;
 /** first person: a wider lens (the eye height comes from the input side, so the crosshair meets the aim point) */
 const FP_FOV = 72;
 
-/** Soft vignette and a touch of contrast and saturation: makes the colours pop without blurring anything. */
-const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, vignette: { value: 0.32 }, saturation: { value: 1.12 }, contrast: { value: 1.05 } },
-  vertexShader: /* glsl */ `
-    varying vec2 vUv;
-    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-  fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse;
-    uniform float vignette, saturation, contrast;
-    varying vec2 vUv;
-    void main() {
-      vec4 c = texture2D(tDiffuse, vUv);
-      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      c.rgb = mix(vec3(l), c.rgb, saturation);
-      c.rgb = (c.rgb - 0.5) * contrast + 0.5;
-      vec2 d = vUv - 0.5;
-      c.rgb *= 1.0 - vignette * smoothstep(0.35, 0.85, length(d * vec2(1.25, 1.0)));
-      gl_FragColor = c;
-    }`,
-};
-
 /** A big sphere around the camera with a gradient from horizon to zenith. */
 function makeSky(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
   const material = new THREE.ShaderMaterial({
@@ -120,12 +98,15 @@ function makeSky(): { mesh: THREE.Mesh; material: THREE.ShaderMaterial } {
 export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRenderer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // the shadows are drawn when a frame asks for them (see render), not again with every drawing of the scene
+  renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(THEMES.day.background, THEMES.day.fogNear, THEMES.day.fogFar);
   const sky = makeSky();
   scene.add(sky.mesh);
+  if (import.meta.env.DEV) attachPerfRenderer(renderer, scene);
 
   const hemi = new THREE.HemisphereLight(THEMES.day.hemiSky, THEMES.day.hemiGround, THEMES.day.hemiIntensity);
   scene.add(hemi);
@@ -143,7 +124,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     id: number;
     camera: THREE.PerspectiveCamera;
     composer: EffectComposer | null;
-    bloom: UnrealBloomPass | null;
+    bloom: GlowPass | null;
     camPos: THREE.Vector3;
     camLook: THREE.Vector3;
     /** 1 = normal, higher = further away */
@@ -196,19 +177,33 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       });
     }
     for (const v of views) {
-      const target = new THREE.WebGLRenderTarget(1, 1, { samples: q.msaa, type: THREE.HalfFloatType });
+      // only the scene itself is drawn with multisampling, and the passes after it read its picture where it is
+      // (see post.ts); without multisampling (low) the scene goes straight into the composer's buffer, which
+      // then needs the depth
+      const smooth = q.msaa > 0 ? new SmoothScenePass(scene, v.camera, q.msaa) : null;
+      const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: !smooth });
       disposeComposer(v.composer);
       const composer = new EffectComposer(renderer, target);
-      composer.addPass(new RenderPass(scene, v.camera));
+      composer.addPass(smooth ?? new RenderPass(scene, v.camera));
+      // (the first pass after the scene takes the picture from it; one that writes a new picture hands it on
+      // in the composer's buffer)
+      let from = smooth;
       if (q.ao) {
-        const ao = new GTAOPass(scene, v.camera, 1, 1);
+        const ao = new AmbientPass(scene, v.camera, 1, 1);
+        ao.source = from;
+        from = null;
         ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1.2 });
         composer.addPass(ao);
       }
-      v.bloom = q.bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
-      if (v.bloom) composer.addPass(v.bloom);
-      composer.addPass(new OutputPass());
-      if (q.grade) composer.addPass(new ShaderPass(GradeShader));
+      v.bloom = q.bloom ? new GlowPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
+      if (v.bloom) {
+        v.bloom.source = from;
+        composer.addPass(v.bloom);
+      }
+      // tone mapping, and in the same pass the glow added and, where the setting has it, the grade
+      const finish = v.bloom || q.grade || from ? new FinishPass(v.bloom, q.grade) : new OutputPass();
+      if (finish instanceof FinishPass) finish.source = from;
+      composer.addPass(finish);
       v.composer = composer;
     }
     resize();
@@ -380,6 +375,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       fill.position.set(mid.x - 10, 12, mid.z - 6);
       fill.target.position.copy(mid);
 
+      // the sun is the same for every view, so its shadows are drawn once per frame; again for a view only if
+      // it or the one before it hides something that casts one (a first-person player's own figure)
+      let hidBefore = false;
       views.forEach((v, i) => {
         if (views.length > 1) {
           renderer.setViewport(i * vw, 0, vw, h);
@@ -396,6 +394,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         const hidden = v.fp !== null ? [actors.playerModel(v.id), lob ? undefined : actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
         const shown = hidden.map(o => o.visible);
         for (const o of hidden) o.visible = false;
+        if (i === 0 || hidden.length > 0 || hidBefore) renderer.shadowMap.needsUpdate = true;
+        hidBefore = hidden.length > 0;
         v.composer!.render();
         hidden.forEach((o, k) => (o.visible = shown[k]));
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion

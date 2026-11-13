@@ -17,6 +17,7 @@ import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from 
 import { nextInDirection } from './input/pad-nav';
 import { uiZoom } from './ui/scale';
 import { createLoop } from './loop';
+import { createProbedLoop } from './dev/perf-probe';
 import { createLan, type Lan } from './net/lan';
 import { PROTOCOL_VERSION, type LobbyPlayer } from './net/protocol';
 import { createServerBrowser } from './net/server-list';
@@ -419,7 +420,7 @@ function startGame() {
     storeProfile,
   );
 
-  const loop = createLoop(
+  const loop = (import.meta.env.DEV ? createProbedLoop : createLoop)(
     () => {
       if (mode !== 'playing' && !(mode === 'paused' && role !== 'solo')) return;
       const s = view();
@@ -1163,6 +1164,8 @@ function startGame() {
   if (params.has('split')) settings.localPlayers = 2;
   // dev: ?map=race starts a Single floor demo on that map
   if (params.get('map')) settings.quickMap = params.get('map')!;
+  // dev: &split=1 starts with two players on this screen
+  if (import.meta.env.DEV && params.has('split')) settings.localPlayers = 2;
   // dev: ?versus=team|ffa starts a versus match with bots right away
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';

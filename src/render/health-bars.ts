@@ -84,8 +84,14 @@ export function createHealthBars(scene: THREE.Scene): HealthBars {
         n++;
       }
       back.count = fill.count = n;
-      back.instanceMatrix.needsUpdate = fill.instanceMatrix.needsUpdate = true;
-      if (fill.instanceColor) fill.instanceColor.needsUpdate = true;
+      // no bars, nothing to draw; and only the bars in use go to the graphics card, not all MAX_BARS
+      back.visible = fill.visible = n > 0;
+      if (n === 0) return;
+      for (const a of [back.instanceMatrix, fill.instanceMatrix, fill.instanceColor!]) {
+        a.clearUpdateRanges();
+        a.addUpdateRange(0, n * a.itemSize);
+        a.needsUpdate = true;
+      }
     },
   };
 }

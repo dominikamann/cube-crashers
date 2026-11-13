@@ -37,5 +37,12 @@ describe('AmannLabs logos', () => {
       expect(logoSpots(map)).toEqual(spots);
     });
   }
+  it('are worked out once per map: asking again costs nothing, and a copy of a map is a map of its own', () => {
+    const map = FLOORS.arena.map;
+    expect(logoSpots(map)).toBe(logoSpots(map));
+    const copy = { ...map, tiles: map.tiles.slice() };
+    expect(logoSpots(copy)).not.toBe(logoSpots(map));
+    expect(logoSpots(copy)).toEqual(logoSpots(map));
+  });
   it('most maps also get one on a wall', () => expect(walls).toBeGreaterThanOrEqual(maps - 2));
 });
