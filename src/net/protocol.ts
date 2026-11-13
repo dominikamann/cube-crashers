@@ -3,7 +3,7 @@ import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { TOWER_ORDER } from '../sim/config/towers';
 import type { Command, Difficulty, EmoteId, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
-import { EMOTES } from '../sim/systems/emotes';
+import { isEmote } from '../sim/systems/emotes';
 import type { SnapState } from './snapshot';
 
 /** how a LAN game may be watched: first person only, from above only, or either (V switches) */
@@ -18,8 +18,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 6: an opening countdown, lives per player (out until the next floor), a hidden heart (0.5.3).
  * 7: Boss Brawl (several bosses at once), Boss Rush and Endless on the LAN and on servers, the Rhino (0.5.4).
  * 8: a Single floor on the LAN, wild bosses, voices and a boss that waits (0.5.5).
+ * 9: Angry Dominik, his hammer and the baby dinos; characters; a longer wait to come back in versus (0.5.7).
  */
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 9;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
@@ -238,7 +239,7 @@ export function sanitizeCommands(cmds: unknown[], playerId: number): Command[] {
         out.push({ type: 'ready', playerId });
         break;
       case 'emote':
-        if (!EMOTES.includes(c.emote as EmoteId)) break;
+        if (!isEmote(c.emote)) break;
         out.push(vec(c.at) ? { type: 'emote', playerId, emote: c.emote as EmoteId, at: { x: Math.min(AIM_MAX, Math.max(AIM_MIN, c.at.x)), z: Math.min(AIM_MAX, Math.max(AIM_MIN, c.at.z)) } } : { type: 'emote', playerId, emote: c.emote as EmoteId });
         break;
       case 'jump':

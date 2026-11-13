@@ -228,8 +228,10 @@ Between the floors the elevator takes you to a short game of its own, then to th
 
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
-map) and, at the end, **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around
-itself and stomps under everyone. At the difficulty you set; its own best list.
+map), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
+under everyone, and at the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
+and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
+**Thunder Hammer**. At the difficulty you set; its own best list.
 
 **Boss Brawl** (also on the Tower Run page) puts every boss into the Mega Block Arena: one or two at a time, by
 the dice, and some of them twice. After each wave you get a breather and a heart; now and then a stray shark
@@ -266,6 +268,11 @@ the whole team.
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
+- **Character:** who you are: an astronaut, a knight, a cat, a rubber duck, an arcade cabinet, a cube, a joystick,
+  a ghost, a mushroom or a soda cup. *Automatic* gives everyone in a match a different one. A look only: every
+  character is as fast, as tough and as easy to hit as the others, and holds every weapon. Bots are always
+  robots. Two characters are for the end of the game: the **Baby Dino** (beat King Rex first) and **Dominik**
+  (beat Angry Dominik first); once their boss is beaten you buy them under *Unlocks* for tickets.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
 - **Keys → Change keys** opens the **Controls** page: every keyboard action with its key. Click an action (or pick it
   and press `Enter`), then press the new key. If another action had that key, the two swap. *Reset to defaults*
@@ -433,7 +440,7 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
 
 | Rule | How it works |
 |---|---|
-| **Score Race** | Respawn after 3 seconds. First to 15 kills (teams: 30) wins, or the most after 5 minutes. |
+| **Score Race** | Respawn after 5 seconds. First to 15 kills (teams: 30) wins, or the most after 5 minutes. |
 | **Last Cube Standing** | No respawn within a round; the last one (or team) standing wins it. 4 rounds win the match. |
 | **King of the Cube** | A glowing zone moves around the map. A point per second while you hold it alone. |
 | **Capture the Cube** | Red vs Blue. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. |
@@ -447,8 +454,8 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
   now and then monsters. The default.
 - Towers have an owner and fire at rivals, but only at a third of their strength.
 
-**Kill cam:** knocked out by a rival, you watch the last seconds again from their side while you wait to come
-back (a click skips it; *Settings → Kill cam* switches it off).
+**Kill cam:** knocked out by a rival, you watch the last five seconds again through their eyes while you wait to
+come back (a click skips it; *Settings → Kill cam* switches it off).
 
 ## First-person view
 
@@ -480,6 +487,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `Z` | Zoom out / in |
 | `M` | Show or hide the minimap (in first person it is smaller and see-through anyway) |
 | `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
+| `T` | Dance: your character does its dance, for everyone to see (it ends when you walk on) |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
 
@@ -551,6 +559,7 @@ Hits from up close (within 3 tiles) deal **50 % more damage**.
 | **Bubblegum Bazooka** | Traps monsters in a huge gum bubble that pops after 3 seconds. |
 | **Leaf Blower 3000** | Blows hordes away and slams them into walls. Blows coins toward you. |
 | **Pizza Cutter** | A spinning saw that bounces off walls and cuts through everything. |
+| **Thunder Hammer** | Only from Angry Dominik's crate: a smash in front of you, and lightning that jumps on to the nearest monsters. |
 
 ### Ladders
 
@@ -637,6 +646,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
@@ -794,6 +804,7 @@ docs/         gameplay GIF and screenshots
 - [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
+- [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 

@@ -17,7 +17,7 @@ export const VERSUS = {
   lootCoins: 5,
   /** score race: back in the game this long after going down */
   // (long enough to watch how it happened: the kill cam shows these last seconds again)
-  respawnTicks: 4.5 * TICK_RATE,
+  respawnTicks: 5 * TICK_RATE,
   /** safe for a moment after (re)spawning */
   spawnInvulnTicks: Math.round(1.5 * TICK_RATE),
   /**

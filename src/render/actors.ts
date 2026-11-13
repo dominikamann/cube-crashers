@@ -13,7 +13,7 @@ import { KART } from '../sim/systems/vehicles';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
 import { looksFor, type Look } from '../characters';
-import { animate, buildFigure } from './cast';
+import { animate, buildFigure, DANCE_SECONDS } from './cast';
 import { bake, FIGURE_GLOW, FIGURE_LIT, FIGURE_SOLID } from './figure';
 import { weaponModel, type HeldKind } from './viewmodel';
 import type { Theme } from './theme';
@@ -390,6 +390,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   let looksKey = '';
   /** the winners of a versus match dance until the next one starts */
   const winners = new Set<number>();
+  /** who dances right now (the dance key), and until when */
+  const dancing = new Map<number, number>();
+  let danceNow = 0;
   let lastTick = 0;
   const towers = new Map<number, ReturnType<typeof makeTower> & { built: number }>();
   const karts = new Map<number, ReturnType<typeof makeKart>>();
@@ -529,11 +532,15 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.wasAir = air;
     v.land = Math.max(0, v.land - frameDt * 5);
     v.dash = p.dashTicks > 0 ? 1 : Math.max(0, v.dash - frameDt * 6);
-    const won = !down && (s.phase === 'won' || winners.has(p.id));
+    // (a dance ends when the player walks off, jumps or drives)
+    if (moved || air || driving) dancing.delete(p.id);
+    const won = !down && (s.phase === 'won' || winners.has(p.id) || (dancing.get(p.id) ?? 0) > danceNow);
     v.idle = moved || air || down || driving || v.kick > 0 || won ? 0 : v.idle + frameDt;
     animate(v.figure, { t: time + p.id * 1.7, step: v.step, pace: v.pace, ahead: v.ahead, aside: v.aside, idle: v.idle, air, land: v.land, dash: v.dash, down, driving, climbing: !!p.climb, win: won, kick: v.kick });
-    // a winner turns on the spot
-    v.body.rotation.y = v.yaw + (won ? time * 5 : 0);
+    // a winner turns on the spot, a dancer too; a figure with a dance of its own does that instead
+    const until = dancing.get(p.id) ?? 0;
+    const k = until > danceNow ? 1 - (until - danceNow) / DANCE_SECONDS : ((time + p.id * 1.7) % DANCE_SECONDS) / DANCE_SECONDS;
+    v.body.rotation.y = v.yaw + (won ? (v.figure.model.dance ? v.figure.model.dance(v.figure.parts, k, time) : time * 5) : 0);
     v.held.visible = !down && !won;
     v.held.position.z = v.figure.model.hand[2] + v.kick * 0.1;
     v.held.rotation.x = v.kick * 0.3;
@@ -726,6 +733,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       if (s.tick < lastTick) winners.clear();
       lastTick = s.tick;
       for (const e of events) if (e.type === 'versusEnd') for (const id of e.winners) winners.add(id);
+      for (const e of events) if (e.type === 'emote' && e.emote === 'dance') dancing.set(e.playerId, time + DANCE_SECONDS);
+      danceNow = time;
       // who looks like what: worked out again only when someone joins, leaves or changes
       const key = s.players.map(p => `${p.id}:${p.name}:${p.character ?? ''}`).join('|');
       if (key !== looksKey) {

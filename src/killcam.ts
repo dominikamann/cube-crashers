@@ -5,7 +5,7 @@ import type { SimEvent, SimState } from './sim/types';
 import { TICK_RATE } from './sim/types';
 
 /** how much of the match is kept, and how fast it plays back: as long as a knocked-out player waits to come back */
-export const KILLCAM = { seconds: 4.5, speed: 1 };
+export const KILLCAM = { seconds: 5, speed: 1 };
 
 interface Frame {
   tick: number;

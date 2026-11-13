@@ -40,10 +40,10 @@ describe('key bindings', () => {
     expect(validBindings(undefined)).toEqual(DEFAULT_BINDINGS);
     expect(validBindings('nonsense')).toEqual(DEFAULT_BINDINGS);
     // an unknown action is dropped, a bad value falls back to its default
-    const odd = validBindings({ jump: 42, dance: 'KeyX', use: 'Escape' }) as unknown as Record<string, string>;
+    const odd = validBindings({ jump: 42, twirl: 'KeyX', use: 'Escape' }) as unknown as Record<string, string>;
     expect(odd.jump).toBe('Space');
     expect(odd.use).toBe('KeyE');
-    expect(odd.dance).toBeUndefined();
+    expect(odd.twirl).toBeUndefined();
   });
 
   it('two actions on one key fall back to the defaults', () => {

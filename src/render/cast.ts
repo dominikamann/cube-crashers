@@ -64,6 +64,11 @@ interface Model {
   height: number;
   /** its own moves, after the common ones */
   move?(p: Parts, a: Pose): void;
+  /**
+   * its own dance, instead of turning on the spot: `k` runs from 0 to 1 over the dance. Poses the parts and
+   * says how far it is turned away from where it looks
+   */
+  dance?(p: Parts, k: number, t: number): number;
 }
 
 const WHITE = 0xe8ecf4, DARK = 0x2a2a50, BLACK = 0x14141c, STEEL = 0xaab2c4, IRON = 0x4a5066, GOLD = 0xffcf3a, ORANGE = 0xff9a2e, PINK = 0xff8fb0, CREAM = 0xfff0d8;
@@ -585,7 +590,7 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
     back: [0, 0.22, 0.1],
     down: 'side',
     height: 1.3,
-    build: (s, { c, l }) => dinoFigure(s, c, l),
+    build: (s, { c }) => dinoFigure(s, c),
     move(p, a) {
       // the tail sweeps, further toward its tip
       const sweep = a.t * (4 + a.pace * 6);
@@ -596,6 +601,26 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
       const roar = a.idle > 3 && (a.idle - 3) % 5 < 1.2;
       p.jaw.rotation.x = -(0.06 + a.kick * 0.5 + a.dash * 0.4 + (roar ? 0.55 + Math.sin(a.t * 30) * 0.05 : 0) + (a.down ? 0.5 : 0) + (a.win ? Math.abs(Math.sin(a.t * 7)) * 0.5 : 0));
       if (roar) p.body.rotation.x += 0.18;
+    },
+    // a wiggle of its behind, then its big move (a full turn with a roar), and a wiggle to finish
+    dance(p, k, t) {
+      const wiggle = k < 0.3 || k > 0.74;
+      if (wiggle) {
+        // bent forward, behind in the air, swinging from side to side with the tail flying
+        const w = Math.sin(t * 20);
+        p.body.rotation.x += 0.38;
+        p.body.rotation.z = w * 0.16;
+        p.tail.rotation.y = w * 0.7;
+        p.tail2.rotation.y = w * 0.6;
+        p.tail3.rotation.y = w * 0.5;
+        p.jaw.rotation.x = -0.1;
+        return w * 0.32;
+      }
+      // the move: it rears up, roars and spins round once
+      const u = (k - 0.3) / 0.44;
+      p.body.rotation.x -= 0.32 * Math.sin(Math.PI * u);
+      p.jaw.rotation.x = -(0.7 + Math.sin(t * 30) * 0.06);
+      return u * Math.PI * 2;
     },
   },
   dominik: {
@@ -638,6 +663,9 @@ export function buildFigure(look: Look, hue: number): Figure {
  * Moves a figure's parts for this frame. The body's place and heading (position, rotation.y) are the
  * caller's; this adds the walk, the lean, squash and stretch, and the character's own moves.
  */
+/** how long a figure's own dance takes, in seconds (a win dance repeats it) */
+export const DANCE_SECONDS = 3;
+
 export function animate(f: Figure, a: Pose): void {
   const p = f.parts, m = f.model, body = p.body;
   const stride = Math.sin(a.step), busy = a.down || a.driving ? 0 : a.pace;

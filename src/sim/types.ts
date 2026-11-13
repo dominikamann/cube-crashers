@@ -58,7 +58,8 @@ export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'piz
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
 /** quick messages: help, a ping at the crosshair, nest here, need coins, nice, good game */
-export type EmoteId = 'help' | 'here' | 'nest' | 'coins' | 'nice' | 'gg';
+/** (`dance` is no message: the player's figure does its dance, on a key of its own) */
+export type EmoteId = 'help' | 'here' | 'nest' | 'coins' | 'nice' | 'gg' | 'dance';
 export type KillCategory = 'weapon' | 'tower' | 'kart' | 'stomp' | 'dash' | 'other';
 
 export type Command =

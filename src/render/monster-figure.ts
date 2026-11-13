@@ -82,8 +82,8 @@ const TREX = { w: 1.1, h: 2.0, d: 2.2, eyeY: 1.8, eyeX: 0.26, eye: 0.16 };
 /** as small as the baby dinos that run about in the game */
 const DINO_SCALE = 0.55;
 
-/** The Baby Dino: the T-Rex in the player's colour, with a cap worn back to front and a neckerchief. */
-export function dinoFigure(s: Sculpt, c: number, l: number): void {
+/** The Baby Dino: the T-Rex in the player's colour from head to tail, with friendly eyes. */
+export function dinoFigure(s: Sculpt, c: number): void {
   const f: Frame = { scale: DINO_SCALE, mid: TREX.h / 2 + (MONSTER_LIFT.trex ?? 0) };
   const shape = voxelBody('trex', TREX.w, TREX.h, TREX.d);
   const front = shape.frontAt(TREX.eyeX, TREX.eyeY - TREX.h / 2);
@@ -91,16 +91,12 @@ export function dinoFigure(s: Sculpt, c: number, l: number): void {
   const b = s.part('body');
   b.solid(body('trex', TREX.w, TREX.h, TREX.d, f, c));
   parts(s, MONSTER_PARTS.trex ?? [], f, c);
-  // friendly eyes, and what no monster wears: the cap and the neckerchief
+  // friendly eyes: no monster has those
   const eyeY = TREX.eyeY - TREX.h / 2;
   for (const side of [-1, 1]) {
     b.box(0xffffff, 0.09, 0.1, 0.02, ...place(f, side * TREX.eyeX, eyeY, front + 0.01));
     b.box(0x14141c, 0.05, 0.06, 0.02, ...place(f, side * TREX.eyeX, eyeY - 0.01, front + 0.03));
   }
-  const top = place(f, 0, TREX.h / 2, 0.7);
-  b.box(l, 0.5, 0.08, 0.44, top[0], top[1] + 0.03, top[2]).box(0xe8ecf4, 0.5, 0.03, 0.2, top[0], top[1] + 0.005, top[2] + 0.3).box(0xe8ecf4, 0.1, 0.03, 0.1, top[0], top[1] + 0.085, top[2]);
-  const neck = place(f, 0, 0.3, 0.45);
-  b.box(0xe8ecf4, 0.54, 0.09, 0.44, neck[0], neck[1], neck[2]).box(0xe8ecf4, 0.2, 0.2, 0.05, neck[0], neck[1] - 0.1, neck[2] - 0.24);
 }
 
 /** where his shorts begin (in the body's own frame, from its middle), and how bright their navy is (r + g + b) */

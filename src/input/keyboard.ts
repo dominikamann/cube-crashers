@@ -81,6 +81,12 @@ export class Keyboard {
     const action = actionOf(this.bindings, code);
     const first = !this.down.has(code);
     const slot = slotOf(action);
+    if (action === 'dance' && first) {
+      // the figure's own dance, for everyone to see
+      this.emote = { emote: 'dance', ping: false };
+      this.down.add(code);
+      return;
+    }
     if (action === 'emotes' && first) {
       this.emoteOpen = !this.emoteOpen;
       this.down.add(code);

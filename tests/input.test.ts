@@ -365,14 +365,14 @@ describe('Keyboard with rebound keys', () => {
 
   it('the rare weapon on R, dash on Ctrl, first person on B', () => {
     const k = new Keyboard();
-    k.setBindings({ ...DEFAULT_BINDINGS, rare: 'KeyT', dash: 'ControlLeft', view: 'KeyB' });
+    k.setBindings({ ...DEFAULT_BINDINGS, rare: 'KeyR', dash: 'ControlLeft', view: 'KeyB' });
     k.keyDown('KeyQ', 0);
     k.keyDown('ShiftLeft', 0);
     k.keyDown('KeyV', 0);
     const before = k.commands(createSim(floor01, 1), 0, 10);
     expect(before.some(c => c.type === 'select' || c.type === 'dash')).toBe(false);
     expect(k.firstPerson).toBe(false);
-    k.keyDown('KeyT', 0);
+    k.keyDown('KeyR', 0);
     k.keyDown('ControlLeft', 0);
     k.keyDown('KeyB', 0);
     const after = k.commands(createSim(floor01, 1), 0, 20);
