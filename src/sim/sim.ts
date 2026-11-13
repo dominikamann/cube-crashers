@@ -22,6 +22,8 @@ import { updateOffers } from './systems/offers';
 import { updatePowerups } from './systems/powerups';
 import { updateJetpacks, updateRare } from './systems/rare';
 import { updateHeart } from './systems/heart';
+import { updateLogoSpin } from './systems/logo-spin';
+import { updateEggs } from './systems/eggs';
 import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
@@ -275,12 +277,14 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateTowers(s);
   updateAreas(s);
   updateBoss(s, intents);
+  updateEggs(s);
   updateCoins(s);
   updateOffers(s);
   if (onFloor) {
     updatePowerups(s);
     updateJetpacks(s);
     updateHeart(s);
+    updateLogoSpin(s);
   }
   updateRare(s);
   removeDead(s);

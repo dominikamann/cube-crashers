@@ -97,6 +97,7 @@ export function setupFloor(s: SimState): void {
   // all timers count from now: later floors start long after tick 0
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
+  s.eggs = [];
   s.wild = null;
   s.heart = null;
   s.logoEgg = null;

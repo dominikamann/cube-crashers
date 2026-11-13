@@ -6,6 +6,7 @@ import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
+import { layEggs } from './eggs';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
 import { spawnHorde, type HordeComp } from './hordes';
@@ -462,6 +463,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
     dropCoins(s, b.lastPos, BOSS.deathCoins);
+    if (b.kind === 'rex') layEggs(s, b.lastPos);
     if (s.bosses) {
       // a brawl: the others fight on; the wave is cleared when the last of them falls
       s.bosses = s.bosses.filter(x => x !== b);

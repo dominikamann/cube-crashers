@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const EXTERNAL_LINKS = ['https://www.amannlabs.eu', 'https://github.com/sponsors/dominikamann'];
+const EXTERNAL_LINKS = ['https://www.amannlabs.eu', 'mailto:hello@amannlabs.eu', 'https://github.com/sponsors/dominikamann'];
 const lan = require('./lan.cjs');
 const { startUpdater } = require('./updater.cjs');
 
@@ -41,7 +41,7 @@ function createWindow() {
     }
   });
   // the window only ever shows the game: no navigation, no pop-ups (e.g. a file dropped on the window);
-  // the two credits links open in the system browser
+  // the credits links open in the system browser (or the mail program)
   win.webContents.on('will-navigate', e => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (EXTERNAL_LINKS.includes(url)) shell.openExternal(url);

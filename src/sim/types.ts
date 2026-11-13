@@ -636,6 +636,8 @@ export type SimEvent =
   | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }
   | { type: 'bossDead'; pos: Vec2; kind?: BossKind }
+  /** a baby dino breaks out of its egg */
+  | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
@@ -678,6 +680,8 @@ export interface SimState {
   logoEgg?: { hits: number; given: number } | null;
   /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
   heart?: { pos: Vec2 } | null;
+  /** King Rex's eggs: thrown from where it fell (`from`) to where they lie, each hatches a baby dino */
+  eggs?: { id: number; pos: Vec2; from: Vec2; laidAt: number; hatchAt: number }[];
   /** Tower Run: the wild boss that breaks in on this floor when the first nest falls */
   wild?: { kind: BossKind } | null;
   nextJetpackAt: number;

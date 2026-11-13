@@ -9,6 +9,7 @@ import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
 import { MAZE_CUBES } from '../sim/config/floor-maze';
 import { logoSpots, type LogoSpot } from '../sim/map/logo-spots';
+import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
 import { buildDecor } from './decor';
@@ -466,6 +467,13 @@ function loadMark(): Promise<HTMLImageElement> {
 /** the looks whose floor is dark: the logo's lettering is light there */
 const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
 
+/** how high the floor logo's lettering floats when it is awake: over the heads, so nobody stands in it */
+const LOGO_RISE = 2.3;
+/** the floor logo is drawn at this share of its patch of floor */
+const LOGO_FLOOR_SIZE = 0.78;
+/** a camera lower than this is a first-person one (the view from above hangs far higher) */
+const FP_CAMERA_BELOW = 5;
+
 /** a floor stamp: the A with "AmannLabs" next to it, like on amannlabs.eu */
 function paintLogo(g: CanvasRenderingContext2D, img: HTMLImageElement, spot: { tx: number; tz: number; w: number; h: number }, px: number, alpha = 0.32, ink = '#2a2550', withMark = true) {
   // the A and "AmannLabs", drawn sharp at the full size of the texture
@@ -596,7 +604,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // the AmannLabs logo once or twice per map, painted in when the image is ready
   let disposed = false;
   /** the A of the floor logo: it wakes up when a player steps on the logo */
-  let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number }; glow: number } | null = null;
+  let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; words: THREE.Mesh; wordsMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number }; glow: number } | null = null;
   /** the wall logos glow gently, like a sign */
   const logoMats: THREE.MeshBasicMaterial[] = [];
   const spots = logoSpots(map);
@@ -614,12 +622,26 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           let at = { cx: 0, cz: 0, w: 1, h: 1 };
           const words = canvasTexture(spot.w * fine, spot.h * fine, c => (at = paintLogo(c, img, { tx: 0, tz: 0, w: spot.w, h: spot.h }, fine, 1, ink, false)), false);
           words.anisotropy = 8;
-          at = { ...at, cx: at.cx + spot.tx, cz: at.cz + spot.tz };
+          // (the whole stamp is drawn a little smaller than its patch of floor, around the patch's middle)
+          const midX = spot.tx + spot.w / 2;
+          at = { cx: midX + (at.cx + spot.tx - midX) * LOGO_FLOOR_SIZE, cz: at.cz + spot.tz, w: at.w * LOGO_FLOOR_SIZE, h: at.h * LOGO_FLOOR_SIZE };
           const wordsGeo = new THREE.PlaneGeometry(spot.w, spot.h);
-          const wordsMat = new THREE.MeshBasicMaterial({ map: words, transparent: true, opacity: 0.86, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
+          const wordsMat = new THREE.MeshBasicMaterial({ map: words, transparent: true, opacity: 0.86, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
           const wordsMesh = new THREE.Mesh(wordsGeo, wordsMat);
-          wordsMesh.rotation.x = -Math.PI / 2;
-          wordsMesh.position.set(spot.tx + spot.w / 2, 0.02, spot.tz + spot.h / 2);
+          // flat on the floor at rest; awake it floats up and turns to whoever looks down on it from above. In
+          // first person it stays on the floor (there only the A comes alive). It is posed per camera, right
+          // before it is drawn, so each half of a split screen gets its own
+          wordsMesh.matrixAutoUpdate = false;
+          wordsMesh.frustumCulled = false;
+          const flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+          const pose = { q: new THREE.Quaternion(), at: new THREE.Vector3(), size: new THREE.Vector3() };
+          wordsMesh.onBeforeRender = (_r, _s, camera) => {
+            const g = camera.position.y < FP_CAMERA_BELOW ? 0 : (logoMark?.glow ?? 0);
+            pose.q.copy(flat).slerp(camera.quaternion, g);
+            pose.at.set(spot.tx + spot.w / 2, 0.02 + g * LOGO_RISE, spot.tz + spot.h / 2);
+            pose.size.setScalar(LOGO_FLOOR_SIZE * (1 + g * 0.5));
+            wordsMesh.matrixWorld.compose(pose.at, pose.q, pose.size);
+          };
           disposables.push(words, wordsGeo, wordsMat);
           addToScene(wordsMesh);
           const res = 256, tw = Math.round(res * (at.w / at.h));
@@ -633,7 +655,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           mesh.rotation.x = -Math.PI / 2;
           mesh.position.set(at.cx, 0.03, at.cz);
           // a ring of light on the floor under it, that opens when the A wakes up
-          const ringGeo = new THREE.RingGeometry(0.4, 0.47, 48);
+          const ringGeo = new THREE.RingGeometry(0.4 * LOGO_FLOOR_SIZE, 0.47 * LOGO_FLOOR_SIZE, 48);
           const ringMat = new THREE.MeshBasicMaterial({ color: 0x2bf0ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
           const ring = new THREE.Mesh(ringGeo, ringMat);
           ring.rotation.x = -Math.PI / 2;
@@ -641,7 +663,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           disposables.push(tex, geo, mat, ringGeo, ringMat);
           addToScene(mesh);
           addToScene(ring);
-          logoMark = { mesh, mat, ring, ringMat, spot, glow: 0 };
+          logoMark = { mesh, mat, ring, ringMat, words: wordsMesh, wordsMat, spot, glow: 0 };
         }
         for (const spot of spots) if (spot.kind === 'wall') addToScene(wallLogo(img, spot));
       })
@@ -1000,9 +1022,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     update(s, theme, time) {
       for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
       if (logoMark) {
-        // step on the logo and its A lights up, rises off the floor, grows and spins; walk off and it settles again
-        const k = logoMark, r = k.spot;
-        const on = s.players.some(p => p.downUntil === null && p.pos.x > r.tx - 0.3 && p.pos.x < r.tx + r.w + 0.3 && p.pos.z > r.tz - 0.3 && p.pos.z < r.tz + r.h + 0.3);
+        // step on the logo and its A lights up, rises off the floor, grows and spins (and hurts monsters that
+        // touch it, see logo-spin.ts); walk off and it settles again
+        const k = logoMark;
+        const on = logoAwake(s);
         k.glow += ((on ? 1 : 0) - k.glow) * 0.12;
         const g = k.glow;
         k.mesh.position.y = 0.03 + g * 0.9 + g * 0.08 * Math.sin(time * 5);
@@ -1015,6 +1038,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         k.ring.scale.setScalar(0.6 + g * 1.1 + g * 0.08 * Math.sin(time * 6));
         k.ringMat.opacity = g * 0.85;
         k.ringMat.color.setHSL(0.52 + 0.3 * (0.5 + 0.5 * Math.sin(time * 1.5)), 1, 0.6);
+        // the lettering floats up over the heads and turns to the viewer (see where it is made); it brightens
+        k.wordsMat.opacity = 0.86 + 0.14 * g;
+        k.wordsMat.color.setScalar(1 + g * 0.6);
       }
       const key = `${theme.roadA}-${theme.roadB}-${theme.wallA}-${theme.hemiGround}`;
       if (key !== lastKey) {

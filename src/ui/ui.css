@@ -250,6 +250,8 @@ body.split .card { width: 110px; }
 .credits-by { color: var(--cyan); font-size: 11px; margin-bottom: 0; opacity: 0.8; }
 .credits-site { display: block; text-align: center; color: var(--cyan); font-size: 18px; text-decoration: none; margin: 0 0 10px; }
 .credits-site:hover { text-decoration: underline; }
+.credits-mail { display: block; text-align: center; color: var(--cyan); font-size: 11px; text-decoration: none; margin: -4px 0 12px; opacity: 0.9; }
+.credits-mail:hover { text-decoration: underline; }
 .sponsor-badge { display: inline-block; align-self: center; margin: 10px auto 4px; padding: 8px 14px; border: 2px solid #ea4aaa; border-radius: 6px; background: rgba(234, 74, 170, 0.15); color: #ff8fd0; font-size: 11px; text-decoration: none; cursor: pointer; }
 .sponsor-badge:hover { background: rgba(234, 74, 170, 0.35); color: #fff; }
 .credits-small { font-size: 9px; opacity: 0.85; }

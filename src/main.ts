@@ -1109,7 +1109,12 @@ function applyDemo(sim: SimState) {
     sim.nests = [];
     sim.boss = null;
     sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
-    void import('./sim/systems/boss').then(m => m.spawnBoss(sim, bossKind as 'rex'));
+    void import('./sim/systems/boss').then(m => {
+      // (&fall=1: it falls at once, close by, to look at what it leaves behind)
+      const p = sim.players[0].pos;
+      m.spawnBoss(sim, bossKind as 'rex', params.has('fall') ? { x: p.x, z: p.z - 5 } : undefined);
+      if (params.has('fall')) for (const e of sim.enemies) e.hp = 0;
+    });
   }
   // ?demo=win: a quick floor that is won right away (to look at the result screen)
   if (params.get('demo') === 'win') {

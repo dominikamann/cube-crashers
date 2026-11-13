@@ -1,3 +1,4 @@
+import { ENEMIES } from '../sim/config/enemies';
 import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
@@ -56,6 +57,10 @@ export interface Entities {
   update(s: SimState, theme: Theme, time: number, events: SimEvent[], frameDt: number): void;
   setDamageNumbers(on: boolean): void;
 }
+
+/** an egg as slices from foot to tip: [height of the slice's middle, its width] */
+const EGG_SLICES: [number, number][] = [[0.05, 0.34], [0.15, 0.5], [0.25, 0.6], [0.35, 0.64], [0.45, 0.62], [0.55, 0.56], [0.65, 0.46], [0.75, 0.34], [0.85, 0.2]];
+const EGG_SLICE_HEIGHT = 0.1;
 
 /** the Rhino: grey, long and heavy, with small eyes on its head */
 const RHINO_LOOK = { w: 1, h: 0.9, d: 1.6, day: 0x8d9299, night: 0xa7aebb, eyeY: 0.56, eyeX: 0.2, eye: 0.1 };
@@ -324,7 +329,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const seg = e.kind === 'wormSegment' ? wormAt.get(e.id) : undefined;
         const fromTail = seg ? seg[1] - 1 - seg[0] : 0;
         const wormScale = seg ? (seg[0] === 0 ? 1.3 : fromTail < 3 ? 0.66 + 0.12 * fromTail : 1) : 1;
-        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.5 : e.elite ? 1.4 : wormScale) * worn * pop;
+        // (a baby dino, hatched from one of King Rex's eggs: a T-Rex in small)
+        const baby = e.kind === 'trex' && !kingRex && e.radius < ENEMIES.trex.radius * 0.8;
+        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.5 : baby ? 0.55 : e.elite ? 1.4 : wormScale) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
@@ -552,6 +559,34 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const b of s.bubbles) {
         const left = Math.max(0, b.popAt - s.tick);
         gums.add(b.pos.x, 0.9, b.pos.z, 0, 2.5 * (1 + (left < 30 ? 0.12 * Math.sin(time * 40) : 0.04 * Math.sin(time * 4))));
+      }
+      // King Rex's eggs: thrown out of the explosion in an arc, speckled, rocking harder and harder and cracking
+      // open before the baby breaks out
+      for (const egg of s.eggs ?? []) {
+        const FLIGHT = 36;
+        const age = s.tick - egg.laidAt;
+        const fly = Math.min(1, age / FLIGHT);
+        const x = egg.from.x + (egg.pos.x - egg.from.x) * fly, z = egg.from.z + (egg.pos.z - egg.from.z) * fly;
+        const prog = Math.max(0, Math.min(1, (age - FLIGHT) / Math.max(1, egg.hatchAt - egg.laidAt - FLIGHT)));
+        const lift = Math.sin(Math.PI * fly) * 2.4 + (prog > 0.7 ? Math.abs(Math.sin(time * 14 + egg.id)) * 0.14 : 0);
+        const rock = fly < 1 ? 0 : Math.sin(time * (9 + prog * 22) + egg.id) * (0.04 + 0.34 * prog * prog);
+        const yaw = fly < 1 ? time * 11 + egg.id : egg.id * 1.9;
+        const size = 1.25;
+        // (the slices lean with the rocking: the egg tips from its foot)
+        EGG_SLICES.forEach(([h, w], i) => partsLit.addScaled(x + rock * h * size, lift + h * size, z, yaw, w * size, EGG_SLICE_HEIGHT * size, w * size, i % 2 ? 0xf3ecd6 : 0xfbf6e6, 0, rock));
+        // green speckles all round it
+        for (let i = 0; i < 9; i++) {
+          const [h, w] = EGG_SLICES[1 + ((i * 2) % 6)];
+          const a = egg.id * 1.7 + i * 2.4 + yaw;
+          partsLit.addScaled(x + rock * h * size + Math.sin(a) * (w / 2) * size, lift + h * size, z + Math.cos(a) * (w / 2) * size, a, 0.15 * size, 0.11 * size, 0.1 * size, i % 3 ? 0x6a8f3a : 0x47632a, 0, rock);
+        }
+        // the cracks climb up the shell
+        const cracks = Math.floor(Math.max(0, prog - 0.45) * 14);
+        for (let i = 0; i < cracks; i++) {
+          const h = 0.12 + i * 0.075, w = EGG_SLICES[Math.min(EGG_SLICES.length - 1, Math.floor(h / EGG_SLICE_HEIGHT))][1];
+          const a = yaw + Math.PI + (i % 2 ? 0.16 : -0.16);
+          partsLit.addScaled(x + rock * h * size + Math.sin(a) * (w / 2 + 0.01) * size, lift + h * size, z + Math.cos(a) * (w / 2 + 0.01) * size, a, 0.07 * size, 0.09 * size, 0.03 * size, 0x2e2622, 0, rock);
+        }
       }
       partsLit.end();
       partsGlow.end();

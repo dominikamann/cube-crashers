@@ -493,6 +493,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('bossPhase');
     case 'bossDead':
       return one('bossDead');
+    case 'eggHatch':
+      // the shell cracks, and a very small roar
+      return [{ id: 'bubblePop', pitch: 0.8 }, { id: 'roar_rex', pitch: 2.4 }];
     case 'wormSplit':
       return one('wormSplit');
     case 'gameWon':

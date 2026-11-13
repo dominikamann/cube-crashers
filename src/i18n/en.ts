@@ -248,6 +248,7 @@ export const en = {
   'menu.credits': 'Credits',
   'credits.by': 'A game by',
   'credits.site': 'www.amannlabs.eu',
+  'credits.mail': 'hello@amannlabs.eu',
   'credits.support': '♥ Support me',
   'credits.thanksRead': 'Thanks for reading! +{n} ticket',
   'credits.thanksSponsor': 'Thank you! +{n} tickets',

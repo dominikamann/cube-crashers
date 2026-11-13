@@ -486,6 +486,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'p', 'credits-by', t('credits.by'));
       text(s, 'h2', '', t('credits.author'));
       link(s, 'credits-site', t('credits.site'), 'https://www.amannlabs.eu');
+      link(s, 'credits-mail', t('credits.mail'), 'mailto:hello@amannlabs.eu');
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));

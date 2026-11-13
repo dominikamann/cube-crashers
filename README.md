@@ -638,7 +638,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
-| **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. | Red rings and lines |
+| **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |

@@ -232,6 +232,11 @@ export function createFx(scene: THREE.Scene): Fx {
             addShake(0.8);
             break;
           }
+          case 'eggHatch':
+            // the shell flies apart
+            chunks(e.pos, 0.3, 16, [0xf3ecd6, 0xfbf6e6, 0xf3ecd6, 0x6a8f3a], 4.5, 0.07, 0.2);
+            burst(e.pos, 0.6, 8, [0xffffff, 0x9fd35a], 3, 0.1);
+            break;
           case 'wormSplit':
             burst(e.pos, 0.6, 40, [0x7b4fd1, 0xff2bd6], 5, 0.18);
             addShake(0.2);

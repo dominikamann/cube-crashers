@@ -170,13 +170,26 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
     // tiny arms that come up before a stomp
     { at: [-0.42, 0.12, 0.42], size: [0.1, 0.3, 0.1], color: 'dark', anim: 'arm', ph: PI, amp: 0.5 },
     { at: [0.42, 0.12, 0.42], size: [0.1, 0.3, 0.1], color: 'dark', anim: 'arm', amp: 0.5 },
-    // the lower jaw, hinged under the brow, with its teeth and a red tongue: it gapes before a stomp and chomps on it
-    { at: [0, 0.36, 0.8], size: [0.5, 0.14, 0.72], color: 'light', anim: 'jaw', pivot: [0, 0.42, 0.42] },
-    ...[0.6, 0.76, 0.92, 1.06].flatMap((z): Part[] => [
-      { at: [-0.19, 0.47, z], size: [0.06, 0.1, 0.06], color: 0xffffff, anim: 'jaw', pivot: [0, 0.42, 0.42] },
-      { at: [0.19, 0.47, z], size: [0.06, 0.1, 0.06], color: 0xffffff, anim: 'jaw', pivot: [0, 0.42, 0.42] },
-    ]),
-    { at: [0, 0.45, 0.75], size: [0.3, 0.05, 0.5], color: 0xc0303a, anim: 'jaw', pivot: [0, 0.42, 0.42] },
+    // the lower jaw, hinged under the brow: a trough with a chin, rims that carry the teeth, a dark mouth and a
+    // red tongue. It gapes before a stomp and chomps on it
+    ...((): Part[] => {
+      const jaw = (at: Part['at'], size: Part['size'], color: Part['color']): Part => ({ at, size, color, anim: 'jaw', pivot: [0, 0.42, 0.42] });
+      return [
+        jaw([0, 0.33, 0.78], [0.46, 0.12, 0.7], 'body'),
+        jaw([0, 0.26, 0.7], [0.34, 0.07, 0.5], 'light'),
+        jaw([-0.2, 0.41, 0.8], [0.07, 0.08, 0.66], 'body'),
+        jaw([0.2, 0.41, 0.8], [0.07, 0.08, 0.66], 'body'),
+        jaw([0, 0.41, 1.11], [0.4, 0.08, 0.06], 'body'),
+        jaw([0, 0.395, 0.76], [0.33, 0.03, 0.6], 0x7a1c26),
+        jaw([0, 0.42, 0.7], [0.2, 0.05, 0.42], 0xd9414e),
+        // its teeth stand on the rims, between the upper ones
+        ...[0.54, 0.7, 0.86, 1.01].flatMap(z => [jaw([-0.2, 0.49, z], [0.05, 0.09, 0.05], 0xffffff), jaw([0.2, 0.49, z], [0.05, 0.09, 0.05], 0xffffff)]),
+        jaw([-0.08, 0.49, 1.11], [0.05, 0.08, 0.05], 0xffffff),
+        jaw([0.08, 0.49, 1.11], [0.05, 0.08, 0.05], 0xffffff),
+      ];
+    })(),
+    // the roof of the mouth
+    { at: [0, 0.545, 0.8], size: [0.36, 0.02, 0.6], color: 0x7a1c26 },
     // the upper teeth
     ...[0.62, 0.78, 0.94, 1.08].flatMap((z): Part[] => [
       { at: [-0.22, 0.52, z], size: [0.06, 0.12, 0.06], color: 0xffffff },
@@ -405,7 +418,8 @@ export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: E
         // turn around the hinge: the front drops
         ly = py + dy * Math.cos(a) - dz * Math.sin(a);
         lz = pz + dy * Math.sin(a) + dz * Math.cos(a);
-        rx -= a;
+        // (the piece turns the same way it swings, so the teeth stay upright on the jaw)
+        rx += a;
         break;
       }
     }
