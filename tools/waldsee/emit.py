@@ -97,7 +97,8 @@ def round_clear(p,R):
 def pickNests(n,apart):
     nests=[]
     # (a nest stands where there is room to run round it while it is held: on a square, clear all round)
-    cn=[p for p in roomy if round_clear(p,CLEAR) and d(p,S)>=16 and d(p,E)>=10 and all(d(p,t)>=3 for t in solid) and len(padsFor(p,set()))>=3]
+    # (and not on the terrace of the Czardas or right before it: one sits there)
+    cn=[p for p in roomy if round_clear(p,CLEAR) and not(TERRACE[0]-7<=p[0]<=TERRACE[1]+7 and TERRACE[2]-2<=p[1]<=TERRACE[3]+6) and d(p,S)>=16 and d(p,E)>=10 and all(d(p,t)>=3 for t in solid) and len(padsFor(p,set()))>=3]
     while len(nests)<n and cn:
         p=max(cn,key=lambda q:d(q,S)) if not nests else max(cn,key=lambda q:min(d(q,m) for m in nests))
         if nests and min(d(p,m) for m in nests)<apart: break

@@ -24,10 +24,10 @@ const segs = (s: SimState, worm = 0): Enemy[] => s.boss!.worms[worm].map(id => s
 const kill = (s: SimState, e: Enemy) => damageEnemy(s, e, 1e9, 'pixelBlaster', 0);
 
 describe('the run', () => {
-  it('has five floors with a boss on 3 and 5', () => {
-    expect(RUN_FLOORS).toHaveLength(5);
-    expect(FLOORS[RUN_FLOORS[2]].boss).toBe('megaBlock');
-    expect(FLOORS[RUN_FLOORS[4]].boss).toBe('worm');
+  it('has six floors with a boss on 4 and 6', () => {
+    expect(RUN_FLOORS).toHaveLength(6);
+    expect(FLOORS[RUN_FLOORS[3]].boss).toBe('megaBlock');
+    expect(FLOORS[RUN_FLOORS[5]].boss).toBe('worm');
   });
 });
 

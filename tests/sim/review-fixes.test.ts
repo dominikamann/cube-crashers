@@ -101,7 +101,7 @@ describe('blasts on the Segment Worm', () => {
 
   it('the worm starts with a full bar: its health counts what the segments really have', () => {
     const s = createSim(floor01, 3, { mode: 'run' });
-    enterFloor(s, 4);
+    enterFloor(s, 5);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);
     // 18 segments of 100 on medium for one player: the bar is not counted twice or left unscaled

@@ -85,7 +85,8 @@ function findLogoSpots(map: FloorMap): LogoSpot[] {
   const pool = far.length ? far : walls.slice().sort((a, b) => apart(b) - apart(a)).slice(0, 1);
   // a face toward the bottom of the map is seen from above too, not only in first person
   const south = pool.filter(w => w.kind === 'wall' && w.facing.z === 1);
-  const wall = pick(south.length ? south : pool, 0xa11);
+  // (not in the Town: its walls are the fronts of houses, with windows and shutters)
+  const wall = map.id === 'waldsee' ? undefined : pick(south.length ? south : pool, 0xa11);
   return wall ? [floor, wall] : [floor];
 }
 
