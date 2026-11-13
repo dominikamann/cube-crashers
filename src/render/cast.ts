@@ -592,8 +592,9 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
     height: 1.3,
     build: (s, { c }) => dinoFigure(s, c),
     move(p, a) {
-      // the tail sweeps, further toward its tip
-      const sweep = a.t * (4 + a.pace * 6);
+      // the tail sweeps, further toward its tip: steadily while it stands, and with its steps when it runs (both
+      // only ever move on, so the tail never jumps when the dino speeds up or stops)
+      const sweep = a.t * 4 + a.step * 1.1;
       p.tail.rotation.y = Math.sin(sweep) * 0.2;
       p.tail2.rotation.y = Math.sin(sweep - 0.6) * 0.3;
       p.tail3.rotation.y = Math.sin(sweep - 1.2) * 0.4;
