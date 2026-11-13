@@ -865,7 +865,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         if (!lan) {
           // like the LAN lobby: how many players the match has, bots fill up the rest
           const humans = settings.localPlayers;
-          const sizes = [humans, ...[2, 4, 6, 8, 10].filter(n => n > humans)];
+          // (alone there is no match without bots: "no bots" is only offered to two players on one computer)
+          const sizes = [...(humans >= 2 ? [humans] : []), ...[2, 4, 6, 8, 10].filter(n => n > humans)];
           if (!sizes.includes(settings.versusSize)) settings.versusSize = sizes.find(n => n >= settings.versusSize) ?? MAX_PLAYERS;
           choose(t('setup.size'), sizes.map(n => ({ label: n === humans ? t('lobby.fillOff') : String(n), value: n })), settings.versusSize, v => (settings.versusSize = v));
         }
