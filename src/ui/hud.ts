@@ -120,7 +120,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let shopKey = '';
 
   const bottom = el('div', 'hud-bottom', layer);
-  const left = el('div', 'hud-box player-hp txt', bottom, '♥ HP ');
+  const left = el('div', 'hud-box player-hp txt', bottom);
+  // (the heart is a glyph from another font: it gets its own box so it can sit on the line of the letters)
+  el('span', 'hp-heart', left, '♥');
+  el('span', '', left, 'HP ');
   // the number too: a bar alone says "about half", a shooter wants "47"
   const hpNumber = el('span', 'hp-number', left);
   const hpFill = el('i', '', el('div', 'bar', left));

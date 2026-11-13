@@ -505,3 +505,5 @@ body.no-map .mapbox { display: none; }
 /* the dash charges share the width of the health bar: one is a full bar, two are halves; a used one fills up
    again as it recharges (see hud.ts) */
 .player-hp .dashes i { flex: 1; width: auto; }
+
+.player-hp .hp-heart { display: inline-block; margin-right: 7px; line-height: 1; transform: translateY(-3px); }
