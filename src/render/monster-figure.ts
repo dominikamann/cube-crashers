@@ -34,11 +34,13 @@ const place = (f: Frame, x: number, y: number, z: number): Vec3 => [-x * f.scale
  * figure that needs it: a voxel body has many thousand cubes.
  */
 const bodies = new Map<string, THREE.BufferGeometry>();
-function body(kind: BodyKind, w: number, h: number, d: number, f: Frame, color: number, offset: Vec3 = [0, 0, 0], pivot: Vec3 = [0, 0, 0]): THREE.BufferGeometry {
-  const key = `${kind}:${color}`;
+function body(kind: BodyKind, w: number, h: number, d: number, f: Frame, color: number, offset: Vec3 = [0, 0, 0], pivot: Vec3 = [0, 0, 0], paint?: (g: THREE.BufferGeometry) => void, variant = ''): THREE.BufferGeometry {
+  const key = `${kind}:${color}:${variant}`;
   let g = bodies.get(key);
   if (g) return g;
-  g = voxelBody(kind, w, h, d).geometry;
+  // (a copy: some voxel bodies are kept and shared with the monsters that wear them)
+  g = voxelBody(kind, w, h, d).geometry.clone();
+  paint?.(g);
   g.translate(offset[0], offset[1] + f.mid, offset[2]).rotateY(Math.PI).scale(f.scale, f.scale, f.scale).translate(-pivot[0], -pivot[1], -pivot[2]);
   const tint = new THREE.Color(color);
   const col = g.getAttribute('color');
@@ -101,9 +103,13 @@ export function dinoFigure(s: Sculpt, c: number, l: number): void {
   b.box(0xe8ecf4, 0.54, 0.09, 0.44, neck[0], neck[1], neck[2]).box(0xe8ecf4, 0.2, 0.2, 0.05, neck[0], neck[1] - 0.1, neck[2] - 0.24);
 }
 
+/** where his shorts begin (in the body's own frame, from its middle), and how bright their navy is (r + g + b) */
+const SHORTS_TOP = -0.16, NAVY_SUM = 0.62;
+
 /**
  * Dominik at player size: the boss's body, head, neck and limbs as the game draws them, without his hammer (he
- * holds the player's weapon in his open right hand), with a headband and wristbands in the player's colour.
+ * holds the player's weapon in his open right hand). His shorts and his wristbands are in the player's colour:
+ * that is how one tells the players and the teams apart.
  */
 export function dominikFigure(s: Sculpt, c: number): void {
   const f: Frame = { scale: DOMINIK.small, mid: DOMINIK.height / 2 + DOMINIK.lift };
@@ -119,7 +125,18 @@ export function dominikFigure(s: Sculpt, c: number): void {
     return made;
   };
   const b = s.part('body');
-  b.solid(body('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth, f, 0xffffff));
+  // the shorts: whatever is navy below the hem of the shirt takes the player's colour, keeping its shading
+  const dye = (g: THREE.BufferGeometry) => {
+    const pos = g.getAttribute('position'), col = g.getAttribute('color');
+    const to = new THREE.Color(c);
+    for (let i = 0; i < col.count; i++) {
+      const r = col.getX(i), gr = col.getY(i), bl = col.getZ(i);
+      if (pos.getY(i) > SHORTS_TOP || bl < r * 1.5 || bl < gr * 1.2) continue;
+      const shade = Math.min(1.6, (r + gr + bl) / NAVY_SUM);
+      col.setXYZ(i, to.r * shade, to.g * shade, to.b * shade);
+    }
+  };
+  b.solid(body('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth, f, 0xffffff, [0, 0, 0], [0, 0, 0], dye, `shorts${c}`));
   // (the neck is given in the body's frame, like the body itself)
   let neckG = bodies.get('dominikNeck');
   if (!neckG) {
@@ -131,8 +148,6 @@ export function dominikFigure(s: Sculpt, c: number): void {
   const nape = place(f, 0, DOMINIK.height / 2, DOMINIK.head.z);
   const head = s.part('head', nape, 'body');
   head.solid(body('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d, f, 0xffffff, [0, DOMINIK.head.y, DOMINIK.head.z], nape));
-  const band = place(f, 0, DOMINIK.head.y + DOMINIK.head.h * 0.24, DOMINIK.head.z);
-  head.box(c, (DOMINIK.head.w + 0.04) * f.scale, 0.07 * f.scale, (DOMINIK.head.d + 0.04) * f.scale, band[0], band[1], band[2]);
   // his left is at the monster's +x, which is the figure's -x: that arm swings (legL and armL are on that side);
   // the right one holds the weapon
   for (const left of [true, false]) {
@@ -140,7 +155,7 @@ export function dominikFigure(s: Sculpt, c: number): void {
     const shoulder = place(f, side * j.shoulder.x, j.shoulder.y, j.shoulder.z);
     const arm = s.part(left ? 'armL' : 'armR', shoulder, 'body');
     arm.solid(hung('dominikUpper', pieces.upper)).solid(hung(left ? 'dominikForeL' : 'dominikForeR', left ? pieces.left : pieces.right, j.upperArm));
-    // a wristband in the player's colour (on the left the watch sits under it)
+    // a wristband in the player's colour (on the left the watch sits next to it)
     arm.box(c, 0.2 * f.scale, 0.07 * f.scale, 0.2 * f.scale, shoulder[0], shoulder[1] - (j.upperArm + 0.36) * f.scale, shoulder[2]);
     const knee = place(f, side * j.knee.x, j.knee.y, j.knee.z);
     s.part(left ? 'legL' : 'legR', knee, 'body').solid(hung('dominikLeg', pieces.leg));

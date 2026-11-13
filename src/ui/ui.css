@@ -385,7 +385,8 @@ body.split .card { width: 110px; }
 .daily-best { color: var(--gold); font-size: 10px; }
 
 /* the kill cam banner */
-.killcam { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 12px; padding: 6px 12px; border-radius: 8px; background: rgba(120, 10, 40, 0.55); border: 1px solid rgba(255, 90, 122, 0.7); pointer-events: none; }
+/* (above the weapon bar: the top and the middle of the screen are taken by the match's own messages) */
+.killcam { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 12px; padding: 6px 12px; border-radius: 8px; background: rgba(120, 10, 40, 0.55); border: 1px solid rgba(255, 90, 122, 0.7); pointer-events: none; }
 .killcam b { color: #fff; font-size: 10px; font-weight: normal; letter-spacing: 1px; }
 .killcam span { color: rgba(255, 255, 255, 0.75); font-size: 9px; }
 

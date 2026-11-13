@@ -1,7 +1,7 @@
 import { DOMINIK, DOMINIK_DEATH, dominikGlow, hammerAlong, HAMMER_FLIGHT, hammerGeometry } from './dominik-limbs';
 import * as THREE from 'three';
 import { TICK_RATE, type BossKind, type PowerupKind, type SimEvent, type SimState, type Vec2 } from '../sim/types';
-import { BOSS } from '../sim/systems/boss';
+import { BOSS, laserReach } from '../sim/systems/boss';
 import { ENEMY_LOOK } from './entities';
 import { playerColor } from './palette';
 import { glowMat, InstancedPool } from './pool';
@@ -29,8 +29,6 @@ interface Beam {
 }
 
 const MAX_PARTICLES = 3000;
-/** Angry Dominik's beam as it is drawn: as long as it burns */
-const LASER_LENGTH = BOSS.laser.length;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
 /** what a floor gives off when his hammer comes down on it: dust and chips of stone */
@@ -537,7 +535,9 @@ export function createFx(scene: THREE.Scene): Fx {
         const l = b.laser;
         const a = l.from + l.sweep * Math.max(0, Math.min(1, (s.tick - l.fireAt) / Math.max(1, l.endAt - l.fireAt)));
         const dir = { x: Math.cos(a), z: Math.sin(a) }, side = { x: -dir.z, z: dir.x };
-        const end = { x: dom.pos.x + dir.x * LASER_LENGTH, z: dom.pos.z + dir.z * LASER_LENGTH };
+        // (it ends on the floor of the map: over walls if need be, but never in one or beyond the edge)
+        const reach = laserReach(s, b);
+        const end = { x: dom.pos.x + dir.x * reach, z: dom.pos.z + dir.z * reach };
         // out of his eyes, wherever he looks: they sit on his face, which is turned the way his body is
         const fl = Math.hypot(dom.dir.x, dom.dir.z) || 1;
         const face = { x: dom.dir.x / fl, z: dom.dir.z / fl };
@@ -569,7 +569,7 @@ export function createFx(scene: THREE.Scene): Fx {
           burst({ x: end.x - side.x * Math.sign(l.sweep) * rand() * 0.8, z: end.z - side.z * Math.sign(l.sweep) * rand() * 0.8 }, 0.08, 1, [0xff5a2b, 0xffb03a], 0.3, 0.09, 0.15);
           // the floor glows along the beam
           const t = rand();
-          burst({ x: dom.pos.x + dir.x * LASER_LENGTH * t, z: dom.pos.z + dir.z * LASER_LENGTH * t }, 0.1, 1, [0xff5a2b, 0xffe14a], 0.6, 0.07, 0.3);
+          burst({ x: dom.pos.x + dir.x * reach * t, z: dom.pos.z + dir.z * reach * t }, 0.1, 1, [0xff5a2b, 0xffe14a], 0.6, 0.07, 0.3);
         }
       }
       // dash trail, jetpack exhaust and smoke from damaged karts

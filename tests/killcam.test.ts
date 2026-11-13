@@ -38,8 +38,9 @@ describe('the kill cam', () => {
     // the replay starts near where the recording began and ends where the match was
     expect(Math.abs(first.x - start.x)).toBeLessThan(Math.abs(last.x - start.x));
     expect(last.x).toBeCloseTo(b.pos.x, 1);
-    // a little slower than real time
-    expect(steps / 60).toBeGreaterThan(rec.seconds());
+    // at the speed of the match (it lasts as long as the wait to come back)
+    expect(steps / 60).toBeGreaterThan(rec.seconds() / KILLCAM.speed - 0.1);
+    expect(steps / 60).toBeLessThan(rec.seconds() / KILLCAM.speed + 0.1);
   });
 
   it('hands the shots and blasts of each moment to the screen', () => {

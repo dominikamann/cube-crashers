@@ -1,5 +1,5 @@
 import { clearSpot } from './ground';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
@@ -481,6 +481,21 @@ export function laserAngle(b: BossState, tick: number): number {
   return l.from + l.sweep * Math.max(0, Math.min(1, (tick - l.fireAt) / Math.max(1, l.endAt - l.fireAt)));
 }
 
+/**
+ * How far the beam reaches right now: it ends on the floor of the map. It may pass over walls on the way, but
+ * its end is the furthest spot within its length that is floor, never a wall and never outside the map.
+ */
+export function laserReach(s: SimState, b: BossState): number {
+  const dom = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
+  if (!dom || !b.laser) return 0;
+  const a = laserAngle(b, s.tick), dx = Math.cos(a), dz = Math.sin(a);
+  for (let t = BOSS.laser.length; t > 0; t -= 0.25) {
+    const x = dom.pos.x + dx * t, z = dom.pos.z + dz * t;
+    if (x >= 0 && z >= 0 && x < s.map.w && z < s.map.h && tileAt(s.map, Math.floor(x), Math.floor(z)) !== Tile.Wall) return t;
+  }
+  return 0;
+}
+
 /** Is `pos` in the beam right now? (Only as far as the beam reaches, and not through a wall.) */
 export function laserHits(s: SimState, b: BossState, pos: Vec2): boolean {
   const dom = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
@@ -488,7 +503,7 @@ export function laserHits(s: SimState, b: BossState, pos: Vec2): boolean {
   const a = laserAngle(b, s.tick);
   const dx = pos.x - dom.pos.x, dz = pos.z - dom.pos.z;
   const along = dx * Math.cos(a) + dz * Math.sin(a), across = Math.abs(-dx * Math.sin(a) + dz * Math.cos(a));
-  return along > 0 && along <= BOSS.laser.length && across <= BOSS.laser.width / 2 + PLAYER_RADIUS && hasLos(s.map, dom.pos, pos);
+  return along > 0 && along <= laserReach(s, b) && across <= BOSS.laser.width / 2 + PLAYER_RADIUS && hasLos(s.map, dom.pos, pos);
 }
 
 /** Angry Dominik's laser eyes: aim, burn, done. Jump over the beam or keep ahead of it. */

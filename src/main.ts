@@ -315,6 +315,9 @@ function startGame() {
   // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
   const killcam = new KillCamRecorder();
   let replay: KillCamPlayback | null = null;
+  /** where the kill cam looks, and for which replay (a new one starts at the killer's aim) */
+  let killYaw = 0;
+  let killYawFor: KillCamPlayback | null = null;
   const killBanner = document.createElement('div');
   killBanner.className = 'killcam';
   killBanner.innerHTML = `<b></b><span>${t('killcam.skip')}</span>`;
@@ -461,8 +464,15 @@ function startGame() {
       }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
-      // the kill cam is watched from above, following who did it
-      renderer.setFirstPerson(0, fp0on && !replay ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
+      // the kill cam is watched through the eyes of who did it: the view turns with their aim, a little smoothed
+      const killer = replay?.state.players.find(p => p.id === replay!.killerId);
+      if (killer) {
+        const want = Math.atan2(-killer.aim.x, -killer.aim.z);
+        const off = Math.atan2(Math.sin(want - killYaw), Math.cos(want - killYaw));
+        killYaw = killYawFor === replay ? killYaw + off * Math.min(1, frameDt * 12) : want;
+        killYawFor = replay;
+      }
+      renderer.setFirstPerson(0, killer ? { yaw: killYaw, pitch: -0.06 } : fp0on && !replay ? { yaw: fp0!.yaw, pitch: fp0!.pitch } : null);
       const fp1on = split && padCtl2.firstPerson && view().run.stage !== 'shop';
       renderer.setFirstPerson(1, fp1on ? { yaw: padCtl2.yaw, pitch: padCtl2.pitch } : null);
       fpCross[0].style.display = fp0on && mode === 'playing' && !replay ? '' : 'none';
