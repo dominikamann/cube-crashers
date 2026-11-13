@@ -38,6 +38,10 @@ export interface Settings {
   showMap: boolean;
   graphics: GraphicsQuality;
   damageNumbers: boolean;
+  /** the frames a second in a corner of the screen */
+  showFps: boolean;
+  /** the graphics test has picked a setting for this machine once (it runs by itself on the first start) */
+  graphicsTested?: boolean;
   /** versus: watch the last seconds again when you are knocked out */
   killCam: boolean;
   /** suit colour 0–5, or null for automatic */
@@ -97,7 +101,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, showFps: false, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -253,6 +257,8 @@ export interface ScreenActions {
   /** missing where the game cannot close itself (a web page) */
   quit?: () => void;
   settingsChanged(s: Settings): void;
+  /** tries the graphics settings on this machine and keeps the best that runs smoothly; `done` when it has */
+  testGraphics(done: () => void): void;
   click(): void;
 }
 
@@ -578,6 +584,17 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
 
       // graphics sit with the sound on the right, where there is room for all four
       chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
+      // the test picks the setting for this machine; the counter shows what it gets
+      const best = row(t('settings.graphicsTest'));
+      const run = document.createElement('button');
+      run.className = 'chip small';
+      run.textContent = `${t('settings.graphicsTestRun')} \u203a`;
+      run.addEventListener('click', () => {
+        actions.click();
+        actions.testGraphics(() => settingsScreen());
+      });
+      best.append(run);
+      chips(t('settings.fps'), onOff, () => settings.showFps, v => (settings.showFps = v));
       section(t('settings.gameplay'), 0);
       const keys = row(t('settings.keys'));
       const change = document.createElement('button');

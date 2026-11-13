@@ -521,3 +521,7 @@ body.no-map .mapbox { display: none; }
 .team-panel .mate b { font-weight: normal; font-size: 8px; letter-spacing: 1px; color: #ff7a9c; white-space: nowrap; }
 .team-panel .mate.out { opacity: 0.5; }
 .team-panel .mate.out b { color: #fff; }
+
+/* the frame counter in a corner, and the notice of the graphics test */
+.fps { position: fixed; left: 8px; bottom: 6px; z-index: 40; font-size: 8px; letter-spacing: 1px; color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7); pointer-events: none; }
+.gfx-note { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 60; padding: 8px 14px; border-radius: 8px; background: rgba(12, 10, 34, 0.86); border: 1.5px solid var(--cyan); color: #fff; font-size: 9px; letter-spacing: 0.5px; pointer-events: none; white-space: nowrap; }

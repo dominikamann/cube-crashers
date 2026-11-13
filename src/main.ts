@@ -39,6 +39,7 @@ import { KillCamRecorder, type KillCamPlayback } from './killcam';
 import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
+import { createGraphicsTest, type GraphicsTest } from './graphics-test';
 import { createSmoother } from './render/smooth';
 import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './ui/screens';
 
@@ -122,6 +123,58 @@ function startGame() {
     return audio;
   }
 
+  // the frames a second, counted over half a second at a time: for the counter in the corner
+  const fpsEl = document.createElement('div');
+  fpsEl.className = 'fps';
+  document.body.append(fpsEl);
+  let fpsFrames = 0, fpsSince = performance.now();
+  /** the graphics test while it runs (see graphics-test.ts), its notice on screen, and who waits for it */
+  let gfxTest: GraphicsTest | null = null;
+  let gfxDone: (() => void) | null = null;
+  const gfxNote = document.createElement('div');
+  gfxNote.className = 'gfx-note';
+  gfxNote.style.display = 'none';
+  document.body.append(gfxNote);
+  let gfxNoteUntil = 0;
+  function startGraphicsTest(done?: () => void) {
+    if (gfxTest) return;
+    gfxTest = createGraphicsTest(performance.now());
+    gfxDone = done ?? null;
+    gfxNote.style.display = '';
+  }
+  function countFrame() {
+    const now = performance.now();
+    fpsFrames++;
+    if (now - fpsSince >= 500) {
+      fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} FPS`;
+      fpsFrames = 0;
+      fpsSince = now;
+    }
+    fpsEl.style.display = settings.showFps && !gfxTest ? '' : 'none';
+    if (!gfxTest) {
+      if (gfxNoteUntil && now > gfxNoteUntil) {
+        gfxNote.style.display = 'none';
+        gfxNoteUntil = 0;
+      }
+      return;
+    }
+    gfxTest.frame(now);
+    renderer.setQuality(gfxTest.quality);
+    gfxNote.textContent = `${t('gfx.testing')} ${t('gfx.trying', { quality: t(`graphics.${gfxTest.quality}`) })}`;
+    const result = gfxTest.result;
+    if (!result) return;
+    // done: the setting is kept, and said for a moment (the measured rate is with the picture drawn twice)
+    gfxTest = null;
+    settings.graphics = result.quality;
+    settings.graphicsTested = true;
+    saveSettings(settings);
+    applySettings();
+    gfxNote.textContent = t('gfx.done', { quality: t(`graphics.${result.quality}`), fps: Math.round(result.fps * 2) });
+    gfxNoteUntil = now + 4000;
+    gfxDone?.();
+    gfxDone = null;
+  }
+
   function applySettings() {
     audio?.mixer.setMusicVolume(settings.music);
     audio?.mixer.setSfxVolume(settings.sfx);
@@ -137,6 +190,8 @@ function startGame() {
     renderer.setDamageNumbers(settings.damageNumbers);
   }
   applySettings();
+  // the first start on a machine: the graphics test picks the setting once, by itself, on the title screen
+  if (!settings.graphicsTested && [...params.keys()].length === 0) setTimeout(() => mode === 'title' && startGraphicsTest(), 2500);
 
   const playerName = () => settings.name || 'Player';
 
@@ -356,6 +411,7 @@ function startGame() {
       // a web page cannot close itself
       quit: window.cubeCrashers ? () => window.close() : undefined,
       settingsChanged: applySettings,
+      testGraphics: done => startGraphicsTest(done),
       click: () => ensureAudio().mixer.play('uiClick'),
     },
     settings,
@@ -498,9 +554,12 @@ function startGame() {
       const restore = smooth(shown, alpha);
       try {
         renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
+        // (the graphics test draws the picture a second time: see graphics-test.ts)
+        if (gfxTest) renderer.render(shown, alpha, [], 0);
       } finally {
         restore();
       }
+      countFrame();
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive ? useLabel(0) : null);
       buildMenu.setPadLabels(padActive);
