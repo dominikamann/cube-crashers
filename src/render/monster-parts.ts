@@ -21,6 +21,8 @@ interface Part {
   pivot?: [number, number, number];
   /** phase offset within the animation */
   ph?: number;
+  /** turned by this much round the body's own front-to-back axis (a leg that slants up or down) */
+  tilt?: number;
   amp?: number;
   /** sway: how far the part rises while an attack winds up (the Kraken's tentacles), slamming down after */
   lift?: number;
@@ -44,7 +46,45 @@ const arms = (x: number, y: number, w: number, h: number, color: Part['color'] =
   { at: [x, y, 0], size: [w, h, w], color, anim: 'arm', ph: 0, amp },
 ];
 
+/**
+ * A spider's eight legs, each in three slanted pieces: up from the body to a high knee, down and out to the
+ * floor well outside it, and a small foot. They step in two groups of four, like a real one's. `reach`: how far
+ * out the feet stand, `rise`: how high the knees are over the body's middle, `foot`: how far under it the feet
+ * are; `at`: where the four pairs leave the body along its length; `thick`: how thick a leg is; `knee`: the
+ * colour of the bands at the knees.
+ */
+function spiderLegs(reach: number, rise: number, foot: number, at: number[], thick: number, knee: number): Part[] {
+  const legs: Part[] = [];
+  const hip = reach * 0.24, kneeX = reach * 0.62;
+  at.forEach((z, i) => {
+    for (const side of [-1, 1]) {
+      const ph = (i % 2 === 0) === side > 0 ? 0 : PI;
+      // the front pairs reach forward, the back pairs back
+      const splay = (1.5 - i) * reach * 0.24;
+      const anim = { anim: 'leg' as const, ph, amp: reach * 0.15 };
+      const piece = (x0: number, y0: number, x1: number, y1: number, zAt: number, t: number, color: Part['color']): Part => ({
+        at: [(side * (x0 + x1)) / 2, (y0 + y1) / 2, zAt],
+        size: [Math.hypot(x1 - x0, y1 - y0) + t * 0.5, t, t],
+        color,
+        tilt: side * Math.atan2(y1 - y0, x1 - x0),
+        ...anim,
+      });
+      legs.push(piece(hip, 0, kneeX, rise, z + splay * 0.45, thick * 1.25, 'dark'));
+      legs.push({ at: [side * kneeX, rise, z + splay * 0.6], size: [thick * 1.7, thick * 1.7, thick * 1.7], color: knee, ...anim });
+      legs.push(piece(kneeX, rise, reach * 0.94, -foot * 0.45, z + splay * 0.8, thick, 'dark'));
+      legs.push({ at: [side * reach * 0.94, -foot * 0.45, z + splay * 0.9], size: [thick * 1.3, thick * 1.3, thick * 1.3], color: knee, ...anim });
+      legs.push(piece(reach * 0.94, -foot * 0.45, reach, -foot, z + splay, thick * 0.8, 'body'));
+    }
+  });
+  return legs;
+}
 export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
+  // one of the Tarantula Queen's brood: eight quick legs, two red eyes
+  spiderling: [
+    ...spiderLegs(0.5, 0.14, 0.26, [0.2, 0.08, -0.04, -0.16], 0.05, 0xd9701e),
+    { at: [-0.07, 0.07, 0.31], size: [0.06, 0.06, 0.03], color: 0xff3b3b, glow: true },
+    { at: [0.07, 0.07, 0.31], size: [0.06, 0.06, 0.03], color: 0xff3b3b, glow: true },
+  ],
   blob: [
     ...feet(0.2, -0.42, 0.2, 0.14, 0.28),
     ...arms(0.42, 0.12, 0.12, 0.3),
@@ -253,6 +293,7 @@ export const MONSTER_PARTS: Partial<Record<EnemyKind, Part[]>> = {
 
 /** how far the body is lifted off the ground to stand on its legs (tiles, before scaling) */
 export const MONSTER_LIFT: Partial<Record<EnemyKind, number>> = {
+  spiderling: 0.12,
   blob: 0.14,
   hunter: 0.16,
   tank: 0.2,
@@ -302,6 +343,27 @@ export interface PartPose {
  * The Rhino (a rammer in the rules, with a body of its own) wears these: thick legs, a big horn and
  * a small one on its nose, ears, a heavy brow and a short tail.
  */
+const SPIDER_ORANGE = 0xd9701e;
+/** how far the Tarantula Queen's body is lifted on her legs */
+export const SPIDER_LIFT = 0.28;
+export const SPIDER_PARTS: Part[] = [
+  ...spiderLegs(1.75, 0.5, 0.82, [0.62, 0.3, -0.02, -0.34], 0.15, SPIDER_ORANGE),
+  // the two feelers beside her jaws, and the fangs under them, which rise before she strikes
+  { at: [-0.26, -0.28, 1.34], size: [0.14, 0.14, 0.42], color: 'dark', anim: 'sway', amp: 0.12 },
+  { at: [0.26, -0.28, 1.34], size: [0.14, 0.14, 0.42], color: 'dark', anim: 'sway', ph: PI, amp: 0.12 },
+  { at: [-0.13, -0.34, 1.22], size: [0.16, 0.2, 0.2], color: 'dark' },
+  { at: [0.13, -0.34, 1.22], size: [0.16, 0.2, 0.2], color: 'dark' },
+  { at: [-0.13, -0.56, 1.26], size: [0.08, 0.3, 0.08], color: 0xf2ead8, anim: 'sway', amp: 0.1, lift: 0.14 },
+  { at: [0.13, -0.56, 1.26], size: [0.08, 0.3, 0.08], color: 0xf2ead8, anim: 'sway', ph: PI, amp: 0.1, lift: 0.14 },
+  // eight eyes: two big ones in front, the others round them
+  { at: [-0.14, 0.2, 1.22], size: [0.13, 0.13, 0.05], color: 0xff3b3b, glow: true },
+  { at: [0.14, 0.2, 1.22], size: [0.13, 0.13, 0.05], color: 0xff3b3b, glow: true },
+  ...[[-0.33, 0.24, 1.14], [0.33, 0.24, 1.14], [-0.2, 0.36, 1.1], [0.2, 0.36, 1.1], [-0.4, 0.34, 1.0], [0.4, 0.34, 1.0]].map(([x, y, z]): Part => ({ at: [x, y, z], size: [0.07, 0.07, 0.05], color: 0xff7a5a, glow: true })),
+  // the spinnerets at her rear
+  { at: [-0.1, -0.1, -1.36], size: [0.1, 0.1, 0.2], color: 'dark', anim: 'wag', amp: 0.3 },
+  { at: [0.1, -0.1, -1.36], size: [0.1, 0.1, 0.2], color: 'dark', anim: 'wag', ph: PI, amp: 0.3 },
+];
+
 /** how far the Rhino's body is lifted for its legs */
 export const RHINO_LIFT = 0.23;
 export const RHINO_PARTS: Part[] = [
@@ -371,7 +433,7 @@ export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: E
   const c = Math.cos(p.yaw), sn = Math.sin(p.yaw);
   for (const part of parts) {
     let [lx, ly, lz] = part.at;
-    let rx = p.lean, ry = p.yaw, rz = p.tilt;
+    let rx = p.lean, ry = p.yaw, rz = p.tilt + (part.tilt ?? 0);
     const amp = part.amp ?? 0.1;
     const ph = part.ph ?? 0;
     switch (part.anim) {

@@ -1193,7 +1193,7 @@ function applyDemo(sim: SimState) {
   sim.players[0].coins = 200;
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
-  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik'].includes(bossKind)) {
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider'].includes(bossKind)) {
     sim.enemies = [];
     sim.nests = [];
     sim.boss = null;

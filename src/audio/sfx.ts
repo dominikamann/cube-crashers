@@ -56,6 +56,7 @@ export type SoundId =
   | 'bossSpawn'
   | `roar_${BossKind}`
   | 'growl_croc'
+  | 'bossBurst'
   | 'thunder'
   | 'hammerSlam'
   | 'laserAim'
@@ -314,6 +315,18 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 120, freqEnd: 40, attack: 0.002, sustain: 0.06, decay: 0.25, volume: 0.4 },
     { wave: 'square', freq: 1400, freqEnd: 500, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.06, vibrato: { rate: 60, depth: 300 } },
   ],
+  // the Tarantula Queen: a long dry hiss with a rattle of clicks under it
+  roar_spider: [
+    { wave: 'noise', freq: 4000, attack: 0.05, sustain: 0.5, decay: 0.4, volume: 0.24, lowpass: 6500 },
+    { wave: 'square', freq: 1500, freqEnd: 700, attack: 0.01, sustain: 0.45, decay: 0.2, volume: 0.06, vibrato: { rate: 55, depth: 500 }, lowpass: 3200 },
+    { wave: 'sawtooth', freq: 110, freqEnd: 70, attack: 0.04, sustain: 0.4, decay: 0.35, volume: 0.14, vibrato: { rate: 42, depth: 22 }, lowpass: 700 },
+  ],
+  // she bursts: a wet pop, and a swarm of small clicks running off
+  bossBurst: [
+    { wave: 'noise', freq: 900, attack: 0.002, sustain: 0.08, decay: 0.3, volume: 0.5, lowpass: 1400 },
+    { wave: 'sine', freq: 160, freqEnd: 40, attack: 0.002, sustain: 0.06, decay: 0.3, volume: 0.4 },
+    ...Array.from({ length: 9 }, (_, i): SynthParams => ({ wave: 'square', freq: 1800 + (i % 3) * 400, attack: 0.001, sustain: 0.012, decay: 0.03, volume: 0.07, at: 0.18 + i * 0.07 })),
+  ],
   growl_croc: [
     { wave: 'sawtooth', freq: 95, freqEnd: 70, attack: 0.03, sustain: 0.28, decay: 0.2, volume: 0.2, vibrato: { rate: 27, depth: 12 }, lowpass: 700 },
     { wave: 'noise', freq: 400, attack: 0.02, sustain: 0.2, decay: 0.2, volume: 0.14, lowpass: 600 },
@@ -553,6 +566,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('laserAim');
     case 'laserFire':
       return one('laserFire');
+    case 'bossBurst':
+      return [{ id: 'bossBurst', pitch: 1 }, { id: `roar_${e.kind}`, pitch: 1.5 }];
     case 'eggHatch':
       // the shell cracks, and a very small roar
       return [{ id: 'bubblePop', pitch: 0.8 }, { id: 'roar_rex', pitch: 2.4 }];

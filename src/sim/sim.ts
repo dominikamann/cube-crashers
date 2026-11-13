@@ -24,6 +24,7 @@ import { updateJetpacks, updateRare } from './systems/rare';
 import { updateHeart } from './systems/heart';
 import { updateLogoSpin } from './systems/logo-spin';
 import { updateEggs } from './systems/eggs';
+import { updateWebs } from './systems/webs';
 import { updateMiniDominik } from './systems/mini-dominik';
 import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
@@ -282,6 +283,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateAreas(s);
   updateBoss(s, intents);
   updateEggs(s);
+  updateWebs(s);
   updateMiniDominik(s);
   updateCoins(s);
   updateOffers(s);

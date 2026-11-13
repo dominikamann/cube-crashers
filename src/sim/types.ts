@@ -28,7 +28,8 @@ export type EnemyKind =
   | 'phantom'
   | 'fish'
   | 'shark'
-  | 'kraken';
+  | 'kraken'
+  | 'spiderling';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -48,7 +49,7 @@ export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp'
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
-export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
@@ -413,6 +414,8 @@ export interface BossState {
   grab?: { playerId: number; until: number } | null;
   /** the Mega Block in mid-leap: from where to where, and when it lands */
   leap?: { from: Vec2; to: Vec2; start: number; land: number } | null;
+  /** the Tarantula Queen has burst: the small spiders that came out of her, all of which have to fall */
+  brood?: number[];
   /** the Kraken: when it next calls a school of fish and sharks */
   nextSchoolAt?: number;
 }
@@ -649,6 +652,8 @@ export type SimEvent =
   | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }
   | { type: 'bossDead'; pos: Vec2; kind?: BossKind }
+  /** the Tarantula Queen bursts into her brood */
+  | { type: 'bossBurst'; pos: Vec2; kind: BossKind }
   /** a small Angry Dominik steps out of the wall logo, and goes back into it */
   | { type: 'dominikJoined'; pos: Vec2 }
   | { type: 'dominikLeft'; pos: Vec2 }
@@ -707,6 +712,8 @@ export interface SimState {
   heart?: { pos: Vec2 } | null;
   /** King Rex's eggs: thrown from where it fell (`from`) to where they lie, each hatches a baby dino */
   eggs?: { id: number; pos: Vec2; from: Vec2; laidAt: number; hatchAt: number }[];
+  /** the Tarantula Queen's webs on the floor: sticky from `from` (when set) until `until` */
+  webs?: { id: number; pos: Vec2; radius: number; from?: number; until: number }[];
   /** the small Angry Dominik from the wall logo: his body, when he goes back and where to */
   mini?: { enemyId: number; until: number; home: Vec2; nextSlamAt: number } | null;
   /** Tower Run: the wild boss that breaks in on this floor when the first nest falls */

@@ -98,6 +98,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   bossPhase: { type: 'bossPhase', phase: 2 },
   bossDead: { type: 'bossDead', pos: p },
   eggHatch: { type: 'eggHatch', pos: p },
+  bossBurst: { type: 'bossBurst', pos: p, kind: 'spider' },
   dominikJoined: { type: 'dominikJoined', pos: p },
   dominikLeft: { type: 'dominikLeft', pos: p },
   hammerThrow: { type: 'hammerThrow', from: p, to: p },
