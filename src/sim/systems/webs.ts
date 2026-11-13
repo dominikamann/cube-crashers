@@ -1,4 +1,5 @@
 import { TICK_RATE } from '../types';
+import { Tile, tileAt, type FloorMap } from '../map/tilemap';
 import type { Player, SimState, Vec2 } from '../types';
 
 /**
@@ -13,13 +14,36 @@ export const WEB = {
   /** how fast a caught player still walks */
   slow: 0.38,
   /** no more than this many at once */
-  max: 8,
+  max: 12,
 };
 
-export function spinWeb(s: SimState, pos: Vec2): void {
+/** Does a web of this size lie on open floor here, all of it? (No wall, no barrier, nothing raised, not off the map.) */
+function fits(m: FloorMap, x: number, z: number, r: number): boolean {
+  for (let tz = Math.floor(z - r); tz <= Math.floor(z + r); tz++)
+    for (let tx = Math.floor(x - r); tx <= Math.floor(x + r); tx++) {
+      // (the tile counts if the web reaches into it)
+      const nx = Math.max(tx, Math.min(x, tx + 1)), nz = Math.max(tz, Math.min(z, tz + 1));
+      if (Math.hypot(nx - x, nz - z) <= r && tileAt(m, tx, tz) !== Tile.Floor) return false;
+    }
+  return true;
+}
+
+/**
+ * Spins a web at `pos`, or as near to it as one fits: a web lies on open floor inside the map, whole. Where
+ * there is no room for a big one a smaller one is spun; where there is none at all, none.
+ */
+export function spinWeb(s: SimState, pos: Vec2, radius = WEB.radius): void {
   const webs = (s.webs ??= []);
-  if (webs.length >= WEB.max) webs.shift();
-  webs.push({ id: s.nextId++, pos: { ...pos }, radius: WEB.radius, from: s.tick + WEB.setTicks, until: s.tick + WEB.setTicks + WEB.ticks });
+  for (const r of [radius, radius * 0.75, radius * 0.55])
+    for (let ring = 0; ring <= 4; ring++)
+      for (let i = 0; i < (ring === 0 ? 1 : 8); i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const x = pos.x + Math.cos(a) * ring, z = pos.z + Math.sin(a) * ring;
+        if (!fits(s.map, x, z, r)) continue;
+        if (webs.length >= WEB.max) webs.shift();
+        webs.push({ id: s.nextId++, pos: { x, z }, radius: r, from: s.tick + WEB.setTicks, until: s.tick + WEB.setTicks + WEB.ticks });
+        return;
+      }
 }
 
 /** how much of their speed a player on the ground keeps here (1 outside every web) */

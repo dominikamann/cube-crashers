@@ -12,6 +12,7 @@ import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { wallTop } from './world';
+import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
 export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; day: number; night: number; eyeY: number; eyeX: number; eye: number }> = {
@@ -155,6 +156,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // (and when each one's hammer meets the floor in a slam, and how far he is down on his knees for it)
   const hammerLandsAt = new Map<number, number>();
   const domKneel = new Map<number, number>();
+  /** how high the Tarantula Queen has climbed (she stands on the walls she crosses) */
+  const climbOf = new Map<number, number>();
   /** his steps follow the ground he covers, so his feet do not slide: where he was, and how far into his stride */
   const domWalk = new Map<number, { x: number; z: number; phase: number; moving: number }>();
   // where each Angry Dominik (the boss) stood last, and the ones that have fallen: they stand in the lightning
@@ -472,7 +475,20 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const flap = e.kind === 'swarmer' ? 1 + 0.35 * Math.sin(time * 34 + e.id) : 1;
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
-        const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : (e.kind === 'megaBlock' || spiderBoss) && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * (spiderBoss ? 4.4 : 3.2) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
+        // the Tarantula Queen climbs: over a wall her body rises to stand on top of it (smoothly, as she goes up
+        // one side and down the other); a small spider hops when it pounces
+        let climb = 0;
+        if (spiderBoss) {
+          let top = 0;
+          for (const [ox, oz] of [[0, 0], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]]) {
+            const t = tileAt(s.map, e.pos.x + ox, e.pos.z + oz);
+            if (t === Tile.Wall) top = Math.max(top, wallTop(s.map, e.pos.x + ox, e.pos.z + oz) + 0.4);
+            else if (t === Tile.LowWall) top = Math.max(top, 0.5);
+          }
+          climb = (climbOf.get(e.id) ?? 0) + (top - (climbOf.get(e.id) ?? 0)) * Math.min(1, frameDt * 7);
+          climbOf.set(e.id, climb);
+        } else if (e.kind === 'spiderling' && e.state === 'charge') climb = Math.sin(Math.PI * Math.max(0, Math.min(1, 1 - e.chargeLeft / 4.5))) * 0.8;
+        const hover = climb + (e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : (e.kind === 'megaBlock' || spiderBoss) && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * (spiderBoss ? 4.4 : 3.2) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0);
         let y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : spiderBoss ? SPIDER_LIFT : dominik ? DOMINIK.lift : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held || dominik ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         // Angry Dominik drops to his knees as his hammer comes down on the floor, stays there for a moment and
         // gets up again

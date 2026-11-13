@@ -7,6 +7,8 @@ import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossSta
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
+import { insideBorder } from '../map/border';
+import { QUEEN_REACH } from './enemies';
 import { spinWeb } from './webs';
 import { aloft } from './rare';
 import { dropCoins } from './combat';
@@ -78,7 +80,7 @@ export const BOSS = {
   spiderHp: 2100,
   spiderSpeed: 3.1,
   spiderRadius: 1.25,
-  spiderBrood: 16,
+  spiderBrood: 21,
   /** she calls this many of them to her side with every phase */
   spiderCall: 4,
   spiderFangs: 5,
@@ -507,8 +509,10 @@ function resolveWorms(s: SimState, b: BossState): void {
 export function megaLeap(s: SimState, p: Player, b: BossState | null = s.boss): void {
   const boss = b && (b.kind === 'megaBlock' || b.kind === 'spider') && b.enemyId !== null ? byId(s, b.enemyId) : undefined;
   if (!b || !boss) return;
-  b.leap = { from: { ...boss.pos }, to: { ...p.pos }, start: s.tick, land: s.tick + BOSS.leapTicks };
-  telegraph(s, p.pos, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
+  // (the Tarantula Queen lands where she fits: clear of the wall round the map, legs and all)
+  const to = b.kind === 'spider' ? insideBorder(s.map, p.pos, QUEEN_REACH) : { ...p.pos };
+  b.leap = { from: { ...boss.pos }, to, start: s.tick, land: s.tick + BOSS.leapTicks };
+  telegraph(s, to, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
 }
 
 /**
@@ -580,7 +584,8 @@ function leap(s: SimState, b: BossState): void {
   const t = Math.min(1, (s.tick - l.start) / (l.land - l.start));
   boss.pos = { x: l.from.x + (l.to.x - l.from.x) * t, z: l.from.z + (l.to.z - l.from.z) * t };
   if (t < 1) return;
-  boss.pos = nearestFree(s.map, l.to, boss.radius, BLOCKS_ENEMY);
+  // (she may come down on a wall inside the map: she stands on those)
+  boss.pos = b.kind === 'spider' ? { ...l.to } : nearestFree(s.map, l.to, boss.radius, BLOCKS_ENEMY);
   b.leap = null;
   s.events.push({ type: 'stomp', pos: { ...boss.pos }, radius: BOSS.leapRadius });
 }

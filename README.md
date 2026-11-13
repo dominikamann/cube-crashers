@@ -228,7 +228,7 @@ Between the floors the elevator takes you to a short game of its own, then to th
 
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
-map), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
+map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
 under everyone, and at the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
@@ -268,6 +268,7 @@ the whole team.
   glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
+- **Graphics:** four levels. **Test now** tries them on your computer and keeps the best one that runs smoothly (it also runs once by itself on the first start); **Show FPS** puts the frames a second in the corner.
 - **Character:** who you are: an astronaut, a knight, a cat, a rubber duck, an arcade cabinet, a cube, a joystick,
   a ghost, a mushroom or a soda cup. *Automatic* gives everyone in a match a different one. A look only: every
   character is as fast, as tough and as easy to hit as the others, and holds every weapon. Bots are always
@@ -647,6 +648,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
+| **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
@@ -805,6 +807,7 @@ docs/         gameplay GIF and screenshots
 - [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
+- [x] The Tarantula Queen and her brood, an FPS counter and a graphics test that picks the best setting
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!

@@ -88,6 +88,8 @@ export const MONKEY = { min: 4, max: 7, throwRange: 9, windupTicks: 30, cooldown
 export const TREX = { range: 3.2, windupTicks: 40, cooldownTicks: 200, radius: 3, damage: 30, tower: 30 };
 /** the shark's lunge: longer and faster than the crocodile's */
 export const SHARK = { range: 7, windupTicks: 30, speed: 15, distance: 7, damage: 24, towerDamage: 20, stunTicks: 45, hitStunTicks: 40, cooldownTicks: 140 };
+/** a small spider's pounce: short, quick, and now and then it leaves a small web where it lands */
+export const SPIDERLING = { range: 4.5, windupTicks: 22, speed: 12, distance: 4.5, damage: 10, towerDamage: 5, stunTicks: 30, hitStunTicks: 25, cooldownTicks: 150, web: 1.2, webChance: 0.3 };
 export const ENEMY_CAP = 160;
 
 export const ALARM_MAX = 5;

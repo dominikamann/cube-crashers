@@ -353,11 +353,26 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'playerDown':
             addShake(0.3);
             break;
-          case 'explosion':
-            burst(e.pos, 0.3, Math.round(20 + e.radius * 14), [0xff8c42, 0xffe14a, 0xff3b3b, 0x553344], 3 + e.radius * 1.5, 0.2);
-            ring(e.pos, e.radius, [0xffe14a, 0xff8c42]);
-            addShake(Math.min(0.4, 0.08 * e.radius));
+          case 'explosion': {
+            // a ball of fire that flashes and is gone, a shockwave as wide as the blast, sparks, a little
+            // rubble and smoke, and a scorch mark on the floor
+            const r = e.radius;
+            pops.push({ x: e.pos.x, y: 0.5 + r * 0.15, z: e.pos.z, age: 0, life: 0.2, size: r * 1.7, color: 0xffd27a, ring: false });
+            pops.push({ x: e.pos.x, y: 0.4 + r * 0.1, z: e.pos.z, age: -0.03, life: 0.26, size: r * 1.1, color: 0xff7a2e, ring: false });
+            pops.push({ x: e.pos.x, y: 0.06, z: e.pos.z, age: 0, life: 0.34, size: r * 2.3, color: 0xffb34a, ring: true });
+            const n = Math.ceil((8 + r * 7) * particleScale);
+            for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+              const a = rand() * Math.PI * 2, sp = (3 + rand() * 5) * (0.6 + r * 0.3);
+              const life = 0.25 + rand() * 0.3;
+              particles.push({ x: e.pos.x, y: 0.4, z: e.pos.z, vx: Math.cos(a) * sp, vy: 2 + rand() * 6, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.08 + rand() * 0.06, color: i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xffe14a : 0xff8c42, spin: 0, spark: true });
+            }
+            burst(e.pos, 0.3, Math.round(4 + r * 3), [0x4a4048, 0x6a5a5a, 0x2e2830], 2 + r, 0.14);
+            burst(e.pos, 0.8, Math.round(3 + r * 2), [0x5a5560, 0x7a7480], 0.8, 0.22, 1.6);
+            if (splats.length >= MAX_SPLATS) splats.shift();
+            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 4, size: r * 1.5, color: 0x241c1c, turn: rand() * Math.PI * 2 });
+            addShake(Math.min(0.4, 0.08 * r));
             break;
+          }
           case 'bossDead': {
             // it blows apart: big pieces of its own body fly off and tumble across the floor, small bits rain
             // down after them, a flash and a shockwave where it stood
