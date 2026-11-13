@@ -34,7 +34,10 @@ for name,x,y in P['F']:
         # (drawn half on a house: the nearest floor)
         tx,ty=min(((ax,ay) for ay in range(N) for ax in range(N) if rows[ay][ax]=='.'),key=lambda p:d(p,(x,y)))
     fountains.append((name,tx,ty))
-solid=set(trees)|{(x,y) for _,x,y in fountains}
+# the police car in front of the station, across from the Czardas where the street goes down to the lake
+POLICE=next(((x,y) for x,y in ((101,79),(102,79),(100,79)) if rows[y][x]=='.' and rows[y+1][x]=='.'),None)
+cars=[(POLICE[0],POLICE[1])] if POLICE else []
+solid=set(trees)|{(x,y) for _,x,y in fountains}|{(x,y+k) for x,y in cars for k in (0,1)}
 for x,y in solid: rows[y][x]='='
 # --- tables and chairs in front of the cafes and inns
 cafes=[]
@@ -53,28 +56,47 @@ tables={p for _,l in cafes for p in l}
 
 # --- where the game puts things
 F2=next((x,y) for n,x,y in fountains if 'Federle' in n)
-S=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,1) and 4<=d((x,y),F2)<=7 and (x,y) not in tables),key=lambda p:(abs(p[0]-(F2[0]-5))+abs(p[1]-(F2[1]+3))))
-K=next((x,y) for n,x,y in fountains if 'Kornhaus' in n)
-E=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,1) and 3<=d((x,y),K)<=6),key=lambda p:d(p,(K[0]-3,K[1]+2)))
+CH=next(h for h in H.values() if h['kind']=='church')
+# the way through the town: in at the east end of the Hochstatt, where the Wurzacher Strasse comes in, and out by
+# the elevator in front of the church
+S=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,1) and (x,y) not in tables),key=lambda p:d(p,(F2[0]+13,F2[1]+3)))
+E=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,2)),key=lambda p:d(p,(CH['cx']+4,CH['cz']+12)))
 taken=[S,E]+list(solid)+list(tables)
-OFF=[(-5,0),(5,0),(0,5),(0,-5),(-4,4),(4,-4),(4,4),(-4,-4)]
-padsOf=lambda p: sum(1 for ox,oz in OFF if 0<p[0]+ox<N-1 and 0<p[1]+oz<N-1 and clear(p[0]+ox,p[1]+oz,1))
-banned=set()
-def pick(n,apart):
+# nests: each with three build pads close by and two places 10 to 13 tiles away where its rushes come from. (The
+# streets of a town are too narrow for the fixed pattern the other maps use, so they are picked here.)
+roomy=[(x,z) for z in range(1,N-1) for x in range(1,N-1) if clear(x,z,1) and all(d((x,z),t)>=2 for t in taken)]
+def straight(a,b):
+    # nothing in the way between the two, half a tile to each side
+    n=int(d(a,b)*4)+1
+    return all(rows[int(a[1]+0.5+(b[1]-a[1])*k/n+oy)][int(a[0]+0.5+(b[0]-a[0])*k/n+ox)]=='.' for k in range(n+1) for ox,oy in((0.35,0),(-0.35,0),(0,0.35),(0,-0.35)))
+def padsFor(n,used):
+    out=[]
+    # (in plain sight of the nest: one walks straight from it to the pad)
+    for p in sorted((p for p in roomy if 3<=d(p,n)<=6.5 and p not in used and straight(n,p)),key=lambda p:d(p,n)):
+        if len(out)>=3: break
+        if all(d(p,o)>=3 for o in out): out.append(p)
+    return out
+def round_clear(p,R):
+    return all(0<p[0]+a<N-1 and 0<p[1]+b<N-1 and rows[p[1]+b][p[0]+a] in '.' for a in range(-5,6) for b in range(-5,6) if math.hypot(a,b)<=R)
+def pickNests(n,apart):
     nests=[]
-    cn=[(x,z) for z in range(N) for x in range(N) if (x,z) not in banned and clear(x,z,1) and padsOf((x,z))>=3 and d((x,z),S)>=18 and d((x,z),E)>=9 and all(d((x,z),t)>=3 for t in solid)]
+    # (a nest stands where there is room to run round it while it is held: on a square, clear all round)
+    cn=[p for p in roomy if round_clear(p,4.6) and d(p,S)>=16 and d(p,E)>=10 and all(d(p,t)>=3 for t in solid) and len(padsFor(p,set()))>=3]
     while len(nests)<n and cn:
         p=max(cn,key=lambda q:d(q,S)) if not nests else max(cn,key=lambda q:min(d(q,m) for m in nests))
         if nests and min(d(p,m) for m in nests)<apart: break
         nests.append(p); cn=[q for q in cn if q!=p]
     return nests
-def entries(nests,n):
-    return sum(1 for z in range(1,N-1) for x in range(1,N-1) if 10.5<=d((x,z),n)<=13.5 and clear(x,z,1) and min(nests,key=lambda m:d((x,z),m))==n)
-while True:
-    nests=pick(8,19)
-    bad=[n for n in nests if entries(nests,n)<4]
-    if not bad: break
-    banned.update(bad)
+nests=pickNests(6,15)
+pads=[]; rushes=[]
+for n in nests:
+    pads+=padsFor(n,set(pads))
+for n in nests:
+    c=[p for p in roomy if 10.5<=d(p,n)<=13.5 and min(nests,key=lambda m:d(p,m))==n and p not in pads and all(d(p,m)>=3 for m in nests)]
+    best=max(((a,b) for a in c for b in c),key=lambda ab:d(*ab),default=None)
+    assert best and best[0]!=best[1], ('no rush entries for nest',n)
+    rushes+=list(best)
+taken+=pads+rushes
 taken+=nests
 cand=[(x,z) for z in range(N) for x in range(N) if clear(x,z,1) and all(d((x,z),t)>=2 for t in taken)]
 ways=[min(cand,key=lambda p:d(p,S))]
@@ -116,11 +138,14 @@ b.put('V', %s);
 b.put('*', %s);
 b.put('c', %s);
 b.put('w', %s);
-b.autoNestSurroundings();
+// (the pads and the rush entries of the nests are picked by the tool: a town's streets are too narrow for the
+// pattern autoNestSurroundings uses)
+b.put('p', %s);
+b.put('r', %s);
 
 export const floorWaldseeRows = b.rows();
 export const floorWaldsee = parseMap('waldsee', floorWaldseeRows);
-''' % ('\n'.join("  '%s'," % ''.join(r) for r in rows), N, N, S[0],S[1],E[0],E[1], fmt(nests), fmt(karts), fmt(powers), fmt(crates), fmt(ways)))
+''' % ('\n'.join("  '%s'," % ''.join(r) for r in rows), N, N, S[0],S[1],E[0],E[1], fmt(nests), fmt(karts), fmt(powers), fmt(crates), fmt(ways), fmt(pads), fmt(rushes)))
 with open(os.path.join(OUT,'waldsee-town.ts'),'w') as f:
     f.write('''/**
  * What stands where in Bad Waldsee (see floor-waldsee.ts): which house every wall tile belongs to, and how each
@@ -156,6 +181,8 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
 /** trees (those on the squares have a bench round the trunk), fountains, and the tables in front of cafes and inns (tiles) */
 export const WALDSEE_TREES: [number, number][] = [%s];
 export const WALDSEE_FOUNTAINS: { name: string; at: [number, number] }[] = [%s];
+/** parked cars, each two tiles long from its tile southward: the police car in front of the station */
+export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [%s];
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
 %s
 ];
@@ -163,5 +190,6 @@ export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
        '\n'.join("  '%s'," % ''.join(str(v) for v in r) for r in roof),
        '\n'.join("  { kind: '%s', name: %s, col: '%s', roof: '%s', wall: %s, cx: %s, cz: %s, ang: %s }," % (h['kind'], json.dumps(h['name'],ensure_ascii=False), h['col'], h['roof'], h['wall'], h['cx'], h['cz'], h['ang']) for h in (H[i] for i in sorted(H))),
        fmt(trees), ', '.join("{ name: %s, at: [%d, %d] }" % (json.dumps(n,ensure_ascii=False),x,y) for n,x,y in fountains),
+       ', '.join("{ kind: 'police', at: [%d, %d] }" % c for c in cars),
        '\n'.join("  { name: %s, at: [%s] }," % (json.dumps(n,ensure_ascii=False), fmt(l)) for n,l in cafes)))
 print('S',S,'E',E,'nests',nests,'trees',len(trees),'cafes',[(n,len(l)) for n,l in cafes])

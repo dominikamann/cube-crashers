@@ -45,11 +45,13 @@ export const FLOORS: Record<string, FloorDef> = {
 };
 
 /** the floors of a full run, bottom to top */
-export const RUN_FLOORS: string[] = [floor01.id, floorCandy.id, floorArena.id, floorNeon.id, floorRooftop.id];
+export const RUN_FLOORS: string[] = [floor01.id, floorWaldsee.id, floorCandy.id, floorArena.id, floorNeon.id, floorRooftop.id];
 
 /** the worlds each floor of a run can be: picked by the seed, so every run looks a little different (and every LAN player gets the same) */
 export const RUN_CHOICES: string[][] = [
   [floor01.id],
+  // (the Town is always the second floor: its witch waits there, see wild-boss.ts)
+  [floorWaldsee.id],
   [floorCandy.id, floorJungle.id],
   [floorArena.id, floorUnderwater.id],
   [floorNeon.id, floorHighway.id, floorServers.id],
@@ -59,7 +61,7 @@ export const RUN_CHOICES: string[][] = [
 /** the floors of one run, one of each floor's choices */
 export function runFloors(seed: number): string[] {
   // a different slice of the seed for each floor, so the choices do not move in step
-  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 2, 4, 1][i]) % choices.length]);
+  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 1, 2, 4, 1][i]) % choices.length]);
 }
 
 /** Boss Rush: every boss in a row, each on its own arena, with a shop between them */

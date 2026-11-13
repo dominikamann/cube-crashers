@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WALDSEE_FOUNTAINS, WALDSEE_HOUSES, WALDSEE_ROOFS, WALDSEE_TABLES, WALDSEE_TILES, WALDSEE_TREES, type WaldseeHouse } from '../sim/config/waldsee-town';
+import { WALDSEE_CARS, WALDSEE_FOUNTAINS, WALDSEE_HOUSES, WALDSEE_ROOFS, WALDSEE_TABLES, WALDSEE_TILES, WALDSEE_TREES, type WaldseeHouse } from '../sim/config/waldsee-town';
 
 /**
  * How Bad Waldsee looks (the map `waldsee`, see floor-waldsee.ts): every wall tile is part of a house with its
@@ -238,10 +238,26 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   }
 
-  // ---- tables and chairs in front of the cafés, a parasol over some of them
-  const parasols = [0xf4ecd8, 0xc2452d, 0x5d6f58];
-  WALDSEE_TABLES.forEach((cafe, ci) => {
-    cafe.at.forEach(([tx, tz], k) => {
+  // ---- parked cars: the police car, silver and blue with a yellow band, blue lights on the roof
+  for (const car of WALDSEE_CARS) {
+    const x = car.at[0] + 0.5, z = car.at[1] + 1;
+    box(x, 0.42, z, 0.92, 0.44, 1.9, 0xdfe3e8);
+    box(x, 0.42, z, 0.94, 0.2, 1.5, 0x2f5fbf);
+    box(x, 0.3, z, 0.95, 0.07, 1.92, 0xe8e23a);
+    box(x, 0.84, z + 0.08, 0.84, 0.4, 1.0, 0xdfe3e8);
+    box(x, 0.86, z + 0.08, 0.86, 0.26, 0.9, 0x2a3440);
+    box(x, 1.02, z + 0.08, 0.86, 0.06, 1.02, 0xdfe3e8);
+    for (const sx of [-1, 1]) for (const sz of [-0.62, 0.62]) box(x + sx * 0.44, 0.2, z + sz, 0.14, 0.4, 0.4, 0x1c1e24);
+    for (const sx of [-1, 1]) {
+      glow.push({ x: x + sx * 0.22, y: 1.12, z: z + 0.08, sx: 0.3, sy: 0.12, sz: 0.16, color: 0x3f8cff });
+      glow.push({ x: x + sx * 0.32, y: 0.5, z: z - 0.96, sx: 0.18, sy: 0.1, sz: 0.04, color: 0xfff3c0 });
+      glow.push({ x: x + sx * 0.32, y: 0.5, z: z + 0.96, sx: 0.18, sy: 0.1, sz: 0.04, color: 0xff3b3b });
+    }
+  }
+
+  // ---- tables and chairs in front of the cafés (no parasols: one sits in the sun here)
+  WALDSEE_TABLES.forEach(cafe => {
+    cafe.at.forEach(([tx, tz]) => {
       const x = tx + 0.5, z = tz + 0.5, turn = hash(tx, tz) * 3;
       box(x, 0.36, z, 0.1, 0.72, 0.1, 0x4a4f5c);
       box(x, 0.74, z, 0.66, 0.06, 0.66, 0xb9895a, turn);
@@ -250,12 +266,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         box(cx, 0.24, cz, 0.3, 0.06, 0.3, wood, -a);
         box(cx, 0.12, cz, 0.24, 0.24, 0.24, shade(wood, 0.7), -a);
         box(cx + Math.cos(a) * 0.14, 0.5, cz + Math.sin(a) * 0.14, 0.05, 0.5, 0.3, wood, -a);
-      }
-      // (no parasols at the Czardas: it has its strings of lights)
-      if (k % 2 === 0 && cafe.name !== 'Czardas') {
-        box(x, 1.2, z, 0.06, 2.4, 0.06, 0xe6e8ef);
-        box(x, 2.34, z, 1.7, 0.1, 1.7, parasols[ci % 3], turn);
-        box(x, 2.44, z, 1, 0.1, 1, shade(parasols[ci % 3], 0.93), turn);
       }
     });
   });

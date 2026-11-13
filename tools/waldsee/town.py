@@ -9,6 +9,7 @@ M=2.9; N=110
 mx=111320*math.cos(math.radians(LAT0)); my=110540
 def tile(lat,lon): return ((lon-LON0)*mx/M+N/2, N/2-(lat-LAT0)*my/M)
 SS=8
+KNOWN_NAMES=('Rathaus Bad Waldsee','Kornhaus','Pfarrkirche St. Peter','Vötschenturm Stadtmauer','Schloss Waldsee')
 ways=[e for e in d['elements'] if e['type']=='way' and 'building' in e.get('tags',{})]
 # every house on its own sheet: the share of each tile it covers
 cover={}
@@ -29,33 +30,63 @@ for e in ways:
             v=sm.getpixel((xx,yy))/255
             if v>0.02 and 0<=x0+xx<N and 0<=y0+yy<N: cover.setdefault((x0+xx,y0+yy),[]).append((v,hid))
 # where one can walk: on the streets, lanes, paths and squares, as wide as they are (metres from their middle)
-REACH={'pedestrian':9.5,'living_street':7.5,'residential':5,'secondary':6,'tertiary':6,'service':3.6,'footway':2.6,'path':2.6,'steps':2.6}
-segs=[]; areas=Image.new('L',(N*SS,N*SS),0); water=Image.new('L',(N*SS,N*SS),0)
+# (the main streets and the squares are wide, and the houses along them step back for it; the back lanes, yards and
+# service ways are left out: a town to play in has fewer side lanes than the real one)
+REACH={'pedestrian':13,'living_street':10.5,'residential':6.2,'secondary':6.5,'tertiary':6.5,'footway':3}
+# this close to the middle of a street nothing stands, not even a house (the landmarks stay whole)
+CARVE={'pedestrian':7.2,'living_street':6.2,'residential':4.4,'secondary':4.4,'tertiary':4.4}
+# lanes that just end are left out: a way whose end joins nothing else goes, and then the next one that this leaves
+# without a way on (the squares and the main streets of the old town stay, wherever they end)
+KEEP=('pedestrian','living_street')
+streets={e['id']:e for e in d['elements'] if e['type']=='way' and e.get('tags',{}).get('highway') in REACH}
+def inside(n):
+    x,y=tile(*nodes[n]); return 2<x<N-2 and 2<y<N-2
+while True:
+    deg={}
+    for e in streets.values():
+        ns=[n for n in e['nodes'] if n in nodes]
+        for i,n in enumerate(ns): deg[n]=deg.get(n,0)+(1 if i in (0,len(ns)-1) else 2)
+    dead=[i for i,e in streets.items() if e['tags']['highway'] not in KEEP and any(deg.get(n,0)<=1 for n in (e['nodes'][0],e['nodes'][-1]) if n in nodes)]
+    if not dead: break
+    for i in dead: del streets[i]
+# (the Hochstatt keeps its true shape, a tile wider all round: there the streets are as wide as they are, the houses
+# stay whole and every lane is there)
+HOCH=tile(47.9198986,9.7554854)
+inHoch=lambda x,y: HOCH[0]-12<=x<=HOCH[0]+17 and HOCH[1]-10<=y<=HOCH[1]+11
+REACH_TRUE={'pedestrian':9.5,'living_street':7.5,'residential':5,'secondary':6,'tertiary':6,'service':3.6,'footway':2.6,'path':2.6,'steps':2.6}
+segsTrue=[]
+segs=[]; carve=[]; areas=Image.new('L',(N*SS,N*SS),0); water=Image.new('L',(N*SS,N*SS),0)
 for e in d['elements']:
     if e['type']!='way': continue
     t=e.get('tags',{}); pts=[tile(*nodes[n]) for n in e['nodes'] if n in nodes]
-    if t.get('highway') in REACH:
+    if t.get('highway') in REACH_TRUE:
+        for p,q in zip(pts,pts[1:]): segsTrue.append((p,q,REACH_TRUE[t['highway']]/M))
+    if t.get('highway') in REACH and (e['id'] in streets or t.get('area')=='yes'):
         if t.get('area')=='yes' and len(pts)>2: ImageDraw.Draw(areas).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
         r=REACH[t['highway']]/M
         for p,q in zip(pts,pts[1:]): segs.append((p,q,r))
+        if t['highway'] in CARVE:
+            for p,q in zip(pts,pts[1:]): carve.append((p,q,CARVE[t['highway']]/M))
+    # (a car park is an open square)
+    if t.get('amenity')=='parking' and len(pts)>2: ImageDraw.Draw(areas).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
     if t.get('natural')=='water' and len(pts)>2: ImageDraw.Draw(water).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
 areas=areas.resize((N,N),Image.BOX); water=water.resize((N,N),Image.BOX)
-def near(px,py):
-    for (ax,ay),(bx,by),r in segs:
+def near(px,py,segs=None):
+    for (ax,ay),(bx,by),r in (segs if segs is not None else SEGS):
         if min(ax,bx)-r>px or max(ax,bx)+r<px or min(ay,by)-r>py or max(ay,by)+r<py: continue
         dx,dy=bx-ax,by-ay; L=dx*dx+dy*dy
         u=0 if L==0 else max(0,min(1,((px-ax)*dx+(py-ay)*dy)/L))
         if math.hypot(px-ax-u*dx,py-ay-u*dy)<=r: return True
     return False
 GARDEN,WATER=-2,-3
-KNOWN_NAMES=('Rathaus Bad Waldsee','Kornhaus','Pfarrkirche St. Peter','Vötschenturm Stadtmauer','Schloss Waldsee')
+SEGS=segs
 grid=[['#']*N for _ in range(N)]; owner=[[GARDEN]*N for _ in range(N)]
 for y in range(N):
     for x in range(N):
         l=cover.get((x,y),[])
-        if sum(v for v,_ in l)>0.5: owner[y][x]=max(l)[1]
+        if sum(v for v,_ in l)>0.5 and (inHoch(x,y) or houses[max(l)[1]]['tags'].get('name') in KNOWN_NAMES or not near(x+0.5,y+0.5,carve)): owner[y][x]=max(l)[1]
         elif water.getpixel((x,y))>128: owner[y][x]=WATER
-        elif areas.getpixel((x,y))>100 or near(x+0.5,y+0.5): grid[y][x]='.'; owner[y][x]=-1
+        elif areas.getpixel((x,y))>100 or near(x+0.5,y+0.5,segsTrue if inHoch(x,y) else None): grid[y][x]='.'; owner[y][x]=-1
 for i in range(N):
     for x,y in ((i,0),(i,N-1),(0,i),(N-1,i)): grid[y][x]='#'
 fx,fy=[int(c) for c in tile(47.9198986,9.7554854)]
@@ -117,7 +148,8 @@ KNOWN={
 }
 ADDR={('Hochstatt','5'):'f1dc7a'}
 PLASTER=['f4f1ea','f1e7c9','f3dc86','ecd0a0','e9b9a6','f0c9c9','cfe0c0','b9d8a0','c6d9e6','dfe3e8','efe6d6','e6c98c','d9e2d0','f6efe0','e8d5bd','f7f3ee','f1c8a8']
-ROOFS=['96452f','a04b33','8c4230','84483a','9d5540','774639','98513a']
+# (roof tiles as they look from the air on a sunny day: warm terracotta, some older and browner)
+ROOFS=['b45a3c','c06544','a9553a','b8623f','9c5038','c46b48','a85a40','8f4c38']
 def h01(n,k): return ((n*2654435761+k*40503)%1000003)/1000003
 out=[]
 for h in used:
