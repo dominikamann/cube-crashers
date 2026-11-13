@@ -19,9 +19,16 @@ with up to nine friends on your LAN or online, together against the monsters or 
 **Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
 **first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
-![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
-
-![Versus from above: everyone for themselves in Neon City](docs/design/versus.gif)
+<table>
+  <tr>
+    <td width="50%"><img src="docs/design/neon.gif" width="100%" alt="Gameplay: holding a nest zone in Neon City" /></td>
+    <td width="50%"><img src="docs/design/versus.gif" width="100%" alt="Versus from above: everyone for themselves in Neon City" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Tower Run: hold the nest zone in Neon City</sub></td>
+    <td align="center"><sub>Versus: everyone for themselves</sub></td>
+  </tr>
+</table>
 
 Press **V** and the same game is a first-person shooter:
 
