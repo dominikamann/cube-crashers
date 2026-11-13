@@ -124,8 +124,10 @@ for b_ in barriers:
             f=(vx*b_['dir'][0]+vy*b_['dir'][1])*M; side=(-vx*b_['dir'][1]+vy*b_['dir'][0])*M
             # (it opens like a fan, narrow at the lane and wide at the water; toward the Wurzacher Strasse, which
             # runs along the same way further south, only a little: its houses stay)
-            if f<=0.5 or grid[y][x]=='.' or side>min(22,8+f*0.3) or -side>8+f*0.9: continue
-            owner[y][x]=GRAVEL if f<5 else MEADOW if f<15 else WATER if f<70 else MEADOW
+            # (once the water begins there is nothing but water, as far as one sees, to the left and ahead; to
+            # the right the houses of the Wurzacher Strasse stay for a while)
+            if f<=0.5 or grid[y][x]=='.' or side>8+f*0.8 or (f<15 and -side>8+f*1.6): continue
+            owner[y][x]=GRAVEL if f<5 else MEADOW if f<15 else WATER
 for i in range(N):
     for x,y in ((i,0),(i,N-1),(0,i),(N-1,i)):
         grid[y][x]='#'

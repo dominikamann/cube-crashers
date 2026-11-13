@@ -1100,7 +1100,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         walls.mesh.instanceColor!.needsUpdate = true;
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
         if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;
-        outerMat.color.setHex(theme.hemiGround).multiplyScalar(0.75);
+        // (round the Town lies the lake: where the map ends there is water, into the haze)
+        outerMat.color.setHex(town ? 0x4f9fd6 : theme.hemiGround).multiplyScalar(town ? 1 : 0.75);
       }
       const maze = s.run.maze;
       if (mazePixels) {
