@@ -46,19 +46,22 @@ export function solidVoxels(n: [number, number, number], cell: [number, number, 
   // (taken over the voxels near by as well: a step of one voxel on a flat side is then no band of light)
   const facings = new Map<number, [number, number, number]>();
   const smooth = (i: number, j: number, k: number): [number, number, number] => {
-    let sx = 0, sy = 0, sz = 0;
+    let sx = 0, sy = 0, sz = 0, n = 0;
     for (let a = -2; a <= 2; a++)
       for (let b = -2; b <= 2; b++)
         for (let c = -2; c <= 2; c++) {
           const key = ((i + a) * ny + j + b) * nz + k + c;
           const f = i + a >= 0 && j + b >= 0 && k + c >= 0 && i + a < nx && j + b < ny && k + c < nz ? facings.get(key) : undefined;
           if (!f) continue;
+          n++;
           sx += f[0];
           sy += f[1];
           sz += f[2];
         }
-    const len = Math.hypot(sx, sy, sz) || 1;
-    return [sx / len, sy / len, sz / len];
+    // (on something thin, a finger, the voxels around face every way and say nothing: the less they agree,
+    // the shorter this is, and the more each face is lit as the flat face it is)
+    const len = Math.hypot(sx, sy, sz) || 1, sure = Math.min(1, (len / Math.max(1, n)) * 1.6);
+    return [(sx / len) * sure, (sy / len) * sure, (sz / len) * sure];
   };
   const skin = (i: number, j: number, k: number) => !(filled(i + 1, j, k) && filled(i - 1, j, k) && filled(i, j + 1, k) && filled(i, j - 1, k) && filled(i, j, k + 1) && filled(i, j, k - 1));
   if (soft > 0) for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) if (cells[(i * ny + j) * nz + k] && skin(i, j, k)) facings.set((i * ny + j) * nz + k, facing(i, j, k));
@@ -80,7 +83,8 @@ export function solidVoxels(n: [number, number, number], cell: [number, number, 
           let high = 1;
           if (f.d[1] === 0) while (high < merge && j + high < ny && cells[(i * ny + j + high) * nz + k] && same(cells[(i * ny + j + high) * nz + k]!, c) && !filled(i + f.d[0], j + high, k + f.d[2])) high++;
           taken[fi] = j + high - 1;
-          const mx = s[0] * soft + f.d[0] * (1 - soft), my = s[1] * soft + f.d[1] * (1 - soft), mz = s[2] * soft + f.d[2] * (1 - soft);
+          const hard = 1 - soft * Math.hypot(s[0], s[1], s[2]);
+          const mx = s[0] * soft + f.d[0] * hard, my = s[1] * soft + f.d[1] * hard, mz = s[2] * soft + f.d[2] * hard;
           const ml = Math.hypot(mx, my, mz) || 1;
           const base = pos.length / 3;
           for (const q of f.corners) {
