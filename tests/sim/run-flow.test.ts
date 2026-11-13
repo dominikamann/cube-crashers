@@ -4,7 +4,7 @@ import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, reachable, Tile, tileAt } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { SHOP, creditPrice, healPrice, perkPrice, shopRate, weaponPrice } from '../../src/sim/systems/shop';
+import { SHOP, creditPrice, healPrice, openShop, perkPrice, shopRate, weaponPrice } from '../../src/sim/systems/shop';
 import { addKart } from '../../src/sim/systems/vehicles';
 import { damagePlayer } from '../../src/sim/systems/player';
 import type { Command, SimState, Vec2 } from '../../src/sim/types';
@@ -242,16 +242,9 @@ describe('the shop', () => {
     // the next shop: one floor higher, and one life bought before
     for (const id of [0, 1]) stepSim(s, [{ type: 'ready', playerId: id }]);
     run(s, 2);
-    for (const n of s.nests) n.state = 'destroyed';
-    s.elevatorOpen = true;
-    s.enemies = [];
-    s.hordes = [];
-    for (const p of s.players) p.pos = { ...s.map.elevator };
-    for (let i = 0; i < 200 * 60 && s.run.stage !== 'shop'; i++) {
-      // (whatever game comes between the floors is cut short)
-      if (s.run.stage !== 'floor') s.run.stageUntil = s.tick;
-      stepSim(s, []);
-    }
+    expect(s.run.floor).toBe(1);
+    // (straight to the shop after this floor: which game comes between the floors is not this test's business)
+    openShop(s);
     expect(s.run.stage).toBe('shop');
     const next = s.run.shop!.offers[0].find(o => o.kind === 'credit')!;
     expect(next.cost).toBe(creditPrice(1, 1, 2, shopRate(s, s.players[0])));
