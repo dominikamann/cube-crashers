@@ -19,6 +19,14 @@ const FACINGS: Vec2[] = [{ x: 0, z: 1 }, { x: 0, z: -1 }, { x: 1, z: 0 }, { x: -
  * The wall one prefers a face toward the bottom of the map. Picked by a hash of the map id, so each map looks different but always the same.
  */
 export function logoSpots(map: FloorMap): LogoSpot[] {
+  // (a map never changes, and this is asked for every tick and every frame: worked out once per map)
+  let spots = spotCache.get(map);
+  if (!spots) spotCache.set(map, (spots = findLogoSpots(map)));
+  return spots;
+}
+const spotCache = new WeakMap<FloorMap, LogoSpot[]>();
+
+function findLogoSpots(map: FloorMap): LogoSpot[] {
   const at = (x: number, z: number) => (x < 0 || z < 0 || x >= map.w || z >= map.h ? Tile.Wall : map.tiles[z * map.w + x]);
   const points = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.map(n => n.pos), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
   let seed = 0;

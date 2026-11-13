@@ -93,6 +93,8 @@ export function attachPerfRenderer(r: THREE.WebGLRenderer, s: THREE.Scene): void
     frame = timing();
     return out;
   };
+  // the shader programs in use (a new id during play is a compile, which stalls the frame it happens in)
+  (window as unknown as { __perfPrograms: () => unknown }).__perfPrograms = () => (r.info.programs ?? []).map(p => ({ id: p.id, name: p.name, key: p.cacheKey, used: p.usedTimes }));
 }
 
 /** `createLoop` with a stopwatch round the sim step and the frame */
