@@ -52,6 +52,10 @@ export function createFx(scene: THREE.Scene): Fx {
   const cubes = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), cubeMat, 1024, false);
 
   const beams: Beam[] = [];
+  /** Disco Balls in the air: each hangs over its owner for a moment, spinning and throwing light */
+  const discos: { ownerId: number; x: number; z: number; age: number; enemies: number[]; rivals: number[] }[] = [];
+  const DISCO_COLORS = [0xff4dd2, 0x4dd2ff, 0xffe14a];
+  const DISCO_SECONDS = 1.1;
   const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2);
   const beamPools = new Map<number, InstancedPool>();
   const beamPoolFor = (color: number) => {
@@ -303,14 +307,13 @@ export function createFx(scene: THREE.Scene): Fx {
               const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
               const front = who ? { x: e.pos.x + who.aim.x * 1.4, z: e.pos.z + who.aim.z * 1.4 } : e.pos;
               burst(front, 1.3, 14, colors, 3.5, 0.08, 0.35);
-              // light beams to everything it reached: monsters, and rivals in versus
-              const from = { x: e.pos.x + Math.cos(time * 2.5) * 0.8, z: e.pos.z + Math.sin(time * 2.5) * 0.8 };
-              const near = [...s.enemies.map(x => x.pos), ...s.players.filter(p => p !== who && s.versus).map(p => p.pos)]
-                .map(pos => ({ pos, d: Math.hypot(pos.x - e.pos.x, pos.z - e.pos.z) }))
+              // the ball itself: tossed up in front of the shooter, it spins and throws its light about (below)
+              const near = [...s.enemies.map(x => ({ id: x.id, pos: x.pos, rival: false })), ...s.players.filter(p => p !== who && s.versus).map(p => ({ id: p.id, pos: p.pos, rival: true }))]
+                .map(o => ({ ...o, d: Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) }))
                 .filter(o => o.d <= 7.5)
                 .sort((a, b) => a.d - b.d)
                 .slice(0, 8);
-              near.forEach((o, i) => beam(from, 1.1, o.pos, 0.6, colors[i % colors.length], 0.18));
+              discos.push({ ownerId: who?.id ?? -1, x: front.x, z: front.z, age: 0, enemies: near.filter(o => !o.rival).map(o => o.id), rivals: near.filter(o => o.rival).map(o => o.id) });
             }
             break;
         }
@@ -346,6 +349,42 @@ export function createFx(scene: THREE.Scene): Fx {
         }
         const k = Math.min(1, p.life / (p.maxLife * 0.4));
         cubes.add(p.x, p.y, p.z, p.spin * p.life, p.size * k, p.color, p.spin * p.life * 0.7);
+      }
+      for (let i = discos.length - 1; i >= 0; i--) {
+        const d = discos[i];
+        d.age += dt;
+        // it stays with whoever threw it
+        const owner = s.players.find(p => p.id === d.ownerId);
+        if (owner) {
+          d.x = owner.pos.x + owner.aim.x * 1.6;
+          d.z = owner.pos.z + owner.aim.z * 1.6;
+        }
+        const at = { x: d.x, z: d.z };
+        const rise = Math.min(1, d.age / 0.22);
+        const y = 1.2 + 1.3 * (1 - (1 - rise) ** 2) + 0.08 * Math.sin(d.age * 9);
+        if (d.age >= DISCO_SECONDS) {
+          // it bursts into glitter
+          burst(at, y, 22, [...DISCO_COLORS, 0xffffff], 4.5, 0.1, 0.6);
+          discos.splice(i, 1);
+          continue;
+        }
+        // a mirror ball: a silver cube with a second one turned against it, spinning faster and faster
+        const spin = d.age * (6 + d.age * 10);
+        cubes.add(d.x, y, d.z, spin, 0.46, 0xe8eeff, 0.6);
+        cubes.add(d.x, y, d.z, -spin * 0.7 + 0.8, 0.4, DISCO_COLORS[Math.floor(d.age * 8) % 3], 1.1);
+        if (rand() < 0.5) burst(at, y, 1, [0xffffff, ...DISCO_COLORS], 2, 0.06, 0.2);
+        if (rise < 1) continue;
+        // spots of light sweep the floor around it
+        for (let k = 0; k < 6; k++) {
+          const a = spin * 0.6 + (k / 6) * Math.PI * 2;
+          const r = 2.6 + 1.4 * Math.sin(d.age * 5 + k * 1.7);
+          beam(at, y, { x: d.x + Math.cos(a) * r, z: d.z + Math.sin(a) * r }, 0.05, DISCO_COLORS[k % 3], 0.05);
+        }
+        // and beams hold on everything it hit, for a moment
+        if (d.age < 0.75) {
+          const hit = [...s.enemies.filter(x => d.enemies.includes(x.id)), ...s.players.filter(p => d.rivals.includes(p.id))];
+          hit.forEach((o, k) => beam(at, y, o.pos, 0.6, DISCO_COLORS[k % 3], 0.07));
+        }
       }
       cubes.end();
       cubeMat.emissiveIntensity = 0.3 * theme.glow;

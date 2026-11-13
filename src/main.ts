@@ -37,6 +37,7 @@ import { KillCamRecorder, type KillCamPlayback } from './killcam';
 import { DAILY_DIFFICULTY, dailyDate, dailySeed, recordDaily } from './daily';
 import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
+import { createSmoother } from './render/smooth';
 import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './ui/screens';
 
 document.title = t('title');
@@ -59,6 +60,7 @@ function startGame() {
   app.innerHTML = '<canvas id="game"></canvas>';
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
   const renderer = createRenderer(canvas, floor01);
+  const smooth = createSmoother();
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
   const padCtl = new PadControls();
@@ -476,7 +478,14 @@ function startGame() {
         renderer.setMouseLook(0, { x: clamp((mouse.x - r.left - vw / 2) / (vw / 2)), y: clamp((mouse.y - r.top - r.height / 2) / (r.height / 2)) });
       } else renderer.setMouseLook(0, null);
       if (split) renderer.setLookAhead(1, true);
-      renderer.render(replay ? replay.state : s, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
+      // players and vehicles are drawn between two ticks, so a fast kart glides instead of hopping
+      const shown = replay ? replay.state : s;
+      const restore = smooth(shown, alpha);
+      try {
+        renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
+      } finally {
+        restore();
+      }
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive ? useLabel(0) : null);
       buildMenu.setPadLabels(padActive);
