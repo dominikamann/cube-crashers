@@ -644,7 +644,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         });
       };
       drawColors();
-      // the character: Automatic, the free ones, and the two that have to be earned (locked ones say how)
+      // the character: Automatic, the free ones, and the one that has to be earned (locked, it says how)
       const cast = row(t('settings.character'));
       cast.classList.add('chips');
       const castNote = text(card, 'div', 'settings-note', t('settings.characterHint'));

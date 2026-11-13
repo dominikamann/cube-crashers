@@ -6,8 +6,8 @@
 
 /** free for everyone */
 export const FREE_CHARACTERS = ['astronaut', 'knight', 'cat', 'duck', 'cabinet', 'cube', 'joystick', 'ghost', 'mushroom', 'cup'] as const;
-/** earned: the boss has to fall first, then they cost tickets */
-export const EARNED_CHARACTERS = ['babyDino', 'dominik'] as const;
+/** earned: the boss has to fall first, then it costs tickets */
+export const EARNED_CHARACTERS = ['babyDino'] as const;
 export const CHARACTERS = [...FREE_CHARACTERS, ...EARNED_CHARACTERS] as const;
 export type CharacterId = (typeof CHARACTERS)[number];
 

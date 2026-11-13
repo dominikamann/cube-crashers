@@ -69,8 +69,7 @@ describe('the cast', () => {
           if (col.getX(v) > 0.25 && col.getY(v) < col.getX(v) * (hue.g / hue.r) * 1.6 + 0.02 && col.getZ(v) < col.getX(v) * (hue.b / hue.r) * 1.6 + 0.02) tinted += area;
         }
       });
-      // (Dominik is himself: he wears the colour on his sleeves and his headband only)
-      expect(tinted / all, look.kind).toBeGreaterThan(look.kind === 'dominik' ? 0.04 : 0.12);
+      expect(tinted / all, look.kind).toBeGreaterThan(0.12);
     }
   });
 });

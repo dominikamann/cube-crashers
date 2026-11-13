@@ -294,7 +294,6 @@ export const en = {
   'character.mushroom': 'Mushroom',
   'character.cup': 'Soda cup',
   'character.babyDino': 'Baby Dino',
-  'character.dominik': 'Dominik',
   'settings.graphics': 'Graphics',
   'settings.damageNumbers': 'Damage numbers',
   'settings.graphicsTest': 'Best for this computer',

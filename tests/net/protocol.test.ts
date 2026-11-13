@@ -12,6 +12,10 @@ describe('parseMessage', () => {
     expect(odd).toMatchObject({ type: 'hello', name: 'Kim' });
     expect((odd as { character?: string }).character).toBeUndefined();
     expect((parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', character: 5 })) as { character?: string }).character).toBeUndefined();
+    // (an older build may still send the character that is gone)
+    const old = parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', character: 'dominik' }));
+    expect(old).not.toBeNull();
+    expect((old as { character?: string }).character).toBeUndefined();
   });
 
   it('rejects garbage, unknown types, missing fields and oversized messages', () => {
