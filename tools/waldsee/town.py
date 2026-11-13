@@ -25,6 +25,9 @@ OPEN={
  330261223: lambda la,lo: la>=47.91951,                    # Am Ravensburger Tor: shut right at the corner
  179860017: lambda la,lo: 47.91929<=la<=47.91991,          # Ravensburger Strasse: from above the trees to the kebab shop
  693900999: lambda la,lo: lo<=9.75636,                     # Oberamteigasse: the lane by the police, a little way down
+ # the two ways down to the bank at the west end of the square: shut right where they leave it
+ 183420773: lambda la,lo: lo>=9.75480,
+ 254662377: lambda la,lo: lo>=9.75474,
 }
 # how far from its middle a way is open (metres), and how far a street is painted on behind its barrier
 REACH={'pedestrian':11,'living_street':7.5,'residential':6,'footway':3}
