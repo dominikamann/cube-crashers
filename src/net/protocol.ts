@@ -16,7 +16,7 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 5: three new worlds, Boss Rush, new monsters, the Kraken's grab, ladders, a changed Candy Factory (0.5.1).
  * 6: an opening countdown, lives per player (out until the next floor), a hidden heart (0.5.3).
  * 7: Boss Brawl (several bosses at once), Boss Rush and Endless on the LAN and on servers, the Rhino (0.5.4).
- * 8: a Single floor on the LAN, on the map the host picked.
+ * 8: a Single floor on the LAN, wild bosses, voices and a boss that waits (0.5.5).
  */
 export const PROTOCOL_VERSION = 8;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
