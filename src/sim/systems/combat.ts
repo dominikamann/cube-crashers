@@ -66,8 +66,9 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
     // a boss cannot be burst down: beyond what it takes in full right now, a hit counts only in part
     const boss = allBosses(s).find(b => b.enemyId === e.id || (e.kind === 'wormSegment' && b.worms.some(w => w.includes(e.id))));
     if (boss) {
-      const full = Math.min(amount, boss.gate ?? boss.maxHp * BOSS_HP.gate.share * BOSS_HP.gate.bank);
-      boss.gate = (boss.gate ?? boss.maxHp * BOSS_HP.gate.share * BOSS_HP.gate.bank) - full;
+      const left = boss.gate ?? boss.maxHp * (boss.gateShare ?? BOSS_HP.gate.share) * BOSS_HP.gate.bank;
+      const full = Math.min(amount, left);
+      boss.gate = left - full;
       amount = full + (amount - full) * BOSS_HP.gate.excess;
     }
   }

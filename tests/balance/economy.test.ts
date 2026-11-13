@@ -21,7 +21,8 @@ describe('the economy of a run', () => {
       expect(shops.length).toBe(r.floors.length - 1);
       shops.forEach((f, i) => {
         expect(f.atShop, `floor ${f.floor}: all offers`).toBeLessThan(f.shopTotal);
-        expect(f.lifePrice).toBe(creditPrice(0, i, 1));
+        // (dearer still for what the player bought before)
+        expect(f.lifePrice).toBeGreaterThanOrEqual(creditPrice(0, i, 1));
         expect(f.lifePrice / f.shopTotal).toBeGreaterThan(0.4);
       });
       expect(shops.filter((f, i) => f.atShop >= healPrice(i)).length, 'shops with something affordable').toBeGreaterThanOrEqual(shops.length - 1);

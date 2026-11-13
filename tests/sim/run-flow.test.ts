@@ -4,7 +4,7 @@ import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, reachable, Tile, tileAt } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { SHOP, creditPrice, healPrice, perkPrice, weaponPrice } from '../../src/sim/systems/shop';
+import { SHOP, creditPrice, healPrice, perkPrice, shopRate, weaponPrice } from '../../src/sim/systems/shop';
 import { addKart } from '../../src/sim/systems/vehicles';
 import { damagePlayer } from '../../src/sim/systems/player';
 import type { Command, SimState, Vec2 } from '../../src/sim/types';
@@ -215,6 +215,21 @@ describe('the shop', () => {
     expect(healPrice(0, DIFFICULTY.ultraHigh.prices)).toBeGreaterThan(healPrice(0, DIFFICULTY.ultraLow.prices));
   });
 
+  it('makes everything dearer for a player with each thing they buy, at once and in the shops to come', () => {
+    const s = shop(100_000);
+    const offers = s.run.shop!.offers[0];
+    const heal = offers.findIndex(o => o.kind === 'heal'), perk = offers.findIndex(o => o.kind === 'perk');
+    const before = offers[perk].cost, other = s.run.shop!.offers[1][perk].cost;
+    stepSim(s, [buy(0, heal)]);
+    expect(s.players[0].bought).toBe(1);
+    expect(offers[perk].cost).toBe(perkPrice(0, 0, shopRate(s, s.players[0])));
+    expect(offers[perk].cost).toBeGreaterThan(before);
+    // what is sold keeps the price it went for, and the other player's prices are their own
+    expect(offers[heal].cost).toBe(healPrice(0, DIFFICULTY.medium.prices));
+    expect(s.run.shop!.offers[1][perk].cost).toBe(other);
+    expect(shopRate(s, s.players[0])).toBeCloseTo(DIFFICULTY.medium.prices * (1 + SHOP.perPurchase), 6);
+  });
+
   it('the life for everyone is the dearest offer, dearer for a bigger team and dearer every time one is bought', () => {
     const s = shop(100_000);
     const offers = s.run.shop!.offers[0];
@@ -239,7 +254,7 @@ describe('the shop', () => {
     }
     expect(s.run.stage).toBe('shop');
     const next = s.run.shop!.offers[0].find(o => o.kind === 'credit')!;
-    expect(next.cost).toBe(creditPrice(1, 1, 2, DIFFICULTY.medium.prices));
+    expect(next.cost).toBe(creditPrice(1, 1, 2, shopRate(s, s.players[0])));
     expect(next.cost).toBeGreaterThan(life.cost * 2);
   });
 

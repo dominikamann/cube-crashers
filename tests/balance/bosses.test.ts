@@ -4,6 +4,9 @@ import { damageEnemy, hitEnemy } from '../../src/sim/systems/combat';
 import { spawnBoss } from '../../src/sim/systems/boss';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { run, quietSim } from '../sim/helpers';
+import { floor01 } from '../../src/sim/config/floor01';
+import { createSim } from '../../src/sim/sim';
+import { enterFloor } from '../../src/sim/systems/run';
 import { ALL_WEAPONS, BOSSES, DIFFICULTIES, LEVELS, bossHealth, weaponDps } from './measure';
 
 /**
@@ -82,6 +85,21 @@ describe('a boss cannot be burst down', () => {
     const free = max * BOSS_HP.gate.share * BOSS_HP.gate.bank;
     expect(max - body.hp).toBeCloseTo(free + (max - free) * BOSS_HP.gate.excess, 3);
     expect(body.hp).toBeGreaterThan(0);
+  });
+
+  it('the last boss of a run takes no more a second in full than it would with single health', () => {
+    const s = createSim(floor01, 3, { mode: 'run' });
+    enterFloor(s, s.run.floors.length - 1);
+    const b = s.boss!;
+    expect(b.gateShare).toBeCloseTo(BOSS_HP.gate.share / BOSS_HP.final, 6);
+    const body = s.enemies.find(e => b.worms[0].includes(e.id))!;
+    const before = body.hp;
+    damageEnemy(s, body, 1e6, 'bomb', 0);
+    // (one segment takes what the whole worm lets through)
+    const free = b.maxHp * b.gateShare! * BOSS_HP.gate.bank;
+    expect(free).toBeLessThan(before);
+    expect(body.hp).toBeLessThanOrEqual(0);
+    expect(s.boss!.gate).toBeCloseTo(0, 6);
   });
 
   it('a steady weapon below that share deals its damage in full', () => {
