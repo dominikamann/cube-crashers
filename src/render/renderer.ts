@@ -16,6 +16,7 @@ import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
 import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
+import { attachPerfRenderer } from '../dev/perf-probe';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -126,6 +127,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   scene.fog = new THREE.Fog(THEMES.day.background, THEMES.day.fogNear, THEMES.day.fogFar);
   const sky = makeSky();
   scene.add(sky.mesh);
+  if (import.meta.env.DEV) attachPerfRenderer(renderer, scene);
 
   const hemi = new THREE.HemisphereLight(THEMES.day.hemiSky, THEMES.day.hemiGround, THEMES.day.hemiIntensity);
   scene.add(hemi);
