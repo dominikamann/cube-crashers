@@ -57,6 +57,13 @@ describe('sanitizeCommands', () => {
     if (m.type === 'move') expect(Math.hypot(m.dir.x, m.dir.z)).toBeCloseTo(1);
     expect(clean([{ type: 'aim', point: { x: -50, z: 999 } }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 0, z: 70 } }]);
     expect(clean([{ type: 'select', slot: -1 }])).toEqual([{ type: 'select', playerId: 3, slot: -1 }]);
+    // the tilt of a first-person view comes along with the aim: kept within bounds, left out when it is broken or missing
+    expect(clean([{ type: 'aim', point: { x: 5, z: 6 }, pitch: 0.25 }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 5, z: 6 }, pitch: 0.25 }]);
+    const [far] = clean([{ type: 'aim', point: { x: 5, z: 6 }, pitch: 40 }]);
+    expect(far.type === 'aim' && far.pitch !== undefined && far.pitch < Math.PI / 2).toBe(true);
+    expect(clean([{ type: 'aim', point: { x: 5, z: 6 }, pitch: 'up' }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 5, z: 6 } }]);
+    expect(clean([{ type: 'aim', point: { x: 5, z: 6 }, pitch: NaN }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 5, z: 6 } }]);
+    expect('pitch' in clean([{ type: 'aim', point: { x: 5, z: 6 } }])[0]).toBe(false);
     expect(clean([{ type: 'build', padId: 2, tower: 'frost' }])).toEqual([{ type: 'build', playerId: 3, padId: 2, tower: 'frost' }]);
     expect(clean([{ type: 'jump' }, { type: 'fire', extra: 1 }])).toEqual([{ type: 'jump', playerId: 3 }, { type: 'fire', playerId: 3 }]);
   });
