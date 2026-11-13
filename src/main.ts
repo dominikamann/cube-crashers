@@ -582,7 +582,7 @@ function startGame() {
         const half = innerWidth / 2;
         if (mode === 'playing') markers2.update(s, (x, z) => {
           const r = renderer.project(x, z, 1);
-          return { x: r.x - half, y: r.y };
+          return { x: r.x - half, y: r.y, behind: r.behind };
         });
       }
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));

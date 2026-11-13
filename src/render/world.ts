@@ -1026,7 +1026,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     update(s, theme, time, events) {
       for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
       // a shot at the wall logo: it shakes and flares for a moment (the rules only report hits while the logo
-      // still has a prize left on this floor, see logo-egg.ts)
+      // still has a prize left on this floor and is not resting after an answer, see logo-egg.ts)
       const hit = events?.some(e => e.type === 'logoHit');
       const fade = Math.exp(-Math.max(0, Math.min(0.1, time - wobbledAt)) * 7);
       wobbledAt = time;
