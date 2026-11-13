@@ -4,8 +4,14 @@ import json, math, colorsys
 from PIL import Image, ImageDraw
 d=json.load(open('osm2.json'))
 nodes={e['id']:(e['lat'],e['lon']) for e in d['elements'] if e['type']=='node'}
-LAT0,LON0=47.92065,9.75405
-M=2.9; N=110
+# the map: the Hochstatt with the Czardas, the two ways from it up to the Rathaus (the Hauptstrasse and the
+# Ravensburger Strasse), the Hasengasse behind the Czardas that joins them, and the Adlergasse down to the lake,
+# which ends there, and the Wurzacher Strasse east to the ice-cream parlour, which ends too. Nothing else is open: every other street is closed where it leaves these.
+LAT0,LON0=47.92052,9.75530
+M=2.2; N=112
+OPEN=(674183231,183420784,156662898,330261233,181339876,131758210,183420774,179860017,693900999,183420787)
+# (the Ravensburger Strasse only from the square north; the Oberamteigasse only its first steps, where the police is)
+SOUTH_OF_SQUARE=47.91962
 mx=111320*math.cos(math.radians(LAT0)); my=110540
 def tile(lat,lon): return ((lon-LON0)*mx/M+N/2, N/2-(lat-LAT0)*my/M)
 SS=8
@@ -32,43 +38,32 @@ for e in ways:
 # where one can walk: on the streets, lanes, paths and squares, as wide as they are (metres from their middle)
 # (the main streets and the squares are wide, and the houses along them step back for it; the back lanes, yards and
 # service ways are left out: a town to play in has fewer side lanes than the real one)
-REACH={'pedestrian':13,'living_street':10.5,'residential':6.2,'secondary':6.5,'tertiary':6.5,'footway':3}
-# this close to the middle of a street nothing stands, not even a house (the landmarks stay whole)
-CARVE={'pedestrian':7.2,'living_street':6.2,'residential':4.4,'secondary':4.4,'tertiary':4.4}
+REACH={'pedestrian':12,'living_street':9,'residential':6.5,'secondary':6.5,'tertiary':6.5,'footway':3}
+# (nothing is cut out of the houses here: at this scale the streets are wide enough as they are)
+CARVE={}
 # lanes that just end are left out: a way whose end joins nothing else goes, and then the next one that this leaves
 # without a way on (the squares and the main streets of the old town stay, wherever they end)
-KEEP=('pedestrian','living_street')
-streets={e['id']:e for e in d['elements'] if e['type']=='way' and e.get('tags',{}).get('highway') in REACH}
-def inside(n):
-    x,y=tile(*nodes[n]); return 2<x<N-2 and 2<y<N-2
-while True:
-    deg={}
-    for e in streets.values():
-        ns=[n for n in e['nodes'] if n in nodes]
-        for i,n in enumerate(ns): deg[n]=deg.get(n,0)+(1 if i in (0,len(ns)-1) else 2)
-    dead=[i for i,e in streets.items() if e['tags']['highway'] not in KEEP and any(deg.get(n,0)<=1 for n in (e['nodes'][0],e['nodes'][-1]) if n in nodes)]
-    if not dead: break
-    for i in dead: del streets[i]
-# (the Hochstatt keeps its true shape, a tile wider all round: there the streets are as wide as they are, the houses
-# stay whole and every lane is there)
-HOCH=tile(47.9198986,9.7554854)
-inHoch=lambda x,y: HOCH[0]-12<=x<=HOCH[0]+17 and HOCH[1]-10<=y<=HOCH[1]+11
-REACH_TRUE={'pedestrian':9.5,'living_street':7.5,'residential':5,'secondary':6,'tertiary':6,'service':3.6,'footway':2.6,'path':2.6,'steps':2.6}
+streets={e['id']:e for e in d['elements'] if e['type']=='way' and e['id'] in OPEN}
+inHoch=lambda x,y: False
 segsTrue=[]
 segs=[]; carve=[]; areas=Image.new('L',(N*SS,N*SS),0); water=Image.new('L',(N*SS,N*SS),0)
 for e in d['elements']:
     if e['type']!='way': continue
     t=e.get('tags',{}); pts=[tile(*nodes[n]) for n in e['nodes'] if n in nodes]
-    if t.get('highway') in REACH_TRUE:
-        for p,q in zip(pts,pts[1:]): segsTrue.append((p,q,REACH_TRUE[t['highway']]/M))
-    if t.get('highway') in REACH and (e['id'] in streets or t.get('area')=='yes'):
+    if t.get('highway') in REACH and e['id'] in streets:
+        # (cut where the map ends: south of the square, and a few steps into the lane by the police)
+        ll=[nodes[n] for n in e['nodes'] if n in nodes]
+        if e['id']==179860017: pts=[tile(*p) for p in ll if p[0]>=SOUTH_OF_SQUARE]
+        if e['id']==693900999: pts=[tile(*p) for p in ll if p[1]<=9.75612]
+        if e['id']==156662898: pts=[tile(*p) for p in ll if p[0]>=47.91950]
+        # (the Wurzacher Strasse as far as the ice-cream parlour and a little past it: it ends there)
+        if e['id']==183420787: pts=[tile(*p) for p in ll if p[1]<=9.75665]
         if t.get('area')=='yes' and len(pts)>2: ImageDraw.Draw(areas).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
         r=REACH[t['highway']]/M
         for p,q in zip(pts,pts[1:]): segs.append((p,q,r))
         if t['highway'] in CARVE:
             for p,q in zip(pts,pts[1:]): carve.append((p,q,CARVE[t['highway']]/M))
     # (a car park is an open square)
-    if t.get('amenity')=='parking' and len(pts)>2: ImageDraw.Draw(areas).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
     if t.get('natural')=='water' and len(pts)>2: ImageDraw.Draw(water).polygon([(x*SS,y*SS) for x,y in pts],fill=255)
 areas=areas.resize((N,N),Image.BOX); water=water.resize((N,N),Image.BOX)
 def near(px,py,segs=None):
@@ -107,9 +102,10 @@ for i in range(N):
 CZ=tile(47.9199809,9.7556819)
 czHouse=min(((owner[y][x],math.hypot(x+0.5-CZ[0],y+0.5-CZ[1])) for y in range(N) for x in range(N) if owner[y][x]>=0),key=lambda p:p[1])[0]
 back=[]
-for y in range(int(CZ[1])-4,int(CZ[1])+12):
-    for x in range(int(CZ[0])-13,int(CZ[0])+7):
-        if not(0<x<N-1 and 0<y<N-1) or grid[y][x]=='.' or owner[y][x] in (czHouse,WATER): continue
+K=2.9/M
+for y in range(int(CZ[1]-4*K),int(CZ[1]+12*K)):
+    for x in range(int(CZ[0]-13*K),int(CZ[0]+7*K)):
+        if not(0<x<N-1 and 0<y<N-1) or grid[y][x]=='.' or owner[y][x] in (czHouse,WATER) or (owner[y][x]>=0 and houses[owner[y][x]]['tags'].get('name') in KNOWN_NAMES): continue
         if any(grid[y+oy][x+ox]=='.' for ox,oy in((1,0),(-1,0),(0,1),(0,-1))): back.append((x,y))
 for x,y in back: grid[y][x]='.'; owner[y][x]=-1
 # no way is narrower than two tiles: a kart is 1.4 wide. Where a lane is one tile, the garden beside it gives way,
@@ -120,13 +116,13 @@ def run(x,y,dx,dy):
         k=1
         while 0<x+dx*k*s<N-1 and 0<y+dy*k*s<N-1 and grid[y+dy*k*s][x+dx*k*s]=='.': n+=1; k+=1
     return n
-for _ in range(2):
+for _ in range(4):
     opened=[]
     for y in range(1,N-1):
         for x in range(1,N-1):
             if grid[y][x]!='.': continue
             for dx,dy in ((1,0),(0,1)):
-                if run(x,y,dx,dy)>1: continue
+                if run(x,y,dx,dy)>2: continue
                 sides=[(x+dx,y+dy),(x-dx,y-dy)]
                 sides=[p for p in sides if 0<p[0]<N-1 and 0<p[1]<N-1 and owner[p[1]][p[0]]!=WATER]
                 if not sides: continue
@@ -185,8 +181,8 @@ for h in used:
     a=(t.get('addr:street'),t.get('addr:housenumber'))
     if a in ADDR: col=ADDR[a]
     big=len(tiles)
-    wall=round(1.25+0.6*h01(houses[h]['osm'],3)+(0.2 if big>30 else 0),2)
-    if kind=='rathaus': wall=2.2
+    wall=round((1.25+0.6*h01(houses[h]['osm'],3))*(2.9/M)**0.7+(0.2 if big>60 else 0),2)
+    if kind=='rathaus': wall=3.0
     if kind=='kornhaus': wall=2.1
     if kind=='church': wall=2.8
     out.append({'id':remap[h],'kind':kind,'name':t.get('name',''),'col':col,'roof':roof,'wall':wall,'ang':round(ang,3),'cx':round(cxm+0.5,2),'cz':round(cym+0.5,2),'n':big})
@@ -200,7 +196,8 @@ for e in d['elements']:
         elif t.get('amenity')=='fountain': pois['F'].append((t.get('name',''),round(x,2),round(y,2)))
         elif t.get('amenity')=='bench': pois['b'].append((round(x,2),round(y,2)))
         elif t.get('name') and (t.get('amenity') in ('cafe','restaurant','bar','pub','ice_cream') ): pois['named'].append((t['name'],t.get('amenity'),t.get('outdoor_seating',''),round(x,2),round(y,2)))
-json.dump({'rows':[''.join(r) for r in grid],'owner':[[remap.get(o,o) for o in r] for r in owner],'houses':out,'pois':pois},open('grid2.json','w'))
+marks={'czardas':tile(47.9199809,9.7556819),'police':tile(47.9199219,9.755962),'south':tile(47.91966,9.75572),'czHouse':remap.get(czHouse,-1),'m':M}
+json.dump({'rows':[''.join(r) for r in grid],'owner':[[remap.get(o,o) for o in r] for r in owner],'houses':out,'pois':pois,'marks':marks},open('grid2.json','w'))
 print(len(out),'houses', sum(1 for r in grid for c in r if c=='.'),'floor tiles')
 show=[[('~' if owner[y][x]==WATER else ',' if owner[y][x]==GARDEN else grid[y][x]) for x in range(N)] for y in range(N)]
 for x,y in pois['T']: show[int(y)][int(x)]='T'

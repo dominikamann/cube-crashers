@@ -1,7 +1,7 @@
 """Writes the Bad Waldsee map into the game from grid2.json (see town.py): the floor with its markers
 (src/sim/config/floor-waldsee.ts) and what the houses look like (src/sim/config/waldsee-town.ts)."""
 import json, math, os
-G=json.load(open('grid2.json')); N=len(G['rows'])
+G=json.load(open('grid2.json')); N=len(G['rows']); MK=G['marks']
 rows=[list(r) for r in G['rows']]; owner=G['owner']; H={h['id']:h for h in G['houses']}
 P=G['pois']
 OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','src','sim','config')
@@ -20,12 +20,24 @@ for h in H.values():
     top=1.2 if h['kind']=='house' else 1.8
     for x,y in tiles: roof[y][x]=max(1,min(9,round(min(top,slope*(half-perp(x,y)))/STEP)))
 
+# --- the front of the Czardas: the longest run of its tiles with floor to the south; its terrace lies before it
+cz=MK['czHouse']; front=None
+for y in range(1,N-1):
+    x=1
+    while x<N-1:
+        if owner[y][x]==cz and rows[y+1][x]=='.':
+            x0=x
+            while x<N-1 and owner[y][x]==cz and rows[y+1][x]=='.': x+=1
+            if not front or x-x0>front[1]-front[0]: front=(x0,x,y+1)
+        else: x+=1
+assert front, 'the Czardas has no front'
+TERRACE=(front[0]-2,front[1]+3,front[2],front[2]+7)
 # --- trees and fountains stand on the floor and are in the way (a low wall in the rules)
 trees=[]
 for x,y in P['T']:
     tx,ty=int(x),int(y)
     # (not the ones right in front of the Czardas: its terrace is there)
-    if 92<=tx<=99 and 81<=ty<=86: continue
+    if TERRACE[0]<=tx<=TERRACE[1] and TERRACE[2]<=ty<=TERRACE[3]: continue
     if rows[ty][tx]=='.' and (tx,ty) not in trees: trees.append((tx,ty))
 fountains=[]
 for name,x,y in P['F']:
@@ -34,8 +46,10 @@ for name,x,y in P['F']:
         # (drawn half on a house: the nearest floor)
         tx,ty=min(((ax,ay) for ay in range(N) for ax in range(N) if rows[ay][ax]=='.'),key=lambda p:d(p,(x,y)))
     fountains.append((name,tx,ty))
-# the police car in front of the station, across from the Czardas where the street goes down to the lake
-POLICE=next(((x,y) for x,y in ((101,79),(102,79),(100,79)) if rows[y][x]=='.' and rows[y+1][x]=='.'),None)
+# the police car in front of the station, across from the Czardas where the street goes down to the lake: on the
+# street between the two, nearer the station, clear of the walls
+pm=(MK['police'][0]*0.7+MK['czardas'][0]*0.3, MK['police'][1]*0.7+MK['czardas'][1]*0.3-2)
+POLICE=min(((x,y) for y in range(2,N-3) for x in range(2,N-2) if all(rows[y+k][x+o]=='.' for k in (-1,0,1,2) for o in (-1,0,1)) and not(TERRACE[0]<=x<=TERRACE[1] and TERRACE[2]-1<=y<=TERRACE[3])),key=lambda p:d(p,pm),default=None)
 cars=[(POLICE[0],POLICE[1])] if POLICE else []
 solid=set(trees)|{(x,y) for _,x,y in fountains}|{(x,y+k) for x,y in cars for k in (0,1)}
 for x,y in solid: rows[y][x]='='
@@ -49,18 +63,20 @@ for name,kind,seats,x,y in P['named']:
         if len(take)>=(5 if name=='Czardas' else 3): break
         if all(d(p,q)>=1.5 for q in take): take.append(p)
     if name=='Czardas':
-        # the Czardas on the Hochstatt: a whole terrace in front of the house, toward the fountain
-        take=[p for p in ((93,82),(95,82),(97,82),(99,81),(99,79),(96,84)) if rows[p[1]][p[0]]=='.']
+        # the Czardas on the Hochstatt: a whole terrace in front of the house, two rows of tables
+        take=[(x,front[2]+r) for r in (1,4) for x in range(front[0],front[1]+1,3) if rows[front[2]+r][x]=='.' and (x,front[2]+r) not in solid][:8]
     if take: cafes.append((name,take))
 tables={p for _,l in cafes for p in l}
 
 # --- where the game puts things
 F2=next((x,y) for n,x,y in fountains if 'Federle' in n)
-CH=next(h for h in H.values() if h['kind']=='church')
-# the way through the town: in at the east end of the Hochstatt, where the Wurzacher Strasse comes in, and out by
-# the elevator in front of the church
-S=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,1) and (x,y) not in tables),key=lambda p:d(p,(F2[0]+13,F2[1]+3)))
-E=min(((x,y) for y in range(N) for x in range(N) if clear(x,y,2)),key=lambda p:d(p,(CH['cx']+4,CH['cz']+12)))
+# in from the east, where the Wurzacher Strasse ends by the ice-cream parlour; out by the elevator at the other
+# dead end, down at the lake
+floorT=[(x,y) for y in range(2,N-2) for x in range(2,N-2) if clear(x,y,1) and (x,y) not in tables]
+S=max((p for p in floorT if p[1]>N*0.8),key=lambda p:p[0])
+S=(S[0]-2,S[1])
+E=min((p for p in floorT if clear(p[0],p[1],2)),key=lambda p:p[1]+abs(p[0]-MK['czardas'][0])*0.02)
+E=(E[0],E[1]+1)
 taken=[S,E]+list(solid)+list(tables)
 # nests: each with three build pads close by and two places 10 to 13 tiles away where its rushes come from. (The
 # streets of a town are too narrow for the fixed pattern the other maps use, so they are picked here.)
@@ -81,13 +97,19 @@ def round_clear(p,R):
 def pickNests(n,apart):
     nests=[]
     # (a nest stands where there is room to run round it while it is held: on a square, clear all round)
-    cn=[p for p in roomy if round_clear(p,4.6) and d(p,S)>=16 and d(p,E)>=10 and all(d(p,t)>=3 for t in solid) and len(padsFor(p,set()))>=3]
+    cn=[p for p in roomy if round_clear(p,CLEAR) and d(p,S)>=16 and d(p,E)>=10 and all(d(p,t)>=3 for t in solid) and len(padsFor(p,set()))>=3]
     while len(nests)<n and cn:
         p=max(cn,key=lambda q:d(q,S)) if not nests else max(cn,key=lambda q:min(d(q,m) for m in nests))
         if nests and min(d(p,m) for m in nests)<apart: break
         nests.append(p); cn=[q for q in cn if q!=p]
     return nests
-nests=pickNests(6,15)
+nests=[]
+# (as much room round a nest as the town has: the widest clearings first, then smaller ones, until there are five)
+for R_ in (4.6,4.0,3.5,3.0):
+    for apart in (15,13,11):
+        CLEAR=R_; nests=pickNests(6,apart)
+        if len(nests)>=5: break
+    if len(nests)>=5: break
 pads=[]; rushes=[]
 for n in nests:
     pads+=padsFor(n,set(pads))
