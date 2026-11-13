@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { FloorMap } from '../sim/map/tilemap';
 import type { SimEvent, SimState, Vec2 } from '../sim/types';
 import { createActors } from './actors';
@@ -14,7 +13,7 @@ import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
 import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
-import { AmbientPass, gradedOutput, SmoothScenePass } from './post';
+import { AmbientPass, FinishPass, GlowPass, SmoothScenePass } from './post';
 import { attachPerfRenderer } from '../dev/perf-probe';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
@@ -125,7 +124,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     id: number;
     camera: THREE.PerspectiveCamera;
     composer: EffectComposer | null;
-    bloom: UnrealBloomPass | null;
+    bloom: GlowPass | null;
     camPos: THREE.Vector3;
     camLook: THREE.Vector3;
     /** 1 = normal, higher = further away */
@@ -178,23 +177,33 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       });
     }
     for (const v of views) {
-      // only the scene itself is drawn with multisampling (see post.ts); without it (low) it goes straight
-      // into the composer's buffer, which then needs the depth
-      const smooth = q.msaa > 0 ? new SmoothScenePass(scene, v.camera, q.msaa, !q.ao) : null;
+      // only the scene itself is drawn with multisampling, and the passes after it read its picture where it is
+      // (see post.ts); without multisampling (low) the scene goes straight into the composer's buffer, which
+      // then needs the depth
+      const smooth = q.msaa > 0 ? new SmoothScenePass(scene, v.camera, q.msaa) : null;
       const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: !smooth });
       disposeComposer(v.composer);
       const composer = new EffectComposer(renderer, target);
       composer.addPass(smooth ?? new RenderPass(scene, v.camera));
+      // (the first pass after the scene takes the picture from it; one that writes a new picture hands it on
+      // in the composer's buffer)
+      let from = smooth;
       if (q.ao) {
         const ao = new AmbientPass(scene, v.camera, 1, 1);
-        ao.source = smooth;
+        ao.source = from;
+        from = null;
         ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1.2 });
         composer.addPass(ao);
       }
-      v.bloom = q.bloom ? new UnrealBloomPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
-      if (v.bloom) composer.addPass(v.bloom);
-      // tone mapping and, where the setting has it, the grade in the same pass
-      composer.addPass(q.grade ? gradedOutput() : new OutputPass());
+      v.bloom = q.bloom ? new GlowPass(new THREE.Vector2(256, 256), THEMES.day.bloomStrength, THEMES.day.bloomRadius, THEMES.day.bloomThreshold) : null;
+      if (v.bloom) {
+        v.bloom.source = from;
+        composer.addPass(v.bloom);
+      }
+      // tone mapping, and in the same pass the glow added and, where the setting has it, the grade
+      const finish = v.bloom || q.grade || from ? new FinishPass(v.bloom, q.grade) : new OutputPass();
+      if (finish instanceof FinishPass) finish.source = from;
+      composer.addPass(finish);
       v.composer = composer;
     }
     resize();
