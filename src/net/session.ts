@@ -234,6 +234,7 @@ export class HostSession {
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
       characters: this.lobby.map(p => p.character),
+      bots: this.lobby.map(p => !!p.bot),
     });
     this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map, view: this.viewMode });
   }
@@ -451,6 +452,7 @@ export class ClientSession {
           names: m.players.map(p => p.name),
           colors: m.players.map(p => p.color),
           characters: m.players.map(p => p.character),
+          bots: m.players.map(p => !!p.bot),
         });
         this.status = 'playing';
         this.lastHeard = this.now();

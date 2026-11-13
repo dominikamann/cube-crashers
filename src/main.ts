@@ -9,7 +9,7 @@ import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
-import { lookOf, yawOf } from './input/first-person';
+import { createRaceView, lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
@@ -29,6 +29,7 @@ import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { BOSS_RUSH, FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
+import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
@@ -68,6 +69,7 @@ function startGame() {
   const renderer = createRenderer(canvas, floor01);
   showroom = at => renderer.setShowroom(at);
   const smooth = createSmoother();
+  const raceView = createRaceView();
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
   const padCtl = new PadControls();
@@ -519,6 +521,17 @@ function startGame() {
         const me = s.players.find(p => p.id === localId());
         for (const c of [keyboard, padCtl]) if (c.firstPerson !== (forced === 'fp')) c.setFirstPerson(forced === 'fp', me ? lookOf(me) : { x: 0, z: -1 });
       }
+      // the Kart Rally starts in first person (unless the LAN host fixed the view); after it everyone has the
+      // view of the floors again
+      {
+        const lookFor = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
+        const wasFp = keyboard.firstPerson;
+        raceView.update(
+          s.run.stage === 'race' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused'),
+          [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
+        );
+        if (keyboard.firstPerson && !wasFp && mode === 'playing' && !padActive) lockPointer(true);
+      }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
       // the kill cam is watched through the eyes of who did it: the view turns with their aim, a little smoothed
@@ -552,7 +565,8 @@ function startGame() {
       if (split) renderer.setLookAhead(1, true);
       // players and vehicles are drawn between two ticks, so a fast kart glides instead of hopping
       const shown = replay ? replay.state : s;
-      const restore = smooth(shown, alpha);
+      // (a LAN client's state comes in snapshots: there the smoother goes by the time between frames)
+      const restore = smooth(shown, alpha, role === 'client' && !replay ? { frameDt } : undefined);
       try {
         renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
         // (the graphics test draws the picture a second time: see graphics-test.ts)
@@ -607,8 +621,7 @@ function startGame() {
 
   /** tickets for this run go into the local profile (in LAN games every player earns their own) */
   function earnTickets(s: SimState): number {
-    const floors = s.run.floor + (s.phase === 'won' ? 1 : 0);
-    const n = ticketsForRun({ score: s.score, floors, difficulty: s.difficulty });
+    const n = ticketsForRun({ score: s.score, floors: floorsCleared(s).cleared, difficulty: s.difficulty });
     profile.tickets += n;
     newUnlocks = rewardForRun(profile, { mode: s.run.mode, won: s.phase === 'won' });
     storeProfile();
@@ -638,6 +651,7 @@ function startGame() {
         won: true,
         mode: 'versus',
         floors: 0,
+        floorsTotal: 0,
         difficulty: s.difficulty,
         headline: label,
         ranking: [...s.players]
@@ -659,7 +673,8 @@ function startGame() {
       unlocked: newUnlocks,
       won: s.phase === 'won',
       mode: s.run.mode,
-      floors: s.run.floor + (s.phase === 'won' ? 1 : 0),
+      floors: floorsCleared(s).cleared,
+      floorsTotal: floorsCleared(s).total,
       difficulty: s.difficulty,
       ranking: [...s.players]
         .sort((a, b) => b.stats.score - a.stats.score)
@@ -714,6 +729,7 @@ function startGame() {
     const s = view();
     const versus = s.run.mode === 'versus';
     const aimOf = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
+    raceView.reset();
     keyboard.setFirstPerson(versus, aimOf(localId()));
     padCtl.setFirstPerson(versus, aimOf(localId()));
     padCtl2.setFirstPerson(versus, aimOf(1));
@@ -760,7 +776,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], bots: names.map((_, i) => i >= humans), versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }

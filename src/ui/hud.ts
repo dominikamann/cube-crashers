@@ -5,6 +5,7 @@ import { inZone } from '../sim/systems/nests';
 import { RACE, raceSeconds } from '../sim/systems/race';
 import { LANE } from '../sim/systems/lane';
 import { MAZE } from '../sim/systems/maze';
+import { runProgress } from '../sim/systems/run';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t, type StringKey } from '../i18n';
@@ -247,10 +248,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       const nestsLine = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : '';
       const def = floorDef(s.map.id);
       // nests and floor on one line (the floor's name is in the countdown), so the box stays small
-      const floorLine = s.run.mode === 'run' ? t('hud.floor', { n: s.run.floor + 1, total: s.run.floors.length }) : '';
+      // (a game between two floors is not a floor: it has its name and a count of its own)
+      const at = runProgress(s);
+      const floorLine = s.run.mode !== 'run' ? '' : at.stage === 'between' ? t('hud.between', { ...at, name: t((def?.name ?? 'floor.shaft') as 'floor.shaft') }) : t('hud.floor', at);
       nestText.textContent = [nestsLine, floorLine].filter(Boolean).join(' · ');
       floorText.textContent = '';
-      void def;
 
       const shop = s.run.stage === 'shop' ? s.run.shop : null;
       shopBox.style.display = shop ? '' : 'none';
