@@ -26,7 +26,9 @@ export function isBossBody(s: SimState, e: Enemy): boolean {
  * than its radius, so players are kept outside its corners, where first person would look into the hollow model.
  */
 export function solidEdge(s: SimState, e: Enemy): number {
-  const reach = e.kind === 'megaBlock' ? 2.6 : e.kind === 'trex' && allBosses(s).some(b => b.enemyId === e.id) ? 2.3 : 0;
+  // (the Rhino is a rammer in the rules, but long)
+  const boss = (e.kind === 'trex' || e.kind === 'rammer') && allBosses(s).some(b => b.enemyId === e.id);
+  const reach = e.kind === 'megaBlock' ? 2.6 : boss ? (e.kind === 'trex' ? 2.3 : 1.9) : 0;
   return Math.max(e.radius + PLAYER_RADIUS * 0.6, reach);
 }
 

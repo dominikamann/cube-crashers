@@ -33,14 +33,14 @@ describe('monster voices', () => {
     expect(ids.size).toBe(5);
   });
 
-  it('a boss announces each attack', () => {
+  it('a boss raises its voice with its big moves', () => {
     const s = createSim(FLOORS.arena.map, 2, { mode: 'quick', players: 1 });
     s.enemies = [];
     s.boss = null;
     spawnBoss(s, 'rhino');
     s.players[0].invulnUntil = 1e9;
     let heard = 0;
-    for (let i = 0; i < 20 * 60; i++) {
+    for (let i = 0; i < 60 * 60; i++) {
       stepSim(s, []);
       heard += s.events.filter(e => e.type === 'bossAttack' && e.kind === 'rhino').length;
     }

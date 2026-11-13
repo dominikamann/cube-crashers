@@ -5,10 +5,11 @@ import { dist } from '../util';
 /** how far apart two things on the floor lie at least: each one can be seen and picked up by itself */
 export const ITEM_GAP = 1.3;
 
-/** where something lies on the floor: crates, power-ups, jetpacks, the hidden heart and parked vehicles */
+/** where something lies on the floor: crates and the cards of an opened one, power-ups, jetpacks, the hidden heart and parked vehicles */
 export function groundItems(s: SimState): Vec2[] {
   return [
     ...s.crates.map(c => c.pos),
+    ...s.offers.map(o => o.pos),
     ...s.powerups.map(p => p.pos),
     ...s.jetpacks.map(j => j.pos),
     ...(s.heart ? [s.heart.pos] : []),

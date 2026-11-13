@@ -304,7 +304,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         const p = actors.playerPos(i);
         // in a boss fight the camera leans toward the boss so both stay in the picture
         let ox = 0, oz = 0;
-        const boss = s.boss ? (s.boss.enemyId !== null ? s.enemies.find(e => e.id === s.boss!.enemyId)?.pos : s.enemies.find(e => e.id === s.boss!.worms[0]?.[0])?.pos) ?? s.boss.lastPos : null;
+        // (not toward a wild boss that still waits by the elevator, far away)
+        const boss = s.boss && s.boss.waiting === undefined ? (s.boss.enemyId !== null ? s.enemies.find(e => e.id === s.boss!.enemyId)?.pos : s.enemies.find(e => e.id === s.boss!.worms[0]?.[0])?.pos) ?? s.boss.lastPos : null;
         if (boss) {
           const dx = boss.x - p.x, dz = boss.z - p.z;
           const d = Math.hypot(dx, dz);

@@ -182,10 +182,13 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
+| 5 | Rooftop | **Final boss: Segment Worm** | – |
 
 Which world each floor is depends on the run (its seed), so no two runs look quite the same; on the LAN
 everyone gets the same ones. Every world can also be played on its own under **Single floor**.
-| 5 | Rooftop | **Final boss: Segment Worm** | – |
+
+**Wild bosses:** on some nest floors (never the first) a smaller **King Rex** or **Rhino** waits by the elevator
+once the last nest has fallen. The doors are open: lure it away and slip past, or beat it for a crate.
 
 Between the floors the elevator takes you to a short game of its own, then to the shop:
 
@@ -631,8 +634,8 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
-| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl. Charges like mad and flings whoever it hits. | Red lane on the ground |
-| **King Rex** | The last boss of the Boss Rush. | Red rings |
+| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl, and now and then in the Tower Run. Charges like mad and flings whoever it hits. | Red lane on the ground |
+| **King Rex** | The last boss of the Boss Rush, and now and then in the Tower Run. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. | Red rings and lines |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
 | **Segment Worm** | Boss of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |

@@ -210,18 +210,21 @@ function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay
 function attack(s: SimState, b: BossState): void {
   const alive = s.players.filter(p => p.downUntil === null);
   if (alive.length === 0) return;
-  s.events.push({ type: 'bossAttack', kind: b.kind });
+  // its voice goes with its big moves only (a roar every few seconds would wear thin)
+  const voice = () => s.events.push({ type: 'bossAttack', kind: b.kind });
   if (b.kind === 'megaBlock') {
     const boss = byId(s, b.enemyId!);
     // stomps under every player (and a tower now and then), a leap at one of them (from phase 2), or
     // shockwave lines toward one player (in phase 3 a cross of four)
     const roll = s.rng.next();
     if (boss && b.phase >= 2 && roll > 1 - BOSS.leapChance) {
+      voice();
       megaLeap(s, s.rng.pick(alive), b);
     } else if (!boss || roll < BOSS.stompChance) {
       for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
       if (s.towers.length > 0 && s.rng.next() < 0.5) telegraph(s, s.rng.pick(s.towers).pos, BOSS.stompRadius, BOSS.stompDamage);
     } else {
+      voice();
       const p = s.rng.pick(alive);
       const d = dist(boss.pos, p.pos) || 1;
       const dir = { x: (p.pos.x - boss.pos.x) / d, z: (p.pos.z - boss.pos.z) / d };
@@ -239,11 +242,13 @@ function attack(s: SimState, b: BossState): void {
     const reach = kraken ? alive.filter(p => dist(p.pos, kraken.pos) <= BOSS.grabRange && dist(p.pos, kraken.pos) > BOSS.slapRadius && hasLos(s.map, kraken.pos, p.pos)) : [];
     // too close: a slap all round; someone in reach: grab them; otherwise tentacles in lines, or ink under everyone
     if (kraken && near.length > 0 && roll < 0.5) {
+      voice();
       for (let i = 0; i < 10; i++) {
         const a = (i / 10) * Math.PI * 2;
         telegraph(s, { x: kraken.pos.x + Math.cos(a) * BOSS.slapRadius, z: kraken.pos.z + Math.sin(a) * BOSS.slapRadius }, 1.4, BOSS.strikeDamage, 45);
       }
     } else if (kraken && !b.grab && reach.length > 0 && roll < 0.8) {
+      voice();
       grabPlayer(s, s.rng.pick(reach), b);
     } else if (kraken && s.rng.next() < 0.6) {
       for (const p of alive.slice(0, 3)) {
@@ -262,6 +267,7 @@ function attack(s: SimState, b: BossState): void {
     const king = b.kind === 'rex';
     // a roar that cracks the ground in a ring around it, a bite (King Rex only), or a stomp under every player
     if (rex && roll < 0.35) {
+      voice();
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
         telegraph(s, { x: rex.pos.x + Math.cos(a) * BOSS.roarRadius, z: rex.pos.z + Math.sin(a) * BOSS.roarRadius }, 1.5, BOSS.stompDamage);
@@ -295,6 +301,7 @@ function attack(s: SimState, b: BossState): void {
       else if (b.phase >= 2) for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
       else telegraph(s, s.rng.pick(alive).pos, BOSS.strikeRadius, BOSS.strikeDamage);
     } else if (roll < 0.75 || b.phase < 2) {
+      voice();
       // a lunge: every head snaps at the nearest player, a line of strikes ahead of it
       for (const w of worms) {
         const head = w[0];
@@ -304,6 +311,7 @@ function attack(s: SimState, b: BossState): void {
         for (let i = 1; i <= BOSS.wormLunge; i++) telegraph(s, { x: head.pos.x + dir.x * i * BOSS.waveStep, z: head.pos.z + dir.z * i * BOSS.waveStep }, 1.1, BOSS.strikeDamage, BOSS.warnTicks + i * 4);
       }
     } else {
+      voice();
       // a tail whip: a ring around the tail of every worm, so staying behind it is not safe either
       for (const w of worms) {
         const tail = w[w.length - 1];
