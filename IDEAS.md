@@ -36,16 +36,6 @@ into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
 - **Lava Bakery**: hot plates that glow before they burn.
 - More for the **Sunken Arcade** (it is in the game): bubbles that lift you over walls, jellyfish monsters.
 - **Space Station**: low gravity (longer jumps), airlocks that open on a timer and suck coins out.
-- **City from OpenStreetMap**: see below.
-
-## Real-city maps via OpenStreetMap
-Play in your own street or town centre:
-- Import an area from OpenStreetMap (streets, buildings, parks, water) and turn it into a voxel map:
-  streets become paths, buildings become blocks with their real height, squares and parks get build pads.
-- Pick the area in the game (search a place or drag a box), generate the floor, save and share it.
-- Needs: OSM data (Overpass API or an exported file), path generation from the street graph, automatic pad and
-  nest placement.
-- OSM data is ODbL: show "© OpenStreetMap contributors" in the game and on shared maps.
 
 ---
 
@@ -85,7 +75,7 @@ Play in your own street or town centre:
 ## Plugins and mods
 
 Let the community add content without touching the core game:
-- Maps (including OSM-generated ones), weapons, towers, monsters, bosses, game modes.
+- Maps, weapons, towers, monsters, bosses, game modes.
 - Plugins as folders with a manifest (name, version, author, license) plus data and scripts.
 - Weapons, towers, monsters and maps are already data tables (`src/sim/config/`), so a plugin would register
   more entries.
