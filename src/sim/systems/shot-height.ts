@@ -68,6 +68,11 @@ export function aimShot(s: SimState, p: Projectile): void {
     reach = toHigh;
     end = SHOT_HEIGHT.fly;
   }
+  // (what is thrown comes down where it lands)
+  if (p.target) {
+    reach = Math.max(0.1, Math.hypot(dir.x, dir.z));
+    end = 0;
+  }
   p.arc = { x: from.x, z: from.z, lift, end, reach };
 }
 

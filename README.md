@@ -606,6 +606,13 @@ Lies somewhere on the map now and then. Pick it up and **hold Space** to fly ove
 monsters. The tank lasts about 5 seconds of flight and fills up again on the ground; you keep the jetpack
 for the rest of the floor.
 
+**Shots have a height.** A shot starts as high as you are and flies straight to the first monster or rival in
+its line of fire: down from a jetpack onto the floor, up from the floor to someone flying, level between two
+flyers. In versus it only hits rivals at its height, so a shot along the floor passes under a flyer and one
+aimed up at a flyer passes over the others; a jump still takes you over a shot on the floor. Thrown bombs
+reach a flyer right above the blast (thrown from the air: anywhere in it) and the Disco Ball flashes at
+flyers too, but banana mines and puddles stay on the floor. Monsters are hit at any height.
+
 Let go of Space and you sink gently back down. Above a block inside the arena you **land on top of it**: monsters cannot reach you up
 there and the tank fills up again. Walk off the edge to drop down. Shots still hit you, so in versus it is a
 breather, not a fortress. (The outer walls of the map do not count.)
