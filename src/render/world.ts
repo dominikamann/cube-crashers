@@ -629,7 +629,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           const midX = spot.tx + spot.w / 2;
           at = { cx: midX + (at.cx + spot.tx - midX) * LOGO_FLOOR_SIZE, cz: at.cz + spot.tz, w: at.w * LOGO_FLOOR_SIZE, h: at.h * LOGO_FLOOR_SIZE };
           const wordsGeo = new THREE.PlaneGeometry(spot.w, spot.h);
-          const wordsMat = new THREE.MeshBasicMaterial({ map: words, transparent: true, opacity: 0.86, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
+          const wordsMat = new THREE.MeshBasicMaterial({ map: words, transparent: true, opacity: 0.86, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, forceSinglePass: true, polygonOffset: true, polygonOffsetFactor: -1 });
           const wordsMesh = new THREE.Mesh(wordsGeo, wordsMat);
           // flat on the floor at rest; awake it floats up and turns to whoever looks down on it from above. In
           // first person it stays on the floor (there only the A comes alive). It is posed per camera, right
@@ -653,7 +653,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
             c.drawImage(img, 0, 0, tw, res);
           }, false);
           const geo = new THREE.PlaneGeometry(at.w, at.h);
-          const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+          const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, forceSinglePass: true });
           const mesh = new THREE.Mesh(geo, mat);
           mesh.rotation.x = -Math.PI / 2;
           mesh.position.set(at.cx, 0.03, at.cz);
