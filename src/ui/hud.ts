@@ -128,8 +128,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const hpNumber = el('span', 'hp-number', left);
   const hpFill = el('i', '', el('div', 'bar', left));
   const dashRow = el('div', 'dashes', left);
+  // (no label: the orange bar shows up with the jetpack, that says it)
   const jetBox = el('div', 'kart', left);
-  el('div', 'sub', jetBox, t('hud.jetpack'));
   const jetFill = el('i', '', el('div', 'bar jet', jetBox));
   const kartBox = el('div', 'kart', left);
   el('div', 'sub', kartBox, t('hud.fuel'));

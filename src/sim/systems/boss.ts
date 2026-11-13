@@ -57,11 +57,14 @@ export const BOSS = {
   seaCap: 30,
   /** King Rex: how much faster than a common T-Rex, and how much faster again with each phase */
   /** Angry Dominik, the very last boss: laser eyes and a hammer */
-  dominikHp: 2600,
-  dominikSpeed: 2.9,
+  dominikHp: 3200,
+  dominikSpeed: 3.4,
+  /** what his hammer and his lightning do, and how much more often he attacks than the other bosses */
+  dominikDamage: 42,
+  dominikHaste: 0.7,
   dominikRadius: 1.1,
   /** his eyes: a beam that aims first, then burns and turns; who stands in it takes this per second */
-  laser: { aimTicks: 55, burnTicks: 110, length: 13, width: 0.9, dps: 45, sweep: 1.5 },
+  laser: { aimTicks: 50, burnTicks: 95, length: 14, width: 0.9, dps: 70, sweep: 1.6 },
   /** his hammer: thrown out in a line and back again, or brought down for three rings of shockwaves */
   hammerLine: 7,
   hammerRings: [3, 5.6, 8.2],
@@ -304,8 +307,8 @@ function attack(s: SimState, b: BossState): void {
       const n = BOSS.hammerLine;
       const at = (i: number) => ({ x: dom.pos.x + dir.x * (1 + i * BOSS.waveStep), z: dom.pos.z + dir.z * (1 + i * BOSS.waveStep) });
       for (let i = 1; i <= n; i++) {
-        telegraph(s, at(i), 1.3, BOSS.strikeDamage, BOSS.warnTicks + i * 4);
-        telegraph(s, at(i), 1.3, BOSS.strikeDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + i * 4);
+        telegraph(s, at(i), 1.3, BOSS.dominikDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16);
       }
       s.events.push({ type: 'hammerThrow', from: { ...dom.pos }, to: at(n) });
     } else {
@@ -316,15 +319,18 @@ function attack(s: SimState, b: BossState): void {
         const n = Math.round(r * 2.4);
         for (let i = 0; i < n; i++) {
           const a = ((i + (k % 2) * 0.5) / n) * Math.PI * 2;
-          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.stompDamage, BOSS.warnTicks + k * 22);
+          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.dominikDamage, BOSS.warnTicks + k * 22);
         }
       });
-      if (b.phase >= 2)
-        for (const q of alive)
-          for (let i = 0; i < 3; i++) {
-            const a = s.rng.next() * Math.PI * 2, r = 1.5 + s.rng.next() * 2.5;
-            telegraph(s, { x: q.pos.x + Math.cos(a) * r, z: q.pos.z + Math.sin(a) * r }, 1.4, BOSS.strikeDamage, BOSS.warnTicks + 30 + i * 10);
-          }
+    }
+    // whatever he does, lightning comes with it, so keeping one's distance is no shelter: a bolt where each
+    // player stands and, the more he is hurt, more of them where they are running to and around them
+    for (const q of alive) {
+      telegraph(s, q.pos, 1.5, BOSS.dominikDamage, BOSS.warnTicks + 14);
+      for (let i = 1; i < b.phase + 1; i++) {
+        const a = s.rng.next() * Math.PI * 2, r = s.rng.next() * 2.2;
+        telegraph(s, { x: q.pos.x + q.facing.x * 2.6 * i + Math.cos(a) * r, z: q.pos.z + q.facing.z * 2.6 * i + Math.sin(a) * r }, 1.4, BOSS.dominikDamage, BOSS.warnTicks + 14 + i * 9);
+      }
     }
   } else if (b.kind === 'rex' || b.kind === 'rhino') {
     const rex = byId(s, b.enemyId!);
@@ -617,6 +623,6 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   }
   if (s.tick >= b.nextAttackAt) {
     attack(s, b);
-    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * (b.kind === 'rex' ? BOSS.rexHaste : 1));
+    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * (b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : 1));
   }
 }
