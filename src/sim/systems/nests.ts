@@ -9,7 +9,6 @@ import {
   FIRST_RUSH_TICKS,
   HOLD_RADIUS,
   HOLD_TICKS,
-  NEST_DEFENCE,
   NEST_BLAST,
   NEST_SPAWN_TICKS,
   NESTS_PER_FLOOR,
@@ -159,7 +158,6 @@ export function setupFloor(s: SimState): void {
     progress: 0,
     nextSpawnAt: s.tick + NEST_SPAWN_TICKS,
     nextRushAt: 0,
-    nextBlastAt: 0,
   }));
   for (const n of s.nests) spawnHorde(s, besideNest(s, n), roamingComp(s, GUARD_FACTOR));
   const far = shuffled(s, s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS + 3));
@@ -261,7 +259,6 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       p.plantTicks = 0;
       nest.state = 'planted';
       nest.nextRushAt = s.tick + FIRST_RUSH_TICKS;
-      nest.nextBlastAt = s.tick + NEST_DEFENCE.firstTicks;
       s.events.push({ type: 'nestPlanted', id: nest.id });
     }
   }
@@ -283,14 +280,8 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
         destroyNest(s, n);
         continue;
       }
-      if (s.tick >= n.nextBlastAt) {
-        n.nextBlastAt = s.tick + NEST_DEFENCE.intervalTicks - NEST_DEFENCE.intervalPerAlarm * s.alarm.level;
-        for (const p of alive) {
-          if (!inZone(s.map, n.pos, p.pos)) continue;
-          s.blasts.push({ id: s.nextId++, pos: { ...p.pos }, radius: NEST_DEFENCE.radius, createdAt: s.tick, at: s.tick + NEST_DEFENCE.warnTicks, damage: NEST_DEFENCE.damage });
-          s.events.push({ type: 'blastWarning', pos: { ...p.pos }, radius: NEST_DEFENCE.radius });
-        }
-      }
+      // (the nest itself does nothing to whoever holds its zone: what comes for them are the rushes, and
+      // those can be seen coming)
       if (s.tick >= n.nextRushAt) {
         n.nextRushAt = s.tick + RUSH_INTERVAL_TICKS;
         const entries = s.map.nestSpots.find(x => x.id === n.spotId)?.entries ?? [];
@@ -327,7 +318,7 @@ function respawnNest(s: SimState, n: Nest): void {
   const free = s.map.nestSpots.filter(sp => !used.has(sp.id) && s.players.every(p => dist(p.pos, sp.pos) > 15));
   if (free.length === 0) return;
   const spot = s.rng.pick(free);
-  Object.assign(n, { spotId: spot.id, pos: { ...spot.pos }, state: 'idle', progress: 0, nextSpawnAt: s.tick + NEST_SPAWN_TICKS, nextRushAt: 0, nextBlastAt: 0, respawnAt: undefined });
+  Object.assign(n, { spotId: spot.id, pos: { ...spot.pos }, state: 'idle', progress: 0, nextSpawnAt: s.tick + NEST_SPAWN_TICKS, nextRushAt: 0, respawnAt: undefined });
   spawnHorde(s, besideNest(s, n), roamingComp(s, GUARD_FACTOR));
   s.events.push({ type: 'nestAppeared', id: n.id, pos: { ...n.pos } });
 }

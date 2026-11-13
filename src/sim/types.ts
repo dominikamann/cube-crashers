@@ -160,6 +160,8 @@ export interface Player {
   combo: number;
   comboUntil: number;
   perks: Record<PerkKind, number>;
+  /** how many things this player has bought in the shops of the run: each makes the next dearer */
+  bought?: number;
   vehicleId: number | null;
   boostUntil: number;
   rapidUntil: number;
@@ -375,7 +377,6 @@ export interface Nest {
   progress: number;
   nextSpawnAt: number;
   nextRushAt: number;
-  nextBlastAt: number;
   /** endless mode: when a destroyed nest comes back somewhere else */
   respawnAt?: number;
 }
@@ -422,6 +423,8 @@ export interface BossState {
   nextSchoolAt?: number;
   /** how much damage it still takes in full right now; the rest of a burst counts only in part (BOSS_HP.gate) */
   gate?: number;
+  /** the share of its health it takes in full a second (left out: BOSS_HP.gate.share) */
+  gateShare?: number;
 }
 
 export interface Vehicle {

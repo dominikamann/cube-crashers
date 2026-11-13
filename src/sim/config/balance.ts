@@ -24,7 +24,8 @@ export const BOSS_BODY_RESIST = 0.25;
  * worth for every extra player, a little for every level of the best weapon each player carries (less than the
  * level gives the weapon: a better weapon always wins sooner), and double on the last floor of a Tower Run.
  * `gate`: a boss cannot be burst down. It takes `share` of its health a second in full (up to `bank` seconds'
- * worth saved up); of what hits it beyond that, only `excess` counts.
+ * worth saved up); of what hits it beyond that, only `excess` counts. (The last floor's boss takes the same
+ * amount a second in full as it would with single health, so its double health is double the fight.)
  */
 export const BOSS_HP = {
   teamStep: 0.75,
@@ -117,9 +118,6 @@ export const ELEVATOR_RADIUS = 1.5;
 export const CREDIT_BONUS = 500;
 export const PAR_SECONDS = 360;
 export const TIME_BONUS_PER_SECOND = 10;
-
-/** a planted nest fights back: it blasts the ground under whoever holds the zone */
-export const NEST_DEFENCE = { firstTicks: 90, intervalTicks: 100, intervalPerAlarm: 10, warnTicks: 50, radius: 2.0, damage: 25 };
 
 export const MAX_PLAYERS = 10;
 /** a downed teammate can be helped up for this long */

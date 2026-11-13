@@ -109,14 +109,15 @@ export function createBot(): (s: SimState) => Command[] {
 
     let move = { x: 0, z: 0 };
     // a boss floor has no nest: keep the boss at shooting range and circle it
-    const bossId = s.boss ? (s.boss.enemyId ?? s.boss.worms[0]?.[0]) : undefined;
-    const boss = bossId === undefined ? undefined : s.enemies.find(e => e.id === bossId && e.hp > 0);
+    // (of the Segment Worm: any segment still alive, of whichever worm it has split into)
+    const bossIds = s.boss ? (s.boss.enemyId !== null ? [s.boss.enemyId] : s.boss.worms.flat()) : [];
+    const boss = s.enemies.find(e => bossIds.includes(e.id) && e.hp > 0);
     const atNest = nest && goal === nest.pos && d(nest.pos, p.pos) < 2.2;
     const holding = nest && goal === nest.pos && nest.state === 'planted' && d(nest.pos, p.pos) < 4.5;
     if (atNest && nest.state === 'idle') {
       cmds.push({ type: 'hold', playerId: 0 });
     } else if (holding) {
-      // keep circling inside the zone (the nest blasts whoever stands still) and lean away from what is close
+      // keep circling inside the zone (a moving target for the rushes) and lean away from what is close
       const rx = p.pos.x - nest.pos.x, rz = p.pos.z - nest.pos.z;
       const r = Math.hypot(rx, rz) || 1;
       const pull = (3.2 - r) * 0.8;
@@ -137,6 +138,8 @@ export function createBot(): (s: SimState) => Command[] {
     } else {
       move = d(goal, p.pos) < 1.2 ? { x: goal.x - p.pos.x, z: goal.z - p.pos.z } : flowDir(s.map, field, p.pos);
     }
+    // up on a wall top (a jump took it there) the way along the floor says nothing: step off toward the goal
+    if (p.perched && move.x === 0 && move.z === 0) move = { x: goal.x - p.pos.x, z: goal.z - p.pos.z };
     cmds.push({ type: 'move', playerId: 0, dir: move });
 
     // build a tower when standing on a free pad with coins to spare
