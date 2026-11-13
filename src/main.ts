@@ -1262,6 +1262,12 @@ function applyDemo(sim: SimState) {
       kinds.forEach((k, i) => {
         const e = m.spawnEnemy(sim, k, { x: p.pos.x + ((i % 7) - 3) * 1.9, z: p.pos.z - (i >= 7 ? 5.6 : 3.2) });
         e.speed *= 0.05;
+        // (&pop=1: they all burst at once, &pop=elite as elites: to look at how monsters die)
+        if (params.has('pop')) {
+          e.elite = params.get('pop') === 'elite';
+          // (a mine under each of them that goes off after half a second: so they die by the rules, with the event)
+          sim.mines.push({ id: sim.nextId++, pos: { ...e.pos }, ownerId: p.id, damage: 1e6, armedAt: sim.tick + 30, expiresAt: sim.tick + 600 });
+        }
       });
     });
   }

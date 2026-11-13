@@ -19,6 +19,31 @@ interface Particle {
   size: number;
   color: number;
   spin: number;
+  /** a spark: small, bright and unlit, it does not bounce but burns out in the air */
+  spark?: boolean;
+}
+
+/** a flash of light or a shockwave on the floor: it grows from nothing to `size` and fades as it does */
+interface Pop {
+  x: number;
+  y: number;
+  z: number;
+  age: number;
+  life: number;
+  size: number;
+  color: number;
+  ring: boolean;
+}
+
+/** what a monster leaves on the floor where it burst: a stain in its own colour that dries away */
+interface Splat {
+  x: number;
+  z: number;
+  age: number;
+  life: number;
+  size: number;
+  color: number;
+  turn: number;
 }
 
 interface Beam {
@@ -68,6 +93,54 @@ export function createFx(scene: THREE.Scene): Fx {
   const particles: Particle[] = [];
   const cubeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x222222, roughness: 0.5 });
   const cubes = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), cubeMat, 1024, false);
+
+  // how a monster bursts: a flash, a shockwave over the floor, sparks, and a stain where it stood
+  const pops: Pop[] = [];
+  const splats: Splat[] = [];
+  const light = (color: number) => new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const flashes = new InstancedPool(scene, new THREE.IcosahedronGeometry(0.5, 1), light(0xffffff), 64, false);
+  const waves = new InstancedPool(scene, new THREE.RingGeometry(0.42, 0.5, 40).rotateX(-Math.PI / 2), light(0xffffff), 64, false);
+  const sparks = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), light(0xffffff), 512, false);
+  // (a stain is a ragged blot: a disc with an uneven edge)
+  const blot = new THREE.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2);
+  {
+    const at = blot.getAttribute('position');
+    for (let i = 1; i < at.count; i++) {
+      const k = 0.72 + 0.4 * Math.abs(Math.sin(i * 2.7));
+      at.setXYZ(i, at.getX(i) * k, at.getY(i), at.getZ(i) * k);
+    }
+  }
+  const stains = new InstancedPool(scene, blot, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), 64, false);
+  const MAX_SPLATS = 48;
+  const tone = (color: number, k: number) => {
+    // k < 1 darkens, k > 1 mixes toward white
+    const r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
+    const f = (c: number) => Math.round(k <= 1 ? c * k : c + (255 - c) * (k - 1));
+    return (f(r) << 16) | (f(g) << 8) | f(b);
+  };
+  /**
+   * A monster bursts. Pieces of its own body (in its own colours, big and small) fly off and tumble, a flash
+   * and a shockwave mark the spot, sparks spray out, and a stain stays on the floor for a while.
+   */
+  function burstMonster(pos: Vec2, color: number, size: number, height: number, elite: boolean) {
+    const dark = tone(color, 0.55), bright = tone(color, 1.5), glow = tone(color, 1.75);
+    const amount = (elite ? 2.2 : 1) * Math.max(0.6, size);
+    pops.push({ x: pos.x, y: height * 0.55, z: pos.z, age: 0, life: 0.18, size: (1.5 + size * 1.6) * (elite ? 1.5 : 1), color: glow, ring: false });
+    pops.push({ x: pos.x, y: 0.06, z: pos.z, age: 0, life: 0.36, size: (2.4 + size * 2.4) * (elite ? 1.5 : 1), color: bright, ring: true });
+    // pieces of the body: a few big ones that tumble, many small ones
+    chunks(pos, height * 0.3, Math.round(5 * amount), [color, color, dark, bright], 4.2, 0.16 * Math.max(0.7, size), 0.3 * Math.max(0.7, size));
+    burst(pos, height * 0.5, Math.round(12 * amount), [color, dark, bright], elite ? 5.5 : 4, 0.11);
+    // sparks: fast and bright, gone in a moment
+    const n = Math.ceil((elite ? 26 : 10) * Math.max(0.6, size) * particleScale);
+    for (let i = 0; i < n && particles.length < MAX_PARTICLES; i++) {
+      const a = rand() * Math.PI * 2, up = 0.3 + rand() * 1.1, sp = 5 + rand() * 6;
+      const life = 0.22 + rand() * 0.22;
+      particles.push({ x: pos.x, y: height * 0.5, z: pos.z, vx: Math.cos(a) * sp, vy: up * 5, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.07 + rand() * 0.05, color: elite && i % 2 ? 0xff5ae0 : i % 3 ? glow : 0xffffff, spin: 0, spark: true });
+    }
+    if (splats.length >= MAX_SPLATS) splats.shift();
+    splats.push({ x: pos.x, z: pos.z, age: 0, life: 5 + rand() * 2, size: (0.9 + size * 1.1) * (elite ? 1.4 : 1), color: dark, turn: rand() * Math.PI * 2 });
+    if (elite) addShake(0.22);
+  }
 
   const beams: Beam[] = [];
   /** Disco Balls in the air: each hangs over its owner for a moment, spinning and throwing light */
@@ -254,11 +327,9 @@ export function createFx(scene: THREE.Scene): Fx {
       for (const e of events) {
         switch (e.type) {
           case 'enemyKilled': {
-            // it falls apart: chunky cubes that bounce away, then a puff of pixel dust
+            // it bursts: pieces of itself, a flash, a shockwave, sparks, and a stain on the floor
             const l = ENEMY_LOOK[e.kind];
-            const big = e.elite ? 50 : e.kind === 'tank' || e.kind === 'rammer' ? 26 : 14;
-            burst(e.pos, l.h / 2, big, [l.day, l.night, 0xffffff], e.elite ? 6 : 4, e.kind === 'splitling' ? 0.1 : 0.16);
-            burst(e.pos, l.h * 0.6, Math.round(big * 0.8), [l.day, l.night], 1.6, 0.06, 1.4);
+            burstMonster(e.pos, theme.pointLights > 0.5 ? l.night : l.day, Math.max(l.w, l.d), l.h, e.elite);
             break;
           }
           case 'enemyHit': {
@@ -300,6 +371,11 @@ export function createFx(scene: THREE.Scene): Fx {
               break;
             }
             const body = BOSS_WRECK[e.kind ?? 'megaBlock'];
+            // (with a flash and a shockwave of its own, far bigger than a monster's, and a stain)
+            pops.push({ x: e.pos.x, y: 1.6, z: e.pos.z, age: 0, life: 0.3, size: 9, color: 0xffffff, ring: false });
+            pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: 0, life: 0.55, size: 16, color: tone(body[0], 1.6), ring: true });
+            pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: -0.12, life: 0.6, size: 11, color: 0xffffff, ring: true });
+            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 9, size: 5.5, color: tone(body[0], 0.5), turn: rand() * Math.PI * 2 });
             chunks(e.pos, 1.6, 46, body, 10, 0.34, 0.75);
             chunks(e.pos, 1.2, 150, body, 7, 0.12, 0.24);
             burst(e.pos, 1.5, 30, [0xffffff, 0xffe9a8], 6, 0.2);
@@ -590,6 +666,7 @@ export function createFx(scene: THREE.Scene): Fx {
       }
 
       cubes.begin();
+      sparks.begin();
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.life -= dt;
@@ -598,19 +675,51 @@ export function createFx(scene: THREE.Scene): Fx {
           particles.pop();
           continue;
         }
-        p.vy -= 14 * dt;
+        p.vy -= (p.spark ? 9 : 14) * dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.z += p.vz * dt;
-        if (p.y < p.size / 2) {
+        if (!p.spark && p.y < p.size / 2) {
           p.y = p.size / 2;
           p.vy *= -0.35;
           p.vx *= 0.7;
           p.vz *= 0.7;
         }
         const k = Math.min(1, p.life / (p.maxLife * 0.4));
-        cubes.add(p.x, p.y, p.z, p.spin * p.life, p.size * k, p.color, p.spin * p.life * 0.7);
+        if (p.spark) sparks.add(p.x, p.y, p.z, 0, p.size * (0.4 + 0.6 * k), p.color);
+        else cubes.add(p.x, p.y, p.z, p.spin * p.life, p.size * k, p.color, p.spin * p.life * 0.7);
       }
+      sparks.end();
+      // the flashes and shockwaves grow fast and fade (their light is added to the picture: a darker colour
+      // is a fainter one), the stains dry up
+      flashes.begin();
+      waves.begin();
+      for (let i = pops.length - 1; i >= 0; i--) {
+        const f = pops[i];
+        f.age += dt;
+        if (f.age >= f.life) {
+          pops.splice(i, 1);
+          continue;
+        }
+        if (f.age < 0) continue;
+        const t = f.age / f.life, grow = 1 - (1 - t) ** 3;
+        (f.ring ? waves : flashes).add(f.x, f.y, f.z, 0, f.size * (f.ring ? grow : 0.35 + 0.65 * grow), tone(f.color, (1 - t) ** 1.5));
+      }
+      flashes.end();
+      waves.end();
+      stains.begin();
+      for (let i = splats.length - 1; i >= 0; i--) {
+        const b = splats[i];
+        b.age += dt;
+        if (b.age >= b.life) {
+          splats.splice(i, 1);
+          continue;
+        }
+        // it spreads in a blink, lies there, and shrinks away at the end
+        const k = Math.min(1, b.age / 0.12) * Math.min(1, (b.life - b.age) / 1.2);
+        stains.add(b.x, 0.035, b.z, b.turn, b.size * k, b.color);
+      }
+      stains.end();
       for (let i = discos.length - 1; i >= 0; i--) {
         const d = discos[i];
         d.age += dt;
