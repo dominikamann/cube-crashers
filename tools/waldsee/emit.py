@@ -25,7 +25,7 @@ trees=[]
 for x,y in P['T']:
     tx,ty=int(x),int(y)
     # (not the ones right in front of the Czardas: its terrace is there)
-    if 92<=tx<=98 and 81<=ty<=84: continue
+    if 92<=tx<=99 and 81<=ty<=86: continue
     if rows[ty][tx]=='.' and (tx,ty) not in trees: trees.append((tx,ty))
 fountains=[]
 for name,x,y in P['F']:

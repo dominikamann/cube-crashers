@@ -136,6 +136,27 @@ for _ in range(2):
                     return 0 if o==GARDEN else 2 if houses[o]['tags'].get('name') in KNOWN_NAMES else 1
                 opened.append(min(sides,key=cost))
     for x,y in opened: grid[y][x]='.'; owner[y][x]=-1
+# no green in the gaps: a yard or a strip of garden between houses is built over by the houses next to it. Only
+# the big green that reaches the edge of the map (the park, the meadows by the lake) stays
+seenG=set()
+for y0 in range(N):
+    for x0 in range(N):
+        if owner[y0][x0]!=GARDEN or (x0,y0) in seenG: continue
+        comp=[(x0,y0)]; seenG.add((x0,y0)); k=0
+        while k<len(comp):
+            x,y=comp[k]; k+=1
+            for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+                if 0<=nx<N and 0<=ny<N and owner[ny][nx]==GARDEN and (nx,ny) not in seenG: seenG.add((nx,ny)); comp.append((nx,ny))
+        edge=any(x in (0,N-1) or y in (0,N-1) for x,y in comp)
+        if edge and len(comp)>=60: continue
+        left=set(comp)
+        while left:
+            grow=[]
+            for x,y in left:
+                near_=[owner[y+oy][x+ox] for ox,oy in ((1,0),(-1,0),(0,1),(0,-1)) if 0<=x+ox<N and 0<=y+oy<N and owner[y+oy][x+ox]>=0]
+                if near_: grow.append((x,y,max(set(near_),key=near_.count)))
+            if not grow: break
+            for x,y,o in grow: owner[y][x]=o; left.discard((x,y))
 used=sorted({owner[y][x] for y in range(N) for x in range(N) if owner[y][x]>=0})
 remap={h:i for i,h in enumerate(used)}
 # colours: the ones known from photos, by name or address; the rest from the old town's range of plaster tones
