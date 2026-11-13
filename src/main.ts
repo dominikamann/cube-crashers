@@ -43,6 +43,8 @@ import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, t
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
+/** dev: puts the camera on a circle round a figure (set once the renderer exists) */
+let showroom: ((at: { x: number; z: number; height: number; radius: number }) => void) | null = null;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 // the interface grows with big screens (see ui/scale.ts)
 const applyUiZoom = () => document.documentElement.style.setProperty('--ui-zoom', String(uiZoom(innerWidth, innerHeight)));
@@ -60,6 +62,7 @@ function startGame() {
   app.innerHTML = '<canvas id="game"></canvas>';
   const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
   const renderer = createRenderer(canvas, floor01);
+  showroom = at => renderer.setShowroom(at);
   const smooth = createSmoother();
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
@@ -1104,7 +1107,7 @@ function applyDemo(sim: SimState) {
   sim.players[0].coins = 200;
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
-  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino'].includes(bossKind)) {
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik'].includes(bossKind)) {
     sim.enemies = [];
     sim.nests = [];
     sim.boss = null;
@@ -1116,6 +1119,28 @@ function applyDemo(sim: SimState) {
       if (params.has('fall')) for (const e of sim.enemies) e.hp = 0;
     });
   }
+  // ?demo=dominik: Angry Dominik on show. He stands still in the open and the camera circles him (&act=1: he
+  // fights, &r=… and &h=… set the circle's radius and height)
+  if (params.get('demo') === 'dominik') {
+    sim.enemies = [];
+    sim.nests = [];
+    sim.boss = null;
+    sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    sim.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
+    void import('./sim/systems/boss').then(m => {
+      const at = { x: sim.map.w / 2, z: sim.map.h / 2 };
+      m.spawnBoss(sim, 'dominik', at);
+      const body = sim.enemies.find(e => e.id === sim.boss?.enemyId);
+      if (body && !params.has('act')) {
+        body.speed = 0;
+        body.dir = { x: 0, z: 1 };
+        sim.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
+      }
+      showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7 });
+    });
+  }
+  // &mini=1: the small Angry Dominik from the wall logo, right away
+  if (params.has('mini')) void import('./sim/systems/mini-dominik').then(m => m.releaseMiniDominik(sim, { x: sim.players[0].pos.x, z: sim.players[0].pos.z - 4 }));
   // ?demo=win: a quick floor that is won right away (to look at the result screen)
   if (params.get('demo') === 'win') {
     for (const n of sim.nests) n.state = 'destroyed';

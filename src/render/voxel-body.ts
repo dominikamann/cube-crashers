@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { EnemyKind } from '../sim/types';
+import { BODY } from './dominik-body';
+import { HEAD_BACK, HEAD_FRONT, HEAD_LEFT, HEAD_RIGHT, type Portrait } from './dominik-face';
 
 /**
  * Monster bodies built from many small cubes instead of one box: each kind has a shape (which cells of a
@@ -21,9 +23,79 @@ const round = (u: number, v: number, w: number, p: number, limit = 1.1) => Math.
 const BELLY: [number, number, number] = [1.45, 1.4, 1.2];
 
 /** a body that is not a monster kind of its own: the Rhino is a rammer in the game's rules */
-export type BodyKind = EnemyKind | 'rhino';
+export type BodyKind = EnemyKind | 'rhino' | 'dominik' | 'dominikHead';
+
+/**
+ * Angry Dominik is made from photos. His head: four pixel portraits (front, both sides, back, see
+ * dominik-face.ts), one pixel a voxel. His body from the neck to the knees: what he looks like from the front
+ * and from behind, and how deep he is in every row (dominik-body.ts); its voxels are twice the size of the
+ * head's. Both are bodies of their own, drawn with the same pose. (Arms, lower legs, shoes and the hammer are
+ * parts.) The material is white: the tones are the colours themselves.
+ */
+const rgb = (hex: number): [number, number, number] => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+const DOM_SKIN = rgb(0xd9966e), DOM_HAIR = rgb(0x4a3222), DOM_SHIRT = rgb(0x2b2d33), DOM_SHORTS = rgb(0x2a336a);
+const pixel = (row: string, x: number): [number, number, number] | null => {
+  const c = row.slice(x * 6, x * 6 + 6);
+  return c === '' || c === '......' ? null : rgb(parseInt(c, 16));
+};
+/** the pixel of a portrait at `x` (-1 at its left edge to 1 at its right) in the head's row `row` from its foot */
+const portrait = (p: Portrait, x: number, row: number): [number, number, number] | null => {
+  const px = Math.floor(((x + 1) / 2) * p.w), py = p.h - 1 - row;
+  return px < 0 || px >= p.w || py < 0 || py >= p.h ? null : pixel(p.rows[py], px);
+};
+/** a body cell: its row from the top, its column as the camera in front of him saw it, its depth from his middle */
+const bodyCell = (u: number, v: number, w: number) => ({
+  row: BODY.rows - 1 - Math.floor(((v + 1) / 2) * BODY.rows),
+  // (his right is on the left of a photo taken from the front)
+  col: BODY.cols - 1 - Math.floor(((u + 1) / 2) * BODY.cols),
+  z: w * (BODY.deep / 2),
+});
+/** the stretches of body in each row of the front view: the trunk is one, the legs are two */
+const bodyRuns: [number, number][][] = BODY.front.map(row => {
+  const runs: [number, number][] = [];
+  for (let c = 0; c < BODY.cols; c++) {
+    if (!pixel(row, c)) continue;
+    if (runs.length && runs[runs.length - 1][1] === c - 1) runs[runs.length - 1][1] = c;
+    else runs.push([c, c]);
+  }
+  return runs;
+});
 
 const SHAPES: Partial<Record<BodyKind, Shape>> = {
+  dominik: {
+    n: [BODY.cols, BODY.rows, BODY.deep],
+    inside: (u, v, w) => {
+      const { row, col, z } = bodyCell(u, v, w);
+      const run = bodyRuns[row]?.find(r => col >= r[0] && col <= r[1]);
+      if (!run) return false;
+      // round in cross-section: as wide as the photo from the front shows, as deep as the one from the side
+      const [back, front] = BODY.depth[row];
+      const x = (col + 0.5 - (run[0] + run[1] + 1) / 2) / ((run[1] - run[0] + 1) / 2);
+      const d = (z - (back + front) / 2) / Math.max(1, (front - back) / 2);
+      return Math.abs(x) ** 2.6 + Math.abs(d) ** 2.6 <= 1;
+    },
+    tone: (u, v, w) => {
+      const { row, col, z } = bodyCell(u, v, w);
+      const [back, front] = BODY.depth[row];
+      const fromFront = z >= (back + front) / 2;
+      // (from behind his right is on the right)
+      return pixel(fromFront ? BODY.front[row] : BODY.back[row], fromFront ? col : BODY.cols - 1 - col) ?? pixel(BODY.front[row], col) ?? (row > BODY.rows * 0.58 ? DOM_SHORTS : DOM_SHIRT);
+    },
+  },
+  dominikHead: {
+    n: [HEAD_FRONT.w, HEAD_FRONT.h, HEAD_LEFT.w],
+    // round, deeper than it is wide, a little narrower toward the chin
+    inside: (u, v, w) => {
+      const jaw = v < 0 ? 1 - 0.14 * v * v : 1;
+      return Math.abs(u / jaw) ** 2.4 + Math.abs(v) ** 2.4 + Math.abs(w / jaw) ** 2.4 <= 1;
+    },
+    // each side of the head shows the portrait taken from there (a frontal photo has his right on its left)
+    tone: (u, v, w) => {
+      const row = Math.floor(((v + 1) / 2) * HEAD_FRONT.h);
+      const px = w >= 0 && Math.abs(u) <= 0.84 ? portrait(HEAD_FRONT, -u, row) : w < 0 && Math.abs(u) <= 0.8 ? portrait(HEAD_BACK, u, row) : portrait(u > 0 ? HEAD_RIGHT : HEAD_LEFT, u > 0 ? w : -w, row);
+      return px ?? (row / HEAD_FRONT.h > 0.6 || w < -0.2 ? DOM_HAIR : DOM_SKIN);
+    },
+  },
   // a rhino: a heavy barrel with a hump over the shoulders, and a long head held low that narrows to a square
   // lip; a lighter belly and dark folds where its armour plates meet (legs, horns, ears and tail are parts)
   rhino: {

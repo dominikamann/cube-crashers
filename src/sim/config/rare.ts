@@ -23,6 +23,8 @@ export const RARE = {
   slush: { everyTicks: 6, range: 5, halfConeDeg: 20, damage: 2, chill: 6, freezeAt: 60, frozenTicks: 120 },
   bubble: { cooldownTicks: 90, speed: 12, range: 9, radius: 2.5, stuckTicks: 180, damage: 40 },
   blower: { range: 6, halfConeDeg: 25, push: 2, maxKnock: 10, slamSpeed: 6, slamDamage: 15, slamCooldownTicks: 30, coinPull: 8 },
+  /** the Thunder Hammer: a smash in front of you, and lightning that jumps on to the nearest others */
+  hammer: { cooldownTicks: 36, reach: 1.8, radius: 2.4, damage: 70, chain: 3, chainRange: 6, chainDamage: 35 },
   pizza: { cooldownTicks: 72, speed: 13, lifeTicks: 240, bounces: 6, damage: 12, rehitTicks: 20 },
 };
 

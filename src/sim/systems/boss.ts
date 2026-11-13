@@ -7,6 +7,7 @@ import { DT, TICK_RATE, type BossKind, type BossState, type Enemy, type Intent, 
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
+import { aloft } from './rare';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
 import { spawnHorde, type HordeComp } from './hordes';
@@ -55,6 +56,17 @@ export const BOSS = {
   /** no new school while this many fish and sharks are still alive */
   seaCap: 30,
   /** King Rex: how much faster than a common T-Rex, and how much faster again with each phase */
+  /** Angry Dominik, the very last boss: laser eyes and a hammer */
+  dominikHp: 2600,
+  dominikSpeed: 2.9,
+  dominikRadius: 1.1,
+  /** his eyes: a beam that aims first, then burns and turns; who stands in it takes this per second */
+  laser: { aimTicks: 55, burnTicks: 110, length: 13, width: 0.9, dps: 45, sweep: 1.5 },
+  /** his hammer: thrown out in a line and back again, or brought down for three rings of shockwaves */
+  hammerLine: 7,
+  hammerRings: [3, 5.6, 8.2],
+  /** how often the crate he leaves holds his hammer */
+  hammerChance: 0.8,
   rexHp: 1600,
   rexSpeed: 1.75,
   rexPhaseSpeed: 1.2,
@@ -118,6 +130,13 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
       e.speed *= BOSS.rexSpeed;
     }
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
+  } else if (kind === 'dominik') {
+    // Angry Dominik walks like a tank in the rules, but is a body of his own
+    const e = spawnEnemy(s, 'tank', centre);
+    e.hp = e.maxHp = BOSS.dominikHp * hpScale(s);
+    e.radius = BOSS.dominikRadius;
+    e.speed = BOSS.dominikSpeed;
+    b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else {
     const ids: number[] = [];
     // (in a brawl the chain is laid toward the middle of the arena, away from the wall behind it)
@@ -155,6 +174,7 @@ export const BRAWL = {
   kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino'] as BossKind[],
   /** this many of them come a second time */
   extra: 2,
+  dominikChance: 0.25,
   breakTicks: 4 * TICK_RATE,
   sharkEveryTicks: 20 * TICK_RATE,
 };
@@ -170,7 +190,9 @@ export function startBrawl(s: SimState): void {
   };
   s.bosses = [];
   s.boss = null;
-  s.brawl = { queue: [...shuffle(BRAWL.kinds), ...shuffle(BRAWL.kinds).slice(0, BRAWL.extra)], nextAt: s.tick, wave: 0, nextSharkAt: s.tick + BRAWL.sharkEveryTicks };
+  // (now and then Angry Dominik turns up for the last wave)
+  const finale: BossKind[] = s.rng.next() < BRAWL.dominikChance ? ['dominik'] : [];
+  s.brawl = { queue: [...shuffle(BRAWL.kinds), ...shuffle(BRAWL.kinds).slice(0, BRAWL.extra), ...finale], nextAt: s.tick, wave: 0, nextSharkAt: s.tick + BRAWL.sharkEveryTicks };
 }
 
 function updateBrawl(s: SimState): void {
@@ -261,6 +283,48 @@ function attack(s: SimState, b: BossState): void {
       }
     } else {
       for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
+    }
+  } else if (b.kind === 'dominik') {
+    const dom = byId(s, b.enemyId!);
+    if (!dom) return;
+    const roll = s.rng.next();
+    const p = alive.reduce((a, c) => (dist(c.pos, dom.pos) < dist(a.pos, dom.pos) ? c : a));
+    const d = dist(dom.pos, p.pos) || 1;
+    const dir = { x: (p.pos.x - dom.pos.x) / d, z: (p.pos.z - dom.pos.z) / d };
+    if (roll < 0.34 && !b.laser) {
+      // laser eyes: the beam starts beside the player and sweeps across them (wider and faster once hurt)
+      voice();
+      const L = BOSS.laser;
+      const side = s.rng.next() < 0.5 ? 1 : -1;
+      const sweep = L.sweep * (b.phase >= 3 ? 1.5 : 1);
+      b.laser = { startAt: s.tick, fireAt: s.tick + L.aimTicks, endAt: s.tick + L.aimTicks + L.burnTicks, from: Math.atan2(dir.z, dir.x) - (side * sweep) / 2, sweep: side * sweep };
+    } else if (roll < 0.67) {
+      // the hammer flies out in a line and comes back the same way
+      voice();
+      const n = BOSS.hammerLine;
+      const at = (i: number) => ({ x: dom.pos.x + dir.x * (1 + i * BOSS.waveStep), z: dom.pos.z + dir.z * (1 + i * BOSS.waveStep) });
+      for (let i = 1; i <= n; i++) {
+        telegraph(s, at(i), 1.3, BOSS.strikeDamage, BOSS.warnTicks + i * 4);
+        telegraph(s, at(i), 1.3, BOSS.strikeDamage, BOSS.warnTicks + (2 * n - i) * 4 + 16);
+      }
+      s.events.push({ type: 'hammerThrow', from: { ...dom.pos }, to: at(n) });
+    } else {
+      // the hammer comes down: rings of shockwaves run outward, one after the other (and, once hurt, lightning
+      // strikes around every player)
+      voice();
+      BOSS.hammerRings.forEach((r, k) => {
+        const n = Math.round(r * 2.4);
+        for (let i = 0; i < n; i++) {
+          const a = ((i + (k % 2) * 0.5) / n) * Math.PI * 2;
+          telegraph(s, { x: dom.pos.x + Math.cos(a) * r, z: dom.pos.z + Math.sin(a) * r }, 1.2, BOSS.stompDamage, BOSS.warnTicks + k * 22);
+        }
+      });
+      if (b.phase >= 2)
+        for (const q of alive)
+          for (let i = 0; i < 3; i++) {
+            const a = s.rng.next() * Math.PI * 2, r = 1.5 + s.rng.next() * 2.5;
+            telegraph(s, { x: q.pos.x + Math.cos(a) * r, z: q.pos.z + Math.sin(a) * r }, 1.4, BOSS.strikeDamage, BOSS.warnTicks + 30 + i * 10);
+          }
     }
   } else if (b.kind === 'rex' || b.kind === 'rhino') {
     const rex = byId(s, b.enemyId!);
@@ -390,6 +454,39 @@ export function megaLeap(s: SimState, p: Player, b: BossState | null = s.boss): 
   telegraph(s, p.pos, BOSS.leapRadius, BOSS.stompDamage, BOSS.leapTicks);
 }
 
+/** where Angry Dominik's beam points at `tick` (the angle of its direction on the floor) */
+export function laserAngle(b: BossState, tick: number): number {
+  const l = b.laser!;
+  return l.from + l.sweep * Math.max(0, Math.min(1, (tick - l.fireAt) / Math.max(1, l.endAt - l.fireAt)));
+}
+
+/** Is `pos` in the beam right now? (Only as far as the beam reaches, and not through a wall.) */
+export function laserHits(s: SimState, b: BossState, pos: Vec2): boolean {
+  const dom = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
+  if (!dom || !b.laser) return false;
+  const a = laserAngle(b, s.tick);
+  const dx = pos.x - dom.pos.x, dz = pos.z - dom.pos.z;
+  const along = dx * Math.cos(a) + dz * Math.sin(a), across = Math.abs(-dx * Math.sin(a) + dz * Math.cos(a));
+  return along > 0 && along <= BOSS.laser.length && across <= BOSS.laser.width / 2 + PLAYER_RADIUS && hasLos(s.map, dom.pos, pos);
+}
+
+/** Angry Dominik's laser eyes: aim, burn, done. Jump over the beam or keep ahead of it. */
+function laser(s: SimState, b: BossState): void {
+  const l = b.laser;
+  if (!l) return;
+  if (s.tick >= l.endAt || b.enemyId === null || !byId(s, b.enemyId)) {
+    b.laser = null;
+    return;
+  }
+  // he stands and looks along the beam for as long as his eyes aim and burn
+  const dom = byId(s, b.enemyId)!;
+  const a = laserAngle(b, s.tick);
+  dom.dir = { x: Math.cos(a), z: Math.sin(a) };
+  dom.stuckUntil = Math.max(dom.stuckUntil, s.tick + 2);
+  if (s.tick < l.fireAt) return;
+  for (const p of s.players) if (p.downUntil === null && !aloft(s, p) && !p.perched && laserHits(s, b, p.pos)) damagePlayer(s, p, BOSS.laser.dps * DT, 'shot');
+}
+
 /** In mid-leap the Mega Block flies over everything in a straight line and comes down with a stomp. */
 function leap(s: SimState, b: BossState): void {
   const l = b.leap;
@@ -456,6 +553,7 @@ export function updateBoss(s: SimState, intents?: Map<number, Intent>): void {
 function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
   drag(s, b, intents);
   leap(s, b);
+  laser(s, b);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
@@ -464,6 +562,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
     dropCoins(s, b.lastPos, BOSS.deathCoins);
     if (b.kind === 'rex') layEggs(s, b.lastPos);
+    // Angry Dominik leaves a crate, and most of the time his hammer is in it
+    if (b.kind === 'dominik') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) }, ...(s.rng.next() < BOSS.hammerChance ? { prize: 'thunderHammer' as const } : {}) });
     if (s.bosses) {
       // a brawl: the others fight on; the wave is cleared when the last of them falls
       s.bosses = s.bosses.filter(x => x !== b);

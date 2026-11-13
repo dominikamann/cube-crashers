@@ -56,6 +56,7 @@ export type SoundId =
   | 'bossSpawn'
   | `roar_${BossKind}`
   | 'growl_croc'
+  | 'thunder'
   | 'screech_monkey'
   | 'bossPhase'
   | 'bossDead'
@@ -268,6 +269,24 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 150, freqEnd: 58, attack: 0.15, sustain: 0.7, decay: 0.6, volume: 0.36, vibrato: { rate: 6, depth: 22 } },
     { wave: 'triangle', freq: 300, freqEnd: 120, attack: 0.15, sustain: 0.6, decay: 0.5, volume: 0.14, vibrato: { rate: 11, depth: 40 }, lowpass: 900 },
     { wave: 'noise', freq: 200, attack: 0.1, sustain: 0.5, decay: 0.6, volume: 0.2, lowpass: 340 },
+  ],
+  // Angry Dominik: an angry shout, short and rough
+  roar_dominik: [
+    { wave: 'sawtooth', freq: 210, freqEnd: 150, attack: 0.02, sustain: 0.28, decay: 0.2, volume: 0.26, vibrato: { rate: 26, depth: 14 }, lowpass: 1500 },
+    { wave: 'square', freq: 105, freqEnd: 80, attack: 0.02, sustain: 0.28, decay: 0.2, volume: 0.12, lowpass: 700 },
+    { wave: 'noise', freq: 800, attack: 0.01, sustain: 0.12, decay: 0.2, volume: 0.14, lowpass: 1800 },
+  ],
+  // thunder: a crack, then a long rumble that rolls away
+  thunder: [
+    { wave: 'noise', freq: 4000, attack: 0.001, sustain: 0.05, decay: 0.12, volume: 0.6, lowpass: 7000 },
+    { wave: 'noise', freq: 300, attack: 0.02, sustain: 0.5, decay: 1.6, volume: 0.55, lowpass: 420, at: 0.06 },
+    { wave: 'sine', freq: 70, freqEnd: 28, attack: 0.02, sustain: 0.5, decay: 1.4, volume: 0.45, vibrato: { rate: 9, depth: 6 }, at: 0.06 },
+    { wave: 'noise', freq: 200, attack: 0.1, sustain: 0.4, decay: 1.2, volume: 0.3, lowpass: 260, at: 0.7 },
+  ],
+  rare_thunderHammer: [
+    { wave: 'noise', freq: 2500, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.4, lowpass: 5000 },
+    { wave: 'sine', freq: 120, freqEnd: 40, attack: 0.002, sustain: 0.06, decay: 0.25, volume: 0.4 },
+    { wave: 'square', freq: 1400, freqEnd: 500, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.06, vibrato: { rate: 60, depth: 300 } },
   ],
   growl_croc: [
     { wave: 'sawtooth', freq: 95, freqEnd: 70, attack: 0.03, sustain: 0.28, decay: 0.2, volume: 0.2, vibrato: { rate: 27, depth: 12 }, lowpass: 700 },
@@ -485,14 +504,20 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'buyDenied':
       return one('buildDenied');
     case 'bossSpawn':
-      // the siren, then the boss itself
-      return [{ id: 'bossSpawn', pitch: 1 }, { id: `roar_${e.kind}`, pitch: 0.9 }];
+      // the siren, then the boss itself (Angry Dominik arrives with thunder)
+      return [{ id: e.kind === 'dominik' ? 'thunder' : 'bossSpawn', pitch: 1 }, { id: `roar_${e.kind}`, pitch: 0.9 }];
     case 'bossAttack':
       return one(`roar_${e.kind}`);
     case 'bossPhase':
       return one('bossPhase');
     case 'bossDead':
-      return one('bossDead');
+      return e.kind === 'dominik' ? [{ id: 'thunder', pitch: 1 }, { id: 'bossDead', pitch: 1 }] : one('bossDead');
+    case 'dominikJoined':
+      return [{ id: 'thunder', pitch: 1.3 }, { id: 'roar_dominik', pitch: 1.5 }];
+    case 'dominikLeft':
+      return one('dash', 0.7);
+    case 'hammerThrow':
+      return one('dash', 0.6);
     case 'eggHatch':
       // the shell cracks, and a very small roar
       return [{ id: 'bubblePop', pitch: 0.8 }, { id: 'roar_rex', pitch: 2.4 }];

@@ -35,6 +35,7 @@ export const RARE_GLYPH: Record<RareKind, string> = {
   bubblegumBazooka: '🫧',
   leafBlower: '🍃',
   pizzaCutter: '🍕',
+  thunderHammer: '🔨',
 };
 
 const RARE_LABEL: Record<RareKind, string> = {
@@ -42,6 +43,7 @@ const RARE_LABEL: Record<RareKind, string> = {
   bubblegumBazooka: 'BUBBLEGUM',
   leafBlower: 'BLOWER',
   pizzaCutter: 'PIZZA',
+  thunderHammer: 'HAMMER',
 };
 
 export const POWERUP_GLYPH: Record<PowerupKind, string> = {

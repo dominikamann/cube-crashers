@@ -98,6 +98,7 @@ export function setupFloor(s: SimState): void {
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
   s.eggs = [];
+  s.mini = null;
   s.wild = null;
   s.heart = null;
   s.logoEgg = null;
@@ -141,7 +142,7 @@ export function setupFloor(s: SimState): void {
     placeStartCrates(s);
     placeStartKarts(s);
     s.nextPowerupAt = s.tick + POWERUP.firstTicks;
-    s.look = 'day';
+    s.look = rushBoss === 'dominik' ? 'night' : 'day';
     return;
   }
   const spots = shuffled(s, s.map.nestSpots).slice(0, NESTS_PER_FLOOR);

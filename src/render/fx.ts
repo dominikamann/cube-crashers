@@ -1,3 +1,4 @@
+import { DOMINIK } from './monster-parts';
 import * as THREE from 'three';
 import type { BossKind, PowerupKind, SimEvent, SimState, Vec2 } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
@@ -26,6 +27,8 @@ interface Beam {
 }
 
 const MAX_PARTICLES = 3000;
+/** Angry Dominik's beam as it is drawn: as long as it burns (BOSS.laser.length) */
+const LASER_LENGTH = 13;
 
 /** what a boss is made of: the colours of the pieces it bursts into (its body in a few shades, and its horns, teeth or spikes) */
 const BOSS_WRECK: Record<BossKind, number[]> = {
@@ -33,6 +36,7 @@ const BOSS_WRECK: Record<BossKind, number[]> = {
   worm: [0x7b4fd1, 0x7b4fd1, 0x8f63ff, 0x4f3391, 0xf2ead8, 0xf2ead8, 0x7dfcff],
   rex: [0x6a8f3a, 0x6a8f3a, 0x9fd35a, 0x47632a, 0x47632a, 0xf2ead8, 0xd9c58a],
   kraken: [0xd04a8a, 0xd04a8a, 0xff6ab0, 0x8e2f5e, 0x8e2f5e, 0xffd9e8],
+  dominik: [0x24262c, 0x24262c, 0xd9966e, 0xd9966e, 0x1c2140, 0x2bf0ff, 0x8f96a3, 0x4a3222],
   rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
 };
 
@@ -183,6 +187,35 @@ export function createFx(scene: THREE.Scene): Fx {
     beams.push({ from: new THREE.Vector3(from.x, fy, from.z), to: new THREE.Vector3(to.x, ty, to.z), life, color });
   }
 
+  /** a bolt of lightning from the sky down to `at`: jagged, white with a blue edge, and sparks where it lands */
+  function bolt(at: Vec2, big = false) {
+    let from = { x: at.x + (rand() - 0.5) * 3, z: at.z + (rand() - 0.5) * 3 };
+    let y = 16;
+    const steps = 6;
+    for (let i = 1; i <= steps; i++) {
+      const k = i / steps;
+      const to = i === steps ? at : { x: at.x + (from.x - at.x) * (1 - k) + (rand() - 0.5) * 1.6, z: at.z + (from.z - at.z) * (1 - k) + (rand() - 0.5) * 1.6 };
+      const ty = 16 * (1 - k);
+      beam(from, y, to, ty, 0xffffff, big ? 0.22 : 0.14);
+      beam({ x: from.x + 0.09, z: from.z }, y, { x: to.x + 0.09, z: to.z }, ty, 0x9fd0ff, big ? 0.3 : 0.18);
+      if (big) beam({ x: from.x - 0.09, z: from.z + 0.06 }, y, { x: to.x - 0.09, z: to.z + 0.06 }, ty, 0x9fd0ff, 0.3);
+      from = to;
+      y = ty;
+    }
+    burst(at, 0.4, big ? 26 : 12, [0xffffff, 0x9fd0ff, 0x7dfcff], 6, 0.1, 0.8);
+    ring(at, big ? 4 : 2, [0xffffff, 0x9fd0ff]);
+  }
+  /** lightning still to come: a storm is a few bolts one after the other */
+  const storm: { at: Vec2; in: number; big: boolean }[] = [];
+  const thunderstorm = (at: Vec2, bolts: number, spread: number, seconds: number) => {
+    for (let i = 0; i < bolts; i++) {
+      const a = rand() * Math.PI * 2, r = i === 0 ? 0 : rand() * spread;
+      storm.push({ at: { x: at.x + Math.cos(a) * r, z: at.z + Math.sin(a) * r }, in: (i / bolts) * seconds, big: i === 0 });
+    }
+  };
+  /** Angry Dominik's hammer in the air: out along its line and back, after the warning (see boss.ts) */
+  const hammers: { from: Vec2; to: Vec2; age: number }[] = [];
+
   const playerPos = (s: SimState, id: number): Vec2 | undefined => s.players.find(p => p.id === id)?.pos;
 
   return {
@@ -224,6 +257,11 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'bossDead': {
             // it blows apart: big pieces of its own body fly off and tumble across the floor, small bits rain
             // down after them, a flash and a shockwave where it stood
+            // (Angry Dominik goes in a thunderstorm: bolt after bolt where he stood)
+            if (e.kind === 'dominik') {
+              thunderstorm(e.pos, 9, 5, 1.3);
+              addShake(1.2);
+            }
             const body = BOSS_WRECK[e.kind ?? 'megaBlock'];
             chunks(e.pos, 1.6, 46, body, 10, 0.34, 0.75);
             chunks(e.pos, 1.2, 150, body, 7, 0.12, 0.24);
@@ -232,6 +270,20 @@ export function createFx(scene: THREE.Scene): Fx {
             addShake(0.8);
             break;
           }
+          case 'bossSpawn':
+            if (e.kind === 'dominik' && s.boss) thunderstorm(s.boss.lastPos, 4, 3, 0.6);
+            break;
+          case 'dominikJoined':
+            thunderstorm(e.pos, 2, 1.5, 0.3);
+            break;
+          case 'dominikLeft':
+            // back into the wall: a puff and a last spark
+            burst(e.pos, 1, 24, [0x17171d, 0xd9966e, 0x2bf0ff, 0xffffff], 4, 0.12, 0.5);
+            bolt(e.pos);
+            break;
+          case 'hammerThrow':
+            hammers.push({ from: e.from, to: e.to, age: 0 });
+            break;
           case 'eggHatch':
             // the shell flies apart
             chunks(e.pos, 0.3, 16, [0xf3ecd6, 0xfbf6e6, 0xf3ecd6, 0x6a8f3a], 4.5, 0.07, 0.2);
@@ -363,6 +415,38 @@ export function createFx(scene: THREE.Scene): Fx {
         }
       }
 
+      for (let i = storm.length - 1; i >= 0; i--) {
+        storm[i].in -= dt;
+        if (storm[i].in > 0) continue;
+        bolt(storm[i].at, storm[i].big);
+        addShake(storm[i].big ? 0.5 : 0.25);
+        storm.splice(i, 1);
+      }
+      // Angry Dominik's laser eyes: a thin flickering line while he aims, then two thick beams that burn the
+      // floor where they end
+      for (const b of [s.boss, ...(s.bosses ?? [])]) {
+        if (!b?.laser || b.enemyId === null) continue;
+        const dom = s.enemies.find(e => e.id === b.enemyId);
+        if (!dom) continue;
+        const l = b.laser;
+        const a = l.from + l.sweep * Math.max(0, Math.min(1, (s.tick - l.fireAt) / Math.max(1, l.endAt - l.fireAt)));
+        const dir = { x: Math.cos(a), z: Math.sin(a) }, side = { x: -dir.z, z: dir.x };
+        const end = { x: dom.pos.x + dir.x * LASER_LENGTH, z: dom.pos.z + dir.z * LASER_LENGTH };
+        // out of his glasses: he looks along the beam while it burns (see boss.ts), so they are right there
+        const eyeY = (DOMINIK.lift + DOMINIK.eyeY) * DOMINIK.scale;
+        const eye = (k: number) => ({ x: dom.pos.x + (side.x * DOMINIK.eyeX * k + dir.x * DOMINIK.front) * DOMINIK.scale, z: dom.pos.z + (side.z * DOMINIK.eyeX * k + dir.z * DOMINIK.front) * DOMINIK.scale });
+        if (s.tick < l.fireAt) {
+          if (Math.floor(time * 24) % 2 === 0) for (const k of [-1, 1]) beam(eye(k), eyeY, end, 0.15, 0xff5a5a, 0.04);
+        } else {
+          for (const k of [-1, 1]) {
+            for (const o of [-0.05, 0, 0.05]) beam({ x: eye(k).x + side.x * o, z: eye(k).z + side.z * o }, eyeY + o, { x: end.x + side.x * (k * 0.12 + o), z: end.z + side.z * (k * 0.12 + o) }, 0.12, o === 0 ? 0xffffff : 0xff2b2b, 0.04);
+          }
+          burst(end, 0.2, 2, [0xff2b2b, 0xffe14a, 0xffffff], 3, 0.08, 0.6);
+          // the floor glows along the beam
+          const t = rand();
+          burst({ x: dom.pos.x + dir.x * LASER_LENGTH * t, z: dom.pos.z + dir.z * LASER_LENGTH * t }, 0.1, 1, [0xff5a2b, 0xffe14a], 0.6, 0.07, 0.3);
+        }
+      }
       // dash trail, jetpack exhaust and smoke from damaged karts
       for (const p of s.players) {
         if (p.dashTicks > 0) burst(p.pos, 0.6, 3, [0x2bf0ff, 0xffffff], 1, 0.14, 0.3);
@@ -429,6 +513,24 @@ export function createFx(scene: THREE.Scene): Fx {
           const hit = [...s.enemies.filter(x => d.enemies.includes(x.id)), ...s.players.filter(p => d.rivals.includes(p.id))];
           hit.forEach((o, k) => beam(at, y, o.pos, 0.6, DISCO_COLORS[k % 3], 0.07));
         }
+      }
+      for (let i = hammers.length - 1; i >= 0; i--) {
+        const h = hammers[i];
+        h.age += dt;
+        // it leaves his hand when the warning is over, flies out, hangs for a moment and comes back
+        const [out0, out1, back0, back1] = [1.0, 1.47, 1.75, 2.25];
+        if (h.age >= back1) {
+          hammers.splice(i, 1);
+          continue;
+        }
+        if (h.age < out0) continue;
+        const k = h.age < out1 ? (h.age - out0) / (out1 - out0) : h.age < back0 ? 1 : 1 - (h.age - back0) / (back1 - back0);
+        const x = h.from.x + (h.to.x - h.from.x) * k, z = h.from.z + (h.to.z - h.from.z) * k;
+        const spin = h.age * 22;
+        cubes.add(x, 1.3, z, spin, 0.62, 0x9aa0aa, 0.4);
+        cubes.add(x + Math.sin(spin) * 0.42, 1.3, z + Math.cos(spin) * 0.42, spin, 0.2, 0x6b4a2a, 0.4);
+        cubes.add(x - Math.sin(spin) * 0.3, 1.3, z - Math.cos(spin) * 0.3, spin, 0.26, 0x7dfcff, 0.4);
+        if (rand() < 0.6) burst({ x, z }, 1.3, 1, [0x9fd0ff, 0xffffff], 1.5, 0.07, 0.2);
       }
       cubes.end();
       cubeMat.emissiveIntensity = 0.3 * theme.glow;

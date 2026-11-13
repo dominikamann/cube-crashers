@@ -302,6 +302,62 @@ export interface PartPose {
  * The Rhino (a rammer in the rules, with a body of its own) wears these: thick legs, a big horn and
  * a small one on its nose, ears, a heavy brow and a short tail.
  */
+/**
+ * Angry Dominik's limbs: bare legs under the shorts, shoes, short sleeves, a left arm that swings and a right
+ * one that holds his hammer upright. The hammer rises when he winds up and comes down with the blow.
+ */
+const DOM_SKIN = 0xd9966e, DOM_SHIRT = 0x44474f, DOM_STEEL = 0x8f96a3, DOM_STEEL_LIGHT = 0xc9ced6;
+/**
+ * How he stands, in his own frame (before `scale`). His body (neck to knees) is a box 1.14 wide, 2.31 high and
+ * 1.05 deep; the head sits on top of it (`head`: its size and where its middle is, measured from the body's),
+ * the lower legs hang under it (`lift`). His eyes, where the lasers start: `eyeY` above the foot of the body
+ * box, `eyeX` to each side, `front` ahead of his middle. All in all he stands 3.9 high, seven and a half heads.
+ */
+export const DOMINIK = {
+  scale: 1.15,
+  small: 0.42,
+  lift: 1.02,
+  width: 1.141,
+  height: 2.314,
+  depth: 1.046,
+  head: { w: 0.38, h: 0.57, d: 0.475, y: 1.41, z: 0.05 },
+  eyeY: 2.607,
+  eyeX: 0.071,
+  front: 0.2875,
+};
+export const DOMINIK_LIFT = DOMINIK.lift;
+const hammerPart = (at: Part['at'], size: Part['size'], color: Part['color'], glow = false): Part => ({ at, size, color, glow, anim: 'sway', amp: 0.03, lift: 0.6 });
+export const DOMINIK_PARTS: Part[] = [
+  // bare lower legs under the shorts, socks, and shoes with a white sole
+  ...[-1, 1].flatMap((side): Part[] => {
+    const ph = side < 0 ? 0 : PI;
+    return [
+      { at: [side * 0.25, -1.53, 0], size: [0.25, 0.78, 0.28], color: DOM_SKIN, anim: 'leg', ph, amp: 0.2 },
+      { at: [side * 0.25, -1.9, 0], size: [0.27, 0.1, 0.3], color: 0xf2f0e6, anim: 'leg', ph, amp: 0.2 },
+      { at: [side * 0.25, -2.04, 0.07], size: [0.29, 0.2, 0.54], color: 0x3a3d44, anim: 'leg', ph, amp: 0.2 },
+      { at: [side * 0.25, -2.15, 0.07], size: [0.31, 0.06, 0.56], color: 0xf2f0e6, anim: 'leg', ph, amp: 0.2 },
+    ];
+  }),
+  // short sleeves over the shoulders, then the arms: the left one swings, the right one is bent and holds
+  // the hammer
+  { at: [-0.6, 0.83, 0], size: [0.27, 0.56, 0.32], color: DOM_SHIRT },
+  { at: [0.6, 0.83, 0], size: [0.27, 0.56, 0.32], color: DOM_SHIRT },
+  { at: [-0.61, 0.6, 0], size: [0.2, 1.25, 0.23], color: DOM_SKIN, anim: 'arm', ph: PI, amp: 0.4 },
+  { at: [0.61, 0.36, 0.02], size: [0.2, 0.5, 0.23], color: DOM_SKIN },
+  hammerPart([0.62, 0.12, 0.3], [0.21, 0.21, 0.56], DOM_SKIN),
+  // the hammer, held upright in his fist: a long handle wrapped in leather with a pommel, and on top of it a
+  // big square head of steel, longer than it is high, with bands at both ends and a glowing rune on each side
+  hammerPart([0.64, 0.66, 0.58], [0.09, 1.5, 0.09], 0x6b4a2a),
+  hammerPart([0.64, 0.12, 0.58], [0.12, 0.34, 0.12], 0x3a2817),
+  hammerPart([0.64, -0.12, 0.58], [0.16, 0.09, 0.16], DOM_STEEL_LIGHT),
+  hammerPart([0.64, 1.52, 0.58], [0.44, 0.48, 0.92], DOM_STEEL),
+  hammerPart([0.64, 1.52, 0.14], [0.5, 0.54, 0.1], DOM_STEEL_LIGHT),
+  hammerPart([0.64, 1.52, 1.02], [0.5, 0.54, 0.1], DOM_STEEL_LIGHT),
+  hammerPart([0.64, 1.78, 0.58], [0.3, 0.05, 0.66], DOM_STEEL_LIGHT),
+  hammerPart([0.415, 1.52, 0.58], [0.02, 0.24, 0.42], 0x7dfcff, true),
+  hammerPart([0.865, 1.52, 0.58], [0.02, 0.24, 0.42], 0x7dfcff, true),
+];
+
 /** how far the Rhino's body is lifted for its legs */
 export const RHINO_LIFT = 0.23;
 export const RHINO_PARTS: Part[] = [

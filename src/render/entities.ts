@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
-import { addMonsterParts, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
+import { addMonsterParts, DOMINIK, DOMINIK_LIFT, DOMINIK_PARTS, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
@@ -62,6 +62,9 @@ export interface Entities {
 const EGG_SLICES: [number, number][] = [[0.05, 0.34], [0.15, 0.5], [0.25, 0.6], [0.35, 0.64], [0.45, 0.62], [0.55, 0.56], [0.65, 0.46], [0.75, 0.34], [0.85, 0.2]];
 const EGG_SLICE_HEIGHT = 0.1;
 
+/** Angry Dominik: his own build and his own face (the material is white, the colours are in the voxels; no cartoon eyes) */
+const DOMINIK_LOOK = { w: DOMINIK.width, h: DOMINIK.height, d: DOMINIK.depth, day: 0xffffff, night: 0xffffff, eyeY: DOMINIK.eyeY, eyeX: DOMINIK.eyeX, eye: 0 };
+
 /** the Rhino: grey, long and heavy, with small eyes on its head */
 const RHINO_LOOK = { w: 1, h: 0.9, d: 1.6, day: 0x8d9299, night: 0xa7aebb, eyeY: 0.56, eyeX: 0.2, eye: 0.1 };
 
@@ -91,6 +94,17 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   rhinoMat.side = THREE.DoubleSide;
   const rhinoBodies = new InstancedPool(scene, rhinoShape.geometry, rhinoMat, 8);
   const rhinoFace = rhinoShape.frontAt(RHINO_LOOK.eyeX, RHINO_LOOK.eyeY - RHINO_LOOK.h / 2);
+  // Angry Dominik: a body of his own too (a tank in the rules), the same one for the small one from the wall
+  const domShape = voxelBody('dominik', DOMINIK_LOOK.w, DOMINIK_LOOK.h, DOMINIK_LOOK.d);
+  const domMat = lambert(0xffffff);
+  domMat.vertexColors = true;
+  domMat.side = THREE.DoubleSide;
+  const domBodies = new InstancedPool(scene, domShape.geometry, domMat, 4);
+  // (his head is a finer body of its own, moved to where it sits so that the same pose puts it there)
+  const domHeadShape = voxelBody('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d);
+  domHeadShape.geometry.translate(0, DOMINIK.head.y, DOMINIK.head.z);
+  const domHeads = new InstancedPool(scene, domHeadShape.geometry, domMat, 4);
+  const domFace = DOMINIK.front;
   const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
@@ -248,6 +262,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       rhinoMat.color.setHex(night > 0.5 ? RHINO_LOOK.night : RHINO_LOOK.day);
       rhinoBodies.begin();
+      domBodies.begin();
+      domHeads.begin();
       const pal = palette();
       eyeMat.color.setHex(night > 0.5 ? 0xffffff : pal.eyes);
       // colour-blind mode: angry eyes and warnings flash hard on and off instead of only being red
@@ -308,8 +324,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         // King Rex is a T-Rex grown to boss size
         const kingRex = allBosses(s).some(b => b.kind === 'rex' && b.enemyId === e.id);
         const rhinoBoss = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
-        const l = rhinoBoss ? RHINO_LOOK : ENEMY_LOOK[e.kind];
-        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex || rhinoBoss;
+        const dominik = e.kind === 'tank' && (s.mini?.enemyId === e.id || allBosses(s).some(b => b.kind === 'dominik' && b.enemyId === e.id));
+        const small = dominik && s.mini?.enemyId === e.id;
+        const l = rhinoBoss ? RHINO_LOOK : dominik ? DOMINIK_LOOK : ENEMY_LOOK[e.kind];
+        const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex || rhinoBoss || dominik;
         // in the jungle's tall grass a monster cannot be seen until you are close
         if (grassAt(s, e.pos) && Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z))) > 3.5 && (flashUntil.get(e.id) ?? 0) <= time) continue;
         // a glitch ghost is hard to see from afar: it flickers in and out, jumping about, until it is close
@@ -331,7 +349,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const wormScale = seg ? (seg[0] === 0 ? 1.3 : fromTail < 3 ? 0.66 + 0.12 * fromTail : 1) : 1;
         // (a baby dino, hatched from one of King Rex's eggs: a T-Rex in small)
         const baby = e.kind === 'trex' && !kingRex && e.radius < ENEMIES.trex.radius * 0.8;
-        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.5 : baby ? 0.55 : e.elite ? 1.4 : wormScale) * worn * pop;
+        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.5 : dominik ? (small ? DOMINIK.small : DOMINIK.scale) : baby ? 0.55 : e.elite ? 1.4 : wormScale) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
@@ -344,7 +362,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
         const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
-        const y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        const y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : dominik ? DOMINIK_LIFT : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
@@ -360,13 +378,14 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const blinking = e.kind === 'teleporter' && winding && Math.floor(time * 20) % 2 === 0;
         const tint = flashing || blinking ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
-        (rhinoBoss ? rhinoBodies : bodies.get(e.kind)!).addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
+        if (dominik) domHeads.addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
+        (rhinoBoss ? rhinoBodies : dominik ? domBodies : bodies.get(e.kind)!).addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
         addMonsterParts(partsLit, partsGlow, e.kind, isNight ? l.night : l.day, e.id, {
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
-        }, rhinoBoss ? RHINO_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
+        }, rhinoBoss ? RHINO_PARTS : dominik ? DOMINIK_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';
@@ -414,7 +433,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
         const ey = y - (l.h / 2 - l.eyeY) * scale * squash;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const front = ((rhinoBoss ? rhinoFace : faceAt.get(e.kind)!) + 0.02) * scale * sxz;
+        const front = ((rhinoBoss ? rhinoFace : dominik ? domFace : faceAt.get(e.kind)!) + 0.02) * scale * sxz;
         // a blink every few seconds; the pupils follow the nearest player
         const blink = (time + e.id * 0.37) % 4 < 0.12 ? 0.12 : 1;
         let look = 0;
@@ -431,6 +450,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           const ox = side * l.eyeX * scale;
           const ex = e.pos.x + fx * front + fz * ox, ez = e.pos.z + fz * front - fx * ox;
           const size = l.eye * scale;
+          // (Angry Dominik's glasses glow while his eyes aim and burn)
+          if (dominik && allBosses(s).some(b => b.enemyId === e.id && b.laser)) redEyes.add(ex, ey, ez, yaw, 0.26 * scale * (1 + 0.2 * Math.sin(time * 30)));
           if (winding || attack === 1) angryEyes.addScaled(ex, ey, ez, yaw, size, size * 0.7, size);
           else eyes.addScaled(ex, ey, ez, yaw, size, size * blink, size);
           const px = look * l.eye * 0.25 * scale;
@@ -439,6 +460,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       for (const k of KINDS) bodies.get(k)!.end();
       rhinoBodies.end();
+      domBodies.end();
+      domHeads.end();
       // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
       const grabber = allBosses(s).find(b => b.kind === 'kraken' && b.grab);
       const grab = grabber?.grab ?? null;

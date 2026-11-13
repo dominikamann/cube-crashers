@@ -3,12 +3,13 @@ import { logoSpots } from '../map/logo-spots';
 import { BLOCKS_WALKER, nearestFree } from '../map/tilemap';
 import type { SimState, Vec2 } from '../types';
 import { dropCoins } from './combat';
+import { releaseMiniDominik } from './mini-dominik';
 
 /**
  * An easter egg: shoot the AmannLabs logo on the wall often enough and it answers. Usually with a shower of
  * coins, now and then with a crate, and sometimes with nothing at all. A few times per floor, no more.
  */
-export const LOGO_EGG = { hits: 20, perFloor: 2, coins: 25, coinChance: 0.55, crateChance: 0.25 };
+export const LOGO_EGG = { hits: 20, perFloor: 2, coins: 25, coinChance: 0.55, crateChance: 0.25, dominikChance: 0.07 };
 
 /** A player's shot ran into a wall at `pos`: was it the logo? */
 export function shotAtWall(s: SimState, pos: Vec2): void {
@@ -30,6 +31,11 @@ export function shotAtWall(s: SimState, pos: Vec2): void {
   const mid = (spot.w - 1) / 2;
   const front = nearestFree(s.map, { x: spot.tx + 0.5 + (spot.along === 'x' ? mid : 0) + spot.facing.x * 1.5, z: spot.tz + 0.5 + (spot.along === 'z' ? mid : 0) + spot.facing.z * 1.5 }, 0.4, BLOCKS_WALKER);
   const roll = s.rng.next();
+  // (rarest of all: instead of nothing, a small Angry Dominik steps out of the wall)
+  if (roll >= 1 - LOGO_EGG.dominikChance && !s.mini && !s.versus) {
+    releaseMiniDominik(s, front);
+    return;
+  }
   const prize = roll < LOGO_EGG.coinChance ? 'coins' : roll < LOGO_EGG.coinChance + LOGO_EGG.crateChance ? 'crate' : 'nothing';
   if (prize === 'coins') dropCoins(s, front, LOGO_EGG.coins);
   if (prize === 'crate') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, front) } });

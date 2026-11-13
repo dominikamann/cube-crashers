@@ -143,6 +143,22 @@ export function fireRare(s: SimState, p: Player): boolean {
       }
       return true;
     }
+    case 'thunderHammer': {
+      const c = RARE.hammer;
+      r.cooldown = c.cooldownTicks;
+      const at = { x: p.pos.x + p.aim.x * c.reach, z: p.pos.z + p.aim.z * c.reach };
+      const hit = targets(s).filter(e => dist(e.pos, at) <= c.radius + e.radius);
+      damageMany(s, hit, c.damage, r.kind, p.id);
+      // lightning jumps from where the hammer came down to the nearest monsters it did not hit
+      const next = targets(s)
+        .filter(e => !hit.includes(e) && dist(e.pos, at) <= c.chainRange)
+        .sort((a, b) => dist(a.pos, at) - dist(b.pos, at))
+        .slice(0, c.chain);
+      damageMany(s, next, c.chainDamage, r.kind, p.id);
+      s.events.push({ type: 'explosion', pos: at, radius: c.radius });
+      if (next.length > 0) s.events.push({ type: 'teslaChain', points: [at, ...next.map(e => ({ ...e.pos }))] });
+      return true;
+    }
     case 'pizzaCutter': {
       const c = RARE.pizza;
       r.cooldown = c.cooldownTicks;

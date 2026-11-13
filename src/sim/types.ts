@@ -48,13 +48,13 @@ export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp'
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
-export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
 export type CoinOpRule = 'turbo' | 'moon' | 'rapid' | 'swords' | 'boom' | 'double';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
-export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter';
+export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter' | 'thunderHammer';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
 /** quick messages: help, a ping at the crosshair, nest here, need coins, nice, good game */
@@ -324,6 +324,8 @@ export interface Coin {
 export interface Crate {
   id: number;
   pos: Vec2;
+  /** a rare weapon that is the first card when it opens (Angry Dominik's hammer) */
+  prize?: RareKind;
 }
 
 export type Card = { type: 'weapon'; weapon: WeaponKind } | { type: 'perk'; perk: PerkKind } | { type: 'rare'; rare: RareKind };
@@ -396,6 +398,8 @@ export interface BossState {
   wild?: boolean;
   /** a wild boss waits by the elevator until someone comes near or hurts it: the speed it gets back then */
   waiting?: number;
+  /** Angry Dominik's laser eyes: it aims from `startAt`, burns from `fireAt` to `endAt`, turning from angle `from` by `sweep` */
+  laser?: { startAt: number; fireAt: number; endAt: number; from: number; sweep: number } | null;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */
   grab?: { playerId: number; until: number } | null;
   /** the Mega Block in mid-leap: from where to where, and when it lands */
@@ -636,6 +640,11 @@ export type SimEvent =
   | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }
   | { type: 'bossDead'; pos: Vec2; kind?: BossKind }
+  /** a small Angry Dominik steps out of the wall logo, and goes back into it */
+  | { type: 'dominikJoined'; pos: Vec2 }
+  | { type: 'dominikLeft'; pos: Vec2 }
+  /** Angry Dominik throws his hammer: out to `to` and back */
+  | { type: 'hammerThrow'; from: Vec2; to: Vec2 }
   /** a baby dino breaks out of its egg */
   | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }
@@ -682,6 +691,8 @@ export interface SimState {
   heart?: { pos: Vec2 } | null;
   /** King Rex's eggs: thrown from where it fell (`from`) to where they lie, each hatches a baby dino */
   eggs?: { id: number; pos: Vec2; from: Vec2; laidAt: number; hatchAt: number }[];
+  /** the small Angry Dominik from the wall logo: his body, when he goes back and where to */
+  mini?: { enemyId: number; until: number; home: Vec2; nextSlamAt: number } | null;
   /** Tower Run: the wild boss that breaks in on this floor when the first nest falls */
   wild?: { kind: BossKind } | null;
   nextJetpackAt: number;

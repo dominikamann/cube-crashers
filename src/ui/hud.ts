@@ -380,8 +380,16 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('toast.nestBack'), 'warn');
             break;
           case 'bossSpawn':
-            if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: bossLabel(e.kind) }), 'final');
+            // (he does not arrive, he joins)
+            if (e.kind === 'dominik') toast(t('toast.dominikJoined'), 'final');
+            else if (isFinalFloor(s)) toast(t('toast.finalBoss', { name: bossLabel(e.kind) }), 'final');
             else toast(t('toast.boss', { name: bossLabel(e.kind) }), 'warn');
+            break;
+          case 'dominikJoined':
+            toast(t('toast.dominikJoined'), 'warn');
+            break;
+          case 'dominikLeft':
+            toast(t('toast.dominikLeft'), 'good');
             break;
           case 'mazePower':
             toast(t('maze.power'), 'good');

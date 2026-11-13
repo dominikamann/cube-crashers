@@ -53,6 +53,8 @@ export interface GameRenderer {
    * Taken from the screen, not the world, so moving the camera never moves the point under the pointer.
    */
   setMouseLook(view: number, offset: { x: number; y: number } | null): void;
+  /** dev: the camera circles this spot at eye level instead of following the player (to look at a figure); null ends it */
+  setShowroom(at: { x: number; z: number; height: number; radius: number } | null): void;
   /** first person for view `view`, looking along `yaw` tilted by `pitch` (see input/first-person); null = the view from above */
   setFirstPerson(view: number, look: { yaw: number; pitch: number } | null): void;
   setQuality(q: GraphicsQuality): void;
@@ -244,6 +246,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   let night = 0;
   let time = 0;
+  let showroom: { x: number; z: number; height: number; radius: number } | null = null;
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
@@ -301,6 +304,13 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       const vw = Math.floor(w / views.length);
       const k = 1 - Math.exp(-frameDt * 5);
       views.forEach((v, i) => {
+        if (showroom) {
+          // a slow turn round the figure, with a look from a little above
+          const a = time * 0.45;
+          v.camera.position.set(showroom.x + Math.sin(a) * showroom.radius, showroom.height * 1.05, showroom.z + Math.cos(a) * showroom.radius);
+          v.camera.lookAt(showroom.x, showroom.height * 0.62, showroom.z);
+          return;
+        }
         const p = actors.playerPos(i);
         // in a boss fight the camera leans toward the boss so both stay in the picture
         let ox = 0, oz = 0;
@@ -403,6 +413,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     },
     setLocalPlayer(id) {
       if (views.length === 1) views[0].id = id;
+    },
+    setShowroom(at) {
+      showroom = at;
     },
     setMouseLook(view, offset) {
       if (views[view]) views[view].mouseLook = offset;

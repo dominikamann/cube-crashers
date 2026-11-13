@@ -67,6 +67,8 @@ export const BOSS_RUSH: { map: string; boss: BossKind }[] = [
   { map: floorUnderwater.id, boss: 'kraken' },
   { map: floorJungle.id, boss: 'rhino' },
   { map: floorNeon.id, boss: 'rex' },
+  // the very last one comes to the roof, at night, in a thunderstorm
+  { map: floorRooftop.id, boss: 'dominik' },
 ];
 
 export function floorDef(mapId: string): FloorDef | undefined {

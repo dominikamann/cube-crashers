@@ -60,14 +60,15 @@ export function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
 
 function openCrate(s: SimState, crate: Crate, p: Player): void {
   const pool = options(s, p);
-  if (pool.length === 0) {
+  if (pool.length === 0 && !crate.prize) {
     p.coins += EMPTY_CRATE_COINS;
     s.events.push({ type: 'crateCoins', playerId: p.id, coins: EMPTY_CRATE_COINS });
     return;
   }
   const cards: Card[] = [];
   while (cards.length < 3 && pool.length > 0) cards.push(...pool.splice(Math.floor(s.rng.next() * pool.length), 1));
-  if (s.rng.next() < RARE.cardChance) cards[0] = { type: 'rare', rare: s.rng.pick(ALL_RARE) };
+  if (crate.prize) cards.unshift({ type: 'rare', rare: crate.prize });
+  else if (s.rng.next() < RARE.cardChance) cards[0] = { type: 'rare', rare: s.rng.pick(ALL_RARE) };
   s.offers.push({
     id: s.nextId++,
     pos: { ...crate.pos },
