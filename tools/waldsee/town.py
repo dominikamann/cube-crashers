@@ -71,6 +71,16 @@ for y in range(N):
 for i in range(N):
     for x,y in ((i,0),(i,N-1),(0,i),(N-1,i)):
         if owner[y][x]==-1: owner[y][x]=GARDEN
+# the Hochstatt in front of the Czardas is a tile wider all round than it is drawn: the houses and gardens round
+# it step back by one (not the Czardas itself)
+CZ=tile(47.9199809,9.7556819)
+czHouse=min(((owner[y][x],math.hypot(x+0.5-CZ[0],y+0.5-CZ[1])) for y in range(N) for x in range(N) if owner[y][x]>=0),key=lambda p:p[1])[0]
+back=[]
+for y in range(int(CZ[1])-4,int(CZ[1])+12):
+    for x in range(int(CZ[0])-13,int(CZ[0])+7):
+        if not(0<x<N-1 and 0<y<N-1) or grid[y][x]=='.' or owner[y][x] in (czHouse,WATER): continue
+        if any(grid[y+oy][x+ox]=='.' for ox,oy in((1,0),(-1,0),(0,1),(0,-1))): back.append((x,y))
+for x,y in back: grid[y][x]='.'; owner[y][x]=-1
 # no way is narrower than two tiles: a kart is 1.4 wide. Where a lane is one tile, the garden beside it gives way,
 # or else the house (it loses a strip of 2.9 metres there)
 def run(x,y,dx,dy):

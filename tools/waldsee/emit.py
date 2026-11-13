@@ -24,6 +24,8 @@ for h in H.values():
 trees=[]
 for x,y in P['T']:
     tx,ty=int(x),int(y)
+    # (not the ones right in front of the Czardas: its terrace is there)
+    if 92<=tx<=98 and 81<=ty<=84: continue
     if rows[ty][tx]=='.' and (tx,ty) not in trees: trees.append((tx,ty))
 fountains=[]
 for name,x,y in P['F']:
@@ -43,6 +45,9 @@ for name,kind,seats,x,y in P['named']:
     for p in spots:
         if len(take)>=(5 if name=='Czardas' else 3): break
         if all(d(p,q)>=1.5 for q in take): take.append(p)
+    if name=='Czardas':
+        # the Czardas on the Hochstatt: a whole terrace in front of the house, toward the fountain
+        take=[p for p in ((93,82),(95,82),(97,82),(99,81),(99,79),(96,84)) if rows[p[1]][p[0]]=='.']
     if take: cafes.append((name,take))
 tables={p for _,l in cafes for p in l}
 

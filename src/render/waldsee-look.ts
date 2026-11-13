@@ -251,13 +251,99 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         box(cx, 0.12, cz, 0.24, 0.24, 0.24, shade(wood, 0.7), -a);
         box(cx + Math.cos(a) * 0.14, 0.5, cz + Math.sin(a) * 0.14, 0.05, 0.5, 0.3, wood, -a);
       }
-      if (k % 2 === 0 || cafe.name === 'Czardas') {
+      // (no parasols at the Czardas: it has its strings of lights)
+      if (k % 2 === 0 && cafe.name !== 'Czardas') {
         box(x, 1.2, z, 0.06, 2.4, 0.06, 0xe6e8ef);
         box(x, 2.34, z, 1.7, 0.1, 1.7, parasols[ci % 3], turn);
         box(x, 2.44, z, 1, 0.1, 1, shade(parasols[ci % 3], 0.93), turn);
       }
     });
   });
+
+  // ---- the Czardas on the Hochstatt, the place to sit: its name over the door, a striped awning, strings of
+  // lights over the terrace, barrels to stand at, flower boxes, and the board with today's offer
+  const czardas = WALDSEE_TABLES.find(t => t.name === 'Czardas');
+  if (czardas) {
+    const mid = czardas.at.reduce((a, p) => [a[0] + p[0] / czardas.at.length, a[1] + p[1] / czardas.at.length], [0, 0]);
+    // the front of the house: the longest run of its tiles with floor to the south, nearest the terrace
+    let best: { x0: number; x1: number; tz: number } | null = null;
+    WALDSEE_TILES.forEach((_row, tz) => {
+      let start = -1;
+      for (let tx = 0; tx <= WALDSEE_TILES[tz].length / 2; tx++) {
+        const front = !!waldseeHouse(tx, tz) && codeAt(tx, tz + 1) === 2;
+        if (front && start < 0) start = tx;
+        if (!front && start >= 0) {
+          const run = { x0: start, x1: tx, tz };
+          const far = (r: { x0: number; x1: number; tz: number }) => Math.hypot((r.x0 + r.x1) / 2 - mid[0], r.tz + 1 - mid[1]) - (r.x1 - r.x0);
+          if (!best || far(run) < far(best)) best = run;
+          start = -1;
+        }
+      }
+    });
+    const front = best as { x0: number; x1: number; tz: number } | null;
+    if (front) {
+      const cx = (front.x0 + front.x1) / 2, fz = front.tz + 1, w = Math.min(4, front.x1 - front.x0);
+      // the awning: red and cream stripes
+      for (let k = 0; k < w * 4; k++) box(cx - w / 2 + (k + 0.5) / 4, 1.22 - 0.0, fz + 0.42, 0.25, 0.07, 0.86, k % 2 ? 0xf4ecd8 : 0xb8322a);
+      for (const side of [-1, 1]) box(cx + (side * w) / 2, 0.62, fz + 0.8, 0.06, 1.24, 0.06, 0x3a3f52);
+      // the door and two lit windows under it
+      box(cx, 0.5, fz + 0.02, 0.5, 1, 0.06, 0x5a3a26);
+      for (const side of [-1, 1]) glow.push({ x: cx + side * 1.1, y: 0.62, z: fz + 0.02, sx: 0.7, sy: 0.6, sz: 0.05, color: 0xffd08a });
+      // its name, lit, over the awning
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const g = canvas.getContext('2d')!;
+      g.fillStyle = '#3a1512';
+      g.fillRect(0, 0, 512, 128);
+      g.strokeStyle = '#f2c94c';
+      g.lineWidth = 6;
+      g.strokeRect(7, 7, 498, 114);
+      g.fillStyle = '#ffe9b0';
+      g.font = 'italic bold 84px Georgia, "Times New Roman", serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('Czardas', 256, 68);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const signGeo = new THREE.PlaneGeometry(2.4, 0.6), signMat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+      disposables.push(tex, signGeo, signMat);
+      const sign = new THREE.Mesh(signGeo, signMat);
+      sign.position.set(cx, 1.72, fz + 0.03);
+      add(sign);
+      // strings of lights from the house out over the terrace, on posts
+      const out = 3.4;
+      for (const side of [-1, 0, 1]) {
+        const px = cx + side * (w / 2 + 1.2);
+        box(px, 1.15, fz + out, 0.07, 2.3, 0.07, 0x3a3f52);
+        for (let k = 0; k <= 10; k++) {
+          const t = k / 10, sag = Math.sin(Math.PI * t) * 0.3;
+          glow.push({ x: (cx + side * (w / 2)) * (1 - t) + px * t, y: 2.1 + 0.2 * t - sag, z: fz + 0.1 + (out - 0.1) * t, sx: 0.09, sy: 0.09, sz: 0.09, color: [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0][k % 4] });
+        }
+      }
+      for (let k = 0; k <= 12; k++) {
+        const t = k / 12;
+        glow.push({ x: cx - w / 2 - 1.2 + (w + 2.4) * t, y: 2.28 - Math.sin(Math.PI * ((t * 2) % 1)) * 0.22, z: fz + out, sx: 0.09, sy: 0.09, sz: 0.09, color: [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0][k % 4] });
+      }
+      // barrels to stand at, with a glass on each
+      for (const [bx, bz] of [[cx - w / 2 - 0.7, fz + 1.2], [cx + w / 2 + 0.7, fz + 1.2]]) {
+        box(bx, 0.5, bz, 0.62, 1, 0.62, 0x8a5a36, 0.4);
+        for (const y of [0.2, 0.8]) box(bx, y, bz, 0.66, 0.07, 0.66, 0x3a3f52, 0.4);
+        box(bx, 1.03, bz, 0.74, 0.06, 0.74, 0xb9895a, 0.4);
+        glow.push({ x: bx + 0.12, y: 1.16, z: bz, sx: 0.1, sy: 0.2, sz: 0.1, color: 0xf2b84c });
+      }
+      // flower boxes along the edge of the terrace: red geraniums
+      for (let k = 0; k < 4; k++) {
+        const fx = cx - w / 2 - 1 + ((w + 2) * (k + 0.5)) / 4;
+        box(fx, 0.2, fz + out + 0.6, 1, 0.4, 0.34, 0x6b4a32);
+        box(fx, 0.46, fz + out + 0.6, 0.94, 0.16, 0.3, 0x4f9a4a);
+        for (let q = -1; q <= 1; q++) box(fx + q * 0.3, 0.58, fz + out + 0.6 + (q % 2) * 0.05, 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
+      }
+      // the board with today's offer
+      box(cx + w / 2 + 1.5, 0.45, fz + 2.2, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
+      box(cx + w / 2 + 1.5, 0.45, fz + 2.26, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
+    }
+  }
 
   const o = new THREE.Object3D(), c = new THREE.Color();
   const geo = new THREE.BoxGeometry(1, 1, 1);
