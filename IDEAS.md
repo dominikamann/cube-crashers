@@ -11,26 +11,17 @@ and why it would be fun.
 
 ## Game modes
 
-### Lane Defense (the classic)
-Where Cube Crashers started: one long lane, waves of monsters marching toward your arcade cabinet, build pads
-along the sides. Comes back as its own mode next to Tower Run and Endless.
-- To stop "stand still and shoot" from being the best strategy: power-ups that only spawn far up the lane,
-  waves from two ends, a cabinet that has to be repaired at the front.
+### Lane Defense as a full mode
+Lane Defense is in the game as a 90-second minigame: one long lane, waves marching toward your arcade cabinet,
+build pads along the sides. As a mode of its own it would go on for many waves, with a shop in between.
+- To stop "stand still and shoot" from being the best strategy: waves from two ends, a cabinet that has to be
+  repaired at the front.
 - Lane variants: a **zig-zag lane** (turns force you to move), **two lanes crossing** in the middle,
   a **lane on a conveyor** that slowly moves everything toward you.
-
-### Lane Runner (auto-scroller)
-The camera scrolls forward on its own along a long lane; you dodge, shoot and collect. Barriers, ramps and
-glitch floor come at you. Hordes come from the front and sometimes from behind. Like a shoot-'em-up, but on
-foot or in a kart.
 
 ### Lane Race (LAN)
 Every player gets their own parallel lane with the same waves. Whoever clears faster sends extra monsters
 into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
-
-### Survival Siege
-One big arena, no nests: survive 10 minutes against ever bigger waves. Every minute an elevator brings a shop.
-
 
 ---
 
@@ -38,17 +29,13 @@ One big arena, no nests: survive 10 minutes against ever bigger waves. Every min
 
 - **Retro Arcade Hall**: rows of giant cabinets as walls; screens show live attract-mode loops; a pinball
   table floor section with bumpers that bounce players and monsters.
-- **Toy Factory**: building blocks as walls that monsters can knock over; a stamping press that hits a row of
-  tiles on a beat.
+- **Toy Factory**: walls of building blocks; a stamping press that hits a row of tiles on a beat.
 - **Frozen Freezer Aisle**: slippery ice floor (you slide when you stop), frozen monsters thaw over time.
-- More for the **Pixel Jungle** (it is in the game): vines that block paths and can be cut with the Laser Sword.
 - More for the **Server Farm** (it is in the game): cooling fans that push like conveyor belts, a power-down
   that turns the lights off on a timer.
-- **Lava Bakery**: hot plates that glow before they burn; giant donut rings as ramps.
-- More for the **Sunken Arcade** (it is in the game): slow movement, bubbles that lift you over walls,
-  jellyfish monsters.
+- **Lava Bakery**: hot plates that glow before they burn.
+- More for the **Sunken Arcade** (it is in the game): bubbles that lift you over walls, jellyfish monsters.
 - **Space Station**: low gravity (longer jumps), airlocks that open on a timer and suck coins out.
-- **Night Market**: food stalls as cover, lanterns that light up when you pass.
 - **City from OpenStreetMap**: see below.
 
 ## Real-city maps via OpenStreetMap
@@ -64,17 +51,12 @@ Play in your own street or town centre:
 
 ## Bosses
 
-- **Claw Machine**: a giant grabber arm reaches down at telegraphed spots and carries players off to the edge
-  of the map.
 - **Pinball Wizard**: a huge ball that bounces around the arena; hit the flippers to send it back at its weak spot.
 - **Glitch Twins**: two bosses that share one health bar; kill them close together or the other revives.
-- **The Cartridge**: a giant game cartridge that "loads" other floors' layouts into the arena, phase by phase.
-- **Mega Hop Blob**: splits into more and smaller blobs every time it is hit hard.
 
 ## Monsters
 
 - **Coin Thief**: grabs coins from the floor and runs; drops them all when killed.
-- **Builder**: places small walls that change the paths of the horde.
 
 ## Weapons and items
 
@@ -85,12 +67,9 @@ Play in your own street or town centre:
 ## Towers
 
 - **Coin Fountain**: slowly makes coins, but monsters target it first.
-- **Turret Kart Garage**: repairs karts parked next to it.
-- **Wall Builder**: puts up a temporary low wall across a path.
 
 ## Vehicles
 
-- **Bumper Car**: bounces off walls, great for ramming.
 - **Shopping Trolley**: two players, one pushes, one shoots.
 - **Mini Mech**: slow, stomps, can step over low walls.
 - A new look for the karts and the unicorn, in the finer voxel style of the monsters.
@@ -116,5 +95,3 @@ Let the community add content without touching the core game:
 ## Quality of life
 
 - Photo mode.
-- A frames-per-second display in the settings, to pick the right graphics level.
-- A signed Windows installer (no SmartScreen warning).

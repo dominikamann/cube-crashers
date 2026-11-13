@@ -850,7 +850,7 @@ docs/         gameplay GIF and screenshots
 - [x] Shots with a height (aim up at a jetpack, down from one), bosses that climb and keep apart, a lighter picture on Medium to Ultra: version 1.0
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
-- [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
+- [ ] More in [IDEAS.md](IDEAS.md): a full Lane Defense mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing
 
