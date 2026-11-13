@@ -47,6 +47,17 @@ export function raceSeconds(s: SimState): number {
   return (RACE.maxTicks - (s.run.stageUntil - s.tick)) / TICK_RATE;
 }
 
+/**
+ * The order on the starting grid, pole position first: whoever leads in score starts in front, whoever has the
+ * fewest points at the back, and bots behind every person. Players level on points keep their order.
+ */
+export function gridOrder(s: SimState): Player[] {
+  return s.players
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => Number(!!a.p.bot) - Number(!!b.p.bot) || b.p.stats.score - a.p.stats.score || a.i - b.i)
+    .map(x => x.p);
+}
+
 /** The Kart Rally between two floors: everyone in a kart, the first to drive three laps wins. */
 export function enterRace(s: SimState): void {
   s.run.stage = 'race';
@@ -74,7 +85,8 @@ export function enterRace(s: SimState): void {
   s.bubbles = [];
   s.flow = null;
   s.elevatorOpen = false;
-  s.players.forEach((p, i) => {
+  // the grid is rows of two, the best row in front
+  gridOrder(s).forEach((p, i) => {
     p.flying = false;
     p.descent = 0;
     p.jetpack = false;

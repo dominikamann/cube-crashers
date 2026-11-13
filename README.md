@@ -229,7 +229,10 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Kart Rally:** everyone sits in their own kart (no getting out, and it cannot be wrecked) on a race track with a
   jump, boost pads, an S-bend and a narrow canyon. **The first to drive three laps wins**, and the race ends right
   then. Laps only count through every checkpoint in order. Ram or shoot the monsters on the track. Alone you drive
-  for a medal by your time (gold within 0:48, silver within 1:03, bronze within 1:30).
+  for a medal by your time (gold within 0:48, silver within 1:03, bronze within 1:30). The race starts in first
+  person (your view key switches to the view from above, and after the race you have the view you had before).
+  With several players the karts line up in rows of two: whoever leads in score starts in front, whoever has the
+  fewest points at the back.
 - **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.

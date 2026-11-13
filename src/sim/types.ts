@@ -129,6 +129,8 @@ export interface Player {
   color: number;
   /** the figure the player chose (see characters.ts); a look only, the rules never read it. Left out: the game picks one */
   character?: string;
+  /** played by the computer, not by a person */
+  bot?: boolean;
   pos: Vec2;
   /** unit vector of the last movement direction */
   facing: Vec2;
