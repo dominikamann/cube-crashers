@@ -1231,6 +1231,14 @@ function applyDemo(sim: SimState) {
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
+  // &calm=1: nothing on the map but you (no monsters, no nests, no alarm): to walk about and look
+  if (import.meta.env.DEV && params.has('calm')) {
+    sim.enemies = [];
+    sim.hordes = [];
+    sim.nests = [];
+    sim.boss = null;
+    sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+  }
   // &see=x,z,height,radius,angle: the camera looks at that spot of the map from there (to look at a place)
   if (import.meta.env.DEV && params.has('see')) {
     const [x, z, height = 14, radius = 16, angle = 0] = params.get('see')!.split(',').map(Number);

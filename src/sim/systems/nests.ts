@@ -1,4 +1,5 @@
 import { clearSpot } from './ground';
+import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import {
   ALARM_MAX,
   ALARM_SIZE_STEP,
@@ -140,7 +141,8 @@ export function setupFloor(s: SimState): void {
     // a boss floor: no nests, no rising alarm, just the boss and a few helpers
     s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
     s.nests = [];
-    spawnBoss(s, rushBoss ?? def!.boss!);
+    // (in the Town the boss appears at the fire beside the fountain)
+    spawnBoss(s, rushBoss ?? def!.boss!, !rushBoss && s.map.id === 'waldsee' ? WALDSEE_FIRE : undefined);
     placeStartCrates(s);
     placeStartKarts(s);
     s.nextPowerupAt = s.tick + POWERUP.firstTicks;

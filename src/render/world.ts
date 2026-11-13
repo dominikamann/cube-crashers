@@ -572,7 +572,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   // ---- floor: one surface, detail and shading painted into a map-sized texture, theme colour per vertex
   const px = Math.max(16, Math.min(48, Math.floor(4096 / Math.max(map.w, map.h))));
-  const floorTiles = cells.filter(c => c.tile === Tile.Floor);
+  // (in the Town there is floor under what stands in the way too: a tree, the fountain, a parked car)
+  const floorTiles = cells.filter(c => c.tile === Tile.Floor || (map.id === 'waldsee' && c.tile === Tile.LowWall));
   const floorTex = canvasTexture(map.w * px, map.h * px, g => {
     for (const c of floorTiles) paintFloorTile(g, look, c.tx, c.tz, c.tx * px, c.tz * px, px);
     // soft contact shadows next to walls and barriers
