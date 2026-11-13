@@ -6,39 +6,37 @@ from PIL import Image, ImageDraw
 d=json.load(open('osm2.json'))
 nodes={e['id']:(e['lat'],e['lon']) for e in d['elements'] if e['type']=='node'}
 
-# ---- the map: the Hochstatt with the Czardas and the Federle-Brunnen, and the round one can walk from it:
-# down the Hauptstrasse to the Wurzacher Strasse (east to the Wurzacher Tor, which ends it), by the ice-cream
-# parlour round the corner past the Amadeus and up the Ravensburger Strasse back to the trees; once round the
-# Czardas by the Hasengasse, where the Hasen has its beer garden; and west down to the bank. Every other way out
-# ends at a barrier, with the street painted on a little behind it.
-LAT0,LON0=47.91975,9.75615
-M=2.2; N=128
+# ---- the map: the Hochstatt with the Czardas, the Federle-Brunnen and its trees, and the streets that meet there,
+# each a little way: the Hauptstrasse from the Wurzacher Strasse up past the police, the Wurzacher Strasse east to
+# three houses past the ice-cream parlour, the Ravensburger Strasse along the west of the square from above the
+# trees down to the kebab shop, and the lane by the police down toward the lake. Every way out ends at a
+# barrier, with the street painted on a little behind it.
+LAT0,LON0=47.91968,9.75590
+M=1.6; N=128
 mx=111320*math.cos(math.radians(LAT0)); my=110540
 def tile(lat,lon): return ((lon-LON0)*mx/M+N/2, N/2-(lat-LAT0)*my/M)
 SS=8
 # the ways that are open, and for some the part of them that is (a test on latitude and longitude)
 OPEN={
- 674183231: None,                              # Hochstatt
- 183420784: None,                              # Grabenmühlplatz
- 156662898: lambda la,lo: la<=47.92024,        # Hauptstrasse: not on up to the Rathaus
- 183420787: lambda la,lo: lo<=9.75768,         # Wurzacher Strasse: as far as the gate
- 330261223: None,                              # Am Ravensburger Tor: round the corner by the ice-cream parlour
- 179860017: lambda la,lo: la<=47.92024,        # Ravensburger Strasse: past the Amadeus, up to the Hasengasse
- 131758210: None, 183420774: None,             # Hasengasse, behind the Czardas
- 693900999: lambda la,lo: lo<=9.75613,         # Oberamteigasse: the lane by the police, a few steps
- 183420773: lambda la,lo: lo>=9.75447,         # Grabenmühlweg: down to the bank
+ 674183231: None,                                          # Hochstatt
+ 183420784: lambda la,lo: lo>=9.75478,                     # Grabenmühlplatz, the square (not on west toward the bank)
+ 156662898: lambda la,lo: la<=47.92003,                    # Hauptstrasse: up past the police, no further
+ 183420787: lambda la,lo: lo<=9.75641,                     # Wurzacher Strasse: three houses past the ice-cream parlour
+ 330261223: lambda la,lo: la>=47.91951,                    # Am Ravensburger Tor: shut right at the corner
+ 179860017: lambda la,lo: 47.91929<=la<=47.91991,          # Ravensburger Strasse: from above the trees to the kebab shop
+ 693900999: lambda la,lo: lo<=9.75636,                     # Oberamteigasse: the lane by the police, a little way down
 }
 # how far from its middle a way is open (metres), and how far a street is painted on behind its barrier
-REACH={'pedestrian':12,'living_street':9,'residential':6.5,'footway':3}
-BEYOND=17
+REACH={'pedestrian':11,'living_street':7.5,'residential':6,'footway':3}
+BEYOND=22
 # behind the barrier of the police lane lies the lake (it is a little further in truth): a pedal boat on it
 LAKE_WAY=693900999
-KNOWN={'Wurzacher Tor':('e9e2d0','8a4a33','gate')}
+KNOWN={}
 ADDR={('Hochstatt','5'):'f1dc7a'}
 PLASTER=['f4f1ea','f1e7c9','f3dc86','ecd0a0','e9b9a6','f0c9c9','cfe0c0','b9d8a0','c6d9e6','dfe3e8','efe6d6','e6c98c','d9e2d0','f6efe0','e8d5bd','f7f3ee','f1c8a8','8fb1e0']
 # (roof tiles as they look from the air on a sunny day: warm terracotta, some older and browner)
 ROOFS=['b45a3c','c06544','a9553a','b8623f','9c5038','c46b48','a85a40','8f4c38']
-GARDEN,WATER,STREET=-2,-3,-4
+GARDEN,WATER,STREET,MEADOW,GRAVEL=-2,-3,-4,-5,-6
 
 # ---- every house on its own sheet: the share of each tile it covers
 cover={}; houses=[]
@@ -80,7 +78,7 @@ for e in d['elements']:
                 run=[cut]; far=0
                 for p in ahead:
                     far+=metres(run[-1],p)
-                    if far>BEYOND+(22 if e['id']==LAKE_WAY else 0): break
+                    if far>BEYOND: break
                     run.append(p)
                 dirv=(tile(*run[min(3,len(run)-1)])[0]-tile(*cut)[0], tile(*run[min(3,len(run)-1)])[1]-tile(*cut)[1])
                 n_=math.hypot(*dirv) or 1
@@ -88,7 +86,7 @@ for e in d['elements']:
                 gone=0
                 for p,q in zip(run,run[1:]):
                     gone+=metres(p,q)
-                    (lake if e['id']==LAKE_WAY and gone>6 else beyond).append((tile(*p),tile(*q),r*(1.6 if e['id']==LAKE_WAY and gone>6 else 1)))
+                    if e['id']!=LAKE_WAY: beyond.append((tile(*p),tile(*q),r))
 def near(px,py,sg):
     for (ax,ay),(bx,by),r in sg:
         if min(ax,bx)-r>px or max(ax,bx)+r<px or min(ay,by)-r>py or max(ay,by)+r<py: continue
@@ -102,8 +100,7 @@ for y in range(N):
     for x in range(N):
         l=cover.get((x,y),[])
         built=sum(v for v,_ in l)>0.5
-        if near(x+0.5,y+0.5,lake): owner[y][x]=WATER          # (the view of the lake goes through whatever stood there)
-        elif built: owner[y][x]=max(l)[1]
+        if built: owner[y][x]=max(l)[1]
         elif near(x+0.5,y+0.5,segs): grid[y][x]='.'; owner[y][x]=-1
         elif near(x+0.5,y+0.5,beyond): owner[y][x]=STREET
 # a barrier is a line: what lies behind it is not walked on, it is the street painted on
@@ -112,7 +109,20 @@ for b_ in barriers:
         for x in range(N):
             if grid[y][x]!='.': continue
             vx,vy=x+0.5-b_['at'][0],y+0.5-b_['at'][1]
-            if 0<vx*b_['dir'][0]+vy*b_['dir'][1] and math.hypot(vx,vy)<=b_['half']+3: grid[y][x]='#'; owner[y][x]=WATER if b_['way']==LAKE_WAY and math.hypot(vx,vy)>3 else STREET
+            if 0<vx*b_['dir'][0]+vy*b_['dir'][1] and math.hypot(vx,vy)<=b_['half']+3: grid[y][x]='#'; owner[y][x]=STREET
+# behind the barrier of the police lane the town ends: a gravel path across, a meadow, and then the lake, wide and
+# open, with no house to the left or right of it, and on its far side nothing but meadow and trees. (It lies a
+# little further off in truth.)
+for b_ in barriers:
+    if b_['way']!=LAKE_WAY: continue
+    for y in range(N):
+        for x in range(N):
+            vx,vy=x+0.5-b_['at'][0],y+0.5-b_['at'][1]
+            f=(vx*b_['dir'][0]+vy*b_['dir'][1])*M; side=(-vx*b_['dir'][1]+vy*b_['dir'][0])*M
+            # (it opens like a fan, narrow at the lane and wide at the water; toward the Wurzacher Strasse, which
+            # runs along the same way further south, only a little: its houses stay)
+            if f<=0.5 or grid[y][x]=='.' or side>min(22,8+f*0.3) or -side>8+f*0.9: continue
+            owner[y][x]=GRAVEL if f<5 else MEADOW if f<15 else WATER if f<70 else MEADOW
 for i in range(N):
     for x,y in ((i,0),(i,N-1),(0,i),(N-1,i)):
         grid[y][x]='#'
@@ -136,7 +146,7 @@ czHouse=min(((owner[y][x],math.hypot(x+0.5-CZ[0],y+0.5-CZ[1])) for y in range(N)
 K=2.9/M; back=[]
 for y in range(int(CZ[1]-4*K),int(CZ[1]+12*K)):
     for x in range(int(CZ[0]-13*K),int(CZ[0]+7*K)):
-        if not(0<x<N-1 and 0<y<N-1) or grid[y][x]=='.' or owner[y][x] in (czHouse,WATER,STREET): continue
+        if not(0<x<N-1 and 0<y<N-1) or grid[y][x]=='.' or owner[y][x] in (czHouse,WATER,STREET,MEADOW,GRAVEL): continue
         if any(grid[y+oy][x+ox]=='.' for ox,oy in((1,0),(-1,0),(0,1),(0,-1))): back.append((x,y))
 for x,y in back: grid[y][x]='.'; owner[y][x]=-1
 
@@ -154,7 +164,7 @@ for _ in range(4):
             if grid[y][x]!='.': continue
             for dx,dy in ((1,0),(0,1)):
                 if span(x,y,dx,dy)>2: continue
-                sides=[p for p in ((x+dx,y+dy),(x-dx,y-dy)) if 0<p[0]<N-1 and 0<p[1]<N-1 and owner[p[1]][p[0]] not in (WATER,STREET)]
+                sides=[p for p in ((x+dx,y+dy),(x-dx,y-dy)) if 0<p[0]<N-1 and 0<p[1]<N-1 and owner[p[1]][p[0]] not in (WATER,STREET,MEADOW,GRAVEL)]
                 if not sides: continue
                 cost=lambda p: 0 if owner[p[1]][p[0]]==GARDEN else 2 if owner[p[1]][p[0]]==czHouse else 1
                 opened.append(min(sides,key=cost))
@@ -185,7 +195,7 @@ for h in used:
     if t.get('name') in KNOWN: col,roof,kind=KNOWN[t['name']]
     a=(t.get('addr:street'),t.get('addr:housenumber'))
     if a in ADDR: col=ADDR[a]
-    wall=round(2.9+1.5*h01(houses[h]['osm'],3),2)
+    wall=round(4.0+1.8*h01(houses[h]['osm'],3),2)
     if kind=='gate': wall=9.5
     out.append({'id':remap[h],'kind':kind,'name':t.get('name',''),'col':col,'roof':roof,'wall':wall,'ang':round(ang,3),'cx':round(cxm+0.5,2),'cz':round(cym+0.5,2),'n':len(tiles)})
 
@@ -200,13 +210,13 @@ for e in d['elements']:
         elif t.get('name') and (t.get('amenity') in ('cafe','restaurant','bar','pub','ice_cream','bank','police') or t.get('shop')): pois['named'].append((t['name'],t.get('amenity') or t.get('shop'),t.get('outdoor_seating',''),round(x,2),round(y,2)))
 marks={'czardas':CZ,'police':tile(47.9199219,9.755962),'czHouse':remap.get(czHouse,-1),'m':M,
        'eis':tile(47.9196534,9.7560125),'amadeus':tile(47.9194173,9.755166),'hasen':tile(47.9200925,9.7545265),'bank':tile(47.9195661,9.754414),
-       'federle':tile(47.9198986,9.7554854),'tor':tile(47.91951,9.75785)}
+       'federle':tile(47.9198986,9.7554854),'reise':tile(47.91989,9.75508),'memo':tile(47.91929,9.75512)}
 json.dump({'rows':[''.join(r) for r in grid],'owner':[[remap.get(o,o) for o in r] for r in owner],'houses':out,'pois':pois,'marks':marks,
            'barriers':[{'at':[round(b['at'][0],2),round(b['at'][1],2)],'dir':[round(b['dir'][0],3),round(b['dir'][1],3)],'half':round(b['half'],2),'lake':b['way']==LAKE_WAY} for b in barriers]},open('grid2.json','w'))
 print(len(out),'houses', sum(1 for r in grid for c in r if c=='.'),'floor tiles', len(barriers),'barriers', sum(1 for r in owner for o in r if o==GARDEN),'garden left')
-show=[[('~' if owner[y][x]==WATER else ':' if owner[y][x]==STREET else ',' if owner[y][x]==GARDEN else grid[y][x]) for x in range(N)] for y in range(N)]
+show=[[('~' if owner[y][x]==WATER else '"' if owner[y][x]==MEADOW else '_' if owner[y][x]==GRAVEL else ':' if owner[y][x]==STREET else ',' if owner[y][x]==GARDEN else grid[y][x]) for x in range(N)] for y in range(N)]
 for x,y in pois['T']: show[int(y)][int(x)]='T'
 for _,x,y in pois['F']: show[int(y)][int(x)]='F'
 for b in barriers: show[int(b['at'][1])][int(b['at'][0])]='B'
-for k,ch in (('czardas','C'),('police','P'),('eis','I'),('amadeus','A'),('hasen','H'),('bank','$'),('tor','G')): show[int(marks[k][1])][int(marks[k][0])]=ch
+for k,ch in (('czardas','C'),('police','P'),('eis','I'),('amadeus','A'),('hasen','H'),('reise','R'),('memo','M')): show[max(0,min(N-1,int(marks[k][1])))][max(0,min(N-1,int(marks[k][0])))]=ch
 for y,r in enumerate(show): print('%3d '%y+''.join(r))

@@ -533,7 +533,7 @@ function startGame() {
           [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
         );
         // the Town is walked in first person, and stays so while one is there
-        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused');
+        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused') && !params.has('see');
         const controls = [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }];
         townView.update(inTown, controls);
         if (inTown) for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
