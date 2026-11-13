@@ -401,13 +401,20 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       lamp(cx, 2.84, cz, 0.12, 0.12, 0.12, 0xd8322a);
       continue;
     }
+    if (s.kind === 'bank') {
+      // the bank, seen over the hedge behind the barrier: a hedge before it, its name on the wall
+      for (let k = -2; k <= 2; k++) onFace(s, k * 0.9, 1.2, 0.6, 0.86, 1.2, 0.6, k % 2 ? 0x3f7a3a : 0x478544);
+      sign(s, s.text, 3.4, 2.4, { back: '#f4f1ea', ink: '#1f4fa8', rim: '#f28c1e' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      continue;
+    }
     if (s.kind === 'shop') {
-      // the little shop: a yellow awning, things in the window, its name in friendly letters
-      for (let k = 0; k < w * 4; k++) onFace(s, -w / 2 + (k + 0.5) / 4, 0.36, 2.25, 0.25, 0.07, 0.74, k % 2 ? 0xfdf6e3 : 0xf2c94c);
+      // the little shop: a grey canopy over its windows, things in them, pink shutters upstairs, its name on a blue board
+      for (let k = 0; k < w * 4; k++) onFace(s, -w / 2 + (k + 0.5) / 4, 0.36, 2.25, 0.25, 0.07, 0.74, 0x9aa0a8);
+      for (const a of [-0.9, 0.2, 1.1]) for (const side of [-1, 1]) onFace(s, a + side * 0.36, 0.05, 3.3, 0.22, 0.62, 0.05, 0xb97a8c);
       onFace(s, -0.7, 0.03, 1, 0.8, 2, 0.06, 0x7a5638);
       onFace(s, 0.5, 0.03, 1.25, 1.2, 1.2, 0.05, 0xfff1c0, true);
       for (const [a, c] of [[0.2, 0xd8322a], [0.5, 0x2f7a4a], [0.8, 0x2f5fbf]] as const) onFace(s, a, 0.1, 0.9, 0.16, 0.3, 0.1, c);
-      sign(s, s.text, 2.9, Math.min(2.6, w + 0.4), { back: '#fdf6e3', ink: '#b8322a', rim: '#f2c94c' });
+      sign(s, s.text, 2.9, Math.min(2.2, w + 0.2), { back: '#1f3f8f', ink: '#ffd23f', rim: '#ffd23f' });
       continue;
     }
     if (s.kind === 'nemo') {

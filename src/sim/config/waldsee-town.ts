@@ -433,7 +433,7 @@ export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind:
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
   { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
-  { name: "Eisdiele", at: [[67, 71], [67, 69], [65, 71], [69, 71]] },
+  { name: "Eisdiele", at: [[65, 68], [65, 70], [67, 68], [67, 70]] },
   { name: "Memo", at: [[30, 90], [30, 88], [28, 90]] },
 ];
 /** the front of the Czardas toward the square */
@@ -441,14 +441,15 @@ export const WALDSEE_CZARDAS: WaldseeFace = {"x": 54.5, "z": 44, "dx": 0, "dz": 
 /** the second door of the Czardas, on its side toward the Hauptstrasse (if there is one) */
 export const WALDSEE_CZARDAS_SIDE: WaldseeFace | null = {"x": 55.0, "z": 42.5, "dx": 1, "dz": 0, "len": 1};
 /** names over doors; 'amannlabs' is the shop by the fountain with robots behind its glass */
-export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' })[] = [
-  { text: "Eisdiele", kind: 'eis', x: 67.0, z: 68.0, dx: 0, dz: 1, len: 2 },
+export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' })[] = [
+  { text: "Eisdiele", kind: 'eis', x: 68.0, z: 68.5, dx: -1, dz: 0, len: 1 },
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
   { text: "AmannLabs", kind: 'amannlabs', x: 25.5, z: 50.0, dx: 0, dz: 1, len: 5 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
-  { text: "Lädele", kind: 'shop', x: 10.0, z: 58.0, dx: 1, dz: 0, len: 2 },
+  { text: "Lädele", kind: 'shop', x: 13.0, z: 70.5, dx: 1, dz: 0, len: 1 },
+  { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */
 export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; half: number; lake: boolean }[] = [
@@ -462,6 +463,6 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [85.42, 47.53], dir: [0.978, -0.21], half: 4.69, lake: true },
 ];
 /** trees on the meadows by the lake and on its far side (tiles); nobody gets there */
-export const WALDSEE_SHORE_TREES: [number, number][] = [[124, 4], [122, 5], [125, 9], [123, 10], [124, 15], [91, 37], [89, 38], [92, 42], [90, 43], [93, 47], [91, 48]];
+export const WALDSEE_SHORE_TREES: [number, number][] = [[123, 3], [124, 5], [125, 7], [124, 14], [125, 16], [91, 40], [90, 42], [89, 44]];
 /** the pedal boat on the lake behind the police lane, an angler standing on it (tiles), if the lake is there */
 export const WALDSEE_BOAT: [number, number] | null = [102, 45];

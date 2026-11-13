@@ -21,7 +21,8 @@ for h in H.values():
 
 # --- the face of a house nearest to a spot: the run of its tiles along one side that have open floor before them.
 # Returns the middle of that run on the wall line, the way it faces, how long it is, and the house.
-def face(spot, skip=(), only=None, most=6, beyond=False):
+def face(spot, skip=(), only=None, most=6, beyond=False, want=None):
+    # (`want`: only a front that looks this way)
     # (`beyond`: a front on the street painted on behind a barrier counts too: one sees it from the map)
     openAt=lambda x,y: rows[y][x]=='.' or (beyond and owner[y][x]==STREET)
     best=None
@@ -30,6 +31,7 @@ def face(spot, skip=(), only=None, most=6, beyond=False):
             o=owner[y][x]
             if o<0 or o in skip or (only is not None and o!=only): continue
             for dx,dz in ((0,1),(0,-1),(1,0),(-1,0)):
+                if want and (dx,dz)!=want: continue
                 if not openAt(x+dx,y+dz): continue
                 dd=d((x+0.5+dx*0.5,y+0.5+dz*0.5),spot)
                 if not best or dd<best[0]: best=(dd,x,y,dx,dz,o)
@@ -104,7 +106,8 @@ def spots(at,n,apart,reach,ok=lambda p:True):
 tablesCz=[(x,FZ+r) for r in (1,4) for x in range(FX0-4,FX1+3,3) if rows[FZ+r][x]=='.' and all(d((x,FZ+r),q)>=2 for q in solid)][:8]
 hasenFace=face(MK['hasen'],beyond=True)
 garden=[]
-eisFace=face(MK['eis'])
+# (the ice-cream parlour looks west onto the Hauptstrasse, like the police next to it)
+eisFace=face(MK['eis'],want=(-1,0))
 # (in front of its awning)
 tablesEis=spots((eisFace['x']+eisFace['dx']*2.6,eisFace['z']+eisFace['dz']*2.6),4,1.8,4)
 nemoFace=face(MK['memo'],skip=(face(MK['amadeus'])['house'],))
@@ -123,7 +126,10 @@ signs=[
  {'text':'AmannLabs','kind':'amannlabs',**amann},
  # the kebab shop down the Ravensburger Strasse, and the little shop at the west end of the square
  {'text':'Memo','kind':'nemo',**nemoFace},
- {'text':'Lädele','kind':'shop',**face((MK['reise'][0]-14,MK['reise'][1]+9),skip=(amann['house'],))},
+ # (on the west side of the Ravensburger Strasse, between the two ways down to the bank; the bank is seen
+ # behind the barrier of the upper one, over its hedge)
+ {'text':'Lädele','kind':'shop',**face(MK['shop'],want=(1,0))},
+ {'text':'Bank','kind':'bank',**face(MK['bank'],beyond=True)},
 ]
 
 # --- where the game puts things. In at the Wurzacher Tor, out by the elevator down at the bank. The witch dances
@@ -156,8 +162,10 @@ if lakeT and lakeB:
     # out on the water, straight on from the lane, so one sees it looking down the lane
     boat=min(lakeT,key=lambda p:d(p,(lakeB['at'][0]+lakeB['dir'][0]*17,lakeB['at'][1]+lakeB['dir'][1]*17+1.5)))
 
+lakeB0=next((b for b in G['barriers'] if b['lake']),None); lakeB_x,lakeB_z=(lakeB0['at'] if lakeB0 else (N,N))
 meadowT=[(x,y) for y in range(2,N-2) for x in range(2,N-2) if owner[y][x]==MEADOW]
-shore=[p for p in meadowT if (p[0]*7919+p[1]*104729)%11==0 and all(owner[p[1]+b][p[0]+a]==MEADOW for a in (-1,0,1) for b in (-1,0,1))]
+# (few on the near meadow, and none where one looks down the lane onto the water)
+shore=[p for p in meadowT if (p[0]*7919+p[1]*104729)%(9 if p[0]>lakeB_x+30 else 37)==0 and abs(p[1]-lakeB_z)>3 and all(owner[p[1]+b][p[0]+a]==MEADOW for a in (-1,0,1) for b in (-1,0,1))]
 fmt=lambda l: ', '.join('[%d, %d]'%tuple(p) for p in l)
 B36='0123456789abcdefghijklmnopqrstuvwxyz'
 enc=lambda v: B36[v//36]+B36[v%36]
@@ -248,7 +256,7 @@ export const WALDSEE_CZARDAS: WaldseeFace = %s;
 /** the second door of the Czardas, on its side toward the Hauptstrasse (if there is one) */
 export const WALDSEE_CZARDAS_SIDE: WaldseeFace | null = %s;
 /** names over doors; 'amannlabs' is the shop by the fountain with robots behind its glass */
-export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' })[] = [
+export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' })[] = [
 %s
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */

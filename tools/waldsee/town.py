@@ -213,7 +213,7 @@ for e in d['elements']:
         elif t.get('name') and (t.get('amenity') in ('cafe','restaurant','bar','pub','ice_cream','bank','police') or t.get('shop')): pois['named'].append((t['name'],t.get('amenity') or t.get('shop'),t.get('outdoor_seating',''),round(x,2),round(y,2)))
 marks={'czardas':CZ,'police':tile(47.9199219,9.755962),'czHouse':remap.get(czHouse,-1),'m':M,
        'eis':tile(47.9196534,9.7560125),'amadeus':tile(47.9194173,9.755166),'hasen':tile(47.9200925,9.7545265),'bank':tile(47.9195661,9.754414),
-       'federle':tile(47.9198986,9.7554854),'reise':tile(47.91989,9.75508),'memo':tile(47.91929,9.75512)}
+       'federle':tile(47.9198986,9.7554854),'reise':tile(47.91989,9.75508),'shop':tile(47.91962,9.75474),'memo':tile(47.91929,9.75512)}
 json.dump({'rows':[''.join(r) for r in grid],'owner':[[remap.get(o,o) for o in r] for r in owner],'houses':out,'pois':pois,'marks':marks,
            'barriers':[{'at':[round(b['at'][0],2),round(b['at'][1],2)],'dir':[round(b['dir'][0],3),round(b['dir'][1],3)],'half':round(b['half'],2),'lake':b['way']==LAKE_WAY} for b in barriers]},open('grid2.json','w'))
 print(len(out),'houses', sum(1 for r in grid for c in r if c=='.'),'floor tiles', len(barriers),'barriers', sum(1 for r in owner for o in r if o==GARDEN),'garden left')
