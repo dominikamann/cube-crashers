@@ -511,7 +511,7 @@ export interface VersusState {
 }
 
 export interface MazeState {
-  /** tile indices that still hold a pixel */
+  /** pixels still lying in the maze (indices into MAZE_DOTS) */
   pixels: number[];
   total: number;
   /** pixels collected per player id */
@@ -581,10 +581,11 @@ export type SimEvent =
   | { type: 'emote'; playerId: number; emote: EmoteId; pos?: Vec2 }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
+  | { type: 'mazePixel'; playerId: number; streak: number; left: number }
   | { type: 'mazePower'; playerId: number }
   | { type: 'mazeGhost'; playerId: number; pos: Vec2 }
   | { type: 'mazeCaught'; playerId: number }
-  | { type: 'mazeEnd'; cleared: boolean; collected: Record<number, number> }
+  | { type: 'mazeEnd'; collected: Record<number, number> }
   | { type: 'raceEnd'; laps: Record<number, number>; medal: 'gold' | 'silver' | 'bronze' | null; winners: number[] }
   | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }

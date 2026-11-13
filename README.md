@@ -233,9 +233,12 @@ Between the floors the elevator takes you to a short game of its own, then to th
 - **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.
-- **Glitch Maze:** no weapons, no jumping. Collect the pixels in the maze while the glitch ghosts hunt you; a
-  caught player goes back to the start (no damage, no life lost). A power cube in each corner turns the
-  ghosts blue for a few seconds: crash them for coins. Clear the maze for a bonus.
+- **Glitch Maze:** no weapons, no jumping. A line of pixels runs through the corridors of the maze: collect
+  them all while the glitch ghosts hunt you. There is no clock: the maze is over when the last pixel is gone
+  (about a minute), together if you are several; the counter shows how many are left. A caught player goes
+  back to the start (no damage, no life lost), and so do the ghosts lurking there, to their cage. A power cube
+  in each corner turns the ghosts blue for a few seconds: crash them for coins (they come back). Every pixel
+  pays its collector, and clearing the maze pays everyone a bonus.
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,

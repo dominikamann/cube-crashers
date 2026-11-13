@@ -7,7 +7,7 @@ import type { Theme } from './theme';
 import { COLOR_BLIND, isColorBlind, NORMAL } from './palette';
 import { RACE_CHECKPOINTS } from '../sim/config/floor-race';
 import { LANE_CORE } from '../sim/config/floor-lane';
-import { MAZE_CUBES } from '../sim/config/floor-maze';
+import { MAZE_CUBES, MAZE_DOTS } from '../sim/config/floor-maze';
 import { logoSpots, type LogoSpot } from '../sim/map/logo-spots';
 import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
@@ -465,6 +465,8 @@ function loadMark(): Promise<HTMLImageElement> {
 }
 
 /** the looks whose floor is dark: the logo's lettering is light there */
+/** Glitch Maze: this many pixels or fewer left, and they throb so the last ones are easy to find */
+const MAZE_LAST_PIXELS = 8;
 const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
 
 /** how high the floor logo's lettering floats when it is awake: over the heads, so nobody stands in it */
@@ -1000,14 +1002,15 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     addToScene(cab);
   }
 
-  // Glitch Maze: a glowing pixel on every tile that still holds one, and the power cubes
+  // Glitch Maze: a line of glowing pixels down the middle of the corridors, and the power cubes
   let mazePixels: THREE.InstancedMesh | null = null;
   let mazeCubes: THREE.Mesh[] = [];
-  let shownPixels = -1;
   if (map.id === 'maze') {
-    const pixMat = glowMat(0xffcf3a, 1.4);
-    mazePixels = new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), pixMat, map.w * map.h);
+    const pixMat = glowMat(0xffcf3a, 1.6);
+    mazePixels = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, 0.24, 0.24), pixMat, MAZE_DOTS.length);
     mazePixels.count = 0;
+    // they move every frame: no culling by where they were when the maze was built
+    mazePixels.frustumCulled = false;
     addToScene(mazePixels);
     const cubeMat = glowMat(0x2bf0ff, 2);
     mazeCubes = MAZE_CUBES.map(c => {
@@ -1083,21 +1086,23 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
       const maze = s.run.maze;
       if (mazePixels) {
-        // only rewrite the instances when a pixel was taken
-        if (maze && maze.pixels.length !== shownPixels) {
-          shownPixels = maze.pixels.length;
-          maze.pixels.forEach((tile, k) => {
-            o.position.set((tile % map.w) + 0.5, 0.3, Math.floor(tile / map.w) + 0.5);
-            o.rotation.set(0, Math.PI / 4, 0);
-            o.scale.set(1, 1, 1);
+        if (maze) {
+          // the pixels turn and bob, a wave running through the lines; the last few throb so they are easy to find
+          const last = maze.pixels.length <= MAZE_LAST_PIXELS;
+          maze.pixels.forEach((dot, k) => {
+            const d = MAZE_DOTS[dot];
+            const wave = Math.sin(time * 4 - (d.x + d.z) * 0.7);
+            o.position.set(d.x, 0.36 + wave * 0.07, d.z);
+            o.rotation.set(0, time * 1.5 + (d.x + d.z) * 0.35, 0);
+            o.scale.setScalar(last ? 1.5 + 0.5 * Math.sin(time * 9) : 1 + wave * 0.12);
             o.updateMatrix();
             mazePixels!.setMatrixAt(k, o.matrix);
           });
           o.rotation.set(0, 0, 0);
+          o.scale.set(1, 1, 1);
           mazePixels.count = maze.pixels.length;
           mazePixels.instanceMatrix.needsUpdate = true;
-        }
-        if (!maze) mazePixels.count = 0;
+        } else mazePixels.count = 0;
         mazeCubes.forEach((m, k) => {
           m.visible = !!maze && maze.cubes.includes(k);
           m.rotation.set(time * 1.3, time * 2, 0);
