@@ -443,7 +443,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (e.playerId === p.id) toast(t('maze.caught'), 'warn');
             break;
           case 'mazeEnd':
-            toast(t(e.cleared ? 'maze.cleared' : 'maze.end'), 'final');
+            toast(t('maze.cleared'), 'final');
             break;
           case 'laneLeak':
             if (time - lastLeakToast > 2) {
@@ -618,8 +618,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       if (maze && !wasMaze) toast(t('maze.start'), 'final');
       wasMaze = !!maze;
       if (maze) {
-        const left = Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE));
-        raceMain.textContent = t('maze.hud', { left: maze.pixels.length, time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` });
+        // no clock: the maze lasts until the last pixel is collected
+        raceMain.textContent = t('maze.hud', { left: maze.pixels.length, total: maze.total });
         raceSub.textContent = t('maze.mine', { n: maze.collected[p.id] ?? 0 });
       }
       laneBar.style.display = lane ? '' : 'none';

@@ -492,6 +492,12 @@ export function createFx(scene: THREE.Scene): Fx {
             if (pos) burst(pos, 1.2, 24, [0xffc928, 0xfff3a0, 0xff2bd6], 4, 0.12);
             break;
           }
+          case 'mazePixel': {
+            // the pixel bursts into sparks, a few more the longer the streak
+            const pos = playerPos(s, e.playerId);
+            if (pos) burst(pos, 0.4, 4 + Math.min(e.streak, 8), [0xffcf3a, 0xfff3a0, 0xffffff], 2.5, 0.07);
+            break;
+          }
           case 'cardPicked': {
             const pos = playerPos(s, e.playerId);
             if (pos) burst(pos, 1, 30, [0xffc928, 0x2bf0ff, 0xffffff], 4, 0.12);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SOUNDS, soundsForEvent } from '../../src/audio/sfx';
+import { MAX_MAZE_STREAK_STEPS, SOUNDS, soundsForEvent } from '../../src/audio/sfx';
+import { soundDuration } from '../../src/audio/synth';
 import { ALL_WEAPONS } from '../../src/sim/config/weapons';
 import type { SimEvent } from '../../src/sim/types';
 
@@ -38,10 +39,11 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   emote: { type: 'emote', playerId: 0, emote: 'gg' },
   versusRound: { type: 'versusRound', winner: 0, round: 1 },
   versusEnd: { type: 'versusEnd', winners: [0] },
+  mazePixel: { type: 'mazePixel', playerId: 0, streak: 1, left: 10 },
   mazePower: { type: 'mazePower', playerId: 0 },
   mazeGhost: { type: 'mazeGhost', playerId: 0, pos: { x: 0, z: 0 } },
   mazeCaught: { type: 'mazeCaught', playerId: 0 },
-  mazeEnd: { type: 'mazeEnd', cleared: true, collected: { 0: 10 } },
+  mazeEnd: { type: 'mazeEnd', collected: { 0: 10 } },
   laneLeak: { type: 'laneLeak', pos: { x: 0, z: 0 }, coreHp: 90 },
   laneEnd: { type: 'laneEnd', coreLeft: 1, coins: 120 },
   raceEnd: { type: 'raceEnd', laps: { 0: 2 }, medal: 'bronze', winners: [] },
@@ -133,6 +135,21 @@ describe('soundsForEvent', () => {
   it('raises the coin pitch with the streak, capped at 12', () => {
     expect(soundsForEvent({ type: 'coinPicked', playerId: 0, streak: 3 })[0].pitch).toBeCloseTo(1.059 ** 3);
     expect(soundsForEvent({ type: 'coinPicked', playerId: 0, streak: 50 })[0].pitch).toBeCloseTo(1.059 ** 12);
+  });
+
+  it('gives every maze pixel its own blip, climbing along a streak up to an octave and no further', () => {
+    const blip = (streak: number) => soundsForEvent({ type: 'mazePixel', playerId: 0, streak, left: 10 })[0];
+    expect(blip(1).id).toBe('mazePixel');
+    expect(blip(1).pitch).toBe(1);
+    for (let n = 2; n <= MAX_MAZE_STREAK_STEPS + 1; n++) expect(blip(n).pitch, `streak ${n}`).toBeGreaterThan(blip(n - 1).pitch);
+    expect(blip(MAX_MAZE_STREAK_STEPS + 1).pitch).toBeCloseTo(2, 1);
+    expect(blip(500).pitch).toBe(blip(MAX_MAZE_STREAK_STEPS + 1).pitch);
+  });
+
+  it('keeps the maze blip short and quiet, so a run of pixels is a patter and not a wall of noise', () => {
+    // a player passes a pixel every sixth of a second
+    expect(soundDuration(SOUNDS.mazePixel)).toBeLessThan(1 / 6);
+    for (const layer of SOUNDS.mazePixel) expect(layer.volume).toBeLessThanOrEqual(SOUNDS.coin[0].volume);
   });
 
   it('raises the combo jingle with the multiplier', () => {
