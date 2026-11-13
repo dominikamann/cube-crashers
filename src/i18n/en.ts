@@ -189,6 +189,7 @@ export const en = {
   'toast.dominikLeft': 'Angry Dominik left the game',
   'floor.jungle': 'Pixel Jungle',
   'floor.servers': 'Server Farm',
+  'floor.waldsee': 'Bad Waldsee',
   'floor.underwater': 'Sunken Arcade',
   'toast.unicorn': 'A unicorn appeared! Ride it with {key.use}',
   'bossrush.title': 'Boss Rush',
