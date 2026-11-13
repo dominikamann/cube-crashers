@@ -28,7 +28,7 @@ import { floor01 } from './sim/config/floor01';
 import { BOSS_RUSH, FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
 import { totalKills } from './sim/systems/stats';
-import { browserStore, loadProfile, rewardForRun, saveProfile, ticketsForRun } from './profile';
+import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
 import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
@@ -524,6 +524,9 @@ function startGame() {
       }
       for (const e of frameEvents) {
         if ((e.type === 'gameWon' || e.type === 'gameLost') && (mode === 'playing' || mode === 'paused')) finish(e.type === 'gameWon');
+        // a boss fell while this player was in the game (not one that broke into a versus match, and not in a
+        // replay): remembered, some characters can only be bought after
+        if (e.type === 'bossDead' && e.kind && !s.versus && mode === 'playing' && s.players.some(p => p.id === localId()) && recordBossBeaten(profile, e.kind)) storeProfile();
       }
       frameEvents = [];
     },
@@ -683,7 +686,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }
@@ -702,13 +705,15 @@ function startGame() {
     const cast = import.meta.env.DEV && params.get('demo') === 'cast';
     const names = cast ? Array.from({ length: MAX_PLAYERS }, (_, i) => `${params.get('cast') === 'bots' ? 'Bot' : 'P'} ${'ABCDEFGHIJ'[i]}`) : split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = cast ? undefined : settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
+    // the first player's own character; a second one on this computer gets what the game picks
+    const characters = [ownedCharacter(profile, settings.character)];
     // "Single floor" plays the map chosen on the title screen
     // (the Boss Brawl is in the Mega Block Arena, or on the map picked for it)
     const first = mode === 'brawl' ? FLOORS[brawlMapFor(settings.brawlMap)].map : mode === 'quick' && FLOORS[settings.quickMap] ? FLOORS[settings.quickMap].map : floor01;
     solo = dailyRun
       ? // the same run for everyone today: fixed seed and difficulty, every weapon
-        createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, countdown: true })
-      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, countdown: !params.has('capture'), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
+        createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, characters, countdown: true })
+      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, characters, countdown: !params.has('capture'), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
     if (cast && params.has('fp')) keyboard.setFirstPerson(true, { x: 0, z: -1 });
@@ -729,7 +734,7 @@ function startGame() {
       leaveLan(false);
       role = 'host';
       setSplit(false);
-      host = new HostSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
+      host = new HostSession(transport, { name: playerName(), color: settings.color, character: ownedCharacter(profile, settings.character), unlocked: profile.unlocked });
       host.setAutoFill(autoFill);
       host.setDifficulty(settings.difficulty);
       showLobby();
@@ -799,7 +804,7 @@ function startGame() {
       leaveLan(false);
       role = 'client';
       setSplit(false);
-      client = new ClientSession(transport, { name: playerName(), color: settings.color, unlocked: profile.unlocked });
+      client = new ClientSession(transport, { name: playerName(), color: settings.color, character: ownedCharacter(profile, settings.character), unlocked: profile.unlocked });
       mode = 'lobby';
       lastLobby = '';
     } catch {

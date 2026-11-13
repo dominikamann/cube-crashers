@@ -1,3 +1,4 @@
+import { isCharacter } from '../characters';
 import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { TOWER_ORDER } from '../sim/config/towers';
@@ -66,6 +67,8 @@ export interface LobbyPlayer {
   id: number;
   name: string;
   color: number;
+  /** the figure the player chose (see characters.ts); left out: the game picks one */
+  character?: string;
   /** a bot the host runs */
   bot?: boolean;
   /** red (0) or blue (1) wished for team games; unset = whatever evens the teams out */
@@ -96,7 +99,7 @@ export interface LobbyVote {
 
 /** client → host */
 export type ClientMessage =
-  | { type: 'hello'; v: number; name: string; color?: number; unlocked?: string[] }
+  | { type: 'hello'; v: number; name: string; color?: number; character?: string; unlocked?: string[] }
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'vote'; choice: 0 | 1 }
   | { type: 'team'; team: 0 | 1 | null }
@@ -151,6 +154,8 @@ export function parseMessage(raw: string): Message | null {
         v: m.v,
         name: m.name.slice(0, MAX_NAME),
         color: Number.isInteger(m.color) && (m.color as number) >= 0 && (m.color as number) < MAX_PLAYERS ? (m.color as number) : undefined,
+        // (a character this version does not know is dropped: the game picks one)
+        character: isCharacter(m.character) ? m.character : undefined,
         unlocked: Array.isArray(m.unlocked) ? m.unlocked.filter((x): x is string => typeof x === 'string' && x.length < 24).slice(0, 16) : [],
       };
     case 'input':

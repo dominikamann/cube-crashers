@@ -216,6 +216,7 @@ body.split .card { width: 110px; }
 .chip:hover:not(:disabled), .chip:focus-visible, .chip.pad-focus { border-color: #fff; outline: none; }
 .chip.on { background: var(--cyan); color: var(--shadow); border-color: var(--shadow); text-shadow: none; }
 .chip { text-shadow: none; }
+.chip.locked { opacity: 0.6; }
 .chip:disabled { opacity: 0.5; cursor: default; }
 .screen p.mode-hint { min-height: 1.8em; margin-top: 12px; opacity: 0.85; max-width: 760px; font-size: 10px; }
 .stepper { display: flex; align-items: center; gap: 10px; font-size: 12px; background: rgba(20, 16, 50, 0.55); padding: 4px; }

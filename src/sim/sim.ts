@@ -113,6 +113,8 @@ export interface SimOptions {
   ids?: number[];
   names?: string[];
   colors?: number[];
+  /** the figure each player chose (a look only), in the same order; a gap = the game picks */
+  characters?: (string | undefined)[];
 }
 
 /** the countdown that opens a game: 6 5 ... 1 GO! */
@@ -176,6 +178,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
+    if (opts.characters?.[i]) p.character = opts.characters[i];
   }
   if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.boss ?? false);
   else setupFloor(s);

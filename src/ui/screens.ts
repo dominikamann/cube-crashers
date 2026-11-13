@@ -12,7 +12,8 @@ import { FLOORS, RUN_FLOORS } from '../sim/config/floors';
 import { TOWERS } from '../sim/config/towers';
 import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
-import { browserStore, buyUnlock, claimBonus, UNLOCKS, type BonusId, type Profile } from '../profile';
+import { CHARACTERS, isCharacter } from '../characters';
+import { bossToBeat, browserStore, buyUnlock, claimBonus, ownedCharacter, UNLOCKS, type BonusId, type Profile } from '../profile';
 import type { Difficulty } from '../sim/types';
 import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
@@ -41,6 +42,8 @@ export interface Settings {
   killCam: boolean;
   /** suit colour 0–5, or null for automatic */
   color: number | null;
+  /** the figure the player chose (see characters.ts), or null: the game picks one */
+  character: string | null;
   /** players on this computer: 2 = split screen */
   localPlayers: 1 | 2;
   /** split screen in team games: both players in one team, or against each other */
@@ -94,7 +97,7 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -152,6 +155,7 @@ export function loadSettings(): Settings {
     if (![0.5, 1, 1.5, 2, 3].includes(loaded.mouseSensitivity)) loaded.mouseSensitivity = 1;
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
+    if (!isCharacter(loaded.character)) loaded.character = null;
     if (!DIFFICULTIES.includes(loaded.versusBots)) loaded.versusBots = 'low';
     if (!['run', 'quick', 'bossrush', 'brawl', 'endless', 'versus'].includes(loaded.lanGame)) loaded.lanGame = 'run';
     if (!BRAWL_MAPS.includes(loaded.brawlMap) && loaded.brawlMap !== MAP_ROTATION) loaded.brawlMap = 'arena';
@@ -392,8 +396,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       grid.className = 'unlocks';
       for (const u of UNLOCKS) {
         const owned = profile.unlocked.includes(u.id);
-        const name = u.kind === 'weapon' ? t(`weapon.${u.id}` as 'weapon.bomb') : t(`unlock.${u.id}` as 'unlock.roller');
-        const b = button(grid, owned ? `${name} ✓` : t('unlocks.buy', { name, cost: u.cost }), () => {
+        const name = u.kind === 'weapon' ? t(`weapon.${u.id}` as 'weapon.bomb') : u.kind === 'character' ? t(`character.${u.id}`) : t(`unlock.${u.id}` as 'unlock.roller');
+        // a character for the end of the game shows from the start, locked until its boss is beaten
+        const boss = bossToBeat(profile, u.id);
+        const b = button(grid, owned ? `${name} ✓` : boss ? t('unlocks.beat', { name, boss: t(`boss.${boss}` as 'boss.rex'), cost: u.cost }) : t('unlocks.buy', { name, cost: u.cost }), () => {
           if (owned) return;
           if (buyUnlock(profile, u.id)) {
             saveProfile();
@@ -401,7 +407,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           }
         });
         if (owned) b.classList.add('alt');
-        else if (profile.tickets < u.cost) b.disabled = true;
+        else if (boss || profile.tickets < u.cost) b.disabled = true;
       }
       s.append(grid);
       button(s, t('menu.back'), () => back(), true);
@@ -621,6 +627,36 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         });
       };
       drawColors();
+      // the character: Automatic, the free ones, and the two that have to be earned (locked ones say how)
+      const cast = row(t('settings.character'));
+      cast.classList.add('chips');
+      const castNote = text(card, 'div', 'settings-note', t('settings.characterHint'));
+      const drawCast = () => {
+        cast.replaceChildren();
+        if (settings.character !== null && !ownedCharacter(profile, settings.character)) settings.character = null;
+        for (const id of [null, ...CHARACTERS]) {
+          const unlock = UNLOCKS.find(u => u.id === id);
+          const locked = !!unlock && !profile.unlocked.includes(unlock.id);
+          const name = id === null ? t('settings.colorAuto') : t(`character.${id}`);
+          const c = document.createElement('button');
+          c.className = `chip small${settings.character === id ? ' on' : ''}${locked ? ' locked' : ''}`;
+          c.textContent = locked ? `🔒 ${name}` : name;
+          c.addEventListener('click', () => {
+            actions.click();
+            if (locked) {
+              const boss = bossToBeat(profile, unlock.id);
+              castNote.textContent = boss ? t('settings.characterBeat', { name, boss: t(`boss.${boss}` as 'boss.rex') }) : t('settings.characterBuy', { name, cost: unlock.cost });
+              return;
+            }
+            settings.character = id;
+            castNote.textContent = t('settings.characterHint');
+            changed();
+            drawCast();
+          });
+          cast.append(c);
+        }
+      };
+      drawCast();
       section(t('settings.about'));
       text(row(t('settings.version')), 'span', 'settings-version', `v${APP_VERSION}`);
       text(s, 'p', 'controls-help', t('menu.controls'));

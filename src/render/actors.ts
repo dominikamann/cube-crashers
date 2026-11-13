@@ -14,7 +14,7 @@ import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, Vehic
 import { box, glowMat, lambert, setGlow } from './pool';
 import { looksFor, type Look } from '../characters';
 import { animate, buildFigure } from './cast';
-import { bake, FIGURE_GLOW, FIGURE_LIT } from './figure';
+import { bake, FIGURE_GLOW, FIGURE_LIT, FIGURE_SOLID } from './figure';
 import { weaponModel, type HeldKind } from './viewmodel';
 import type { Theme } from './theme';
 import { NORMAL, palette, playerColor } from './palette';
@@ -316,7 +316,7 @@ const tileQuad = new THREE.PlaneGeometry(0.9, 0.9).rotateX(-Math.PI / 2);
 const ZONE_IDLE = new THREE.Color(0xff2bd6).multiplyScalar(0.55);
 const ZONE_LIT = new THREE.Color(0x2bf0ff).multiplyScalar(1.6);
 
-SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad).add(FIGURE_LIT).add(FIGURE_GLOW).add(dizzyGeo).add(dizzyMat);
+SHARED.add(scaffoldGeo).add(scaffoldMat).add(tileQuad).add(FIGURE_LIT).add(FIGURE_GLOW).add(FIGURE_SOLID).add(dizzyGeo).add(dizzyMat);
 
 function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   const root = new THREE.Group();

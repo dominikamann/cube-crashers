@@ -28,6 +28,9 @@ export const FIGURE_GLOW = (() => {
   return m;
 })();
 
+/** for voxel bodies, which are hollow: both sides of their cubes show */
+export const FIGURE_SOLID = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+
 const FACES: { n: Vec3; u: Vec3; v: Vec3 }[] = [
   { n: [1, 0, 0], u: [0, 0, -1], v: [0, 1, 0] },
   { n: [-1, 0, 0], u: [0, 0, 1], v: [0, 1, 0] },
@@ -97,6 +100,8 @@ function meshes(group: THREE.Group, cubes: Cube[]): void {
 export class Part {
   readonly group = new THREE.Group();
   readonly cubes: Cube[] = [];
+  /** ready-made geometries (in the figure's space, colours in the vertices), drawn lit */
+  readonly solids: THREE.BufferGeometry[] = [];
   constructor(readonly pivot: Vec3) {}
 
   box(color: number, w: number, h: number, d: number, x: number, y: number, z: number, rot?: Vec3): this {
@@ -106,6 +111,12 @@ export class Part {
 
   glow(color: number, intensity: number, w: number, h: number, d: number, x: number, y: number, z: number, rot?: Vec3): this {
     this.cubes.push({ size: [w, h, d], at: [x - this.pivot[0], y - this.pivot[1], z - this.pivot[2]], color, glow: intensity, rot });
+    return this;
+  }
+
+  /** a geometry made elsewhere (a voxel body): taken over, moved to the part's pivot */
+  solid(geometry: THREE.BufferGeometry): this {
+    this.solids.push(geometry.translate(-this.pivot[0], -this.pivot[1], -this.pivot[2]));
     return this;
   }
 
@@ -130,10 +141,19 @@ export class Sculpt {
     return p;
   }
 
+  get(name: string): Part | undefined {
+    return this.parts.get(name);
+  }
+
   finish(): Record<string, THREE.Group> {
     const out: Record<string, THREE.Group> = {};
     for (const [name, p] of this.parts) {
       meshes(p.group, p.cubes);
+      for (const g of p.solids) {
+        const m = new THREE.Mesh(g, FIGURE_SOLID);
+        m.castShadow = true;
+        p.group.add(m);
+      }
       out[name] = p.group;
     }
     return out;
@@ -144,7 +164,7 @@ export class Sculpt {
     let boxes = 0, count = 0;
     for (const p of this.parts.values()) {
       boxes += p.cubes.length;
-      count += (p.cubes.some(c => c.glow === 0) ? 1 : 0) + (p.cubes.some(c => c.glow > 0) ? 1 : 0);
+      count += (p.cubes.some(c => c.glow === 0) ? 1 : 0) + (p.cubes.some(c => c.glow > 0) ? 1 : 0) + p.solids.length;
     }
     return { boxes, meshes: count };
   }

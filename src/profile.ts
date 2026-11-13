@@ -1,3 +1,4 @@
+import { isCharacter, type CharacterId } from './characters';
 import type { Difficulty } from './sim/types';
 
 /** Things that can be unlocked with tickets. The other four weapons and the kart are always there. */
@@ -9,6 +10,9 @@ export const UNLOCKS = [
   { id: 'roller', kind: 'vehicle', cost: 8 },
   { id: 'hoverboard', kind: 'vehicle', cost: 8 },
   { id: 'endless', kind: 'mode', cost: 12 },
+  // characters for the end of the game: their boss has to be beaten first, then they can be bought
+  { id: 'babyDino', kind: 'character', cost: 150, boss: 'rex' },
+  { id: 'dominik', kind: 'character', cost: 300, boss: 'dominik' },
 ] as const;
 
 export type UnlockId = (typeof UNLOCKS)[number]['id'];
@@ -19,6 +23,8 @@ export interface Profile {
   unlocked: string[];
   /** one-off thank-you bonuses already paid out */
   bonuses: string[];
+  /** the bosses this player has beaten (their kinds); left out until the first one falls */
+  beaten?: string[];
 }
 
 /** tickets for a one-off thank-you: looking at the credits, clicking the sponsor button */
@@ -62,7 +68,8 @@ export function loadProfile(store: Store): Profile {
     const raw = JSON.parse(store.getItem(KEY) ?? 'null');
     if (!raw || raw.version !== 1 || typeof raw.tickets !== 'number' || !Array.isArray(raw.unlocked)) return defaultProfile();
     const bonuses = Array.isArray(raw.bonuses) ? raw.bonuses.filter((x: unknown) => typeof x === 'string' && Object.hasOwn(BONUSES, x)) : [];
-    return { version: 1, tickets: Math.max(0, Math.floor(raw.tickets)), unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)), bonuses };
+    const beaten = Array.isArray(raw.beaten) ? raw.beaten.filter((x: unknown) => typeof x === 'string' && x.length < 24).slice(0, 32) : [];
+    return { version: 1, tickets: Math.max(0, Math.floor(raw.tickets)), unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)), bonuses, ...(beaten.length ? { beaten } : {}) };
   } catch {
     return defaultProfile();
   }
@@ -92,9 +99,28 @@ export function rewardForRun(p: Profile, r: { mode: string; won: boolean }): Unl
   return ['endless'];
 }
 
+/** the boss that has to be beaten before `id` can be bought, if it is still standing */
+export function bossToBeat(p: Profile, id: UnlockId): string | null {
+  const u = UNLOCKS.find(x => x.id === id);
+  return u && 'boss' in u && !p.beaten?.includes(u.boss) ? u.boss : null;
+}
+
+/** A boss fell with this player in the game. Returns true the first time. */
+export function recordBossBeaten(p: Profile, boss: string): boolean {
+  if (p.beaten?.includes(boss)) return false;
+  (p.beaten ??= []).push(boss);
+  return true;
+}
+
+/** The character a player may show: the one they chose if it is free or bought, else none (the game picks). */
+export function ownedCharacter(p: Profile, wish: string | null | undefined): CharacterId | undefined {
+  if (!isCharacter(wish)) return undefined;
+  return UNLOCKS.some(u => u.id === wish) && !p.unlocked.includes(wish) ? undefined : wish;
+}
+
 export function buyUnlock(p: Profile, id: UnlockId): boolean {
   const u = UNLOCKS.find(x => x.id === id);
-  if (!u || p.unlocked.includes(id) || p.tickets < u.cost) return false;
+  if (!u || p.unlocked.includes(id) || p.tickets < u.cost || bossToBeat(p, id)) return false;
   p.tickets -= u.cost;
   p.unlocked.push(id);
   return true;

@@ -6,6 +6,14 @@ describe('parseMessage', () => {
     expect(parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim' }))).toMatchObject({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', unlocked: [] });
   });
 
+  it('keeps a character it knows in a hello and drops one it does not (the game then picks)', () => {
+    expect(parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', character: 'duck' }))).toMatchObject({ character: 'duck' });
+    const odd = parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', character: 'dragon' }));
+    expect(odd).toMatchObject({ type: 'hello', name: 'Kim' });
+    expect((odd as { character?: string }).character).toBeUndefined();
+    expect((parseMessage(JSON.stringify({ type: 'hello', v: PROTOCOL_VERSION, name: 'Kim', character: 5 })) as { character?: string }).character).toBeUndefined();
+  });
+
   it('rejects garbage, unknown types, missing fields and oversized messages', () => {
     expect(parseMessage('not json')).toBeNull();
     expect(parseMessage(JSON.stringify({ type: 'nope' }))).toBeNull();

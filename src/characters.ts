@@ -56,13 +56,14 @@ export function looksFor(players: readonly { id: number; name: string; character
     if (looks.has(p.id)) continue;
     const h = hash(p.name);
     if (isBotName(p.name)) {
-      // the chassis the fewest bots have so far, and a face no bot with that chassis has yet
+      // the chassis the fewest bots have so far, and a face no other bot has yet (or none with that chassis)
       const count = (kind: string) => [...robots].filter(r => r.startsWith(`${kind}:`)).length;
       const least = Math.min(...BOT_CHASSIS.map(count));
       const kind = BOT_CHASSIS.map((_, i) => BOT_CHASSIS[(h + i) % BOT_CHASSIS.length]).find(k => count(k) === least)!;
       const faces = Array.from({ length: BOT_FACES }, (_, i) => ((h >>> 4) + i) % BOT_FACES);
-      const pick = { kind, face: faces.find(f => !robots.has(`${kind}:${f}`)) ?? faces[0] };
-      looks.set(p.id, { kind: pick.kind, bot: true, face: pick.face, antenna: (h >>> 8) % BOT_ANTENNAS });
+      const face = faces.find(f => ![...robots].some(r => r.endsWith(`:${f}`))) ?? faces.find(f => !robots.has(`${kind}:${f}`)) ?? faces[0];
+      robots.add(`${kind}:${face}`);
+      looks.set(p.id, { kind, bot: true, face, antenna: (h >>> 8) % BOT_ANTENNAS });
       continue;
     }
     const n = FREE_CHARACTERS.length;

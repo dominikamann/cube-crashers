@@ -64,12 +64,12 @@ export class HostSession {
 
   constructor(
     private net: Transport,
-    opts: { name: string; color?: number | null; unlocked?: string[]; now?: () => number; dedicated?: { name: string; mode: ServerMode; teams: boolean } },
+    opts: { name: string; color?: number | null; character?: string; unlocked?: string[]; now?: () => number; dedicated?: { name: string; mode: ServerMode; teams: boolean } },
   ) {
     this.now = opts.now ?? (() => Date.now());
     for (const u of opts.unlocked ?? []) this.unlocked.add(u);
     if (opts.dedicated) this.server = { name: opts.dedicated.name.slice(0, MAX_SERVER_NAME), mode: opts.dedicated.mode, teams: opts.dedicated.teams, startsIn: null, running: false };
-    this.lobby = opts.dedicated ? [] : [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0 }];
+    this.lobby = opts.dedicated ? [] : [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0, character: opts.character }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
       if (joined) return;
@@ -233,6 +233,7 @@ export class HostSession {
       ids: this.lobby.map(p => p.id),
       names: this.lobby.map(p => p.name),
       colors: this.lobby.map(p => p.color),
+      characters: this.lobby.map(p => p.character),
     });
     this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map, view: this.viewMode });
   }
@@ -274,7 +275,7 @@ export class HostSession {
       const used = new Set(this.lobby.map(p => p.color));
       const wish = m.color !== undefined && !used.has(m.color) ? m.color : undefined;
       const color = wish ?? [...Array(MAX_PLAYERS).keys()].find(c => !used.has(c)) ?? 0;
-      this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color });
+      this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color, character: m.character });
       // what anyone in the lobby has unlocked is available to everyone
       for (const u of m.unlocked ?? []) this.unlocked.add(u);
       this.send(from, { type: 'welcome', playerId: from });
@@ -325,6 +326,7 @@ export class HostSession {
       ids: humans.map(p => p.id),
       names: humans.map(p => p.name),
       colors: humans.map(p => p.color),
+      characters: humans.map(p => p.character),
     });
     this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode, mapId, maps: rushMaps });
   }
@@ -405,12 +407,12 @@ export class ClientSession {
   private clock = 0;
   private now = () => this.clock;
 
-  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null; unlocked?: string[] }) {
+  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null; character?: string; unlocked?: string[] }) {
     net.onMessage((_from, data) => this.receive(data));
     net.onClose(() => {
       if (this.status !== 'rejected') this.status = 'hostLeft';
     });
-    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined, unlocked: opts.unlocked ?? [] }));
+    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined, character: opts.character, unlocked: opts.unlocked ?? [] }));
   }
 
   private receive(data: string): void {
@@ -448,6 +450,7 @@ export class ClientSession {
           ids: m.players.map(p => p.id),
           names: m.players.map(p => p.name),
           colors: m.players.map(p => p.color),
+          characters: m.players.map(p => p.character),
         });
         this.status = 'playing';
         this.lastHeard = this.now();

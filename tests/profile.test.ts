@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browserStore, buyUnlock, claimBonus, defaultProfile, loadProfile, rewardForRun, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
+import { bossToBeat, browserStore, buyUnlock, claimBonus, defaultProfile, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun, UNLOCKS } from '../src/profile';
 
 function memory(initial: Record<string, string> = {}) {
   const data = { ...initial };
@@ -60,6 +60,65 @@ describe('profile', () => {
     p.tickets = 0;
     expect(buyUnlock(p, 'endless')).toBe(false);
     expect(p.unlocked).toEqual(['bomb']);
+  });
+});
+
+describe('characters that have to be earned', () => {
+  const fresh = (tickets: number) => ({ ...defaultProfile(), tickets });
+
+  it('cannot be bought before their boss is beaten, however many tickets there are', () => {
+    const p = fresh(1000);
+    expect(bossToBeat(p, 'babyDino')).toBe('rex');
+    expect(bossToBeat(p, 'dominik')).toBe('dominik');
+    expect(buyUnlock(p, 'babyDino')).toBe(false);
+    expect(buyUnlock(p, 'dominik')).toBe(false);
+    expect(p.tickets).toBe(1000);
+    expect(p.unlocked).toEqual([]);
+  });
+
+  it('can be bought for tickets once the boss has fallen, and only once', () => {
+    const p = fresh(1000);
+    expect(recordBossBeaten(p, 'rex')).toBe(true);
+    expect(recordBossBeaten(p, 'rex')).toBe(false);
+    expect(bossToBeat(p, 'babyDino')).toBeNull();
+    // (beating King Rex does nothing for Dominik)
+    expect(buyUnlock(p, 'dominik')).toBe(false);
+    const cost = UNLOCKS.find(u => u.id === 'babyDino')!.cost;
+    expect(buyUnlock(p, 'babyDino')).toBe(true);
+    expect(p.tickets).toBe(1000 - cost);
+    expect(buyUnlock(p, 'babyDino')).toBe(false);
+    expect(p.tickets).toBe(1000 - cost);
+    expect(p.unlocked).toEqual(['babyDino']);
+  });
+
+  it('cannot be bought without enough tickets', () => {
+    const p = fresh(UNLOCKS.find(u => u.id === 'dominik')!.cost - 1);
+    recordBossBeaten(p, 'dominik');
+    expect(buyUnlock(p, 'dominik')).toBe(false);
+    p.tickets += 1;
+    expect(buyUnlock(p, 'dominik')).toBe(true);
+    expect(p.tickets).toBe(0);
+  });
+
+  it('remembers the beaten bosses across a save and a load', () => {
+    const store = memory();
+    const p = fresh(5);
+    recordBossBeaten(p, 'rex');
+    saveProfile(store, p);
+    expect(loadProfile(store).beaten).toEqual(['rex']);
+    expect(bossToBeat(loadProfile(store), 'babyDino')).toBeNull();
+  });
+
+  it('lets a player show only a character that is free or bought', () => {
+    const p = fresh(1000);
+    expect(ownedCharacter(p, 'duck')).toBe('duck');
+    expect(ownedCharacter(p, null)).toBeUndefined();
+    expect(ownedCharacter(p, 'dragon')).toBeUndefined();
+    expect(ownedCharacter(p, 'babyDino')).toBeUndefined();
+    recordBossBeaten(p, 'rex');
+    expect(ownedCharacter(p, 'babyDino')).toBeUndefined();
+    buyUnlock(p, 'babyDino');
+    expect(ownedCharacter(p, 'babyDino')).toBe('babyDino');
   });
 });
 

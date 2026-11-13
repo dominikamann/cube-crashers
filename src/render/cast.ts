@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BOT_CHASSIS, type BotChassis, type CharacterId, type Look } from '../characters';
 import { Part, Sculpt } from './figure';
+import { dinoFigure, dominikFigure } from './monster-figure';
 
 /**
  * The player figures. Every character is built from boxes in its own space: it stands on y = 0, looks
@@ -576,7 +577,42 @@ const BOTS: Record<BotChassis, Model> = {
   },
 };
 
-export const MODELS: Record<string, Model> = { ...HUMANS, ...BOTS };
+/** the two that are monsters at player size (see monster-figure.ts) */
+const EARNED: Record<'babyDino' | 'dominik', Model> = {
+  babyDino: {
+    gait: 'waddle',
+    hand: [0.3, 0.6, -0.5],
+    back: [0, 0.22, 0.1],
+    down: 'side',
+    height: 1.3,
+    build: (s, { c, l }) => dinoFigure(s, c, l),
+    move(p, a) {
+      // the tail sweeps, further toward its tip
+      const sweep = a.t * (4 + a.pace * 6);
+      p.tail.rotation.y = Math.sin(sweep) * 0.2;
+      p.tail2.rotation.y = Math.sin(sweep - 0.6) * 0.3;
+      p.tail3.rotation.y = Math.sin(sweep - 1.2) * 0.4;
+      // it snaps with every shot, pants on a dash, and roars now and then when it has nothing to do
+      const roar = a.idle > 3 && (a.idle - 3) % 5 < 1.2;
+      p.jaw.rotation.x = -(0.06 + a.kick * 0.5 + a.dash * 0.4 + (roar ? 0.55 + Math.sin(a.t * 30) * 0.05 : 0) + (a.down ? 0.5 : 0) + (a.win ? Math.abs(Math.sin(a.t * 7)) * 0.5 : 0));
+      if (roar) p.body.rotation.x += 0.18;
+    },
+  },
+  dominik: {
+    gait: 'walk',
+    hand: [0.27, 0.98, -0.52],
+    back: [0, 0.3, 0.0],
+    down: 'back',
+    height: 1.63,
+    build: (s, { c }) => dominikFigure(s, c),
+    move(p, a) {
+      // standing about: he looks round for someone to be angry at
+      p.head.rotation.y = a.idle > 2 ? Math.sin((a.idle - 2) * 1.6) * 0.6 : 0;
+    },
+  },
+};
+
+export const MODELS: Record<string, Model> = { ...HUMANS, ...EARNED, ...BOTS };
 
 export interface Figure {
   model: Model;
