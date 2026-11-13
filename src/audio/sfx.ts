@@ -1,4 +1,4 @@
-import type { EnemyKind, RareKind, SimEvent, WeaponKind } from '../sim/types';
+import type { BossKind, EnemyKind, RareKind, SimEvent, WeaponKind } from '../sim/types';
 import type { SynthParams } from './synth';
 
 export type SoundId =
@@ -54,6 +54,9 @@ export type SoundId =
   | 'bubblePop'
   | 'waveStart'
   | 'bossSpawn'
+  | `roar_${BossKind}`
+  | 'growl_croc'
+  | 'screech_monkey'
   | 'bossPhase'
   | 'bossDead'
   | 'wormSplit'
@@ -234,6 +237,46 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 100, freqEnd: 20, attack: 0.005, sustain: 0.3, decay: 1.0, volume: 0.45 },
     ...notes('square', [523, 659, 784, 1047, 1319], 0.1, 0.11, 0.3).map(n => ({ ...n, at: (n.at ?? 0) + 0.6 })),
   ],
+  // monster voices. King Rex and every T-Rex: a long, deep roar that growls and drops
+  roar_rex: [
+    { wave: 'sawtooth', freq: 120, freqEnd: 46, attack: 0.08, sustain: 0.75, decay: 0.55, volume: 0.34, vibrato: { rate: 31, depth: 16 }, lowpass: 760 },
+    { wave: 'square', freq: 62, freqEnd: 34, attack: 0.1, sustain: 0.7, decay: 0.5, volume: 0.16, vibrato: { rate: 23, depth: 6 }, lowpass: 420 },
+    { wave: 'noise', freq: 400, attack: 0.12, sustain: 0.6, decay: 0.6, volume: 0.3, lowpass: 620 },
+    { wave: 'sawtooth', freq: 210, freqEnd: 90, attack: 0.02, sustain: 0.18, decay: 0.3, volume: 0.14, vibrato: { rate: 38, depth: 30 }, lowpass: 1100 },
+  ],
+  // the Rhino: two snorts through the nose, then a low bellow that rises
+  roar_rhino: [
+    { wave: 'noise', freq: 600, attack: 0.005, sustain: 0.09, decay: 0.1, volume: 0.36, lowpass: 950 },
+    { wave: 'noise', freq: 600, attack: 0.005, sustain: 0.11, decay: 0.14, volume: 0.4, lowpass: 1100, at: 0.24 },
+    { wave: 'sawtooth', freq: 68, freqEnd: 128, attack: 0.06, sustain: 0.4, decay: 0.3, volume: 0.28, vibrato: { rate: 19, depth: 9 }, lowpass: 640, at: 0.42 },
+    { wave: 'square', freq: 45, freqEnd: 60, attack: 0.06, sustain: 0.4, decay: 0.3, volume: 0.14, lowpass: 380, at: 0.42 },
+  ],
+  // the Mega Block: a machine growl, square and grinding
+  roar_megaBlock: [
+    { wave: 'square', freq: 58, freqEnd: 40, attack: 0.03, sustain: 0.5, decay: 0.4, volume: 0.24, vibrato: { rate: 14, depth: 10 }, lowpass: 520 },
+    { wave: 'sawtooth', freq: 116, freqEnd: 80, attack: 0.03, sustain: 0.5, decay: 0.35, volume: 0.14, vibrato: { rate: 52, depth: 22 }, lowpass: 900 },
+    { wave: 'noise', freq: 300, attack: 0.01, sustain: 0.25, decay: 0.5, volume: 0.22, lowpass: 480 },
+  ],
+  // the Segment Worm: a hiss with a dry chitter over it
+  roar_worm: [
+    { wave: 'noise', freq: 3000, attack: 0.04, sustain: 0.45, decay: 0.35, volume: 0.2, lowpass: 5200 },
+    { wave: 'square', freq: 980, freqEnd: 420, attack: 0.01, sustain: 0.4, decay: 0.2, volume: 0.07, vibrato: { rate: 44, depth: 260 }, lowpass: 2600 },
+    { wave: 'sawtooth', freq: 150, freqEnd: 95, attack: 0.05, sustain: 0.4, decay: 0.3, volume: 0.12, vibrato: { rate: 36, depth: 18 }, lowpass: 800 },
+  ],
+  // the Kraken: a deep groan from under water that wavers, with a gurgle
+  roar_kraken: [
+    { wave: 'sine', freq: 150, freqEnd: 58, attack: 0.15, sustain: 0.7, decay: 0.6, volume: 0.36, vibrato: { rate: 6, depth: 22 } },
+    { wave: 'triangle', freq: 300, freqEnd: 120, attack: 0.15, sustain: 0.6, decay: 0.5, volume: 0.14, vibrato: { rate: 11, depth: 40 }, lowpass: 900 },
+    { wave: 'noise', freq: 200, attack: 0.1, sustain: 0.5, decay: 0.6, volume: 0.2, lowpass: 340 },
+  ],
+  growl_croc: [
+    { wave: 'sawtooth', freq: 95, freqEnd: 70, attack: 0.03, sustain: 0.28, decay: 0.2, volume: 0.2, vibrato: { rate: 27, depth: 12 }, lowpass: 700 },
+    { wave: 'noise', freq: 400, attack: 0.02, sustain: 0.2, decay: 0.2, volume: 0.14, lowpass: 600 },
+  ],
+  screech_monkey: [
+    { wave: 'square', freq: 880, freqEnd: 1320, attack: 0.01, sustain: 0.1, decay: 0.08, volume: 0.07, vibrato: { rate: 21, depth: 140 } },
+    { wave: 'square', freq: 1040, freqEnd: 1480, attack: 0.01, sustain: 0.1, decay: 0.1, volume: 0.07, vibrato: { rate: 21, depth: 140 }, at: 0.17 },
+  ],
   wormSplit: [
     { wave: 'noise', freq: 900, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.3, lowpass: 1200 },
     { wave: 'square', freq: 200, freqEnd: 60, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.12 },
@@ -262,7 +305,7 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
 export const MAX_COIN_STREAK_STEPS = 12;
 const SEMITONE = 1.059;
 
-const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'windup_rammer', monkey: 'windup_shooter', trex: 'windup_rammer' };
+const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'growl_croc', monkey: 'screech_monkey', trex: 'roar_rex' };
 
 export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];
@@ -442,7 +485,10 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'buyDenied':
       return one('buildDenied');
     case 'bossSpawn':
-      return one('bossSpawn');
+      // the siren, then the boss itself
+      return [{ id: 'bossSpawn', pitch: 1 }, { id: `roar_${e.kind}`, pitch: 0.9 }];
+    case 'bossAttack':
+      return one(`roar_${e.kind}`);
     case 'bossPhase':
       return one('bossPhase');
     case 'bossDead':

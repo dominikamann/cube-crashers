@@ -1,3 +1,4 @@
+import { clearSpot } from './ground';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { ENEMY_CAP, PLAYER_RADIUS } from '../config/balance';
 import { damagePlayer } from './player';
@@ -95,7 +96,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     if (kind === 'rhino') {
       // the Rhino: a rammer grown to boss size, faster on its feet
       e.hp = e.maxHp = BOSS.rhinoHp * hpScale(s);
-      e.radius = 1.1;
+      e.radius = 1.3;
       e.speed *= 1.5;
     }
     if (kind === 'rex') {
@@ -195,6 +196,7 @@ function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay
 function attack(s: SimState, b: BossState): void {
   const alive = s.players.filter(p => p.downUntil === null);
   if (alive.length === 0) return;
+  s.events.push({ type: 'bossAttack', kind: b.kind });
   if (b.kind === 'megaBlock') {
     const boss = byId(s, b.enemyId!);
     // stomps under every player (and a tower now and then), a leap at one of them (from phase 2), or
@@ -425,7 +427,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
       s.bosses = s.bosses.filter(x => x !== b);
       if (s.bosses.length === 0 && s.brawl) {
         s.brawl.nextAt = s.tick + BRAWL.breakTicks;
-        if (s.brawl.queue.length > 0) s.powerups.push({ id: s.nextId++, kind: 'heart', pos: { ...b.lastPos }, expiresAt: s.tick + 20 * TICK_RATE });
+        if (s.brawl.queue.length > 0) s.powerups.push({ id: s.nextId++, kind: 'heart', pos: { ...clearSpot(s, b.lastPos) }, expiresAt: s.tick + 20 * TICK_RATE });
       }
       return;
     }

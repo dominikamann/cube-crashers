@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
-import { addMonsterParts, MONSTER_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
+import { addMonsterParts, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
@@ -57,6 +57,9 @@ export interface Entities {
   setDamageNumbers(on: boolean): void;
 }
 
+/** the Rhino: grey, long and heavy, with small eyes on its head */
+const RHINO_LOOK = { w: 1, h: 0.9, d: 1.6, day: 0x8d9299, night: 0xa7aebb, eyeY: 0.56, eyeX: 0.2, eye: 0.1 };
+
 /** `overlay` is drawn on top of the finished image (no post-processing), for text like damage numbers */
 export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entities {
   const unit = new THREE.BoxGeometry(1, 1, 1);
@@ -76,6 +79,13 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
     // where the face is: the eyes sit on the body's surface there
     faceAt.set(k, body.frontAt(l.eyeX, l.eyeY - l.h / 2));
   }
+  // the Rhino has a body of its own (in the rules it is a rammer)
+  const rhinoShape = voxelBody('rhino', RHINO_LOOK.w, RHINO_LOOK.h, RHINO_LOOK.d);
+  const rhinoMat = lambert(RHINO_LOOK.day);
+  rhinoMat.vertexColors = true;
+  rhinoMat.side = THREE.DoubleSide;
+  const rhinoBodies = new InstancedPool(scene, rhinoShape.geometry, rhinoMat, 8);
+  const rhinoFace = rhinoShape.frontAt(RHINO_LOOK.eyeX, RHINO_LOOK.eyeY - RHINO_LOOK.h / 2);
   const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
@@ -231,6 +241,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         bodyMats.get(k)!.color.setHex(night > 0.5 ? l.night : l.day);
         bodies.get(k)!.begin();
       }
+      rhinoMat.color.setHex(night > 0.5 ? RHINO_LOOK.night : RHINO_LOOK.day);
+      rhinoBodies.begin();
       const pal = palette();
       eyeMat.color.setHex(night > 0.5 ? 0xffffff : pal.eyes);
       // colour-blind mode: angry eyes and warnings flash hard on and off instead of only being red
@@ -288,10 +300,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const roarSeconds = BOSS.warnTicks / TICK_RATE;
       const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
       for (const e of s.enemies) {
-        const l = ENEMY_LOOK[e.kind];
         // King Rex is a T-Rex grown to boss size
         const kingRex = allBosses(s).some(b => b.kind === 'rex' && b.enemyId === e.id);
         const rhinoBoss = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
+        const l = rhinoBoss ? RHINO_LOOK : ENEMY_LOOK[e.kind];
         const boss = e.kind === 'wormSegment' || e.kind === 'megaBlock' || e.kind === 'kraken' || kingRex || rhinoBoss;
         // in the jungle's tall grass a monster cannot be seen until you are close
         if (grassAt(s, e.pos) && Math.min(Infinity, ...awake.map(p => Math.hypot(p.pos.x - e.pos.x, p.pos.z - e.pos.z))) > 3.5 && (flashUntil.get(e.id) ?? 0) <= time) continue;
@@ -312,7 +324,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const seg = e.kind === 'wormSegment' ? wormAt.get(e.id) : undefined;
         const fromTail = seg ? seg[1] - 1 - seg[0] : 0;
         const wormScale = seg ? (seg[0] === 0 ? 1.3 : fromTail < 3 ? 0.66 + 0.12 * fromTail : 1) : 1;
-        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.2 : e.elite ? 1.4 : wormScale) * worn * pop;
+        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.5 : e.elite ? 1.4 : wormScale) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
@@ -325,13 +337,13 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
         const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
-        const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        const y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
-        // lean into a run or a charge, rear back before one; a hit makes it wobble; a tank sways under its weight
+        // lean into a run or a charge, rear back before one (the Rhino lowers its head and points its horn ahead); a hit makes it wobble; a tank sways under its weight
         // a T-Rex throws its head back for the roar
-        const lean = held ? 0 : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
+        const lean = held ? 0 : rhinoBoss && (e.state === 'charge' || winding) ? (winding ? 0.16 : 0.26) : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
         const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * (boss ? 0.02 : 0.05) : 0);
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
@@ -341,7 +353,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const blinking = e.kind === 'teleporter' && winding && Math.floor(time * 20) % 2 === 0;
         const tint = flashing || blinking ? FLASH : scared ? (blinkOut ? 0xffffff : 0x3d6bff) : e.state === 'stunned' ? 0x777777 : slowed(e.slowUntil) && e.kind !== 'ghost' ? 0x9fe8ff : undefined;
         const pulse = winding ? 1 + 0.12 * Math.abs(Math.sin(time * (e.state === 'fuse' ? 40 : 20))) : 1;
-        bodies.get(e.kind)!.addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
+        (rhinoBoss ? rhinoBodies : bodies.get(e.kind)!).addScaled(e.pos.x, y * pulse, e.pos.z, yaw, scale * pulse * sxz * flap, scale * pulse * squash, scale * pulse * sxz, tint, lean, tilt);
         addMonsterParts(partsLit, partsGlow, e.kind, isNight ? l.night : l.day, e.id, {
           x: e.pos.x, y: y * pulse, z: e.pos.z, yaw,
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
@@ -370,7 +382,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           lanes.addStretched(tmpFrom, yaw, e.radius * 2, e.state === 'charge' ? e.chargeLeft : 5.5);
         }
         if (e.kind === 'rammer') {
-          for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);
+          if (!rhinoBoss) for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);
           if (e.state === 'windup' || e.state === 'charge') {
             tmpFrom.set(e.pos.x, 0.06, e.pos.z);
             lanes.addStretched(tmpFrom, yaw, e.radius * 2, e.state === 'charge' ? e.chargeLeft : 12);
@@ -395,7 +407,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
         const ey = y - (l.h / 2 - l.eyeY) * scale * squash;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const front = (faceAt.get(e.kind)! + 0.02) * scale * sxz;
+        const front = ((rhinoBoss ? rhinoFace : faceAt.get(e.kind)!) + 0.02) * scale * sxz;
         // a blink every few seconds; the pupils follow the nearest player
         const blink = (time + e.id * 0.37) % 4 < 0.12 ? 0.12 : 1;
         let look = 0;
@@ -419,6 +431,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
+      rhinoBodies.end();
       // the Kraken's grab: a tentacle from its body to the player it holds, wriggling as it drags them in
       const grabber = allBosses(s).find(b => b.kind === 'kraken' && b.grab);
       const grab = grabber?.grab ?? null;

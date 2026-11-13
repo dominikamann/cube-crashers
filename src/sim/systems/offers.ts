@@ -1,3 +1,4 @@
+import { clearSpot } from './ground';
 import { PLAYER_RADIUS } from '../config/balance';
 import { ALL_PERKS, PERK_MAX } from '../config/perks';
 import { ALL_RARE, RARE } from '../config/rare';
@@ -101,7 +102,7 @@ export function placeStartCrates(s: SimState): void {
   const spots = [...s.map.crateSpots];
   for (let i = 0; i < START_CRATES && spots.length > 0; i++) {
     const [pos] = spots.splice(Math.floor(s.rng.next() * spots.length), 1);
-    s.crates.push({ id: s.nextId++, pos: { ...pos } });
+    s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, pos) } });
   }
 }
 

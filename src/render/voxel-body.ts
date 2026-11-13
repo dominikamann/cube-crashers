@@ -20,7 +20,23 @@ interface Shape {
 const round = (u: number, v: number, w: number, p: number, limit = 1.1) => Math.abs(u) ** p + Math.abs(v) ** p + Math.abs(w) ** p <= limit;
 const BELLY: [number, number, number] = [1.45, 1.4, 1.2];
 
-const SHAPES: Partial<Record<EnemyKind, Shape>> = {
+/** a body that is not a monster kind of its own: the Rhino is a rammer in the game's rules */
+export type BodyKind = EnemyKind | 'rhino';
+
+const SHAPES: Partial<Record<BodyKind, Shape>> = {
+  // a rhino: a heavy barrel with a hump over the shoulders, and a long head held low that narrows to a square
+  // lip; a lighter belly and dark folds where its armour plates meet (legs, horns, ears and tail are parts)
+  rhino: {
+    n: [10, 10, 18],
+    inside: (u, v, w) => {
+      if ((u / 0.9) ** 2 + ((v - 0.05) / 0.8) ** 2 + ((w + 0.3) / 0.72) ** 4 <= 1) return true;
+      if ((u / 0.62) ** 2 + ((v - 0.55) / 0.45) ** 2 + ((w - 0.02) / 0.36) ** 2 <= 1) return true;
+      if (w < 0.25) return false;
+      const t = (w - 0.3) / 0.7;
+      return Math.abs(u) <= 0.56 - 0.16 * t && v >= -0.72 + 0.1 * t && v <= 0.36 - 0.3 * t;
+    },
+    tone: (_u, v, w) => (v < -0.5 && w < 0.3 ? [1.2, 1.18, 1.12] : (Math.abs(w + 0.5) < 0.06 || Math.abs(w - 0.3) < 0.06) && v > -0.5 ? 0.72 : w > 0.9 ? 0.85 : v > 0.7 ? 0.9 : 1),
+  },
   // a round drop, flat underneath, with a lighter belly
   blob: { n: [9, 9, 9], inside: (u, v, w) => round(u, v < 0 ? v * 0.7 : v, w, 2.6), tone: (_u, v, w) => (w > 0.4 && v < 0.1 ? 1.3 : 1) },
   // a wedge: narrow nose, wide hips, stripes down its back
@@ -116,7 +132,7 @@ const hash = (i: number, j: number, k: number) => {
 };
 
 /** The body of `kind` in a box of w x h x d tiles (a plain box for kinds without a shape). */
-export function voxelBody(kind: EnemyKind, w: number, h: number, d: number): VoxelBody {
+export function voxelBody(kind: BodyKind, w: number, h: number, d: number): VoxelBody {
   const shape = SHAPES[kind];
   if (!shape) return { geometry: new THREE.BoxGeometry(w, h, d), frontAt: () => d / 2 };
   const [nx, ny, nz] = shape.n;

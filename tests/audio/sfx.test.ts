@@ -94,6 +94,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   bought: { type: 'bought', playerId: 0, offer: 0, kind: 'heal' },
   buyDenied: { type: 'buyDenied', playerId: 0, offer: 0 },
   bossSpawn: { type: 'bossSpawn', kind: 'worm' },
+  bossAttack: { type: 'bossAttack', kind: 'worm' },
   bossPhase: { type: 'bossPhase', phase: 2 },
   bossDead: { type: 'bossDead', pos: p },
   wormSplit: { type: 'wormSplit', pos: p },

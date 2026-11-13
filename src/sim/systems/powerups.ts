@@ -1,3 +1,4 @@
+import { spotClear } from './ground';
 import type { PowerupKind, Player, SimState } from '../types';
 import { dist } from '../util';
 import { explode } from './combat';
@@ -40,7 +41,7 @@ function apply(s: SimState, p: Player, kind: PowerupKind): void {
 export function updatePowerups(s: SimState): void {
   if (s.tick >= s.nextPowerupAt) {
     s.nextPowerupAt = s.tick + POWERUP.intervalTicks;
-    const free = s.map.powerSpots.filter(sp => !s.powerups.some(pu => pu.pos.x === sp.x && pu.pos.z === sp.z));
+    const free = s.map.powerSpots.filter(sp => spotClear(s, sp));
     if (free.length > 0) {
       const pu = { id: s.nextId++, kind: s.rng.pick(KINDS), pos: { ...s.rng.pick(free) }, expiresAt: s.tick + POWERUP.lifetimeTicks };
       s.powerups.push(pu);

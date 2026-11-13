@@ -286,24 +286,27 @@ export interface PartPose {
 
 /** Adds the parts of one monster to the pools (lit ones and glowing ones). */
 /**
- * The Rhino (a rammer grown to boss size) wears these instead of the rammer's parts: thick legs, a big horn and
+ * The Rhino (a rammer in the rules, with a body of its own) wears these: thick legs, a big horn and
  * a small one on its nose, ears, a heavy brow and a short tail.
  */
+/** how far the Rhino's body is lifted for its legs */
+export const RHINO_LIFT = 0.23;
 export const RHINO_PARTS: Part[] = [
-  ...fourLegs(0.42, -0.5, 0.44, 0.3, 0.26),
-  { at: [0, 0.12, -0.78], size: [0.1, 0.1, 0.26], color: 'dark', anim: 'wag', amp: 0.5 },
-  // the horns: the big one in three steps that taper, a small one behind it
-  { at: [0, 0.02, 0.74], size: [0.26, 0.26, 0.2], color: 0xf2ead8 },
-  { at: [0, 0.2, 0.84], size: [0.18, 0.24, 0.16], color: 0xf2ead8 },
-  { at: [0, 0.4, 0.9], size: [0.1, 0.2, 0.1], color: 0xfff8ea },
-  { at: [0, 0.22, 0.5], size: [0.14, 0.16, 0.12], color: 0xf2ead8 },
-  // ears and a heavy brow over the eyes
-  { at: [-0.36, 0.46, 0.3], size: [0.14, 0.2, 0.1], color: 'dark' },
-  { at: [0.36, 0.46, 0.3], size: [0.14, 0.2, 0.1], color: 'dark' },
-  { at: [0, 0.34, 0.56], size: [0.86, 0.1, 0.12], color: 'dark' },
-  // armour plates along its back
-  { at: [0, 0.44, -0.05], size: [0.7, 0.08, 0.5], color: 'light' },
-  { at: [0, 0.44, -0.5], size: [0.56, 0.08, 0.3], color: 'light' },
+  // thick legs under the shoulders and the hips
+  { at: [-0.3, -0.5, 0.1], size: [0.26, 0.36, 0.26], color: 'dark', anim: 'leg', ph: 0, amp: 0.1 },
+  { at: [0.3, -0.5, 0.1], size: [0.26, 0.36, 0.26], color: 'dark', anim: 'leg', ph: PI, amp: 0.1 },
+  { at: [-0.3, -0.5, -0.58], size: [0.26, 0.36, 0.26], color: 'dark', anim: 'leg', ph: PI, amp: 0.1 },
+  { at: [0.3, -0.5, -0.58], size: [0.26, 0.36, 0.26], color: 'dark', anim: 'leg', ph: 0, amp: 0.1 },
+  // a thin tail
+  { at: [0, 0.05, -0.84], size: [0.06, 0.06, 0.22], color: 'dark', anim: 'wag', amp: 0.5 },
+  // the horns on its snout: the big one in three steps that taper, a small one behind it
+  { at: [0, 0.14, 0.68], size: [0.2, 0.2, 0.2], color: 0xf2ead8 },
+  { at: [0, 0.32, 0.72], size: [0.14, 0.2, 0.14], color: 0xf2ead8 },
+  { at: [0, 0.48, 0.75], size: [0.08, 0.16, 0.08], color: 0xfff8ea },
+  { at: [0, 0.2, 0.46], size: [0.13, 0.16, 0.13], color: 0xf2ead8 },
+  // ears that twitch
+  { at: [-0.2, 0.28, 0.27], size: [0.1, 0.18, 0.08], color: 'dark', anim: 'sway', amp: 0.15 },
+  { at: [0.2, 0.28, 0.27], size: [0.1, 0.18, 0.08], color: 'dark', anim: 'sway', ph: PI, amp: 0.15 },
 ];
 
 /**
@@ -326,11 +329,17 @@ export const WORM_PARTS: Record<'head' | 'body' | 'tail', Part[]> = {
     { at: [-0.24, 0.82, 0.3], size: [0.12, 0.12, 0.12], color: WORM_GLOW, glow: true, anim: 'sway', amp: 0.3 },
     { at: [0.24, 0.82, 0.3], size: [0.12, 0.12, 0.12], color: WORM_GLOW, glow: true, anim: 'sway', ph: PI, amp: 0.3 },
     { at: [0, 0.48, -0.1], size: [0.5, 0.12, 0.6], color: 'light' },
+    // a crest of two short spikes
+    { at: [0, 0.62, -0.25], size: [0.2, 0.18, 0.2], color: 0xf2ead8 },
+    { at: [0, 0.78, -0.25], size: [0.1, 0.16, 0.1], color: 0xfff8ea },
   ],
   body: [
     ...wormLegs,
     { at: [0, 0.47, 0], size: [0.6, 0.1, 0.5], color: 'light' },
-    { at: [0, 0.6, 0], size: [0.16, 0.2, 0.16], color: 'dark' },
+    // a tall bone spike on every segment, in two steps that taper
+    { at: [0, 0.62, 0], size: [0.24, 0.22, 0.24], color: 0xf2ead8 },
+    { at: [0, 0.84, 0], size: [0.14, 0.24, 0.14], color: 0xfff8ea },
+    { at: [0, 1.0, 0], size: [0.07, 0.12, 0.07], color: 0xffffff },
     { at: [-0.49, 0.08, 0], size: [0.04, 0.18, 0.18], color: WORM_GLOW, glow: true },
     { at: [0.49, 0.08, 0], size: [0.04, 0.18, 0.18], color: WORM_GLOW, glow: true },
   ],

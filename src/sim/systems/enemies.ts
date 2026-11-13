@@ -120,9 +120,13 @@ function heal(s: SimState, e: Enemy): void {
   if (healed.length > 0) s.events.push({ type: 'enemyHealed', pos: { ...e.pos }, targets: healed });
 }
 
-/** how this monster charges: the rammer's long run or the crocodile's short lunge */
 /** how far the Rhino's charge throws a player it hits */
 export const RHINO_FLING = 9;
+/** how fast a charging monster can turn toward its target, in radians per second */
+export const CHARGE_STEER = 0.4;
+/** how wide a boss is to the walls while it squeezes through a gap */
+const SQUEEZE_RADIUS = 0.45;
+/** how this monster charges: the rammer's long run or the crocodile's short lunge */
 const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : RAMMER);
 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
@@ -141,6 +145,18 @@ function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
 function charge(s: SimState, e: Enemy, players: Player[]): void {
   const RAMMER = chargeOf(e);
   const step = RAMMER.speed * DT;
+  // it follows whoever it is after a little: a small step aside is not enough, you have to run. Only toward
+  // someone still ahead of it, and never faster than CHARGE_STEER
+  const prey = nearestPlayer(players, e.pos);
+  if (prey && prey.d > 0.5) {
+    const to = unit(e.pos, prey.p.pos);
+    const cross = e.dir.x * to.z - e.dir.z * to.x, dot = e.dir.x * to.x + e.dir.z * to.z;
+    if (dot > 0) {
+      const a = Math.max(-CHARGE_STEER * DT, Math.min(CHARGE_STEER * DT, Math.atan2(cross, dot)));
+      const c = Math.cos(a), sn = Math.sin(a);
+      e.dir = { x: e.dir.x * c - e.dir.z * sn, z: e.dir.x * sn + e.dir.z * c };
+    }
+  }
   const hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, e.radius, BLOCKS_ENEMY);
   e.chargeLeft -= step;
   const stun = (ticks: number) => {
@@ -385,7 +401,15 @@ export function updateEnemies(s: SimState): void {
       vz = e.knock.z;
     }
     if (vx !== 0 || vz !== 0) {
+      const fromX = e.pos.x, fromZ = e.pos.z;
       const hit = moveCircle(s.map, e.pos, vx * DT, vz * DT, e.radius, BLOCKS_ENEMY);
+      // a boss too wide for the way ahead squeezes through instead of standing still: the maps are built for
+      // small monsters, and the path it follows may lead through a gap narrower than its body
+      if ((hit.hitX || hit.hitZ) && e.radius > SQUEEZE_RADIUS && isBossBody(s, e) && Math.hypot(e.pos.x - fromX, e.pos.z - fromZ) < Math.hypot(vx, vz) * DT * 0.5) {
+        e.pos.x = fromX;
+        e.pos.z = fromZ;
+        moveCircle(s.map, e.pos, vx * DT, vz * DT, SQUEEZE_RADIUS, BLOCKS_ENEMY);
+      }
       const knock = Math.hypot(e.knock.x, e.knock.z);
       if ((hit.hitX || hit.hitZ) && knock >= RARE.blower.slamSpeed && s.tick >= e.slamUntil) {
         e.slamUntil = s.tick + RARE.blower.slamCooldownTicks;

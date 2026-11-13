@@ -1,3 +1,4 @@
+import { spotClear } from './ground';
 import { carryingCube, jumpTicks } from './versus';
 import { perchable } from '../map/perch';
 import { PLAYER_RADIUS } from '../config/balance';
@@ -33,7 +34,7 @@ function inCone(from: Vec2, aim: Vec2, target: Vec2, range: number, halfConeDeg:
 }
 
 function placeJetpack(s: SimState, spots: Vec2[]): void {
-  const free = spots.filter(sp => !s.crates.some(c => c.pos.x === sp.x && c.pos.z === sp.z) && !s.powerups.some(pu => pu.pos.x === sp.x && pu.pos.z === sp.z));
+  const free = spots.filter(sp => spotClear(s, sp));
   if (free.length === 0) return;
   s.jetpacks.push({ id: s.nextId++, pos: { ...s.rng.pick(free) } });
 }

@@ -1,3 +1,4 @@
+import { clearSpot } from './ground';
 import { logoSpots } from '../map/logo-spots';
 import { BLOCKS_WALKER, nearestFree } from '../map/tilemap';
 import type { SimState, Vec2 } from '../types';
@@ -31,6 +32,6 @@ export function shotAtWall(s: SimState, pos: Vec2): void {
   const roll = s.rng.next();
   const prize = roll < LOGO_EGG.coinChance ? 'coins' : roll < LOGO_EGG.coinChance + LOGO_EGG.crateChance ? 'crate' : 'nothing';
   if (prize === 'coins') dropCoins(s, front, LOGO_EGG.coins);
-  if (prize === 'crate') s.crates.push({ id: s.nextId++, pos: front });
+  if (prize === 'crate') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, front) } });
   s.events.push({ type: 'logoEgg', pos: front, prize });
 }

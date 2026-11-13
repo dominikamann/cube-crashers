@@ -1,3 +1,4 @@
+import { clearSpot } from './ground';
 import {
   ALARM_MAX,
   ALARM_SIZE_STEP,
@@ -174,7 +175,7 @@ function destroyNest(s: SimState, n: Nest): void {
   s.events.push({ type: 'nestDestroyed', id: n.id, pos: { ...n.pos } });
   explode(s, n.pos, NEST_BLAST.radius, { enemy: NEST_BLAST.damage }, 'explosion');
   dropCoins(s, n.pos, NEST_BLAST.coins);
-  s.crates.push({ id: s.nextId++, pos: { x: n.pos.x, z: n.pos.z + 1.5 } });
+  s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, { x: n.pos.x, z: n.pos.z + 1.5 }) } });
   if (s.alarm.level > 0) {
     s.alarm.level--;
     s.events.push({ type: 'alarmChanged', level: s.alarm.level });

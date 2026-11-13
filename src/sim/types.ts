@@ -623,6 +623,8 @@ export type SimEvent =
   | { type: 'bought'; playerId: number; offer: number; kind: ShopOffer['kind'] }
   | { type: 'buyDenied'; playerId: number; offer: number }
   | { type: 'bossSpawn'; kind: BossKind }
+  /** a boss begins an attack (its voice) */
+  | { type: 'bossAttack'; kind: BossKind }
   | { type: 'krakenGrab'; playerId: number }
   | { type: 'krakenRelease'; playerId: number }
   | { type: 'bossPhase'; phase: 2 | 3 }

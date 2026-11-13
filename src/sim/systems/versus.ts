@@ -1,3 +1,4 @@
+import { clearSpot, spotClear } from './ground';
 import { JUMP_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
@@ -280,7 +281,7 @@ function dropLoot(s: SimState, p: Player): void {
     });
     s.events.push({ type: 'offerOpened', pos: { ...at } });
   }
-  if (p.jetpack) s.jetpacks.push({ id: s.nextId++, pos: { ...at } });
+  if (p.jetpack) s.jetpacks.push({ id: s.nextId++, pos: { ...clearSpot(s, at) } });
 }
 
 export function versusDeath(s: SimState, p: Player, attackerId: number | undefined): void {
@@ -427,7 +428,7 @@ export function updateVersus(s: SimState): void {
 
   if (s.tick >= v.nextCrateAt && v.rule !== 'gungame') {
     v.nextCrateAt = s.tick + VERSUS.crateEveryTicks;
-    const free = s.map.crateSpots.filter(c => !s.crates.some(x => dist(x.pos, c) < 1));
+    const free = s.map.crateSpots.filter(c => spotClear(s, c));
     if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) } });
   }
 

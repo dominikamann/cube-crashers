@@ -1,3 +1,4 @@
+import { clearSpot } from './ground';
 import { shotAtWall } from './logo-egg';
 import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, COIN_LIFETIME_TICKS, COMBO_MAX_MULT, COMBO_STEP, COMBO_TICKS, BOSS_BODY_RESIST } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
@@ -91,7 +92,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
       spawnEnemy(s, 'splitling', at, { hordeId: e.hordeId ?? undefined });
     }
   }
-  if (e.elite) s.crates.push({ id: s.nextId++, pos: { ...e.pos } });
+  if (e.elite) s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, e.pos) } });
   // a bomber that is shot goes off at once, but only hurts its own kind
   if (e.kind === 'bomber') explode(s, e.pos, BOMBER.deathRadius, { enemy: BOMBER.enemy }, 'explosion', byPlayerId);
 }
