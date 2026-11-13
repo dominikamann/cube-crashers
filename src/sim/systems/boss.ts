@@ -16,6 +16,12 @@ export const BOSS = {
   wormSpeed: 2.2,
   wormMinSplit: 3,
   wormMaxWorms: 4,
+  /** a worm cut down to a few segments is this much faster than a whole one */
+  wormShortBoost: 0.6,
+  /** its lunge: this many strikes in a line ahead of the head; its tail whip: this many in a ring around the tail */
+  wormLunge: 5,
+  wormWhip: 8,
+  wormWhipRadius: 2.2,
   /** share of Mega Block attacks that are stomps (the rest are shockwave lines) */
   stompChance: 0.6,
   /** the Mega Block's leap: from phase 2 on, this share of its attacks; where it lands, how long the jump takes */
@@ -246,11 +252,38 @@ function attack(s: SimState, b: BossState): void {
       for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
     }
   } else {
-    // the worm strikes at a player or a tower
-    const target = s.towers.length > 0 && s.rng.next() < 0.35 ? s.rng.pick(s.towers).pos : s.rng.pick(alive).pos;
-    telegraph(s, target, BOSS.strikeRadius, BOSS.strikeDamage);
+    const roll = s.rng.next();
+    const worms = b.worms.map(w => w.map(id => byId(s, id)).filter((e): e is Enemy => !!e)).filter(w => w.length > 0);
+    if (roll < 0.4 || worms.length === 0) {
+      // a strike at a player or a tower (from the second phase on: under every player)
+      const tower = s.towers.length > 0 && s.rng.next() < 0.35;
+      if (tower) telegraph(s, s.rng.pick(s.towers).pos, BOSS.strikeRadius, BOSS.strikeDamage);
+      else if (b.phase >= 2) for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
+      else telegraph(s, s.rng.pick(alive).pos, BOSS.strikeRadius, BOSS.strikeDamage);
+    } else if (roll < 0.75 || b.phase < 2) {
+      // a lunge: every head snaps at the nearest player, a line of strikes ahead of it
+      for (const w of worms) {
+        const head = w[0];
+        const p = alive.reduce((a, c) => (dist(c.pos, head.pos) < dist(a.pos, head.pos) ? c : a));
+        const d = dist(head.pos, p.pos) || 1;
+        const dir = { x: (p.pos.x - head.pos.x) / d, z: (p.pos.z - head.pos.z) / d };
+        for (let i = 1; i <= BOSS.wormLunge; i++) telegraph(s, { x: head.pos.x + dir.x * i * BOSS.waveStep, z: head.pos.z + dir.z * i * BOSS.waveStep }, 1.1, BOSS.strikeDamage, BOSS.warnTicks + i * 4);
+      }
+    } else {
+      // a tail whip: a ring around the tail of every worm, so staying behind it is not safe either
+      for (const w of worms) {
+        const tail = w[w.length - 1];
+        for (let i = 0; i < BOSS.wormWhip; i++) {
+          const a = (i / BOSS.wormWhip) * Math.PI * 2;
+          telegraph(s, { x: tail.pos.x + Math.cos(a) * BOSS.wormWhipRadius, z: tail.pos.z + Math.sin(a) * BOSS.wormWhipRadius }, 1.2, BOSS.strikeDamage, 45);
+        }
+      }
+    }
   }
 }
+
+/** how much faster a worm of this many segments crawls than a whole one */
+export const wormPace = (segments: number) => 1 + BOSS.wormShortBoost * Math.max(0, 1 - (segments - BOSS.wormMinSplit) / (BOSS.wormSegments - BOSS.wormMinSplit));
 
 /** Moves the worms: each head steers toward the players, the body follows like a chain. */
 function moveWorms(s: SimState, b: BossState): void {
@@ -263,7 +296,7 @@ function moveWorms(s: SimState, b: BossState): void {
     let dir = field ? flowDir(s.map, field, head.pos) : { x: 0, z: 0 };
     const wiggle = Math.sin(s.tick * 0.08 + head.id) * 0.5;
     dir = { x: dir.x - dir.z * wiggle, z: dir.z + dir.x * wiggle };
-    const slow = head.slowUntil > s.tick ? 0.5 : 1;
+    const slow = (head.slowUntil > s.tick ? 0.5 : 1) * wormPace(segs.length);
     moveCircle(s.map, head.pos, (dir.x * BOSS.wormSpeed * slow + head.knock.x) * DT, (dir.z * BOSS.wormSpeed * slow + head.knock.z) * DT, head.radius, BLOCKS_ENEMY);
     head.knock.x *= 0.85;
     head.knock.z *= 0.85;

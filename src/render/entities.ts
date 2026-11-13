@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { EnemyKind, SimEvent, SimState } from '../sim/types';
 import { FLASH, glowMat, InstancedPool, lambert } from './pool';
 import type { Theme } from './theme';
-import { addMonsterParts, MONSTER_LIFT, RHINO_PARTS } from './monster-parts';
+import { addMonsterParts, MONSTER_LIFT, RHINO_PARTS, WORM_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
@@ -252,6 +252,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       plates.begin();
       const leapOf = (id: number) => allBosses(s).find(b => b.enemyId === id)?.leap ?? null;
       const heads = new Set(allBosses(s).flatMap(b => b.worms.map(w => w[0])));
+      // where each segment sits in its worm: [index, length]
+      const wormAt = new Map<number, [number, number]>();
+      for (const b of allBosses(s)) for (const w of b.worms) w.forEach((id, i) => wormAt.set(id, [i, w.length]));
       const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
@@ -305,7 +308,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         // hurt monsters have lost some of their pixels: they shrink a little (bosses keep their size)
         const worn = boss ? 1 : 0.72 + 0.28 * Math.max(0, e.hp / e.maxHp);
         // the Rhino: a rammer grown to boss size
-        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.2 : e.elite ? 1.4 : 1) * worn * pop;
+        // the worm: a big head, a body that tapers into the tail
+        const seg = e.kind === 'wormSegment' ? wormAt.get(e.id) : undefined;
+        const fromTail = seg ? seg[1] - 1 - seg[0] : 0;
+        const wormScale = seg ? (seg[0] === 0 ? 1.3 : fromTail < 3 ? 0.66 + 0.12 * fromTail : 1) : 1;
+        const scale = (kingRex ? 2.4 : rhinoBoss ? 2.2 : e.elite ? 1.4 : wormScale) * worn * pop;
         const held = e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.state === 'stunned';
         // squash and stretch: hoppers squash when they land and stretch on the way up; swarmers flap
         const hop = Math.abs(Math.sin(time * 8 + e.id * 1.7));
@@ -318,7 +325,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         const sxz = 1 / Math.sqrt(squash);
         // the teleporter floats; fish and sharks swim a little above the sea bed
         const hover = e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : e.kind === 'megaBlock' && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * 3.2 : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0;
-        const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
+        const y = (l.h / 2) * scale * squash + (MONSTER_LIFT[e.kind] ?? 0) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         const yaw = Math.atan2(e.dir.x, e.dir.z);
         const winding = e.state === 'windup' || e.state === 'fuse';
         const flashing = (flashUntil.get(e.id) ?? 0) > time;
@@ -340,7 +347,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           sx: scale * pulse * sxz, sy: scale * pulse * squash, sz: scale * pulse * sxz,
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
-        }, rhinoBoss ? RHINO_PARTS : undefined);
+        }, rhinoBoss ? RHINO_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';

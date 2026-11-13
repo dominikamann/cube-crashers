@@ -306,6 +306,43 @@ export const RHINO_PARTS: Part[] = [
   { at: [0, 0.44, -0.5], size: [0.56, 0.08, 0.3], color: 'light' },
 ];
 
+/**
+ * The Segment Worm is a giant centipede: a head with pincers and feelers, a body of segments that each have a
+ * pair of legs, a back spike and glowing spots, and a tail that ends in a stinger.
+ */
+const WORM_GLOW = 0x7dfcff;
+const wormLegs: Part[] = [
+  { at: [-0.6, -0.36, 0], size: [0.3, 0.1, 0.14], color: 'dark', anim: 'leg', ph: 0, amp: 0.16 },
+  { at: [0.6, -0.36, 0], size: [0.3, 0.1, 0.14], color: 'dark', anim: 'leg', ph: PI, amp: 0.16 },
+];
+export const WORM_PARTS: Record<'head' | 'body' | 'tail', Part[]> = {
+  head: [
+    ...wormLegs,
+    // pincers that open and close, feelers with glowing tips, a crest
+    { at: [-0.3, -0.2, 0.62], size: [0.12, 0.12, 0.4], color: 'light', anim: 'wag', amp: 0.35 },
+    { at: [0.3, -0.2, 0.62], size: [0.12, 0.12, 0.4], color: 'light', anim: 'wag', ph: PI, amp: 0.35 },
+    { at: [-0.24, 0.6, 0.3], size: [0.06, 0.36, 0.06], color: 'dark', anim: 'sway', amp: 0.3 },
+    { at: [0.24, 0.6, 0.3], size: [0.06, 0.36, 0.06], color: 'dark', anim: 'sway', ph: PI, amp: 0.3 },
+    { at: [-0.24, 0.82, 0.3], size: [0.12, 0.12, 0.12], color: WORM_GLOW, glow: true, anim: 'sway', amp: 0.3 },
+    { at: [0.24, 0.82, 0.3], size: [0.12, 0.12, 0.12], color: WORM_GLOW, glow: true, anim: 'sway', ph: PI, amp: 0.3 },
+    { at: [0, 0.48, -0.1], size: [0.5, 0.12, 0.6], color: 'light' },
+  ],
+  body: [
+    ...wormLegs,
+    { at: [0, 0.47, 0], size: [0.6, 0.1, 0.5], color: 'light' },
+    { at: [0, 0.6, 0], size: [0.16, 0.2, 0.16], color: 'dark' },
+    { at: [-0.49, 0.08, 0], size: [0.04, 0.18, 0.18], color: WORM_GLOW, glow: true },
+    { at: [0.49, 0.08, 0], size: [0.04, 0.18, 0.18], color: WORM_GLOW, glow: true },
+  ],
+  tail: [
+    ...wormLegs,
+    { at: [0, 0.47, 0], size: [0.6, 0.1, 0.5], color: 'light' },
+    // the stinger
+    { at: [0, 0.1, -0.7], size: [0.16, 0.16, 0.5], color: 'light', anim: 'wag', amp: 0.6 },
+    { at: [0, 0.1, -1.0], size: [0.1, 0.1, 0.2], color: WORM_GLOW, glow: true, anim: 'wag', amp: 0.6 },
+  ],
+};
+
 export function addMonsterParts(lit: InstancedPool, glow: InstancedPool, kind: EnemyKind, bodyColor: number, id: number, p: PartPose, override?: Part[]): void {
   const parts = override ?? MONSTER_PARTS[kind];
   if (!parts) return;

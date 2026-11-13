@@ -634,7 +634,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush. | Red rings |
 | **Mega Block** | Boss of floor 3. | Red rings, marked lines |
-| **Segment Worm** | Boss of floor 5. Splits when hit in the middle. | Marked strike areas |
+| **Segment Worm** | Boss of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health. Drops a crate. | Magenta ring |
 
 ---
