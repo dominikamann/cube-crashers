@@ -287,7 +287,7 @@ Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop 
 
 **One player hosts:**
 1. *Settings → Your name*: enter a name (it is shown to the others).
-2. Click **LAN party → Host LAN game**. Your game shows up on the network automatically.
+2. Click **LAN party → Host LAN game** (the card on the right). Your game shows up on the network automatically.
 3. In the lobby:
    - **Game**: pick what to play: **Tower Run**, **Single floor**, **Boss Rush**, **Boss Brawl**, **Endless**
      (once unlocked) or **Versus**. Nothing starts yet.
@@ -300,7 +300,7 @@ Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop 
 
 **Everyone else joins:**
 1. Enter a name in *Settings* as well.
-2. Click **LAN party → Join LAN game**. Games on your network appear in a list after a moment; click one.
+2. Click **LAN party → Join LAN game** (the card on the left). Games on your network appear in a list after a moment; click one.
 3. If no game shows up (some routers block it), type the host's address into the field, e.g. `192.168.1.20`.
    The host finds it in the system network settings.
 
@@ -441,7 +441,8 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
 | **Coin-Op Chaos** | A score race where a random rule changes every 30 seconds: *turbo* (everyone runs faster), *moon* (long floaty jumps), *rapid fire*, *swords only*, *boom* (whoever goes down explodes) or *double damage*. |
 
 - **Free for all** or **Red vs Blue** (teams are evened out; on the LAN everyone can wish for a team).
-- **Monsters roam too**: hordes join the fight now and then.
+- **Chaos**: *Monsters roam too* lets hordes join the fight now and then; *Monsters, and rarely a boss* also
+  brings a smaller King Rex or Rhino into the arena every minute or two. Beating it wins nothing but a crate.
 - **Discovery**: a new match every time, through every rule, teams and free for all taking turns, a new map,
   now and then monsters. The default.
 - Towers have an owner and fire at rivals, but only at a third of their strength.
@@ -531,7 +532,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Candy Cannon** | Spread of candy pellets. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
-| **Disco Ball** | Zaps the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. |
+| **Disco Ball** | A mirror ball flies up, spins and zaps the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
@@ -624,7 +625,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Splitter** | Splits into two small splitlings. | – |
 | **Shooter** | Keeps its distance and fires slow red bullets. Jump over them. | Aim line on the ground |
 | **Bomber** | Runs at you and blows up. Shoot it first and it explodes among its friends. | Blinking fuse, red ring |
-| **Rammer** | Charges in a straight line; stunned when it hits a wall. Step aside. | Red lane on the ground |
+| **Rammer** | Charges at you and turns a little as it runs; stunned when it hits a wall. A small step aside is not enough: run. | Red lane on the ground |
 | **Glitch Swarmer** | Small and weak, flies over walls during the shaft ride. | – |
 | **Shielder** | Holds a shield in front: shots from the front do little. Get behind it, or throw a bomb or hotdog over it. | Silver shield |
 | **Healer** | Stays back and mends the monsters around it. Take it out first. | Green cross, green sparkles |
@@ -656,7 +657,8 @@ Chosen on the title screen (alone) or in the lobby (by the host).
 | High | ×1.25 | ×1.25 | ×1.2 | 3 | faster | ×1.5 |
 | Ultra High | ×1.5 | ×1.5 | ×1.4 | 2 | much faster | ×2 |
 
-On **Ultra Low** and **Low** you heal slowly (6 or 3 health per second) after 4 seconds without being hit.
+On **Ultra Low** and **Low** you heal slowly (6 or 3 health per second) after 4 seconds without being hit;
+half as fast while a boss is after you.
 On every level, a crowd of monsters around you hurts less than the sum of its members: the strongest one hits in
 full, every further one at 30 %.
 
@@ -792,6 +794,7 @@ docs/         gameplay GIF and screenshots
 - [x] Three more worlds (Pixel Jungle, Server Farm, Sunken Arcade), Boss Rush with King Rex and the Kraken, a rideable unicorn
 - [x] Ladders, a hidden heart, lives per player in a team, bot levels in versus, a countdown before every game
 - [x] Boss Brawl: every boss in one arena, one or two at a time, and the Rhino
+- [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [ ] More in [IDEAS.md](IDEAS.md): a classic Lane mode, new floors and bosses, OpenStreetMap cities, plugins. Add your own!
 
 ## Contributing

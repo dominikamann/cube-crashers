@@ -56,16 +56,25 @@ export function releaseWildBoss(s: SimState): boolean {
   const alive = s.players.filter(p => p.downUntil === null);
   const near = s.map.waypoints.filter(w => dist(w, s.map.elevator) < 9 && alive.every(p => dist(p.pos, w) > 6));
   const spot = near.sort((a, b) => dist(a, s.map.elevator) - dist(b, s.map.elevator))[0] ?? s.map.elevator;
-  spawnBoss(s, plan.kind, nearestFree(s.map, spot, 1.2, BLOCKS_ENEMY));
-  const b = s.boss as SimState['boss'];
-  if (!b) return false;
-  b.wild = true;
-  const body = s.enemies.find(e => e.id === b.enemyId);
-  if (body) {
-    body.hp = body.maxHp = b.maxHp = body.maxHp * WILD.hp;
+  const b = spawnWild(s, plan.kind, spot);
+  const body = b && s.enemies.find(e => e.id === b.enemyId);
+  if (b && body) {
     // it stands there until someone comes near or hurts it (see boss.ts): lure it away, or beat it
     b.waiting = body.speed;
     body.speed = 0;
   }
+  if (!b) return false;
   return true;
+}
+
+/** A smaller boss that nothing depends on (a floor of the Tower Run, a versus match with chaos) breaks in at `spot`. */
+export function spawnWild(s: SimState, kind: BossKind, spot: { x: number; z: number }): SimState['boss'] {
+  if (s.boss) return null;
+  spawnBoss(s, kind, nearestFree(s.map, spot, 1.2, BLOCKS_ENEMY));
+  const b = s.boss as SimState['boss'];
+  if (!b) return null;
+  b.wild = true;
+  const body = s.enemies.find(e => e.id === b.enemyId);
+  if (body) body.hp = body.maxHp = b.maxHp = body.maxHp * WILD.hp;
+  return b;
 }

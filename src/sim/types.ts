@@ -481,6 +481,9 @@ export interface VersusState {
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;
+  /** chaos with a boss: now and then King Rex or the Rhino breaks in; when the next one comes */
+  boss?: boolean;
+  nextBossAt?: number;
   /** king of the cube: the zone, its radius and when it moves on */
   king?: { pos: Vec2; radius: number; nextMoveAt: number; spot: number } | null;
   /** coin-op chaos: the rule in force and when it changes */

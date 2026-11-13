@@ -1,3 +1,4 @@
+import { spawnWild, WILD } from './wild-boss';
 import { clearSpot, spotClear } from './ground';
 import { JUMP_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
@@ -45,6 +46,9 @@ export const VERSUS = {
   touch: 1.1,
   /** chaos: a horde every so often */
   chaosEveryTicks: 20 * TICK_RATE,
+  /** chaos with a boss: the first one comes after this long (from, to), the next this long after the last one fell */
+  bossFirstTicks: [60 * TICK_RATE, 100 * TICK_RATE],
+  bossAgainTicks: [90 * TICK_RATE, 150 * TICK_RATE],
   /** coin-op chaos: a new rule this often */
   coinOpEveryTicks: 30 * TICK_RATE,
   /** coin-op chaos */
@@ -172,7 +176,10 @@ function equip(p: Player, s?: SimState): void {
 }
 
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
-export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>): void {
+/** how long until the next boss: somewhere between `from` and `to` */
+const bossWait = (s: SimState, [from, to]: number[]) => Math.round(from + s.rng.next() * (to - from));
+
+export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>, boss = false): void {
   // capture the cube needs two teams; gun game is everyone for themselves
   if (rule === 'capture') mode = 'team';
   if (rule === 'gungame') mode = 'ffa';
@@ -192,6 +199,8 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     nextCrateAt: s.tick + VERSUS.crateEveryTicks,
     chaos,
     nextHordeAt: s.tick + VERSUS.chaosEveryTicks,
+    boss: chaos && boss,
+    nextBossAt: s.tick + bossWait(s, VERSUS.bossFirstTicks),
     king: null,
     flags: null,
     coinop: null,
@@ -436,6 +445,19 @@ export function updateVersus(s: SimState): void {
   if (v.chaos && s.tick >= (v.nextHordeAt ?? 0) && s.map.waypoints.length > 0) {
     v.nextHordeAt = s.tick + VERSUS.chaosEveryTicks;
     if (s.enemies.length < 40) spawnHorde(s, s.rng.pick(s.map.waypoints), [{ kind: 'blob', count: 4 }, { kind: 'hunter', count: 2 }], { rush: true });
+  }
+  // chaos with a boss: now and then King Rex or the Rhino breaks in, far from everyone
+  if (v.boss) {
+    // (the wait for the next one starts when this one has fallen)
+    if (s.boss) v.nextBossAt = 0;
+    else if (!v.nextBossAt) v.nextBossAt = s.tick + bossWait(s, VERSUS.bossAgainTicks);
+    else if (s.tick >= v.nextBossAt) {
+      const alive = s.players.filter(p => p.downUntil === null);
+      const far = (w: Vec2) => Math.min(Infinity, ...alive.map(p => dist(p.pos, w)));
+      const spot = [...s.map.waypoints].sort((a, b) => far(b) - far(a))[0] ?? s.map.spawn;
+      spawnWild(s, s.rng.pick(WILD.fits[s.map.id] ?? ['rex', 'rhino']), spot);
+      v.nextBossAt = 0;
+    }
   }
   if (v.coinop && s.tick >= v.coinop.nextAt) {
     v.coinop = { rule: nextCoinOp(s, v.coinop.rule), nextAt: s.tick + VERSUS.coinOpEveryTicks };

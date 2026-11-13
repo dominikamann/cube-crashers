@@ -473,8 +473,9 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     }
     s.boss = null;
     if (b.wild) {
-      // a wild boss of the Tower Run: the elevator is open already, and it leaves a crate behind
-      s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) } });
+      // a wild boss (Tower Run, versus chaos): nothing ends with it, and it leaves a crate behind (not in the
+      // Gun Game, where weapons come from kills)
+      if (s.versus?.rule !== 'gungame') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) } });
       return;
     }
     s.elevatorOpen = true;

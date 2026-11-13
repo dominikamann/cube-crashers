@@ -82,6 +82,8 @@ export interface VersusOption {
   map: string;
   /** monster hordes join in */
   chaos?: boolean;
+  /** with chaos: now and then a boss breaks in too */
+  boss?: boolean;
 }
 
 export interface LobbyVote {
@@ -109,7 +111,7 @@ export type HostMessage =
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
   | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote; server?: ServerStatus }
   | ({ type: 'info' } & ServerInfo)
-  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; maps?: string[]; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
+  | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; maps?: string[]; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
   | { type: 'bye'; reason: 'hostLeft' };
 
@@ -129,7 +131,7 @@ const validVote = (v: unknown) =>
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
 const validServer = (v: unknown) =>
   v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)));
-const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && validTeams(v.teams));
+const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && (v.boss === undefined || typeof v.boss === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */
 export function parseMessage(raw: string): Message | null {

@@ -99,7 +99,7 @@ export interface SimOptions {
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
   /** versus (PvP): free for all or teams, score race or last cube standing */
-  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; teams?: Record<number, 0 | 1> };
+  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1> };
   /** Boss Rush: the map of each boss, instead of their own floors */
   rushMaps?: string[];
   /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
@@ -174,7 +174,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
   }
-  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams);
+  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.boss ?? false);
   else setupFloor(s);
   if (opts.countdown) s.countdown = COUNTDOWN_TICKS;
   return s;

@@ -672,14 +672,14 @@ function startGame() {
     const colors = settings.color !== null ? [settings.color] : undefined;
     // discovery: the next step of the rotation instead of the chosen match
     const pickd = settings.versusDiscovery ? discovery(discoveryStep++) : null;
-    const vsMode = pickd?.mode ?? settings.versusMode, vsRule = pickd?.rule ?? settings.versusRule, vsChaos = pickd?.chaos ?? settings.versusChaos;
+    const vsMode = pickd?.mode ?? settings.versusMode, vsRule = pickd?.rule ?? settings.versusRule, vsChaos = pickd?.chaos ?? settings.versusChaos !== false, vsBoss = !pickd && settings.versusChaos === 'boss';
     // the map rotation: a random arena, another one than the last
     lastVersusMap = pickd?.map ?? versusMapFor(settings.versusMap, lastVersusMap);
     const map = FLOORS[lastVersusMap]?.map ?? floor01;
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     enterPlay();
   }

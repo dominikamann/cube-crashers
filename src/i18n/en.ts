@@ -118,6 +118,8 @@ export const en = {
   'versus.captureHint': '{team.red} vs {team.blue}. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. 3 captures win.',
   'versus.chaosOn': 'Monsters roam too',
   'versus.chaosCard': '+ monsters',
+  'versus.chaosBoss': 'Monsters, and rarely a boss',
+  'versus.chaosBossCard': '+ monsters and a boss',
   'setup.chaos': 'Chaos',
   'setup.match': 'Match',
   'setup.pick': 'Pick it',

@@ -51,7 +51,8 @@ export interface Settings {
   versusMode: 'ffa' | 'team';
   versusRule: 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
   /** versus: monster hordes join in */
-  versusChaos: boolean;
+  /** monsters in a versus match: none, hordes, or hordes and now and then a boss */
+  versusChaos: boolean | 'boss';
   /** versus: discovery, a rotation through every mode instead of one fixed match */
   versusDiscovery: boolean;
   /** set once discovery became the versus default */
@@ -788,7 +789,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   };
 
   /** the versus match the settings describe (the map rotation picks a random arena) */
-  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos });
+  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos !== false, boss: settings.versusChaos === 'boss' });
   /** the arena of the last match started from the lobby (the rotation picks another one) */
   let lastArena: string | null = null;
   const startOption = (): VersusChoice => {
@@ -854,7 +855,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         if (settings.versusRule !== 'capture' && settings.versusRule !== 'gungame') {
           choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         }
-        choose(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }], settings.versusChaos, v => (settings.versusChaos = v));
+        choose<boolean | 'boss'>(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }, { label: t('versus.chaosBoss'), value: 'boss' }], settings.versusChaos, v => (settings.versusChaos = v));
         if (!VERSUS_MAPS.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = VERSUS_MAPS[0];
         // "Rotation": a random arena, and a new one after every match
         choose(t('setup.map'), [{ label: t('setup.rotation'), value: MAP_ROTATION }, ...VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id }))], settings.versusMap, v => (settings.versusMap = v), true);
@@ -1076,7 +1077,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             const mine = vote.votes[me] === i;
             const c = document.createElement('button');
             c.className = `vote-card${mine ? ' on' : ''}`;
-            c.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(o.mode === 'ffa' ? 'versus.ffa' : 'versus.team')}</div><div>${t(`versus.${o.rule}` as 'versus.score')}</div><div class="map">${t(FLOORS[o.map].name as 'floor.plaza')}</div>${o.chaos ? `<div class="chaos">${t('versus.chaosCard')}</div>` : ''}<div class="count">${'●'.repeat(n) || '–'}</div>`;
+            c.innerHTML = `<div class="key">${i + 1}</div><div class="name">${t(o.mode === 'ffa' ? 'versus.ffa' : 'versus.team')}</div><div>${t(`versus.${o.rule}` as 'versus.score')}</div><div class="map">${t(FLOORS[o.map].name as 'floor.plaza')}</div>${o.chaos ? `<div class="chaos">${t(o.boss ? 'versus.chaosBossCard' : 'versus.chaosCard')}</div>` : ''}<div class="count">${'●'.repeat(n) || '–'}</div>`;
             c.addEventListener('click', () => {
               actions.click();
               lan.vote(i as 0 | 1);
