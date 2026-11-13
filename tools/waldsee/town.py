@@ -117,7 +117,7 @@ KNOWN={
 }
 ADDR={('Hochstatt','5'):'f1dc7a'}
 PLASTER=['f4f1ea','f1e7c9','f3dc86','ecd0a0','e9b9a6','f0c9c9','cfe0c0','b9d8a0','c6d9e6','dfe3e8','efe6d6','e6c98c','d9e2d0','f6efe0','e8d5bd','f7f3ee','f1c8a8']
-ROOFS=['a8492f','b5523a','9c4530','8f4a36','b65f3f','7d4a3c','a85a3c']
+ROOFS=['96452f','a04b33','8c4230','84483a','9d5540','774639','98513a']
 def h01(n,k): return ((n*2654435761+k*40503)%1000003)/1000003
 out=[]
 for h in used:

@@ -113,7 +113,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const h = waldseeHouse(tx, tz);
       if (!h) continue;
       const top = h.wall + waldseeRoof(tx, tz);
-      box(tx + 0.5, top - 0.28, tz + 0.5, 1.07, 0.72, 1.07, shade(parseInt(h.roof, 16), 0.9 + 0.2 * hash(tx, tz)));
+      box(tx + 0.5, top - 0.28, tz + 0.5, 1.07, 0.72, 1.07, shade(parseInt(h.roof, 16), 0.96 + 0.08 * hash(tx, tz)));
     }
   });
 
