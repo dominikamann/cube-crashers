@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FLOORS } from '../../src/sim/config/floors';
 import { createSim } from '../../src/sim/sim';
-import { updateProjectiles } from '../../src/sim/systems/combat';
+import { explode, updateMines, updateProjectiles } from '../../src/sim/systems/combat';
+import { BOMB, MINE } from '../../src/sim/config/weapons';
+import { stepSim } from '../../src/sim/sim';
 import { shotHeight, SHOT_HEIGHT } from '../../src/sim/systems/shot-height';
 import type { Player, SimState } from '../../src/sim/types';
 
@@ -97,5 +99,53 @@ describe('shots have a height', () => {
     expect(hurt(f)).toBe(true);
     expect(hurt(g)).toBe(false);
     void c;
+  });
+});
+
+/** the first player throws a bomb that lands `off` beside the second, who is up on a jetpack */
+function bomb(s: SimState, off: number, fromAir: boolean): Player {
+  const [a, b] = s.players;
+  for (const p of s.players) p.invulnUntil = 0;
+  s.enemies = [];
+  b.flying = true;
+  a.flying = fromAir;
+  a.pos = { x: b.pos.x - 5, z: b.pos.z };
+  const target = { x: b.pos.x - off, z: b.pos.z };
+  s.projectiles.push({ id: s.nextId++, kind: 'bomb', behavior: 'lob', pos: { ...a.pos }, vel: { x: 0, z: 0 }, damage: 0, pierce: 0, hitIds: [], ownerId: a.id, from: { ...a.pos }, target, launchedAt: s.tick, until: s.tick + 1, land: { radius: BOMB.radius, damage: 60 } });
+  s.tick += 2;
+  updateProjectiles(s);
+  return b;
+}
+
+describe('what goes off under someone on a jetpack', () => {
+  it('a bomb thrown from the floor gets a flyer right above it', () => {
+    expect(hurt(bomb(match(), 0.5, false))).toBe(true);
+  });
+  it('but not one at the edge of the blast', () => {
+    expect(hurt(bomb(match(), BOMB.radius - 0.3, false))).toBe(false);
+  });
+  it('a bomb thrown from a jetpack gets a flyer anywhere in the blast', () => {
+    expect(hurt(bomb(match(), BOMB.radius - 0.3, true))).toBe(true);
+  });
+  it('a banana mine does nothing to whoever flies over it', () => {
+    const s = match();
+    const [a, b] = s.players;
+    b.invulnUntil = 0;
+    b.flying = true;
+    explode(s, { ...b.pos }, MINE.radius, { enemy: 60 }, 'bananaMine', a.id);
+    void updateMines;
+    expect(hurt(b)).toBe(false);
+  });
+  it('the disco ball flashes at a rival on a jetpack too', () => {
+    const s = match();
+    const [a, b] = s.players;
+    for (const p of s.players) p.invulnUntil = 0;
+    s.enemies = [];
+    a.pos = { x: b.pos.x - 3, z: b.pos.z };
+    b.flying = true;
+    a.weapons = [{ kind: 'discoBall', level: 1, cooldown: 0 }];
+    a.selected = 0;
+    stepSim(s, [{ type: 'fire', playerId: a.id }]);
+    expect(hurt(b)).toBe(true);
   });
 });
