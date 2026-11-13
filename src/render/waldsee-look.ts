@@ -177,6 +177,24 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   });
 
+  // ---- shutters in their own colour on the houses one knows: a pair at every window of every wall that looks
+  // onto the street (the windows are where the wall's texture has them, three floors of them)
+  WALDSEE_TILES.forEach((_row, tz) => {
+    for (let tx = 0; tx < WALDSEE_TILES[tz].length / 2; tx++) {
+      const h = waldseeHouse(tx, tz);
+      if (!h?.shut) continue;
+      const full = h.wall + waldseeRoof(tx, tz) + 0.4, colour = parseInt(h.shut, 16);
+      for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        if (codeAt(tx + dx, tz + dz) !== 2 && codeAt(tx + dx, tz + dz) !== 3) continue;
+        const f: WaldseeFace = { x: tx + 0.5 + dx * 0.5, z: tz + 0.5 + dz * 0.5, dx, dz, len: 1 };
+        for (const row of [5, 23, 41]) {
+          const y = full - 0.4 - (full * (row + 5.5)) / 64;
+          for (const u of [18, 46]) onFace(f, u / 64 - 0.5, 0.02, y, 7.5 / 64, (full * 11.5) / 64, 0.04, colour);
+        }
+      }
+    }
+  });
+
   // ---- trees: a trunk, a crown of leaves, and a bench all round the trunk
   const leaf = [0x4f9a4a, 0x5aa653, 0x468c42], wood = 0x8a5a36, bark = 0x6b4a32;
   for (const [tx, tz] of WALDSEE_TREES) {
@@ -297,9 +315,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const f = WALDSEE_CZARDAS, w = Math.max(3, f.len);
     for (let k = 0; k < w * 4; k++) onFace(f, -w / 2 + (k + 0.5) / 4, 0.44, 2.3, 0.25, 0.07, 0.9, k % 2 ? 0xf4ecd8 : 0xb8322a);
     for (const side of [-1, 1]) onFace(f, (side * w) / 2, 0.84, 1.15, 0.06, 2.3, 0.06, 0x3a3f52);
-    onFace(f, 0, 0.03, 1, 0.9, 2, 0.06, 0x5a3a26);
-    for (const side of [-1, 1]) onFace(f, side * 1.3, 0.03, 1.25, 0.9, 1.1, 0.05, 0xffd08a, true);
-    sign(f, 'Czardas', 2.95, Math.min(3.2, w), { back: '#3a1512', ink: '#ffe9b0', rim: '#f2c94c' });
+
+    sign(f, 'CZARDAS', 3.05, Math.min(3.2, w), { back: '#f4f1ea', ink: '#c2452d', rim: '#e8862e' }, 'bold 80px Georgia, "Times New Roman", serif');
+    // (the portal: white, a round-topped niche with a figure over the wooden door)
+    onFace(f, 0, 0.05, 1.3, 1.3, 2.6, 0.08, 0xf4f1ea);
+    onFace(f, 0, 0.1, 1.0, 0.8, 2.0, 0.06, 0x7a5638);
+    onFace(f, 0, 0.1, 2.3, 0.5, 0.5, 0.06, 0xdfe3e8);
+    onFace(f, 0, 0.14, 2.28, 0.18, 0.36, 0.08, 0xc9a06a);
     const out = 5.4, bulbs = [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0];
     for (const side of [-1, 0, 1]) {
       const [px, pz] = on(f, side * (w / 2 + 1.6), out);
@@ -390,7 +412,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // the ice-cream parlour: a mint and cream awning, the name over it, and a big cone on a post by the door
       for (let k = 0; k < w * 4; k++) onFace(s, -w / 2 + (k + 0.5) / 4, 0.4, 2.3, 0.25, 0.07, 0.82, 0xf7f5f0);
       onFace(s, 0, 0.03, 1, 0.9, 2, 0.06, 0xf4f1ea);
-      for (const side of [-1, 1]) onFace(s, side * 1.2, 0.03, 1.2, 0.8, 1.2, 0.05, 0xfff1c0, true);
+      onFace(s, 0.95, 0.04, 1.15, 1.0, 1.1, 0.05, 0x3d4a5c);
+      onFace(s, 0.95, 0.06, 1.15, 1.08, 0.06, 0.06, 0xf4f1ea);
+      onFace(s, 0.95, 0.07, 0.9, 0.8, 0.3, 0.1, 0xf6c7d4);
       sign(s, 'Eisdiele', 2.95, Math.min(3.2, w + 0.4), { back: '#f1efe6', ink: '#8a8f96', rim: '#f1efe6' });
       const [cx, cz] = on(s, w / 2 + 0.6, 0.9);
       box(cx, 0.7, cz, 0.08, 1.4, 0.08, 0xe6e8ef);

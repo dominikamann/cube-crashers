@@ -11,6 +11,8 @@ export interface WaldseeHouse {
   roof: string;
   /** how high the walls are, in blocks */
   wall: number;
+  /** the colour of its shutters, where it is known (rrggbb) */
+  shut?: string;
   /** the middle of the house (tiles) and the direction its ridge runs in (radians from +x toward +z) */
   cx: number;
   cz: number;
@@ -311,21 +313,21 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'f1c8a8', roof: '8f4c38', wall: 5.78, cx: 2.03, cz: 46.6, ang: -1.564 },
   { kind: 'house', name: "", col: 'f6efe0', roof: 'a85a40', wall: 5.52, cx: 35.89, cz: 7.22, ang: -1.04 },
   { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.26, cx: 102.21, cz: 69.79, ang: 0.669 },
-  { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.25, cx: 48.42, cz: 39.55, ang: -0.184 },
+  { kind: 'house', name: "", col: '6f93c9', roof: 'c46b48', wall: 6.2, shut: 'b3262b', cx: 48.42, cz: 39.55, ang: -0.184 },
   { kind: 'house', name: "", col: 'f1c8a8', roof: '8f4c38', wall: 5.76, cx: 0.94, cz: 37.94, ang: 1.526 },
   { kind: 'house', name: "", col: 'f0c9c9', roof: 'a9553a', wall: 4.73, cx: 69.45, cz: 7.78, ang: -0.231 },
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'c06544', wall: 4.47, cx: 70.79, cz: 1.04, ang: -0.068 },
   { kind: 'house', name: "", col: 'f0c9c9', roof: 'a9553a', wall: 4.72, cx: 49.38, cz: 103.34, ang: -0.08 },
   { kind: 'house', name: "", col: 'd9e2d0', roof: 'c46b48', wall: 5.41, cx: 72.45, cz: 30.9, ang: 0.733 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.14, cx: 59.69, cz: 122.31, ang: -0.378 },
-  { kind: 'house', name: "", col: 'f3dc86', roof: 'c06544', wall: 4.35, cx: 38.8, cz: 40.47, ang: 1.422 },
+  { kind: 'house', name: "", col: 'f1dc7a', roof: 'c06544', wall: 6.4, shut: 'f4f1ea', cx: 38.8, cz: 40.47, ang: 1.422 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.12, cx: 90.8, cz: 102.69, ang: 1.54 },
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.63, cx: 71.24, cz: 60.1, ang: 0.076 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.34, cx: 96.87, cz: 103.43, ang: -1.455 },
-  { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.58, cx: 41.41, cz: 41.95, ang: 1.313 },
+  { kind: 'house', name: "", col: 'f4f1ea', roof: 'a9553a', wall: 5.4, shut: '2f8f7f', cx: 41.41, cz: 41.95, ang: 1.313 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.32, cx: 103.55, cz: 98.11, ang: 1.511 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.08, cx: 78.25, cz: 56.62, ang: 1.487 },
-  { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.3, cx: 75.74, cz: 65.42, ang: -0.121 },
+  { kind: 'house', name: "", col: 'e6e4dc', roof: 'c06544', wall: 5.6, cx: 75.74, cz: 65.42, ang: -0.121 },
   { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.81, cx: 18.2, cz: 50.78, ang: -0.684 },
   { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.8, cx: 60.59, cz: 103.16, ang: 1.359 },
   { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.31, cx: 52.2, cz: 85.1, ang: 1.152 },
@@ -354,7 +356,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.61, cx: 37.07, cz: 25.37, ang: 1.099 },
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.58, cx: 28.09, cz: 29.58, ang: -0.247 },
   { kind: 'house', name: "", col: 'd9e2d0', roof: 'c46b48', wall: 5.35, cx: 24.31, cz: 40.63, ang: 1.279 },
-  { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.32, cx: 33.31, cz: 42.55, ang: 1.376 },
+  { kind: 'house', name: "", col: 'eeeeea', roof: 'c06544', wall: 5.8, cx: 33.31, cz: 42.55, ang: 1.376 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.09, cx: 16.73, cz: 35.48, ang: -1.512 },
   { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.83, cx: 10.84, cz: 34.94, ang: -1.294 },
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.6, cx: 12.16, cz: 43.31, ang: -0.317 },
@@ -406,7 +408,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.56, cx: 85.15, cz: 87.01, ang: -1.365 },
   { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.33, cx: 79.78, cz: 90.02, ang: -1.4 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.3, cx: 76.54, cz: 86.67, ang: -1.211 },
-  { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.76, cx: 74.78, cz: 44.15, ang: -0.27 },
+  { kind: 'house', name: "", col: 'f3f1ec', roof: 'b8623f', wall: 6.0, shut: '2f4a3a', cx: 74.78, cz: 44.15, ang: -0.27 },
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.56, cx: 121.4, cz: 74.87, ang: 1.501 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.3, cx: 102.66, cz: 63.16, ang: 0.296 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.07, cx: 93.95, cz: 58.05, ang: 0.251 },

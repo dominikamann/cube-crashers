@@ -132,6 +132,28 @@ signs=[
  {'text':'Bank','kind':'bank',**face(MK['bank'],beyond=True)},
 ]
 
+# --- the houses one knows, as they look (from photos): plaster and shutters
+def paint(house,col,shut=None,wall=None):
+    H[house]['col']=col
+    if shut: H[house]['shut']=shut
+    if wall: H[house]['wall']=wall
+paint(cz['house'],'6f93c9','b3262b',6.2)                                  # the Czardas: blue, red shutters
+paint(face(MK['police'],skip=(cz['house'],))['house'],'f3f1ec','2f4a3a',6.0)  # the police: white, dark green shutters
+paint(eisFace['house'],'e6e4dc',None,5.6)                                  # the ice-cream parlour: pale grey
+# west of the Czardas along the north side of the square: the narrow white house with teal shutters behind the
+# fountain, then the tall yellow one
+north=[]
+x=int(cz['x'])-int(cz['len']/2)-1; y=int(cz['z'])-1
+for k in range(40):
+    fx=x-k
+    col=[yy for yy in range(y-6,y+7) if 0<fx<N and owner[yy][fx]>=0 and rows[yy+1][fx]=='.']
+    if col:
+        o=owner[max(col)][fx]
+        if o!=cz['house'] and o not in north: north.append(o)
+if len(north)>0: paint(north[0],'f4f1ea','2f8f7f',5.4)
+if len(north)>1: paint(north[1],'f1dc7a','f4f1ea',6.4)
+if len(north)>2: paint(north[2],'eeeeea',None,5.8)
+
 # --- where the game puts things. In at the Wurzacher Tor, out by the elevator down at the bank. The witch dances
 # round her fire beside the Federle-Brunnen
 floorT=[(x,y) for y in range(2,N-2) for x in range(2,N-2) if clear(x,y,1) and (x,y) not in allTables and all(d((x,y),s)>=2 for s in solid)]
@@ -213,6 +235,8 @@ export interface WaldseeHouse {
   roof: string;
   /** how high the walls are, in blocks */
   wall: number;
+  /** the colour of its shutters, where it is known (rrggbb) */
+  shut?: string;
   /** the middle of the house (tiles) and the direction its ridge runs in (radians from +x toward +z) */
   cx: number;
   cz: number;
@@ -269,7 +293,7 @@ export const WALDSEE_SHORE_TREES: [number, number][] = [%s];
 export const WALDSEE_BOAT: [number, number] | null = %s;
 ''' % ('\n'.join("  '%s'," % ''.join(enc({-3:0,-2:1,-1:2,-4:3,-5:4,-6:5}.get(o,o+6)) for o in r) for r in owner),
        '\n'.join("  '%s'," % ''.join(str(v) for v in r) for r in roof),
-       '\n'.join("  { kind: '%s', name: %s, col: '%s', roof: '%s', wall: %s, cx: %s, cz: %s, ang: %s }," % (h['kind'], js(h['name']), h['col'], h['roof'], h['wall'], h['cx'], h['cz'], h['ang']) for h in (H[i] for i in sorted(H))),
+       '\n'.join("  { kind: '%s', name: %s, col: '%s', roof: '%s', wall: %s,%s cx: %s, cz: %s, ang: %s }," % (h['kind'], js(h['name']), h['col'], h['roof'], h['wall'], (" shut: '%s'," % h['shut']) if h.get('shut') else '', h['cx'], h['cz'], h['ang']) for h in (H[i] for i in sorted(H))),
        fmt(trees), fmt(fountain), ', '.join("{ kind: 'police', at: [%d, %d] }" % c for c in cars),
        '\n'.join("  { name: %s, at: [%s] }," % (js(n), fmt(l)) for n,l in tables.items()),
        js({k:cz[k] for k in ('x','z','dx','dz','len')}),
