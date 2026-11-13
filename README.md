@@ -21,7 +21,26 @@ with up to nine friends on your LAN or online, together against the monsters or 
 
 ![Gameplay: holding a nest zone in Neon City](docs/design/neon.gif)
 
-![Versus in first person: everyone for themselves in Neon City](docs/design/versus.gif)
+![Versus from above: everyone for themselves in Neon City](docs/design/versus.gif)
+
+Press **V** and the same game is a first-person shooter:
+
+<table>
+  <tr>
+    <td colspan="2"><img src="docs/design/screenshots/first-person-plaza.png" alt="First person: a versus match on the Arcade Plaza" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>First person on the Arcade Plaza: everyone for themselves, first to 15</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/screenshots/first-person-gun-game.png" alt="First person: Gun Game on the Neon Highway, a Steamroller coming at you" /></td>
+    <td><img src="docs/design/screenshots/first-person-candy.png" alt="First person: a versus match in the Candy Factory" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Gun Game on the Neon Highway: a rival in a Steamroller</sub></td>
+    <td align="center"><sub>Candy Factory in first person</sub></td>
+  </tr>
+</table>
 
 <table>
   <tr>
@@ -39,6 +58,14 @@ with up to nine friends on your LAN or online, together against the monsters or 
   <tr>
     <td align="center"><sub>Arcade Plaza: hold the zone while the hordes storm in</sub></td>
     <td align="center"><sub>Rooftop: the Segment Worm splits when you hit its middle</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/design/screenshots/king-rex.png" alt="Boss fight against King Rex in Neon City" /></td>
+    <td><img src="docs/design/screenshots/rhino.png" alt="Boss fight against the Rhino in the Pixel Jungle" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>King Rex: snaps, stomps and roars</sub></td>
+    <td align="center"><sub>The Rhino: lowers its head and charges</sub></td>
   </tr>
   <tr>
     <td><img src="docs/design/race.gif" alt="Kart Rally between floors" /></td>
