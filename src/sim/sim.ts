@@ -116,6 +116,8 @@ export interface SimOptions {
   colors?: number[];
   /** the figure each player chose (a look only), in the same order; a gap = the game picks */
   characters?: (string | undefined)[];
+  /** which of the players are bots, in the same order (they start at the back of a Kart Rally) */
+  bots?: boolean[];
 }
 
 /** the countdown that opens a game: 6 5 ... 1 GO! */
@@ -180,6 +182,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];
     if (opts.characters?.[i]) p.character = opts.characters[i];
+    if (opts.bots?.[i]) p.bot = true;
   }
   if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.boss ?? false);
   else setupFloor(s);
@@ -188,7 +191,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
 }
 
 function emptyIntent(): Intent {
-  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null, buy: [], ready: false };
+  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, pitch: null, select: null, buy: [], ready: false };
 }
 
 export function stepSim(s: SimState, commands: Command[]): void {
@@ -222,6 +225,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
       case 'aim':
         it.aim = c.point;
+        it.pitch = c.pitch ?? null;
         break;
       case 'select':
         it.select = c.slot;

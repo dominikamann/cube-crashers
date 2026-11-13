@@ -1,43 +1,44 @@
-import { PLAYER_RADIUS } from '../config/balance';
-import { floorMaze, MAZE_CAGE, MAZE_CUBES } from '../config/floor-maze';
-import { Tile } from '../map/tilemap';
-import { TICK_RATE, type SimState, type Vec2 } from '../types';
+import { PLAYER_RADIUS, STREAK_WINDOW_TICKS } from '../config/balance';
+import { floorMaze, MAZE_CAGE, MAZE_CUBES, MAZE_DOTS } from '../config/floor-maze';
+import { TICK_RATE, type SimState } from '../types';
 import { dist } from '../util';
 import { spawnPoint } from './coop';
 import { spawnEnemy } from './enemies';
 import { openShop } from './shop';
 
 export const MAZE = {
-  /** 90 seconds, or until every pixel is gone */
-  ticks: 90 * TICK_RATE,
   ghosts: 4,
   /** one more ghost for every two extra players */
   ghostsPerTwoPlayers: 1,
   powerTicks: 8 * TICK_RATE,
   ghostCoins: 15,
   ghostRespawnTicks: 5 * TICK_RATE,
-  coinsPerPixel: 0.2,
-  clearBonus: 60,
+  coinsPerPixel: 0.25,
+  /** for everyone, once the last pixel is gone */
+  clearBonus: 40,
+  /**
+   * how close a player has to come to a pixel. The pixels lie in the middle of corridors two tiles wide, a player
+   * hugging the wall is 0.6 off that line: this still reaches every pixel in passing
+   */
+  pixelRadius: 0.85,
   /** after being caught a player is safe for a moment */
   catchInvulnTicks: 2 * TICK_RATE,
+  /** ghosts this close to the start go back to their cage when a player is sent there: nobody is caught in a loop */
+  startClearRadius: 8,
   cubeRadius: 1,
 };
-
-const tileIndex = (s: SimState, p: Vec2) => Math.floor(p.z) * s.map.w + Math.floor(p.x);
-
-/** whether a pixel is still lying on the tile under `pos` */
-export function pixelAt(s: SimState, pos: Vec2): boolean {
-  return !!s.run.maze?.pixels.includes(tileIndex(s, pos));
-}
 
 function spawnGhost(s: SimState, i: number): void {
   spawnEnemy(s, 'ghost', { x: MAZE_CAGE.x + (i % 3) - 1, z: MAZE_CAGE.z + (Math.floor(i / 3) % 2) });
 }
 
-/** Glitch Maze between two floors: collect the pixels, dodge the ghosts, power cubes turn the tables. No weapons. */
+/**
+ * Glitch Maze between two floors: collect the pixels, dodge the ghosts, power cubes turn the tables. No weapons.
+ * It lasts until the last pixel is collected: there is no clock.
+ */
 export function enterMaze(s: SimState): void {
   s.run.stage = 'maze';
-  s.run.stageUntil = s.tick + MAZE.ticks;
+  s.run.stageUntil = 0;
   s.map = floorMaze;
   s.theme = 'maze';
   s.look = 'night';
@@ -60,14 +61,7 @@ export function enterMaze(s: SimState): void {
   s.bubbles = [];
   s.flow = null;
   s.elevatorOpen = false;
-  // a pixel on every open tile, except in the ghost cage and right at the start
-  const pixels: number[] = [];
-  for (let i = 0; i < s.map.tiles.length; i++) {
-    if (s.map.tiles[i] !== Tile.Floor) continue;
-    const c = { x: (i % s.map.w) + 0.5, z: Math.floor(i / s.map.w) + 0.5 };
-    if (dist(c, MAZE_CAGE) < 3.5 || dist(c, s.map.spawn) < 1.5) continue;
-    pixels.push(i);
-  }
+  const pixels = MAZE_DOTS.map((_, i) => i);
   s.run.maze = { pixels, total: pixels.length, collected: {}, cubes: MAZE_CUBES.map((_, i) => i), powerUntil: 0, respawns: [] };
   s.players.forEach((p, i) => {
     p.pos = spawnPoint(s, i);
@@ -85,6 +79,7 @@ export function enterMaze(s: SimState): void {
     p.reviveUntil = null;
     p.reviveProgress = 0;
     p.invulnUntil = s.tick + 120;
+    p.coinStreak = 0;
     s.run.maze!.collected[p.id] = 0;
   });
   const ghosts = MAZE.ghosts + Math.floor((s.players.length - 1) / 2) * MAZE.ghostsPerTwoPlayers;
@@ -98,10 +93,15 @@ export function updateMaze(s: SimState): void {
 
   for (const p of s.players) {
     if (p.downUntil !== null) continue;
-    const i = maze.pixels.indexOf(tileIndex(s, p.pos));
-    if (i >= 0) {
-      maze.pixels.splice(i, 1);
-      maze.collected[p.id] = (maze.collected[p.id] ?? 0) + 1;
+    const left = maze.pixels.filter(i => dist(MAZE_DOTS[i], p.pos) > MAZE.pixelRadius);
+    const got = maze.pixels.length - left.length;
+    if (got > 0) {
+      maze.pixels = left;
+      maze.collected[p.id] = (maze.collected[p.id] ?? 0) + got;
+      // pixels picked up in quick succession are a streak (the sound climbs with it), like coins on a floor
+      p.coinStreak = s.tick - p.lastCoinTick <= STREAK_WINDOW_TICKS ? p.coinStreak + got : got;
+      p.lastCoinTick = s.tick;
+      s.events.push({ type: 'mazePixel', playerId: p.id, streak: p.coinStreak, left: left.length });
     }
     for (const c of [...maze.cubes]) {
       if (dist(MAZE_CUBES[c], p.pos) > MAZE.cubeRadius) continue;
@@ -126,8 +126,11 @@ export function updateMaze(s: SimState): void {
         break;
       }
       if (s.tick < p.invulnUntil) continue;
-      // caught: back to the start, no harm done; the ghost goes back to its cage too (no camping at the start)
-      g.pos = { x: MAZE_CAGE.x, z: MAZE_CAGE.z };
+      // caught: back to the start, no harm done; the ghost goes back to its cage too, and so does every ghost
+      // waiting near the start (no camping there: without a clock a player could be caught over and over)
+      for (const o of s.enemies) {
+        if (o.kind === 'ghost' && (o === g || dist(o.pos, s.map.spawn) < MAZE.startClearRadius)) o.pos = { x: MAZE_CAGE.x, z: MAZE_CAGE.z };
+      }
       p.pos = { ...s.map.spawn };
       p.safePoint = { ...p.pos };
       p.invulnUntil = s.tick + MAZE.catchInvulnTicks;
@@ -139,14 +142,14 @@ export function updateMaze(s: SimState): void {
   maze.respawns = maze.respawns.filter(t => s.tick < t);
   due.forEach((_, i) => spawnGhost(s, i));
 
-  if (maze.pixels.length === 0 || s.tick >= s.run.stageUntil) finishMaze(s);
+  // the only way out: every pixel collected (no clock, and crashed ghosts come back, so they do not end it either)
+  if (maze.pixels.length === 0) finishMaze(s);
 }
 
 function finishMaze(s: SimState): void {
   const maze = s.run.maze!;
-  const cleared = maze.pixels.length === 0;
-  for (const p of s.players) p.coins += Math.round((maze.collected[p.id] ?? 0) * MAZE.coinsPerPixel) + (cleared ? MAZE.clearBonus : 0);
-  s.events.push({ type: 'mazeEnd', cleared, collected: { ...maze.collected } });
+  for (const p of s.players) p.coins += Math.round((maze.collected[p.id] ?? 0) * MAZE.coinsPerPixel) + MAZE.clearBonus;
+  s.events.push({ type: 'mazeEnd', collected: { ...maze.collected } });
   s.enemies = [];
   s.run.maze = null;
   if (s.run.mode !== 'run') {

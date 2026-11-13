@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
-import { floorRace, RACE_CHECKPOINTS } from '../../src/sim/config/floor-race';
+import { floorRace, RACE_CHECKPOINTS, RACE_GRID } from '../../src/sim/config/floor-race';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { floorCleared } from '../../src/sim/systems/run';
 import { RACE, enterRace } from '../../src/sim/systems/race';
@@ -73,20 +73,24 @@ describe('kart rally', () => {
     expect(Math.hypot(again!.pos.x - c.x, again!.pos.z - c.z)).toBeLessThan(3);
   });
 
-  it('ends as soon as the fifth lap is done: solo earns a medal by the time it took, then the elevator shop opens', () => {
+  it('is three laps long', () => {
+    expect(RACE.laps).toBe(3);
+  });
+
+  it('ends as soon as the last lap is done: solo earns a medal by the time it took, then the elevator shop opens', () => {
     const s = raceSim();
     const coins = s.players[0].coins;
     for (let lap = 0; lap < RACE.laps - 1; lap++) for (const i of LAP) driveTo(s, 0, i);
     expect(s.run.stage).toBe('race');
-    // the fifth lap, finished in silver time
-    s.run.stageUntil = s.tick + RACE.maxTicks - (RACE.medals.gold.seconds + 20) * 60;
+    // the last lap, finished in silver time
+    s.run.stageUntil = s.tick + RACE.maxTicks - ((RACE.medals.gold.seconds + RACE.medals.silver.seconds) / 2) * 60;
     for (const i of LAP) driveTo(s, 0, i);
     expect(s.events).toContainEqual(expect.objectContaining({ type: 'raceEnd', medal: 'silver' }));
     expect(s.players[0].coins).toBe(coins + RACE.laps * 0 + RACE.medals.silver.coins);
     expect(s.run.stage).toBe('shop');
   });
 
-  it('with several players the first to drive five laps wins, and the race ends right then', () => {
+  it('with several players the first to drive all the laps wins, and the race ends right then', () => {
     const s = raceSim(2);
     const before = s.players.map(p => p.coins);
     for (const i of LAP) driveTo(s, 1, i);
@@ -153,4 +157,57 @@ describe('the rally track', () => {
     }
     expect(laps).toBeGreaterThanOrEqual(2);
   }, 60_000);
+});
+
+describe('the starting grid of the kart rally', () => {
+  /** a run of `scores.length` players with these scores (and these of them bots), at the start of the race */
+  function grid(scores: number[], bots: number[] = []): SimState {
+    const s = createSim(floor01, 4, { mode: 'run', players: scores.length, bots: scores.map((_, i) => bots.includes(i)) });
+    s.players.forEach((p, i) => (p.stats.score = scores[i]));
+    for (const n of s.nests) n.state = 'destroyed';
+    s.enemies = [];
+    floorCleared(s);
+    expect(s.run.stage).toBe('race');
+    return s;
+  }
+  /** the grid place (0 = pole position) of each player, in player order */
+  const places = (s: SimState) => s.players.map(p => RACE_GRID.findIndex(g => g.x === p.pos.x && g.z === p.pos.z));
+
+  it('is rows of two, each row behind the one before', () => {
+    expect(RACE_GRID.length).toBeGreaterThanOrEqual(10);
+    for (let i = 0; i < RACE_GRID.length; i += 2) {
+      // side by side
+      expect(RACE_GRID[i + 1].x).toBe(RACE_GRID[i].x);
+      expect(RACE_GRID[i + 1].z).not.toBe(RACE_GRID[i].z);
+      // the karts drive off toward +x: further back is a smaller x
+      if (i > 0) expect(RACE_GRID[i].x).toBeLessThan(RACE_GRID[i - 2].x);
+    }
+  });
+
+  it('puts whoever leads in score in front and whoever has the fewest points at the back', () => {
+    const s = grid([300, 900, 100, 500]);
+    expect(places(s)).toEqual([2, 0, 3, 1]);
+  });
+
+  it('puts bots behind every human, whatever their score, and orders them by score among themselves', () => {
+    const s = grid([50, 9000, 10, 7000, 20], [1, 3]);
+    expect(places(s)).toEqual([0, 3, 2, 4, 1]);
+  });
+
+  it('gives everyone a place and a kart of their own, from one player to ten', () => {
+    for (let n = 1; n <= 10; n++) {
+      const s = grid(Array.from({ length: n }, (_, i) => ((i * 7) % n) * 100));
+      const got = places(s);
+      expect([...got].sort((a, b) => a - b), `${n} players`).toEqual(Array.from({ length: n }, (_, i) => i));
+      // the order of the places is the order of the scores
+      const byPlace = [...s.players].sort((a, b) => got[s.players.indexOf(a)] - got[s.players.indexOf(b)]);
+      for (let i = 1; i < n; i++) expect(byPlace[i].stats.score).toBeLessThanOrEqual(byPlace[i - 1].stats.score);
+      for (const p of s.players) expect(s.vehicles.find(v => v.id === p.vehicleId)?.driverId).toBe(p.id);
+    }
+  });
+
+  it('is the same every time: players level on points keep their order', () => {
+    expect(places(grid([200, 200, 500, 200]))).toEqual([1, 2, 0, 3]);
+    expect(places(grid([0, 0, 0]))).toEqual([0, 1, 2]);
+  });
 });

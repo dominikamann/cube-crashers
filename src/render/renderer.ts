@@ -15,6 +15,7 @@ import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
 import { AmbientPass, FinishPass, GlowPass, SmoothScenePass } from './post';
 import { attachPerfRenderer } from '../dev/perf-probe';
+import { screenPoint } from './project';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -456,10 +457,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       entities.setDamageNumbers(on);
     },
     project(x, z, view = 0, y = 0.5) {
-      const v = new THREE.Vector3(x, y, z).project(views[view].camera);
       const rect = canvas.getBoundingClientRect();
       const vw = rect.width / views.length;
-      return { x: rect.left + view * vw + ((v.x + 1) / 2) * vw, y: rect.top + ((1 - v.y) / 2) * rect.height, behind: v.z > 1 };
+      return screenPoint(views[view].camera, x, y, z, { left: rect.left + view * vw, top: rect.top, width: vw, height: rect.height });
     },
     groundPoint(clientX, clientY) {
       // the mouse belongs to the first view (player 1 on the left)

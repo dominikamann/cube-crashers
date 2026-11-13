@@ -47,6 +47,14 @@ describe('settings defaults', () => {
     expect(loadSettings().colorBlind).toBe(false);
   });
 
+  it('a saved character the game no longer has goes back to Automatic; one it has stays', () => {
+    const store = new Map<string, string>([['cube-crashers.settings', JSON.stringify({ name: 'Kim', color: 1, character: 'dominik' })]]);
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    expect(loadSettings().character).toBeNull();
+    store.set('cube-crashers.settings', JSON.stringify({ name: 'Kim', color: 1, character: 'babyDino' }));
+    expect(loadSettings().character).toBe('babyDino');
+  });
+
   it('Low and Medium stay as the player chose them', () => {
     const store = new Map<string, string>([['cube-crashers.settings', JSON.stringify({ name: 'Dominik', color: 1, graphics: 'low' })]]);
     (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };

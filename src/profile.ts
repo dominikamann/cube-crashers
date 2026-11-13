@@ -10,9 +10,8 @@ export const UNLOCKS = [
   { id: 'roller', kind: 'vehicle', cost: 8 },
   { id: 'hoverboard', kind: 'vehicle', cost: 8 },
   { id: 'endless', kind: 'mode', cost: 12 },
-  // characters for the end of the game: their boss has to be beaten first, then they can be bought
+  // a character for the end of the game: its boss has to be beaten first, then it can be bought
   { id: 'babyDino', kind: 'character', cost: 150, boss: 'rex' },
-  { id: 'dominik', kind: 'character', cost: 300, boss: 'dominik' },
 ] as const;
 
 export type UnlockId = (typeof UNLOCKS)[number]['id'];
@@ -60,16 +59,26 @@ function memoryStore(): Store {
 const KEY = 'cube-crashers.profile';
 const KNOWN = new Set<string>(UNLOCKS.map(u => u.id));
 
+/** unlocks the game no longer has, and the tickets they cost: whoever bought one gets them back */
+const RETIRED: Record<string, number> = { dominik: 300 };
+
 export const defaultProfile = (): Profile => ({ version: 1, tickets: 0, unlocked: [], bonuses: [] });
 
-/** Local progress; anything missing, broken or from another version gives a fresh profile. */
+/**
+ * Local progress; anything missing, broken or from another version gives a fresh profile. An unlock the game
+ * no longer has is taken out and its tickets are paid back: written down at once, so that happens only once.
+ */
 export function loadProfile(store: Store): Profile {
   try {
     const raw = JSON.parse(store.getItem(KEY) ?? 'null');
     if (!raw || raw.version !== 1 || typeof raw.tickets !== 'number' || !Array.isArray(raw.unlocked)) return defaultProfile();
     const bonuses = Array.isArray(raw.bonuses) ? raw.bonuses.filter((x: unknown) => typeof x === 'string' && Object.hasOwn(BONUSES, x)) : [];
     const beaten = Array.isArray(raw.beaten) ? raw.beaten.filter((x: unknown) => typeof x === 'string' && x.length < 24).slice(0, 32) : [];
-    return { version: 1, tickets: Math.max(0, Math.floor(raw.tickets)), unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)), bonuses, ...(beaten.length ? { beaten } : {}) };
+    const refund = Object.keys(RETIRED).reduce((sum, id) => sum + (raw.unlocked.includes(id) ? RETIRED[id] : 0), 0);
+    const tickets = Math.max(0, Math.floor(raw.tickets)) + refund;
+    const p: Profile = { version: 1, tickets, unlocked: raw.unlocked.filter((x: unknown) => typeof x === 'string' && KNOWN.has(x)), bonuses, ...(beaten.length ? { beaten } : {}) };
+    if (refund) saveProfile(store, p);
+    return p;
   } catch {
     return defaultProfile();
   }

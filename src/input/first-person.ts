@@ -33,3 +33,33 @@ export function viewMove(yaw: number, side: number, ahead: number): Vec2 {
 
 /** where a player looks when first person is switched on: the way they drive, or where they aim on foot */
 export const lookOf = (p: Pick<Player, 'vehicleId' | 'facing' | 'aim'>): Vec2 => (p.vehicleId !== null ? p.facing : p.aim);
+
+/** something a player looks through: the keyboard and mouse, or a controller */
+export interface ViewControl {
+  readonly firstPerson: boolean;
+  setFirstPerson(on: boolean, aim: Vec2): void;
+}
+
+/**
+ * The Kart Rally is driven in first person: when the race starts, every player on this computer is switched to
+ * it, looking the way their kart points (`look`). They can still switch to the view from above while racing.
+ * When the race is over each gets back the view they had on the floors before it.
+ */
+export function createRaceView(): { update(racing: boolean, controls: { control: ViewControl; look: Vec2 }[]): void; reset(): void } {
+  let before: boolean[] | null = null;
+  return {
+    update(racing, controls) {
+      if (racing && !before) {
+        before = controls.map(c => c.control.firstPerson);
+        for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
+      } else if (!racing && before) {
+        controls.forEach((c, i) => c.control.firstPerson !== before![i] && c.control.setFirstPerson(before![i], c.look));
+        before = null;
+      }
+    },
+    /** a new game: whatever view it starts in is the players' own again */
+    reset() {
+      before = null;
+    },
+  };
+}
