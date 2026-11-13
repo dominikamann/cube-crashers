@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PadControls, type PadSnapshot } from '../src/input/gamepad';
 import { Keyboard } from '../src/input/keyboard';
-import { aimDistance, EYE_HEIGHT, FP_MAX_AIM } from '../src/input/first-person';
+import { aimDistance, createRaceView, EYE_HEIGHT, FP_MAX_AIM, yawOf } from '../src/input/first-person';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 
@@ -109,5 +109,49 @@ describe('looking up and down in first person', () => {
   it('the aim distance follows where the view meets the ground', () => {
     expect(aimDistance(-Math.atan(EYE_HEIGHT / 5))).toBeCloseTo(5);
     expect(aimDistance(0.2)).toBe(FP_MAX_AIM);
+  });
+});
+
+describe('the Kart Rally opens in first person', () => {
+  const ahead = { x: 1, z: 0 };
+
+  it('switches every local player to first person, looking down the track, and gives back the view they had after', () => {
+    const k = new Keyboard(), second = new PadControls();
+    second.setFirstPerson(true, { x: 0, z: -1 });
+    const view = createRaceView();
+    const controls = [{ control: k, look: ahead }, { control: second, look: ahead }];
+    view.update(false, controls);
+    expect(k.firstPerson).toBe(false);
+    view.update(true, controls);
+    expect(k.firstPerson).toBe(true);
+    expect(k.yaw).toBeCloseTo(yawOf(ahead));
+    expect(second.firstPerson).toBe(true);
+    view.update(true, controls);
+    view.update(false, controls);
+    expect(k.firstPerson).toBe(false);
+    expect(second.firstPerson).toBe(true);
+  });
+
+  it('lets a player switch to the view from above during the race, and still gives back the view of the floors after', () => {
+    const k = new Keyboard();
+    const view = createRaceView();
+    const controls = [{ control: k, look: ahead }];
+    view.update(true, controls);
+    k.setFirstPerson(false, ahead);
+    view.update(true, controls);
+    expect(k.firstPerson).toBe(false);
+    k.setFirstPerson(true, ahead);
+    view.update(false, controls);
+    expect(k.firstPerson).toBe(false);
+  });
+
+  it('forgets the race when a new game starts in the middle of one', () => {
+    const k = new Keyboard();
+    const view = createRaceView();
+    view.update(true, [{ control: k, look: ahead }]);
+    view.reset();
+    k.setFirstPerson(true, ahead);
+    view.update(false, [{ control: k, look: ahead }]);
+    expect(k.firstPerson).toBe(true);
   });
 });

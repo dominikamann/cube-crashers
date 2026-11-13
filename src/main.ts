@@ -9,7 +9,7 @@ import { createMusic, type MusicPlayer } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
-import { lookOf, yawOf } from './input/first-person';
+import { createRaceView, lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
@@ -68,6 +68,7 @@ function startGame() {
   const renderer = createRenderer(canvas, floor01);
   showroom = at => renderer.setShowroom(at);
   const smooth = createSmoother();
+  const raceView = createRaceView();
   const keyboard = new Keyboard();
   // Xbox-style controllers: one drives the player (it takes over as soon as it is touched), any navigates menus
   const padCtl = new PadControls();
@@ -519,6 +520,17 @@ function startGame() {
         const me = s.players.find(p => p.id === localId());
         for (const c of [keyboard, padCtl]) if (c.firstPerson !== (forced === 'fp')) c.setFirstPerson(forced === 'fp', me ? lookOf(me) : { x: 0, z: -1 });
       }
+      // the Kart Rally starts in first person (unless the LAN host fixed the view); after it everyone has the
+      // view of the floors again
+      {
+        const lookFor = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
+        const wasFp = keyboard.firstPerson;
+        raceView.update(
+          s.run.stage === 'race' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused'),
+          [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
+        );
+        if (keyboard.firstPerson && !wasFp && mode === 'playing' && !padActive) lockPointer(true);
+      }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;
       const fp0on = !!fp0?.firstPerson && view().run.stage !== 'shop';
       // the kill cam is watched through the eyes of who did it: the view turns with their aim, a little smoothed
@@ -715,6 +727,7 @@ function startGame() {
     const s = view();
     const versus = s.run.mode === 'versus';
     const aimOf = (id: number) => { const p = s.players.find(x => x.id === id); return p ? lookOf(p) : { x: 0, z: -1 }; };
+    raceView.reset();
     keyboard.setFirstPerson(versus, aimOf(localId()));
     padCtl.setFirstPerson(versus, aimOf(localId()));
     padCtl2.setFirstPerson(versus, aimOf(1));
