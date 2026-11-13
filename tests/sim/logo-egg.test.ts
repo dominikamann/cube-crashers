@@ -3,6 +3,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { logoSpots } from '../../src/sim/map/logo-spots';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { LOGO_EGG } from '../../src/sim/systems/logo-egg';
+import { TICK_RATE } from '../../src/sim/types';
 import type { SimState } from '../../src/sim/types';
 
 /** fires `n` shots into the middle of the wall logo, from the floor in front of it */
@@ -48,4 +49,29 @@ describe('the AmannLabs easter egg', () => {
     expect(prizes.has('coins')).toBe(true);
     expect(prizes.size).toBeGreaterThan(1);
   }, 90_000);
+
+  it('after an answer the logo rests for 30 seconds: shots do not count and do not shake it', () => {
+    expect(LOGO_EGG.restSeconds).toBe(30);
+    const s = createSim(floor01, 5, { mode: 'quick' });
+    s.enemies = [];
+    s.players[0].invulnUntil = 1e9;
+    const answeredAt = (() => {
+      shootLogo(s, LOGO_EGG.hits);
+      return s.logoEgg!.restUntil;
+    })();
+    expect(s.logoEgg!.given).toBe(1);
+    // right away: nothing
+    const resting = shootLogo(s, LOGO_EGG.hits);
+    expect(resting.filter(e => e.type === 'logoHit' || e.type === 'logoEgg')).toHaveLength(0);
+    expect(s.logoEgg).toMatchObject({ hits: 0, given: 1 });
+    // a shot just before the rest is over still does nothing
+    while (s.tick < answeredAt - 12) stepSim(s, []);
+    expect(shootLogo(s, 1).filter(e => e.type === 'logoHit')).toHaveLength(0);
+    // and once it is over the count starts from zero
+    while (s.tick < answeredAt) stepSim(s, []);
+    expect(answeredAt).toBeGreaterThanOrEqual(LOGO_EGG.restSeconds * TICK_RATE);
+    const again = shootLogo(s, LOGO_EGG.hits);
+    expect(again.filter(e => e.type === 'logoHit')).toHaveLength(LOGO_EGG.hits);
+    expect(s.logoEgg!.given).toBe(2);
+  }, 60_000);
 });

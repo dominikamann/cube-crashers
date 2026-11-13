@@ -708,8 +708,11 @@ export interface SimState {
   powerups: Powerup[];
   nextPowerupAt: number;
   jetpacks: JetpackItem[];
-  /** the easter egg: shots that hit the AmannLabs logo on the wall, and how often it has answered on this floor */
-  logoEgg?: { hits: number; given: number } | null;
+  /**
+   * the easter egg: shots that hit the AmannLabs logo on the wall, how often it has answered on this floor, and
+   * the tick until which it rests after its last answer
+   */
+  logoEgg?: { hits: number; given: number; restUntil: number } | null;
   /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
   heart?: { pos: Vec2 } | null;
   /** King Rex's eggs: thrown from where it fell (`from`) to where they lie, each hatches a baby dino */
