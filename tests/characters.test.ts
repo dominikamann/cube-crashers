@@ -28,8 +28,8 @@ describe('looksFor', () => {
   });
 
   it('takes a chosen character as it is, and never hands one out that has to be earned', () => {
-    const looks = looksFor([{ id: 0, name: 'Kim', character: 'dominik' }, { id: 1, name: 'Alex', character: 'duck' }, { id: 2, name: 'Sam', character: 'duck' }, ...humans(10).slice(3)]);
-    expect(looks.get(0)?.kind).toBe('dominik');
+    const looks = looksFor([{ id: 0, name: 'Kim', character: 'babyDino' }, { id: 1, name: 'Alex', character: 'duck' }, { id: 2, name: 'Sam', character: 'duck' }, ...humans(10).slice(3)]);
+    expect(looks.get(0)?.kind).toBe('babyDino');
     expect(looks.get(1)?.kind).toBe('duck');
     expect(looks.get(2)?.kind).toBe('duck');
     for (let id = 3; id < 10; id++) {
@@ -42,6 +42,9 @@ describe('looksFor', () => {
     const known = looksFor([{ id: 0, name: 'Kim' }]).get(0);
     expect(looksFor([{ id: 0, name: 'Kim', character: 'dragon' }]).get(0)).toEqual(known);
     expect(isCharacter('dragon')).toBe(false);
+    // (the last boss was a character once: a saved choice or an older build may still name him)
+    expect(isCharacter('dominik')).toBe(false);
+    expect(looksFor([{ id: 0, name: 'Kim', character: 'dominik' }]).get(0)).toEqual(known);
     expect(isCharacter(7)).toBe(false);
     expect(CHARACTERS.every(isCharacter)).toBe(true);
     expect(EARNED_CHARACTERS.every(c => !(FREE_CHARACTERS as readonly string[]).includes(c))).toBe(true);

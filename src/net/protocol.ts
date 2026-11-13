@@ -4,6 +4,7 @@ import { MAX_PLAYERS } from '../sim/config/balance';
 import { TOWER_ORDER } from '../sim/config/towers';
 import type { Command, Difficulty, EmoteId, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
 import { isEmote } from '../sim/systems/emotes';
+import { clampAimPitch } from '../sim/systems/shot-height';
 import type { SnapState } from './snapshot';
 
 /** how a LAN game may be watched: first person only, from above only, or either (V switches) */
@@ -220,7 +221,13 @@ export function sanitizeCommands(cmds: unknown[], playerId: number): Command[] {
       }
       case 'aim':
         if (!vec(c.point)) break;
-        out.push({ type: 'aim', playerId, point: { x: Math.min(AIM_MAX, Math.max(AIM_MIN, c.point.x)), z: Math.min(AIM_MAX, Math.max(AIM_MIN, c.point.z)) } });
+        out.push({
+          type: 'aim',
+          playerId,
+          point: { x: Math.min(AIM_MAX, Math.max(AIM_MIN, c.point.x)), z: Math.min(AIM_MAX, Math.max(AIM_MIN, c.point.z)) },
+          // (the tilt of a first-person view: older clients send none, and their shots fly as before)
+          ...(finite(c.pitch) ? { pitch: clampAimPitch(c.pitch) } : {}),
+        });
         break;
       case 'select':
         if (Number.isInteger(c.slot) && (c.slot as number) >= -1 && (c.slot as number) <= 5) out.push({ type: 'select', playerId, slot: c.slot as number });

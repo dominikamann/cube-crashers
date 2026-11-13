@@ -7,6 +7,7 @@ export type SoundId =
   | 'enemyHit'
   | 'enemyKilled'
   | 'coin'
+  | 'mazePixel'
   | 'towerBuilt'
   | 'buildDenied'
   | 'tower_laser'
@@ -136,6 +137,8 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 988, attack: 0.002, sustain: 0.04, decay: 0.03, volume: 0.09 },
     { wave: 'square', freq: 1319, attack: 0.002, sustain: 0.05, decay: 0.12, volume: 0.09, at: 0.05 },
   ],
+  // one for every pixel of the Glitch Maze, several a second: a short soft blip with a little chirp up
+  mazePixel: [{ wave: 'triangle', freq: 660, freqEnd: 880, attack: 0.002, sustain: 0.02, decay: 0.06, volume: 0.09 }],
   towerBuilt: [
     { wave: 'noise', freq: 400, attack: 0.002, sustain: 0.04, decay: 0.12, volume: 0.35, lowpass: 600 },
     { wave: 'triangle', freq: 523, freqEnd: 1047, attack: 0.01, sustain: 0.1, decay: 0.15, volume: 0.15, at: 0.08 },
@@ -361,6 +364,8 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
 ]);
 
 export const MAX_COIN_STREAK_STEPS = 12;
+/** a run of maze pixels climbs half a semitone a pixel, an octave in all: then it stays up there */
+export const MAX_MAZE_STREAK_STEPS = 24;
 const SEMITONE = 1.059;
 
 const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'growl_croc', monkey: 'screech_monkey', trex: 'roar_rex' };
@@ -510,6 +515,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('select');
     case 'cubeCaptured':
       return one('gameWon');
+    case 'mazePixel':
+      return one('mazePixel', SEMITONE ** (Math.min(e.streak - 1, MAX_MAZE_STREAK_STEPS) / 2));
     case 'mazePower':
       return one('powerupPicked');
     case 'mazeGhost':
@@ -517,7 +524,7 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'mazeCaught':
       return one('playerHit');
     case 'mazeEnd':
-      return one(e.cleared ? 'gameWon' : 'elevatorOpen');
+      return one('gameWon');
     case 'laneLeak':
       return one('playerHit');
     case 'laneEnd':

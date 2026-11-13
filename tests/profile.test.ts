@@ -69,9 +69,7 @@ describe('characters that have to be earned', () => {
   it('cannot be bought before their boss is beaten, however many tickets there are', () => {
     const p = fresh(1000);
     expect(bossToBeat(p, 'babyDino')).toBe('rex');
-    expect(bossToBeat(p, 'dominik')).toBe('dominik');
     expect(buyUnlock(p, 'babyDino')).toBe(false);
-    expect(buyUnlock(p, 'dominik')).toBe(false);
     expect(p.tickets).toBe(1000);
     expect(p.unlocked).toEqual([]);
   });
@@ -81,8 +79,6 @@ describe('characters that have to be earned', () => {
     expect(recordBossBeaten(p, 'rex')).toBe(true);
     expect(recordBossBeaten(p, 'rex')).toBe(false);
     expect(bossToBeat(p, 'babyDino')).toBeNull();
-    // (beating King Rex does nothing for Dominik)
-    expect(buyUnlock(p, 'dominik')).toBe(false);
     const cost = UNLOCKS.find(u => u.id === 'babyDino')!.cost;
     expect(buyUnlock(p, 'babyDino')).toBe(true);
     expect(p.tickets).toBe(1000 - cost);
@@ -92,11 +88,11 @@ describe('characters that have to be earned', () => {
   });
 
   it('cannot be bought without enough tickets', () => {
-    const p = fresh(UNLOCKS.find(u => u.id === 'dominik')!.cost - 1);
-    recordBossBeaten(p, 'dominik');
-    expect(buyUnlock(p, 'dominik')).toBe(false);
+    const p = fresh(UNLOCKS.find(u => u.id === 'babyDino')!.cost - 1);
+    recordBossBeaten(p, 'rex');
+    expect(buyUnlock(p, 'babyDino')).toBe(false);
     p.tickets += 1;
-    expect(buyUnlock(p, 'dominik')).toBe(true);
+    expect(buyUnlock(p, 'babyDino')).toBe(true);
     expect(p.tickets).toBe(0);
   });
 
@@ -119,6 +115,30 @@ describe('characters that have to be earned', () => {
     expect(ownedCharacter(p, 'babyDino')).toBeUndefined();
     buyUnlock(p, 'babyDino');
     expect(ownedCharacter(p, 'babyDino')).toBe('babyDino');
+  });
+
+  it('pays back the tickets for a character the game no longer has, once', () => {
+    const store = memory({ 'cube-crashers.profile': JSON.stringify({ version: 1, tickets: 12, unlocked: ['bomb', 'dominik', 'babyDino'], bonuses: ['credits'], beaten: ['rex', 'dominik'] }) });
+    const p = loadProfile(store);
+    expect(p).toEqual({ version: 1, tickets: 312, unlocked: ['bomb', 'babyDino'], bonuses: ['credits'], beaten: ['rex', 'dominik'] });
+    expect(ownedCharacter(p, 'dominik')).toBeUndefined();
+    // it is written down right away: loading again, or saving and loading, pays nothing more
+    expect(JSON.parse(store.data['cube-crashers.profile'])).toEqual(p);
+    expect(loadProfile(store)).toEqual(p);
+    saveProfile(store, p);
+    expect(loadProfile(store).tickets).toBe(312);
+  });
+
+  it('pays nothing back to a profile that never had it, and does not write to the store', () => {
+    const raw = JSON.stringify({ version: 1, tickets: 12, unlocked: ['bomb', 'nonsense'], bonuses: [] });
+    const store = memory({ 'cube-crashers.profile': raw });
+    expect(loadProfile(store).tickets).toBe(12);
+    expect(store.data['cube-crashers.profile']).toBe(raw);
+  });
+
+  it('still pays back where nothing can be stored', () => {
+    const locked = { getItem: () => JSON.stringify({ version: 1, tickets: 0, unlocked: ['dominik'] }), setItem: () => { throw new Error('denied'); } };
+    expect(loadProfile(locked)).toEqual({ version: 1, tickets: 300, unlocked: [], bonuses: [] });
   });
 });
 

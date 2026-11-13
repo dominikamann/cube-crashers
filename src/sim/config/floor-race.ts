@@ -64,7 +64,7 @@ export const RACE_CHECKPOINTS: { x0: number; x1: number; z0: number; z1: number 
   { x0: 14, x1: 19, z0: 10, z1: 11 },
 ];
 
-/** starting places on the grid, one per player, behind the line */
+/** starting places on the grid, one per player, behind the line: rows of two, the front row first */
 export const RACE_GRID = [
   { x: 11.5, z: 3.5 },
   { x: 11.5, z: 6.5 },

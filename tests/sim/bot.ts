@@ -1,6 +1,7 @@
 import { buildFlowField, towerTiles, flowDir } from '../../src/sim/map/flowfield';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos } from '../../src/sim/map/tilemap';
 import { padAt } from '../../src/sim/systems/towers';
+import { MAZE_DOTS } from '../../src/sim/config/floor-maze';
 import { RACE_CHECKPOINTS } from '../../src/sim/config/floor-race';
 import { TOWERS } from '../../src/sim/config/towers';
 import { maxDashCharges } from '../../src/sim/systems/player';
@@ -63,14 +64,15 @@ export function createBot(): (s: SimState) => Command[] {
       }
       let best = -1, bestD = Infinity;
       for (const i of maze.pixels) {
-        const dd = Math.abs((i % s.map.w) + 0.5 - p.pos.x) + Math.abs(Math.floor(i / s.map.w) + 0.5 - p.pos.z);
+        const dd = Math.abs(MAZE_DOTS[i].x - p.pos.x) + Math.abs(MAZE_DOTS[i].z - p.pos.z);
         if (dd < bestD) {
           bestD = dd;
           best = i;
         }
       }
       if (best < 0) return [];
-      const target = { x: (best % s.map.w) + 0.5, z: Math.floor(best / s.map.w) + 0.5 };
+      // a pixel lies where four tiles meet: aim for the middle of one of them, walking by collects it
+      const target = { x: MAZE_DOTS[best].x + 0.5, z: MAZE_DOTS[best].z + 0.5 };
       const key = `maze:${best}`;
       if (key !== fieldKey || !field) {
         fieldKey = key;

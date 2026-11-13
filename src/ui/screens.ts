@@ -227,8 +227,9 @@ export interface RunSummary {
   unlocked: string[];
   won: boolean;
   mode: string;
-  /** floors cleared */
+  /** floors cleared, and how many the run had */
   floors: number;
+  floorsTotal: number;
   /** versus: who won, shown as the headline */
   headline?: string;
   /** a Daily Run: its date */
@@ -644,7 +645,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         });
       };
       drawColors();
-      // the character: Automatic, the free ones, and the two that have to be earned (locked ones say how)
+      // the character: Automatic, the free ones, and the one that has to be earned (locked, it says how)
       const cast = row(t('settings.character'));
       cast.classList.add('chips');
       const castNote = text(card, 'div', 'settings-note', t('settings.characterHint'));
@@ -1056,7 +1057,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
         const versus = r.mode === 'versus';
         if (r.daily) text(s, 'p', 'daily-best', t('daily.result', { date: r.daily }));
-        if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors })}` : ''}`);
+        if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors, total: r.floorsTotal })}` : ''}`);
         if (versus) text(s, 'p', '', t('result.time', { time: `${m}:${sec}` }));
         else text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
         if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));

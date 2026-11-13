@@ -75,8 +75,8 @@ export type Command =
   | { type: 'hold'; playerId: number }
   | { type: 'build'; playerId: number; padId: number; tower: TowerKind }
   | { type: 'upgrade'; playerId: number; padId: number }
-  /** where the player's crosshair is on the ground */
-  | { type: 'aim'; playerId: number; point: Vec2 }
+  /** where the player's crosshair is on the ground; in first person also how far the view is tilted up (radians) */
+  | { type: 'aim'; playerId: number; point: Vec2; pitch?: number }
   /** the fire button is held this tick */
   | { type: 'fire'; playerId: number }
   /** slot 0–5 = normal weapons, -1 = the rare weapon (Q) */
@@ -97,6 +97,8 @@ export interface Intent {
   hold: boolean;
   fire: boolean;
   aim: Vec2 | null;
+  /** the tilt of the view that came with the aim (first person), null with an aim from above */
+  pitch: number | null;
   select: number | null;
   buy: number[];
   ready: boolean;
@@ -129,12 +131,16 @@ export interface Player {
   color: number;
   /** the figure the player chose (see characters.ts); a look only, the rules never read it. Left out: the game picks one */
   character?: string;
+  /** played by the computer, not by a person */
+  bot?: boolean;
   pos: Vec2;
   /** unit vector of the last movement direction */
   facing: Vec2;
   /** unit vector from the player toward the crosshair */
   aim: Vec2;
   aimPoint: Vec2;
+  /** first person: how far the player's view is tilted up (radians); left out for a view from above */
+  aimPitch?: number;
   /** index of the weapon that fires */
   selected: number;
   hp: number;
@@ -520,7 +526,7 @@ export interface VersusState {
 }
 
 export interface MazeState {
-  /** tile indices that still hold a pixel */
+  /** pixels still lying in the maze (indices into MAZE_DOTS) */
   pixels: number[];
   total: number;
   /** pixels collected per player id */
@@ -590,10 +596,11 @@ export type SimEvent =
   | { type: 'emote'; playerId: number; emote: EmoteId; pos?: Vec2 }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }
   | { type: 'laneEnd'; coreLeft: number; coins: number }
+  | { type: 'mazePixel'; playerId: number; streak: number; left: number }
   | { type: 'mazePower'; playerId: number }
   | { type: 'mazeGhost'; playerId: number; pos: Vec2 }
   | { type: 'mazeCaught'; playerId: number }
-  | { type: 'mazeEnd'; cleared: boolean; collected: Record<number, number> }
+  | { type: 'mazeEnd'; collected: Record<number, number> }
   | { type: 'raceEnd'; laps: Record<number, number>; medal: 'gold' | 'silver' | 'bronze' | null; winners: number[] }
   | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }
@@ -719,8 +726,11 @@ export interface SimState {
   powerups: Powerup[];
   nextPowerupAt: number;
   jetpacks: JetpackItem[];
-  /** the easter egg: shots that hit the AmannLabs logo on the wall, and how often it has answered on this floor */
-  logoEgg?: { hits: number; given: number } | null;
+  /**
+   * the easter egg: shots that hit the AmannLabs logo on the wall, how often it has answered on this floor, and
+   * the tick until which it rests after its last answer
+   */
+  logoEgg?: { hits: number; given: number; restUntil: number } | null;
   /** the hidden heart of this floor, if there is one (see systems/heart.ts) */
   heart?: { pos: Vec2 } | null;
   /** King Rex's eggs: thrown from where it fell (`from`) to where they lie, each hatches a baby dino */

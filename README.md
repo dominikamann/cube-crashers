@@ -77,7 +77,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
     <td><img src="docs/design/lane.gif" alt="Lane Defense: hold the lane, save the arcade cabinet" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Kart Rally: first to five laps wins</sub></td>
+    <td align="center"><sub>Kart Rally: first to three laps wins</sub></td>
     <td align="center"><sub>Lane Defense: keep the arcade cabinet alive</sub></td>
   </tr>
   <tr>
@@ -231,15 +231,21 @@ Server Farm). The doors are open: lure it away and slip past, or beat it for a c
 Between the floors the elevator takes you to a short game of its own, then to the shop:
 
 - **Kart Rally:** everyone sits in their own kart (no getting out, and it cannot be wrecked) on a race track with a
-  jump, boost pads, an S-bend and a narrow canyon. **The first to drive five laps wins**, and the race ends right
+  jump, boost pads, an S-bend and a narrow canyon. **The first to drive three laps wins**, and the race ends right
   then. Laps only count through every checkpoint in order. Ram or shoot the monsters on the track. Alone you drive
-  for a medal by your time (gold within 1:20, silver within 1:45, bronze within 2:30).
+  for a medal by your time (gold within 0:48, silver within 1:03, bronze within 1:30). The race starts in first
+  person (your view key switches to the view from above, and after the race you have the view you had before).
+  With several players the karts line up in rows of two: whoever leads in score starts in front, whoever has the
+  fewest points at the back.
 - **Lane Defense:** one long lane, your arcade cabinet at the bottom. Hold it for 90 seconds while the waves
   march down. Every monster that reaches the cabinet damages it; what is left of it pays coins, a perfect
   defence pays extra. Build pads line the lane, coins and power-ups wait further up.
-- **Glitch Maze:** no weapons, no jumping. Collect the pixels in the maze while the glitch ghosts hunt you; a
-  caught player goes back to the start (no damage, no life lost). A power cube in each corner turns the
-  ghosts blue for a few seconds: crash them for coins. Clear the maze for a bonus.
+- **Glitch Maze:** no weapons, no jumping. A line of pixels runs through the corridors of the maze: collect
+  them all while the glitch ghosts hunt you. There is no clock: the maze is over when the last pixel is gone
+  (about a minute), together if you are several; the counter shows how many are left. A caught player goes
+  back to the start (no damage, no life lost), and so do the ghosts lurking there, to their cage. A power cube
+  in each corner turns the ghosts blue for a few seconds: crash them for coins (they come back). Every pixel
+  pays its collector, and clearing the maze pays everyone a bonus.
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
@@ -316,8 +322,8 @@ the whole team.
 - **Character:** who you are: an astronaut, a knight, a cat, a rubber duck, an arcade cabinet, a cube, a joystick,
   a ghost, a mushroom or a soda cup. *Automatic* gives everyone in a match a different one. A look only: every
   character is as fast, as tough and as easy to hit as the others, and holds every weapon. Bots are always
-  robots. Two characters are for the end of the game: the **Baby Dino** (beat King Rex first) and **Dominik**
-  (beat Angry Dominik first); once their boss is beaten you buy them under *Unlocks* for tickets.
+  robots. One character is for the end of the game: the **Baby Dino**. Beat King Rex first, then buy it under
+  *Unlocks* for tickets.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
 - **Keys → Change keys** opens the **Controls** page: every keyboard action with its key. Click an action (or pick it
   and press `Enter`), then press the new key. If another action had that key, the two swap. *Reset to defaults*

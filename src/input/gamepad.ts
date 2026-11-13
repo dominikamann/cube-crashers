@@ -153,7 +153,7 @@ export class PadControls {
       out.push({ type: 'move', playerId, dir: viewMove(this.yaw, move.x, -move.z) });
       const f = forwardOf(this.yaw), d = aimDistance(this.pitch);
       this.aimDir = f;
-      if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d } });
+      if (p) out.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d }, pitch: this.pitch });
       if ((pad.buttons[PAD.RT]?.value ?? 0) > TRIGGER_FIRE) out.push({ type: 'fire', playerId });
       return this.actions(pad, s, p, playerId, now, out);
     }
