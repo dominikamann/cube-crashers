@@ -187,8 +187,10 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 Which world each floor is depends on the run (its seed), so no two runs look quite the same; on the LAN
 everyone gets the same ones. Every world can also be played on its own under **Single floor**.
 
-**Wild bosses:** on some nest floors (never the first) a smaller **King Rex** or **Rhino** waits by the elevator
-once the last nest has fallen. The doors are open: lure it away and slip past, or beat it for a crate.
+**Wild bosses:** now and then a smaller boss waits by the elevator once the last nest has fallen: rarely on
+the first floor, more often the higher you are. It is never a boss your run has a floor for, and always one that
+suits the world (the **Rhino** where there is room to charge, **King Rex** in the city, the jungle and the
+Server Farm). The doors are open: lure it away and slip past, or beat it for a crate.
 
 Between the floors the elevator takes you to a short game of its own, then to the shop:
 

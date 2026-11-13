@@ -5,16 +5,28 @@ import { floorDef } from '../config/floors';
 import { spawnBoss } from './boss';
 
 /**
- * A wild boss in the Tower Run: on some nest floors King Rex or the Rhino stands in front of the elevator once
+ * A wild boss in the Tower Run: on some nest floors a boss that suits the world stands in front of the elevator once
  * the last nest has fallen. It is smaller than the real thing and leaves a crate behind; the elevator is open
  * either way, so the team can lure it away and slip past, or beat it.
  */
 export const WILD = {
-  /** share of the nest floors (after the first) that get one */
-  chance: 0.45,
+  /** how likely one is per floor of the run: rare at the bottom, more likely the higher the team is */
+  chance: [0.15, 0.3, 0.4, 0.5, 0.6],
   /** its health, as a share of the real boss's */
   hp: 0.35,
-  kinds: ['rex', 'rhino'] as BossKind[],
+  /**
+   * which bosses suit which world: the Rhino needs room to charge, King Rex is at home in the city, the jungle
+   * and between the machines. (The Kraken needs water, the Segment Worm a wide roof and the Mega Block is too
+   * big for the aisles of a nest floor: never wild.)
+   */
+  fits: {
+    floor01: ['rhino'],
+    candy: ['rhino'],
+    jungle: ['rhino', 'rex'],
+    neon: ['rex'],
+    highway: ['rhino', 'rex'],
+    servers: ['rex'],
+  } as Record<string, BossKind[]>,
 };
 
 /** its own dice from the seed and the floor, so the run's other random numbers stay as they were */
@@ -24,8 +36,12 @@ const dice = (s: SimState, salt: number) => Math.abs(Math.sin(s.seed * 7.3219 + 
 export function planWildBoss(s: SimState, always = false): void {
   s.wild = null;
   if (s.run.mode !== 'run' || floorDef(s.map.id)?.kind !== 'nests') return;
-  if (!always && (s.run.floor === 0 || dice(s, 0) >= WILD.chance)) return;
-  s.wild = { kind: WILD.kinds[Math.floor(dice(s, 1) * WILD.kinds.length)] };
+  // never a boss this run has a floor of its own for
+  const own = s.run.floors.map(id => floorDef(id)?.boss);
+  const kinds = (WILD.fits[s.map.id] ?? []).filter(k => !own.includes(k));
+  if (kinds.length === 0) return;
+  if (!always && dice(s, 0) >= (WILD.chance[s.run.floor] ?? WILD.chance[WILD.chance.length - 1])) return;
+  s.wild = { kind: kinds[Math.floor(dice(s, 1) * kinds.length)] };
 }
 
 /**

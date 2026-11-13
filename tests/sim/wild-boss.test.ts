@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
+import { FLOORS } from '../../src/sim/config/floors';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { WILD_WAKE } from '../../src/sim/systems/boss';
 import { WILD, planWildBoss, releaseWildBoss } from '../../src/sim/systems/wild-boss';
@@ -14,21 +15,40 @@ function secondFloor(seed: number): SimState {
 }
 
 describe('a wild boss in the Tower Run', () => {
-  it('never shows up on the first floor', () => {
-    for (let seed = 1; seed <= 20; seed++) expect(createSim(floor01, seed, { mode: 'run', players: 1 }).wild ?? null).toBeNull();
+  it('is rare on the first floor and more likely the higher the team is', () => {
+    const share = (floor: number) => {
+      let n = 0;
+      for (let seed = 1; seed <= 300; seed++) {
+        const s = createSim(floor01, seed, { mode: 'run', players: 1 });
+        if (floor > 0) enterFloor(s, floor);
+        if (s.wild) n++;
+      }
+      return n / 300;
+    };
+    const [first, second, fourth] = [share(0), share(1), share(3)];
+    expect(first).toBeGreaterThan(0.05);
+    expect(first).toBeLessThan(second);
+    expect(second).toBeLessThan(fourth);
+    expect(fourth).toBeLessThan(0.75);
+    expect(WILD.chance).toEqual([...WILD.chance].sort((a, b) => a - b));
   });
 
-  it('is planned on some nest floors, not on all, and is King Rex or the Rhino', () => {
-    const kinds = new Set<string>();
-    let none = 0;
-    for (let seed = 1; seed <= 40; seed++) {
-      const s = secondFloor(seed);
-      expect(s.run.floor).toBe(1);
-      if (s.wild) kinds.add(s.wild.kind);
-      else none++;
-    }
-    expect([...kinds].sort()).toEqual(['rex', 'rhino']);
-    expect(none).toBeGreaterThan(5);
+  it('is never a boss this run has a floor for, and only one that suits the map', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 200; seed++)
+      for (const floor of [0, 1, 3]) {
+        const s = createSim(floor01, seed, { mode: 'run', players: 1 });
+        if (floor > 0) enterFloor(s, floor);
+        if (!s.wild) continue;
+        const own = s.run.floors.map(id => FLOORS[id].boss).filter(Boolean);
+        expect(own).not.toContain(s.wild.kind);
+        expect(WILD.fits[s.map.id]).toContain(s.wild.kind);
+        seen.add(s.wild.kind);
+      }
+    expect(seen.has('rex')).toBe(true);
+    expect(seen.has('rhino')).toBe(true);
+    expect(seen.has('worm')).toBe(false);
+    expect(seen.has('kraken')).toBe(false);
   });
 
   it('waits by the elevator once the last nest has fallen, until someone comes near; beating it leaves a crate', () => {
