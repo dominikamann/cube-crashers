@@ -776,8 +776,8 @@ function startGame() {
     setSplit(settings.localPlayers === 2);
     const fixed = Number(params.get('seed'));
     // dev: ?demo=cast lines up a full house of players to look at
-    // (&crowd=1 does the same in any other demo: nine more players stand about, e.g. with &as=dominik to see
-    // what ten of the heaviest figure cost)
+    // (&crowd=1 does the same in any other demo: nine more players stand about, e.g. with &as=babyDino to see
+    // what ten of one figure cost)
     const cast = import.meta.env.DEV && (params.get('demo') === 'cast' || params.has('crowd'));
     const names = cast ? Array.from({ length: MAX_PLAYERS }, (_, i) => `${params.get('cast') === 'bots' || (params.get('cast') === 'mix' && i % 2 === 1) ? 'Bot' : 'P'} ${'ABCDEFGHIJ'[i]}`) : split ? [playerName(), t('split.player2')] : [playerName()];
     const colors = cast ? undefined : settings.color !== null ? (split ? [settings.color, (settings.color + 1) % 6] : [settings.color]) : undefined;
@@ -1231,7 +1231,7 @@ function applyDemo(sim: SimState) {
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
-  // &as=dominik|babyDino|cat|…: play this demo as that character, owned or not
+  // &as=babyDino|cat|…: play this demo as that character, owned or not
   if (params.has('as')) sim.players[0].character = params.get('as') as never;
   if (params.has('crowd'))
     sim.players.slice(1).forEach(p => {
@@ -1326,12 +1326,10 @@ function applyDemo(sim: SimState) {
       if (weapon === 'rare') Object.assign(p, { rare: { kind: 'slushMachine', until: Number.MAX_SAFE_INTEGER, cooldown: 0 }, rareSelected: true });
       else if (weapon) Object.assign(p, { weapons: [{ kind: weapon as WeaponKind, level: 2, cooldown: 0 }], selected: 0 });
     }
-    // one of every character, or (&cast=earned) the two earned ones first, (&cast=bots) ten bots, (&cast=mix) players
+    // one of every character, or (&cast=earned) the earned one first, (&cast=bots) ten bots, (&cast=mix) players
     // and bots in turn, (&cast=auto) what the game picks for ten names
     const kinds = params.get('cast') === 'earned' ? [...EARNED_CHARACTERS, ...FREE_CHARACTERS] : FREE_CHARACTERS;
     if (!params.has('cast') || params.get('cast') === 'earned') sim.players.forEach((p, i) => (p.character = kinds[(i + (Number(params.get('from')) || 0)) % kinds.length]));
-    // (&cast=dominik: all ten are Dominik, the heaviest figure there is: the worst case for the graphics card)
-    if (params.get('cast') === 'dominik') sim.players.forEach(p => (p.character = 'dominik'));
     row.forEach((p, i) => {
       p.pos = { x: at.x + (i - (row.length - 1) / 2) * gap, z: at.z };
       p.aim = p.facing = { x: 0, z: 1 };

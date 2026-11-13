@@ -314,23 +314,6 @@ export interface DominikPose {
 
 let shapes: Record<'upper' | 'left' | 'grip' | 'open' | 'leg' | 'neck', THREE.BufferGeometry> | null = null;
 
-/**
- * His limbs as pieces for another figure of him (the playable Dominik): each hangs from its joint, which is its
- * origin, and `joints` says where those are in his body's frame. The right forearm ends in an open hand: there
- * he holds whatever the player holds.
- */
-export function dominikPieces(): {
-  neck: THREE.BufferGeometry;
-  upper: THREE.BufferGeometry;
-  left: THREE.BufferGeometry;
-  right: THREE.BufferGeometry;
-  leg: THREE.BufferGeometry;
-  joints: { shoulder: { x: number; y: number; z: number }; knee: { x: number; y: number; z: number }; upperArm: number };
-} {
-  shapes ??= { upper: upperArm(), left: forearm('hanging', 1, true), grip: forearm('grip', -1), open: forearm('open', -1), leg: lowerLeg(), neck: neck() };
-  return { neck: shapes.neck, upper: shapes.upper, left: shapes.left, right: shapes.open, leg: shapes.leg, joints: { shoulder: SHOULDER, knee: KNEE, upperArm: UPPER_ARM } };
-}
-
 export interface DominikLimbs {
   begin(): void;
   add(p: DominikPose, dt: number): void;

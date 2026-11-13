@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BOT_CHASSIS, type BotChassis, type CharacterId, type Look } from '../characters';
 import { Part, Sculpt } from './figure';
-import { dinoFigure, dominikFigure } from './monster-figure';
+import { dinoFigure } from './monster-figure';
 
 /**
  * The player figures. Every character is built from boxes in its own space: it stands on y = 0, looks
@@ -58,8 +58,6 @@ interface Model {
   hand: Vec3;
   /** how far behind its middle its back is (the jetpack sits there) and how high */
   back: Vec3;
-  /** how big its jetpack is, of the usual one (a slim figure wears a smaller one) */
-  pack?: number;
   /** how it lies when downed: on its side, on its back, on its face, upside down, or it stays up (and `move` does it) */
   down: 'side' | 'back' | 'front' | 'flip' | 'stay';
   /** its height (to lie down by, and for what sits on top) */
@@ -101,7 +99,7 @@ function gloves(s: Sculpt, x: number, shoulder: number): void {
   }
 }
 
-const HUMANS: Record<Exclude<CharacterId, 'babyDino' | 'dominik'>, Model> = {
+const HUMANS: Record<Exclude<CharacterId, 'babyDino'>, Model> = {
   astronaut: {
     gait: 'walk',
     hand: [0.42, 0.8, -0.34],
@@ -584,8 +582,8 @@ const BOTS: Record<BotChassis, Model> = {
   },
 };
 
-/** the two that are monsters at player size (see monster-figure.ts) */
-const EARNED: Record<'babyDino' | 'dominik', Model> = {
+/** the one that is a monster at player size (see monster-figure.ts) */
+const EARNED: Record<'babyDino', Model> = {
   babyDino: {
     gait: 'waddle',
     hand: [0.3, 0.6, -0.5],
@@ -624,19 +622,6 @@ const EARNED: Record<'babyDino' | 'dominik', Model> = {
       p.body.rotation.x -= 0.32 * Math.sin(Math.PI * u);
       p.jaw.rotation.x = -(0.7 + Math.sin(t * 30) * 0.06);
       return u * Math.PI * 2;
-    },
-  },
-  dominik: {
-    gait: 'walk',
-    hand: [0.23, 1.14, -0.5],
-    back: [0, 0.5, -0.07],
-    pack: 0.7,
-    down: 'back',
-    height: 1.64,
-    build: (s, { c }) => dominikFigure(s, c),
-    move(p, a) {
-      // standing about: he looks round for someone to be angry at
-      p.head.rotation.y = a.idle > 2 ? Math.sin((a.idle - 2) * 1.6) * 0.6 : 0;
     },
   },
 };

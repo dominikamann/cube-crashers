@@ -304,8 +304,8 @@ the whole team.
 - **Character:** who you are: an astronaut, a knight, a cat, a rubber duck, an arcade cabinet, a cube, a joystick,
   a ghost, a mushroom or a soda cup. *Automatic* gives everyone in a match a different one. A look only: every
   character is as fast, as tough and as easy to hit as the others, and holds every weapon. Bots are always
-  robots. Two characters are for the end of the game: the **Baby Dino** (beat King Rex first) and **Dominik**
-  (beat Angry Dominik first); once their boss is beaten you buy them under *Unlocks* for tickets.
+  robots. One character is for the end of the game: the **Baby Dino**. Beat King Rex first, then buy it under
+  *Unlocks* for tickets.
 - **Your name**, sound and music volume, and whether `W` walks toward the crosshair (Counter-Strike style, off by default).
 - **Keys → Change keys** opens the **Controls** page: every keyboard action with its key. Click an action (or pick it
   and press `Enter`), then press the new key. If another action had that key, the two swap. *Reset to defaults*
