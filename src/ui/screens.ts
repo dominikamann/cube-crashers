@@ -741,35 +741,50 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     });
   }
 
-  /** the Boss Brawl's map as one small button: a click goes on to the next (the arena, random, then every other floor) */
-  const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap') => {
-    const options = key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...BRAWL_MAPS] : [BRAWL_MAPS[0], MAP_ROTATION, ...BRAWL_MAPS.slice(1)];
-    const name = settings[key] === MAP_ROTATION ? t('setup.random') : settings[key] === RUSH_OWN ? t('setup.ownFloors') : t(FLOORS[settings[key]].name as 'floor.plaza');
+  /** which map list is open (they close again when another page is drawn) */
+  let openMaps: string | null = null;
+  /** a map as a drop-down: the button shows the choice, a click opens every map below it */
+  const mapPicker = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' | 'quickMap', options: string[]) => {
+    const nameOf = (id: string) => (id === MAP_ROTATION ? t('setup.random') : id === RUSH_OWN ? t('setup.ownFloors') : t(FLOORS[id].name as 'floor.plaza') + (key === 'quickMap' && FLOORS[id].kind === 'boss' ? ' ☠' : ''));
+    const open = openMaps === key;
+    // the button and its list sit in one box, so the list hangs right under the button
+    const box = document.createElement('span');
+    box.className = 'map-drop';
+    parent.append(box);
     const c = document.createElement('button');
-    c.className = 'chip small';
-    c.textContent = `${t('setup.map')}: ${name} \u203a`;
+    c.className = `chip small drop${open ? ' open' : ''}`;
+    c.textContent = `${t('setup.map')}: ${nameOf(settings[key])}`;
     c.addEventListener('click', () => {
       actions.click();
-      settings[key] = options[(options.indexOf(settings[key]) + 1) % options.length];
-      changed();
+      openMaps = open ? null : key;
       redraw();
     });
-    parent.append(c);
+    box.append(c);
+    if (!open) return;
+    const list = document.createElement('div');
+    list.className = 'map-list';
+    for (const id of options) {
+      const o = document.createElement('button');
+      o.className = `chip small${id === settings[key] ? ' on' : ''}`;
+      o.textContent = nameOf(id);
+      o.addEventListener('click', () => {
+        actions.click();
+        settings[key] = id;
+        openMaps = null;
+        changed();
+        redraw();
+      });
+      list.append(o);
+    }
+    box.append(list);
   };
-
-  /** the map of a Single floor as one small button: a click goes on to the next floor */
+  /** the Boss Brawl's map (the arena, random, then every other floor) or the Boss Rush's (their own floors first) */
+  const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap') =>
+    mapPicker(parent, redraw, key, key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...BRAWL_MAPS] : [BRAWL_MAPS[0], MAP_ROTATION, ...BRAWL_MAPS.slice(1)]);
+  /** the map of a Single floor */
   const quickMapChip = (parent: HTMLElement, redraw: () => void) => {
     if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
-    const c = document.createElement('button');
-    c.className = 'chip small';
-    c.textContent = `${t('setup.map')}: ${t(FLOORS[settings.quickMap].name as 'floor.plaza')}${FLOORS[settings.quickMap].kind === 'boss' ? ' \u2620' : ''} \u203a`;
-    c.addEventListener('click', () => {
-      actions.click();
-      settings.quickMap = QUICK_MAPS[(QUICK_MAPS.indexOf(settings.quickMap) + 1) % QUICK_MAPS.length];
-      changed();
-      redraw();
-    });
-    parent.append(c);
+    mapPicker(parent, redraw, 'quickMap', QUICK_MAPS);
   };
 
   /** the versus match the settings describe (the map rotation picks a random arena) */

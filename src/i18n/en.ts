@@ -215,7 +215,7 @@ export const en = {
   'lane.lost': 'The cabinet is wrecked!',
   'lane.leak': 'The cabinet takes a hit!',
   'setup.bots': 'Bots',
-  'setup.ownFloors': 'Their own floors',
+  'setup.ownFloors': 'Each boss in its own arena',
   'setup.random': '\u{1F3B2} Random',
   'setup.rotation': '\u{1F3B2} Rotation',
   'versus.nextMap': 'Next map',
