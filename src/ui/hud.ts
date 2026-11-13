@@ -74,7 +74,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   // your own lives (up to the most any level starts with)
   const creditEls = Array.from({ length: Math.max(START_CREDITS, ...Object.values(DIFFICULTY).map(d => d.credits)) }, () => el('i', 'credit', creditRow));
   // the team's lives: a panel under the run box that shows on a key or when a teammate loses a life
-  const teamBox = el('div', 'hud-box team-panel txt', layer);
+  // (it hangs under the run box, however tall that is)
+  runBox.style.position = 'relative';
+  const teamBox = el('div', 'hud-box team-panel txt', runBox);
   let lastTeam = '';
   let teamUntil = 0;
   let lastTime = 0;
