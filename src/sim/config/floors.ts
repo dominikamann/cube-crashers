@@ -36,7 +36,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
-  [floorWaldsee.id]: { map: floorWaldsee, theme: 'plaza', kind: 'nests', name: 'floor.waldsee', eliteBonus: 0.05 },
+  [floorWaldsee.id]: { map: floorWaldsee, theme: 'waldsee', kind: 'nests', name: 'floor.waldsee', eliteBonus: 0.05 },
   [floorUnderwater.id]: { map: floorUnderwater, theme: 'underwater', kind: 'boss', boss: 'kraken', name: 'floor.underwater', eliteBonus: 0 },
   [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
   [floorRace.id]: { map: floorRace, theme: 'race', kind: 'race', name: 'floor.race', eliteBonus: 0 },

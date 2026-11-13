@@ -1231,6 +1231,11 @@ function applyDemo(sim: SimState) {
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
+  // &see=x,z,height,radius,angle: the camera looks at that spot of the map from there (to look at a place)
+  if (import.meta.env.DEV && params.has('see')) {
+    const [x, z, height = 14, radius = 16, angle = 0] = params.get('see')!.split(',').map(Number);
+    showroom?.({ x, z, height, radius, angle });
+  }
   // &as=dominik|babyDino|cat|…: play this demo as that character, owned or not
   if (params.has('as')) sim.players[0].character = params.get('as') as never;
   if (params.has('crowd'))

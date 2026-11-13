@@ -97,10 +97,10 @@ for h in used:
     a=(t.get('addr:street'),t.get('addr:housenumber'))
     if a in ADDR: col=ADDR[a]
     big=len(tiles)
-    wall=round(1.5+0.9*h01(houses[h]['osm'],3)+(0.3 if big>30 else 0),2)
-    if kind=='rathaus': wall=2.6
-    if kind=='kornhaus': wall=2.5
-    if kind=='church': wall=3.2
+    wall=round(1.25+0.6*h01(houses[h]['osm'],3)+(0.2 if big>30 else 0),2)
+    if kind=='rathaus': wall=2.2
+    if kind=='kornhaus': wall=2.1
+    if kind=='church': wall=2.8
     out.append({'id':remap[h],'kind':kind,'name':t.get('name',''),'col':col,'roof':roof,'wall':wall,'ang':round(ang,3),'cx':round(cxm+0.5,2),'cz':round(cym+0.5,2),'n':big})
 pois={'T':[],'F':[],'b':[],'named':[]}
 for e in d['elements']:

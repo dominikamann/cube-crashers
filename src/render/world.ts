@@ -13,6 +13,7 @@ import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
 import { buildDecor } from './decor';
+import { buildWaldseeTown, paintWaldseeFloor, paintWaldseeWall, waldseeBlockColor, waldseeBlockHeight, waldseeGround } from './waldsee-look';
 import { floorDef } from '../sim/config/floors';
 
 export const WALL_HEIGHT = 1.4;
@@ -32,6 +33,8 @@ export interface World {
 
 /** how tall the wall block at a tile is (blocks come in a few heights, by 4x4 patch; the race has low rails) */
 function wallHeight(map: FloorMap, tx: number, tz: number): number {
+  // (Bad Waldsee: every block is a house with its own height and roof, a garden bed or the lake)
+  if (map.id === 'waldsee') return waldseeBlockHeight(tx, tz);
   return map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)];
 }
 
@@ -59,6 +62,7 @@ function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D
 /** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof */
 function wallSideTexture(look: string): THREE.CanvasTexture {
   return canvasTexture(64, 64, g => {
+    if (look === 'waldsee') return paintWaldseeWall(g);
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, 64, 64);
     if (look === 'candy') {
@@ -185,6 +189,7 @@ function windowTexture(): THREE.CanvasTexture {
  * the arcade. Grey only: the theme colour comes from the vertices.
  */
 function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, tz: number, x: number, y: number, px: number): void {
+  if (look === 'waldsee') return paintWaldseeFloor(g, tx, tz, x, y, px);
   const soft = look === 'candy';
   const asphalt = look === 'neon' || look === 'race';
   const v = Math.round((asphalt ? 222 : look === 'arena' ? 230 : 226) + hash(tx * 3, tz * 7) * (look === 'arena' ? 10 : 14));
@@ -547,8 +552,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const tileOf = (tx: number, tz: number): Tile => (tx < 0 || tz < 0 || tx >= map.w || tz >= map.h ? Tile.Wall : map.tiles[tz * map.w + tx]);
   const isWall = (tx: number, tz: number) => tileOf(tx, tz) === Tile.Wall;
 
-  function layer(filter: (t: Tile) => boolean, material: THREE.Material | THREE.Material[], height: number | ((tx: number, tz: number) => number), yBase: number, shadows: boolean, geometry: THREE.BufferGeometry = unit) {
-    const list = cells.filter(c => filter(c.tile));
+  function layer(filter: (t: Tile, c: { tx: number; tz: number }) => boolean, material: THREE.Material | THREE.Material[], height: number | ((tx: number, tz: number) => number), yBase: number, shadows: boolean, geometry: THREE.BufferGeometry = unit) {
+    const list = cells.filter(c => filter(c.tile, c));
     const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, list.length));
     mesh.count = list.length;
     mesh.castShadow = shadows;
@@ -767,12 +772,23 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // elsewhere the blocks come in three heights (by 4x4 patch), so in first person you cannot see over all of them
   const wallH = (tx: number, tz: number) => wallHeight(map, tx, tz);
   const wallTopY = (tx: number, tz: number) => wallH(tx, tz) - 0.4;
-  const walls = layer(t => t === Tile.Wall, [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
+  // (Bad Waldsee: the houses are the walls; its gardens and the lake are blocks of their own, without windows)
+  const town = look === 'waldsee';
+  const walls = layer((t, c) => t === Tile.Wall && (!town || waldseeGround(c.tx, c.tz) === 'house'), [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
+  if (town) {
+    const ground = new THREE.MeshLambertMaterial({ vertexColors: true });
+    disposables.push(ground);
+    const beds = layer((t, c) => t === Tile.Wall && waldseeGround(c.tx, c.tz) !== 'house', ground, wallH, -0.4, false, wallGeo);
+    beds.list.forEach((c, i) => beds.mesh.setColorAt(i, new THREE.Color(waldseeBlockColor(c.tx, c.tz))));
+    beds.mesh.instanceColor!.needsUpdate = true;
+    buildWaldseeTown(addToScene, disposables);
+  }
 
   const trims: { x: number; z: number; sx: number; sz: number; y: number }[] = [];
   // a trim on every edge that drops: next to the floor or a lower block
   const higher = (c: { tx: number; tz: number }, tx: number, tz: number) => !isWall(tx, tz) || wallH(tx, tz) < wallH(c.tx, c.tz);
-  for (const c of walls.list) {
+  // (not in Bad Waldsee: there the roofs lie on the walls)
+  for (const c of town ? [] : walls.list) {
     const cx = c.tx + 0.5, cz = c.tz + 0.5, y = wallTopY(c.tx, c.tz);
     if (higher(c, c.tx + 1, c.tz)) trims.push({ x: cx + 0.45, z: cz, sx: 0.16, sz: 1.04, y });
     if (higher(c, c.tx - 1, c.tz)) trims.push({ x: cx - 0.45, z: cz, sx: 0.16, sz: 1.04, y });
@@ -798,7 +814,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   disposables.push(barrierTex);
   const barrierSide = new THREE.MeshLambertMaterial({ map: barrierTex });
   const barrierTop = lambert(0xe4e1da);
-  layer(t => t === Tile.LowWall, [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
+  // (in Bad Waldsee what is in the way on the floor is a tree or a fountain: drawn as that, see waldsee-look.ts)
+  if (!town) layer(t => t === Tile.LowWall, [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
 
   // ---- glitch floor and boost tiles
   // the hazard tiles are glitch floor everywhere except where the map says otherwise: the jungle's
@@ -1075,10 +1092,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           }
         }
         col.needsUpdate = true;
-        walls.list.forEach((_c, i) => walls.mesh.setColorAt(i, color.setHex(theme.wallA)));
+        walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : theme.wallA)));
         walls.mesh.instanceColor!.needsUpdate = true;
-        for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(theme.wallA).lerp(white, 0.6));
-        trimMesh.instanceColor!.needsUpdate = true;
+        for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
+        if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;
         outerMat.color.setHex(theme.hemiGround).multiplyScalar(0.75);
       }
       const maze = s.run.maze;
