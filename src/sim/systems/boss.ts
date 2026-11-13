@@ -7,8 +7,8 @@ import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossSta
 import { allBosses, dist } from '../util';
 import { hpScale } from './coop';
 import { layEggs } from './eggs';
-import { insideBorder } from '../map/border';
-import { QUEEN_REACH } from './enemies';
+import { clearOfBorder, insideBorder } from '../map/border';
+import { KRAKEN_REACH, QUEEN_REACH } from './enemies';
 import { spinWeb } from './webs';
 import { aloft } from './rare';
 import { dropCoins } from './combat';
@@ -625,7 +625,36 @@ function drag(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
 
 /** Moves boss bodies; runs right after the other enemies. */
 export function moveBoss(s: SimState): void {
-  for (const b of allBosses(s)) if (b.kind === 'worm') moveWorms(s, b);
+  const all = allBosses(s);
+  for (const b of all) if (b.kind === 'worm') moveWorms(s, b);
+  if (all.length > 1) keepApart(s, all);
+}
+
+/**
+ * Bosses do not walk into each other: where two bodies overlap, each gives way by half of it. (A worm is many
+ * small pieces and winds between the others; a boss in mid-leap is in the air.) Giving way puts nobody into a
+ * wall: the climbers stay clear of the wall round the map, the others of every wall.
+ */
+function keepApart(s: SimState, all: BossState[]): void {
+  const solid = all.filter(b => b.enemyId !== null && !b.leap && b.kind !== 'worm').map(b => ({ b, e: byId(s, b.enemyId!) })).filter((x): x is { b: BossState; e: Enemy } => !!x.e && x.e.hp > 0);
+  const give = ({ b, e }: { b: BossState; e: Enemy }, dx: number, dz: number) => {
+    const reach = b.kind === 'spider' ? QUEEN_REACH : b.kind === 'kraken' ? KRAKEN_REACH : 0;
+    if (!reach) return void moveCircle(s.map, e.pos, dx, dz, Math.min(e.radius, 0.45), BLOCKS_ENEMY);
+    if (clearOfBorder(s.map, e.pos.x + dx, e.pos.z, reach)) e.pos.x += dx;
+    if (clearOfBorder(s.map, e.pos.x, e.pos.z + dz, reach)) e.pos.z += dz;
+  };
+  for (let i = 0; i < solid.length; i++)
+    for (let j = i + 1; j < solid.length; j++) {
+      const a = solid[i].e, c = solid[j].e;
+      let dx = c.pos.x - a.pos.x, dz = c.pos.z - a.pos.z;
+      const d = Math.hypot(dx, dz), over = a.radius + c.radius - d;
+      if (over <= 0) continue;
+      // (right on top of each other: apart along a line that depends on who they are, not on chance)
+      if (d < 1e-6) [dx, dz] = [Math.cos(a.id), Math.sin(a.id)];
+      const n = Math.hypot(dx, dz);
+      give(solid[i], (-dx / n) * over * 0.5, (-dz / n) * over * 0.5);
+      give(solid[j], (dx / n) * over * 0.5, (dz / n) * over * 0.5);
+    }
 }
 
 /** Deaths, splits, phases and attacks; runs after all damage of the tick. */
