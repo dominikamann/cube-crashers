@@ -480,6 +480,9 @@ body.no-map .mapbox { display: none; }
 .screen.lobby-screen .lobby-row i { width: 11px; height: 11px; border-width: 1px; flex: none; }
 .screen.lobby-screen .lobby-row .chip { padding: 3px 6px; font-size: 8px; margin-left: auto; }
 .screen.lobby-screen .lobby-hint { font-size: 9px; opacity: 0.8; }
-.screen.lobby-screen .setup-body { width: min(700px, calc(100vw - 32px)); padding: 10px 14px 12px; gap: 7px; }
-.screen.lobby-screen .setup-row { grid-template-columns: 90px minmax(0, 1fr); }
+/* wide enough for all six games in one row */
+.screen.lobby-screen .setup-body { width: min(800px, calc(100vw - 32px)); padding: 10px 14px 12px; gap: 7px; }
+.screen.lobby-screen .setup-row { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; }
+.screen.lobby-screen .setup-row .chips { gap: 5px; }
+.screen.lobby-screen .setup-body .chip { padding: 6px 7px; }
 .screen.lobby-screen .row2 .btn { min-width: 180px; padding: 10px 20px; }
