@@ -75,8 +75,8 @@ export type Command =
   | { type: 'hold'; playerId: number }
   | { type: 'build'; playerId: number; padId: number; tower: TowerKind }
   | { type: 'upgrade'; playerId: number; padId: number }
-  /** where the player's crosshair is on the ground */
-  | { type: 'aim'; playerId: number; point: Vec2 }
+  /** where the player's crosshair is on the ground; in first person also how far the view is tilted up (radians) */
+  | { type: 'aim'; playerId: number; point: Vec2; pitch?: number }
   /** the fire button is held this tick */
   | { type: 'fire'; playerId: number }
   /** slot 0–5 = normal weapons, -1 = the rare weapon (Q) */
@@ -97,6 +97,8 @@ export interface Intent {
   hold: boolean;
   fire: boolean;
   aim: Vec2 | null;
+  /** the tilt of the view that came with the aim (first person), null with an aim from above */
+  pitch: number | null;
   select: number | null;
   buy: number[];
   ready: boolean;
@@ -135,6 +137,8 @@ export interface Player {
   /** unit vector from the player toward the crosshair */
   aim: Vec2;
   aimPoint: Vec2;
+  /** first person: how far the player's view is tilted up (radians); left out for a view from above */
+  aimPitch?: number;
   /** index of the weapon that fires */
   selected: number;
   hp: number;

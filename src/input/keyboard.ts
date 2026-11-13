@@ -301,8 +301,11 @@ export class Keyboard {
 
     if (this.firstPerson && p) {
       const f = forwardOf(this.yaw), d = aimDistance(this.pitch);
-      cmds.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d } });
+      // (the tilt goes along: a shot at nothing leaves along the view)
+      cmds.push({ type: 'aim', playerId, point: { x: p.pos.x + f.x * d, z: p.pos.z + f.z * d }, pitch: this.pitch });
     } else if (this.aim) cmds.push({ type: 'aim', playerId, point: { ...this.aim } });
+    // back in the view from above before the mouse has moved: the aim stays, the tilt goes
+    else if (p && p.aimPitch !== undefined) cmds.push({ type: 'aim', playerId, point: { ...p.aimPoint } });
     if (this.firing) cmds.push({ type: 'fire', playerId });
     if (this.jump) cmds.push({ type: 'jump', playerId });
     if (this.held('jump')) cmds.push({ type: 'fly', playerId });

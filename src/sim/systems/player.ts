@@ -32,6 +32,7 @@ import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
 import { damageVehicle } from './vehicles';
+import { clampAimPitch } from './shot-height';
 
 export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
   if (s.phase !== 'playing' || p.downUntil !== null || amount <= 0 || s.tick < p.invulnUntil) return;
@@ -308,7 +309,12 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     }
   }
 
-  if (it.aim) p.aimPoint = { ...it.aim };
+  if (it.aim) {
+    p.aimPoint = { ...it.aim };
+    // (the tilt of a first-person view comes with the aim, and goes with an aim from above)
+    if (it.pitch !== null && Number.isFinite(it.pitch)) p.aimPitch = clampAimPitch(it.pitch);
+    else delete p.aimPitch;
+  }
   const ax = p.aimPoint.x - p.pos.x, az = p.aimPoint.z - p.pos.z;
   const al = Math.hypot(ax, az);
   if (al > 0.05) p.aim = { x: ax / al, z: az / al };

@@ -188,7 +188,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
 }
 
 function emptyIntent(): Intent {
-  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, select: null, buy: [], ready: false };
+  return { move: { x: 0, z: 0 }, jump: false, fly: false, dash: false, use: false, hold: false, fire: false, aim: null, pitch: null, select: null, buy: [], ready: false };
 }
 
 export function stepSim(s: SimState, commands: Command[]): void {
@@ -222,6 +222,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
         break;
       case 'aim':
         it.aim = c.point;
+        it.pitch = c.pitch ?? null;
         break;
       case 'select':
         it.select = c.slot;
