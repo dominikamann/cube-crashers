@@ -1165,6 +1165,8 @@ function applyDemo(sim: SimState) {
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
+  // &as=dominik|babyDino|cat|…: play this demo as that character, owned or not
+  if (params.has('as')) sim.players[0].character = params.get('as') as never;
   // &mini=1: the small Angry Dominik from the wall logo, right away
   if (params.has('mini')) void import('./sim/systems/mini-dominik').then(m => m.releaseMiniDominik(sim, { x: sim.players[0].pos.x, z: sim.players[0].pos.z - 4 }));
   // ?demo=win: a quick floor that is won right away (to look at the result screen)
