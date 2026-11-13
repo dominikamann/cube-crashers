@@ -53,8 +53,19 @@ export const BOSS = {
   schoolSeconds: { 1: 20, 2: 16, 3: 12 } as Record<1 | 2 | 3, number>,
   /** no new school while this many fish and sharks are still alive */
   seaCap: 30,
-  /** King Rex */
+  /** King Rex: how much faster than a common T-Rex, and how much faster again with each phase */
   rexHp: 1600,
+  rexSpeed: 1.75,
+  rexPhaseSpeed: 1.2,
+  /** it attacks this much more often than the other bosses */
+  rexHaste: 0.75,
+  /** its bite: this many strikes in a line from its jaws, after a short warning */
+  rexBite: 4,
+  rexBiteWarnTicks: 38,
+  rexBiteDamage: 36,
+  /** from the second phase on its roar cracks a second, wider ring a moment later */
+  rexOuterRing: 12,
+  rexOuterRadius: 8,
   /** the Rhino: a rammer grown to boss size that charges like mad (a charge that hits flings the player, see enemies.ts) */
   rhinoHp: 1500,
   /** King Rex's roar: the ground cracks in a ring around it */
@@ -103,7 +114,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
       // King Rex: a T-Rex grown to boss size
       e.hp = e.maxHp = BOSS.rexHp * hpScale(s);
       e.radius = 1.3;
-      e.speed *= 1.1;
+      e.speed *= BOSS.rexSpeed;
     }
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else {
@@ -244,14 +255,32 @@ function attack(s: SimState, b: BossState): void {
     }
   } else if (b.kind === 'rex' || b.kind === 'rhino') {
     const rex = byId(s, b.enemyId!);
-    // a roar that cracks the ground in a ring around it, or a stomp under every player
-    if (rex && s.rng.next() < 0.45) {
+    const roll = s.rng.next();
+    const king = b.kind === 'rex';
+    // a roar that cracks the ground in a ring around it, a bite (King Rex only), or a stomp under every player
+    if (rex && roll < 0.35) {
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
         telegraph(s, { x: rex.pos.x + Math.cos(a) * BOSS.roarRadius, z: rex.pos.z + Math.sin(a) * BOSS.roarRadius }, 1.5, BOSS.stompDamage);
       }
+      // King Rex, once hurt: a second, wider ring a moment later, so backing off is not enough
+      if (king && b.phase >= 2)
+        for (let i = 0; i < BOSS.rexOuterRing; i++) {
+          const a = ((i + 0.5) / BOSS.rexOuterRing) * Math.PI * 2;
+          telegraph(s, { x: rex.pos.x + Math.cos(a) * BOSS.rexOuterRadius, z: rex.pos.z + Math.sin(a) * BOSS.rexOuterRadius }, 1.6, BOSS.stompDamage, BOSS.warnTicks + 25);
+        }
+    } else if (rex && king && roll < 0.7) {
+      // the bite: it snaps at the nearest player, a line of strikes from its jaws that comes fast
+      const p = alive.reduce((a, c) => (dist(c.pos, rex.pos) < dist(a.pos, rex.pos) ? c : a));
+      const d = dist(rex.pos, p.pos) || 1;
+      const dir = { x: (p.pos.x - rex.pos.x) / d, z: (p.pos.z - rex.pos.z) / d };
+      for (let i = 1; i <= BOSS.rexBite; i++) telegraph(s, { x: rex.pos.x + dir.x * (1 + i * BOSS.waveStep), z: rex.pos.z + dir.z * (1 + i * BOSS.waveStep) }, 1.4, BOSS.rexBiteDamage, BOSS.rexBiteWarnTicks + i * 3);
     } else {
-      for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
+      // a stomp under every player; King Rex also stomps where they are running to
+      for (const p of alive) {
+        telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
+        if (king) telegraph(s, { x: p.pos.x + p.facing.x * 3.5, z: p.pos.z + p.facing.z * 3.5 }, BOSS.stompRadius * 0.8, BOSS.stompDamage, BOSS.warnTicks + 12);
+      }
     }
   } else {
     const roll = s.rng.next();
@@ -443,6 +472,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     s.events.push({ type: 'bossPhase', phase: b.phase });
     // the Mega Block gets angrier: faster with every phase
     if (b.kind === 'megaBlock') for (const e of living) e.speed *= BOSS.megaPhaseSpeed;
+    if (b.kind === 'rex') for (const e of living) e.speed *= BOSS.rexPhaseSpeed;
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }
@@ -455,6 +485,6 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   }
   if (s.tick >= b.nextAttackAt) {
     attack(s, b);
-    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE);
+    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * (b.kind === 'rex' ? BOSS.rexHaste : 1));
   }
 }

@@ -192,7 +192,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
 
   if (p.perks.regen > 0) p.hp = Math.min(p.maxHp, p.hp + p.perks.regen * DT);
   const easyRegen = DIFFICULTY[s.difficulty].regen;
-  if (easyRegen > 0 && p.downUntil === null && s.tick - p.lastDamageAt >= REGEN_DELAY_TICKS) p.hp = Math.min(p.maxHp, p.hp + easyRegen * DT);
+  // (half as fast while a boss is alive: a boss fight is not won by waiting behind a pillar)
+  if (easyRegen > 0 && p.downUntil === null && s.tick - p.lastDamageAt >= REGEN_DELAY_TICKS) p.hp = Math.min(p.maxHp, p.hp + easyRegen * (s.boss ? 0.5 : 1) * DT);
 
   if (p.combo > 0 && s.tick >= p.comboUntil) {
     if (comboMult(p) > 1) s.events.push({ type: 'comboLost', playerId: p.id });
