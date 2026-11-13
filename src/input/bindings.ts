@@ -1,6 +1,6 @@
 /** Which keyboard key does what. Pure data and helpers, so settings, input and text can share them. */
 
-export const ACTIONS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'use', 'view', 'zoom', 'map', 'emotes', 'dance', 'weapon1', 'weapon2', 'weapon3', 'weapon4', 'weapon5', 'weapon6', 'rare'] as const;
+export const ACTIONS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'use', 'view', 'zoom', 'map', 'emotes', 'dance', 'team', 'weapon1', 'weapon2', 'weapon3', 'weapon4', 'weapon5', 'weapon6', 'rare'] as const;
 export type Action = (typeof ACTIONS)[number];
 /** action → KeyboardEvent.code */
 export type Bindings = Record<Action, string>;
@@ -18,6 +18,7 @@ export const DEFAULT_BINDINGS: Readonly<Bindings> = Object.freeze({
   map: 'KeyM',
   emotes: 'KeyC',
   dance: 'KeyT',
+  team: 'KeyH',
   weapon1: 'Digit1',
   weapon2: 'Digit2',
   weapon3: 'Digit3',

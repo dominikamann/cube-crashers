@@ -1033,6 +1033,8 @@ function startGame() {
       return;
     }
     if (mode === 'playing' && e.code === settings.bindings.zoom && !e.repeat) zoomedOut = !zoomedOut;
+    // the team key: who is in the team and how many lives each has, for ten seconds
+    if (mode === 'playing' && e.code === settings.bindings.team && !e.repeat) hud.showTeam(10);
     // the map key: the minimap off or on again, remembered
     if (mode === 'playing' && e.code === settings.bindings.map && !e.repeat) {
       settings.showMap = !settings.showMap;

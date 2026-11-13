@@ -488,6 +488,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `M` | Show or hide the minimap (in first person it is smaller and see-through anyway) |
 | `C` | Quick messages: then `1` Help! · `2` Over here! (at the crosshair) · `3` Nest here! · `4` Need coins! · `5` Nice! · `6` GG |
 | `T` | Dance: your character does its dance, for everyone to see (it ends when you walk on) |
+| `H` | Team overview: everyone in the team with their lives, for ten seconds (it also shows for a moment when a teammate loses a life) |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
 | `F11` | Fullscreen (desktop app) |
 

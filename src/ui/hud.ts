@@ -8,7 +8,7 @@ import { MAZE } from '../sim/systems/maze';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t, type StringKey } from '../i18n';
-import { cssColor, isColorBlind, palette } from '../render/palette';
+import { cssColor, isColorBlind, palette, playerColor } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { JETPACK } from '../sim/config/rare';
 import { ALARM_MAX, DASH_RECHARGE_TICKS, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
@@ -27,6 +27,8 @@ export interface Hud {
   setVisible(v: boolean): void;
   /** playing with a controller: hints name its button (X or □) instead of E; null = keyboard */
   setPadMode(useButton: string | null): void;
+  /** shows who is in the team and how many lives each has left, for `seconds` */
+  showTeam(seconds: number): void;
 }
 
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: HTMLElement, text = ''): HTMLElementTagNameMap[K] {
@@ -49,6 +51,9 @@ const isFinalFloor = (s: SimState) => (s.run.mode === 'run' || s.run.mode === 'b
 const bossLabel = (kind: string) => t(`boss.${kind}` as 'boss.worm');
 
 /** how the health bar is coloured: fine above half, getting dangerous above a quarter, critical below */
+/** how long the team shows by itself when a teammate has lost a life */
+const TEAM_FLASH_SECONDS = 4;
+
 export const hpLevel = (share: number): 'ok' | 'warn' | 'crit' => (share > 0.5 ? 'ok' : share > 0.25 ? 'warn' : 'crit');
 
 export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
@@ -66,9 +71,14 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
   const runBox = el('div', 'hud-box txt', top);
   const creditRow = el('div', 'credits', runBox);
-  // your own lives (up to the most any level starts with), and your teammates' under them
+  // your own lives (up to the most any level starts with)
   const creditEls = Array.from({ length: Math.max(START_CREDITS, ...Object.values(DIFFICULTY).map(d => d.credits)) }, () => el('i', 'credit', creditRow));
-  const teamText = el('div', 'sub team', runBox);
+  // the team's lives: a panel under the run box that shows on a key or when a teammate loses a life
+  const teamBox = el('div', 'hud-box team-panel txt', layer);
+  let lastTeam = '';
+  let teamUntil = 0;
+  let lastTime = 0;
+  const seenLives = new Map<number, number>();
   const outBanner = el('div', 'out-banner txt', layer);
   const nestText = el('div', 'sub', runBox);
   const floorText = el('div', 'sub floor', runBox);
@@ -185,6 +195,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   }
 
   return {
+    showTeam(seconds) {
+      teamUntil = lastTime + seconds;
+    },
     setVisible(v) {
       layer.style.display = v ? '' : 'none';
     },
@@ -192,6 +205,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       padMode = useButton;
     },
     update(s, events, buildMenuOpen, time, localId) {
+      lastTime = time;
       // versus: the messages are smaller and sit under the score, out of the line of fire (see ui.css)
       document.body.classList.toggle('versus', !!s.versus);
       const p = s.players.find(x => x.id === localId) ?? s.players[0];
@@ -202,9 +216,26 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         c.classList.toggle('on', i < lives);
         c.style.display = i < most ? '' : 'none';
       });
-      const mates = s.versus ? [] : s.players.filter(o => o !== p);
-      teamText.textContent = mates.map(o => `${o.name} ${o.out ? t('hud.out') : '♥'.repeat(o.lives ?? 0)}`).join(' · ');
-      teamText.style.display = mates.length ? '' : 'none';
+      // the team: not on screen all the time, but on a key (for ten seconds), and for a moment whenever a
+      // teammate loses a life. Everyone in it with their colour, name and lives; rebuilt only when it changed
+      const team = s.versus || s.players.length < 2 ? [] : s.players;
+      const lost = team.some(o => o !== p && (o.lives ?? 0) < (seenLives.get(o.id) ?? 0));
+      for (const o of team) seenLives.set(o.id, o.lives ?? 0);
+      if (lost) teamUntil = Math.max(teamUntil, time + TEAM_FLASH_SECONDS);
+      const showTeam = team.length > 0 && time < teamUntil;
+      teamBox.classList.toggle('shown', showTeam);
+      const teamKey = showTeam ? team.map(o => `${o.color}:${o.name}:${o.out ? 'x' : (o.lives ?? 0)}`).join('|') : '';
+      if (showTeam && teamKey !== lastTeam) {
+        lastTeam = teamKey;
+        teamBox.innerHTML = '';
+        el('div', 'team-title', teamBox, t('hud.team'));
+        for (const o of team) {
+          const row = el('div', `mate${o.out ? ' out' : ''}${o === p ? ' me' : ''}`, teamBox);
+          el('i', '', row).style.background = cssColor(playerColor(o.color));
+          el('span', '', row, o.name);
+          el('b', '', row, o.out ? t('hud.out') : '♥'.repeat(o.lives ?? 0));
+        }
+      }
       // out of lives: watching a teammate until the next floor
       const watching = p.out ? s.players.find(o => !o.out) : undefined;
       outBanner.style.display = p.out && s.phase === 'playing' ? '' : 'none';
