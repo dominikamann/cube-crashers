@@ -43,6 +43,9 @@ function sceneStats(top: number) {
   const materials = new Set<THREE.Material>();
   let meshes = 0, visible = 0, casters = 0, receivers = 0, triangles = 0, casterTriangles = 0, doubleSided = 0, objects = 0;
   const heavy: { path: string; triangles: number; cast: boolean }[] = [];
+  // a material drawn in more than one way (instanced and not, with and without instance colours, with and
+  // without vertex colours) makes the renderer look its program up again at every switch
+  const ways = new Map<THREE.Material, Map<string, string>>();
   const walk = (o: THREE.Object3D, shown: boolean) => {
     objects++;
     shown &&= o.visible;
@@ -52,6 +55,10 @@ function sceneStats(top: number) {
       geometries.add(m.geometry);
       for (const x of Array.isArray(m.material) ? m.material : [m.material]) {
         materials.add(x);
+        const im = m as unknown as THREE.InstancedMesh;
+        const way = `${im.isInstancedMesh ? 'instanced' : 'single'}${im.isInstancedMesh && im.instanceColor ? '+colour' : ''}${m.geometry.hasAttribute('color') ? '+vertexColours' : ''}${m.geometry.hasAttribute('uv') ? '' : '-uv'}`;
+        if (!ways.has(x)) ways.set(x, new Map());
+        ways.get(x)!.set(way, pathOf(m));
         if (shown && x.side === THREE.DoubleSide) doubleSided++;
       }
       if (shown) {
@@ -70,7 +77,7 @@ function sceneStats(top: number) {
   };
   if (scene) walk(scene, true);
   heavy.sort((a, b) => b.triangles - a.triangles);
-  return { objects, meshes, visible, casters, receivers, triangles: Math.round(triangles), casterTriangles: Math.round(casterTriangles), doubleSided, geometries: geometries.size, materials: materials.size, heavy: heavy.slice(0, top) };
+  return { objects, meshes, visible, casters, receivers, triangles: Math.round(triangles), casterTriangles: Math.round(casterTriangles), doubleSided, geometries: geometries.size, materials: materials.size, heavy: heavy.slice(0, top), mixed: top ? [...ways].filter(([, w]) => w.size > 1).map(([mat, w]) => ({ material: `${mat.type} ${mat.name}`, ways: Object.fromEntries(w) })) : [] };
 }
 
 export function attachPerfRenderer(r: THREE.WebGLRenderer, s: THREE.Scene): void {
@@ -91,6 +98,24 @@ export function attachPerfRenderer(r: THREE.WebGLRenderer, s: THREE.Scene): void
     };
     sim = timing();
     frame = timing();
+    return out;
+  };
+  // which materials have their program looked up again (cheap once, wasteful every frame): counted since the
+  // last call, by what they are and where they are used
+  const lookups = new Map<THREE.Material, number>();
+  const stock = THREE.Material.prototype.customProgramCacheKey;
+  THREE.Material.prototype.customProgramCacheKey = function (this: THREE.Material) {
+    lookups.set(this, (lookups.get(this) ?? 0) + 1);
+    return stock.call(this);
+  };
+  (window as unknown as { __perfLookups: () => unknown }).__perfLookups = () => {
+    const users = new Map<THREE.Material, string>();
+    s.traverse(o => {
+      const m = (o as THREE.Mesh).material;
+      if (m) for (const x of Array.isArray(m) ? m : [m]) users.set(x, pathOf(o));
+    });
+    const out = [...lookups].map(([m, n]) => ({ n, material: `${m.type} ${m.name}`, color: (m as THREE.MeshLambertMaterial).color?.getHexString?.() ?? '', user: users.get(m) ?? '(not in the scene)' })).sort((a, b) => b.n - a.n);
+    lookups.clear();
     return out;
   };
   // the shader programs in use (a new id during play is a compile, which stalls the frame it happens in)
