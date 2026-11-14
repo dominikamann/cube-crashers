@@ -371,8 +371,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
     if (g.seats) {
       const humans = g.seats.players - g.seats.bots;
-      add(humans > 0 ? 'humans here' : 'humans', t('online.humans', { n: humans }));
-      if (g.seats.bots > 0) add('bots', t('online.bots', { n: g.seats.bots }));
+      add(humans > 0 ? 'humans here' : 'humans', humans === 1 ? t('online.human') : t('online.humans', { n: humans }));
+      if (g.seats.bots > 0) add('bots', g.seats.bots === 1 ? t('online.bot') : t('online.bots', { n: g.seats.bots }));
       add('seats', t('online.players', { n: g.seats.players, max: g.seats.max }));
     }
     if (g.ping !== undefined) add(g.ping < 80 ? 'ping' : g.ping < 160 ? 'ping slow' : 'ping bad', t('online.ping', { ms: g.ping }));

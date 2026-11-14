@@ -565,14 +565,18 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'killBonus': {
             const name = (id: number) => s.players.find(x => x.id === id)?.name ?? '';
-            toast(t(`bonus.${e.kind}` as 'bonus.bounty', { killer: name(e.killerId), victim: name(e.victimId) }), e.killerId === p.id ? 'good' : e.victimId === p.id ? 'warn' : '');
+            // (the crown is everyone's business; the rest is said to the two it is about, or the screen fills with lines)
+            const mine = e.killerId === p.id || e.victimId === p.id;
+            if (e.kind === 'bounty' || mine) toast(t(`bonus.${e.kind}` as 'bonus.bounty', { killer: name(e.killerId), victim: name(e.victimId) }), e.killerId === p.id ? 'good' : e.victimId === p.id ? 'warn' : '');
             break;
           }
           case 'crateCoins':
             toast(t('toast.crateCoins', { coins: e.coins }), 'good');
             break;
           case 'cardPicked':
-            toast(e.card.type === 'rare' ? t('toast.rare', { name: t(`rare.${e.card.rare}`) }) : t('toast.card', { name: e.card.type === 'weapon' ? t(`weapon.${e.card.weapon}`) : t(`perk.${e.card.perk}`), level: e.level }), 'good');
+            // (the Lock-On Launcher does not fire without a lock: whoever picks it up is told how)
+            if (e.card.type === 'rare' && e.card.rare === 'missileLauncher' && e.playerId === p.id) toast(t('toast.rare', { name: t('rare.missileLauncher') }), 'final', t('toast.lockHow'));
+            else toast(e.card.type === 'rare' ? t('toast.rare', { name: t(`rare.${e.card.rare}`) }) : t('toast.card', { name: e.card.type === 'weapon' ? t(`weapon.${e.card.weapon}`) : t(`perk.${e.card.perk}`), level: e.level }), 'good');
             break;
           case 'comboUp':
             bump(combo);
