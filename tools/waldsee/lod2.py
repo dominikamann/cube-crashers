@@ -122,9 +122,10 @@ covered = 0
 for z in range(1, N - 1):
     for x in range(1, N - 1):
         if rows[z][x] == '#': continue
-        hits = sum(1 for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8) if any(inside(x + a, z + b, r) for f in footprints for r in f))
-        # (a third of the tile is enough: one must not be able to step into a house where its front cuts a tile)
-        if hits >= 3: rows[z][x] = '#'; covered += 1
+        hits = sum(1 for a in range(5) for b in range(5) if any(inside(x + (a + 0.5) / 5, z + (b + 0.5) / 5, r) for f in footprints for r in f))
+        # (a fifth of the tile is enough: one must not be able to step, or be pushed, into a house where its front
+        # cuts a tile)
+        if hits >= 5: rows[z][x] = '#'; covered += 1
 # and the other way: a wall tile right at the street where no real building stands (a ledge before a front that
 # lies further back) becomes floor, one tile deep, so the walls one bumps into are the walls one sees. (Not behind
 # a barrier, not the lake, the meadow or the gravel: those are kept by their codes in waldsee-town.ts)
