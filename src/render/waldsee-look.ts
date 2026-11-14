@@ -1059,7 +1059,81 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     if (s.kind === 'bank') {
       // the bank, seen over the hedge behind the barrier: a hedge before it, its name on the wall
       for (let k = -2; k <= 2; k++) onFace(s, k * 0.9, 1.2, 0.6, 0.86, 1.2, 0.6, k % 2 ? 0x3f7a3a : 0x478544);
-      sign(s, s.text, 3.4, 2.4, { back: '#f4f1ea', ink: '#1f4fa8', rim: '#f28c1e' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
+      // a row of windows per storey, and the blue-and-orange Volksbank board over the doors
+      const wB = s.wall?.width ?? Math.max(3, s.len), H = s.wall?.eave ?? 6;
+      const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => (u + wB / 2) * S;
+      const py = (y: number) => (H - y) * S;
+      g.fillStyle = '#e4dfd3';
+      g.fillRect(0, 0, cw, ch);
+      g.fillStyle = '#b9b4a8';
+      g.fillRect(0, py(0.2), cw, 0.2 * S);
+      const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
+      shadow.addColorStop(0, 'rgba(60,56,48,0.28)');
+      shadow.addColorStop(1, 'rgba(60,56,48,0)');
+      g.fillStyle = shadow;
+      g.fillRect(0, 0, cw, 0.5 * S);
+      // upper storeys (about 2 tiles each): grey-framed windows with a dark glass and a pale sill
+      const storeys = Math.max(1, Math.round(H / 2) - 1);
+      const nUp = Math.max(1, Math.round(wB / 1.4));
+      for (let r = 0; r < storeys; r++) {
+        const yc = H - (r + 0.5) * ((H - 2.6) / storeys) - 0.15 * 0 - 0.1;
+        for (let k = 0; k < nUp; k++) {
+          const u = -wB / 2 + (k + 0.5) * (wB / nUp), ww = 0.74, wh = 0.9;
+          g.fillStyle = '#8d9096';
+          g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
+          const glass = g.createLinearGradient(0, py(yc + wh / 2), 0, py(yc - wh / 2));
+          glass.addColorStop(0, '#6f8697');
+          glass.addColorStop(1, '#46596a');
+          g.fillStyle = glass;
+          g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S, (wh - 0.1) * S);
+          g.fillStyle = '#8d9096';
+          g.fillRect(px(u - 0.02), py(yc + wh / 2 - 0.05), 0.04 * S, (wh - 0.1) * S);
+          g.fillStyle = '#f2efe6';
+          g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.02), (ww + 0.1) * S, 0.06 * S);
+        }
+      }
+      // ground floor: a band of glass between grey piers, the entrance in the middle
+      const bays = Math.max(2, Math.round(wB / 1.6)), bw = wB / bays;
+      for (let k = 0; k < bays; k++) {
+        const u = -wB / 2 + (k + 0.5) * bw, door = bays % 2 ? k === (bays - 1) / 2 : false;
+        g.fillStyle = '#8d9096';
+        g.fillRect(px(u - bw / 2 + 0.1), py(2.2), (bw - 0.2) * S, 2.0 * S);
+        const glass = g.createLinearGradient(0, py(2.1), 0, py(0.3));
+        glass.addColorStop(0, '#5d7384');
+        glass.addColorStop(1, '#34424e');
+        g.fillStyle = glass;
+        g.fillRect(px(u - bw / 2 + 0.18), py(2.12), (bw - 0.36) * S, door ? 1.92 * S : 1.72 * S);
+        g.fillStyle = '#8d9096';
+        g.fillRect(px(u - 0.02), py(2.12), 0.04 * S, 1.8 * S);
+        if (door) g.fillRect(px(u - bw / 2 + 0.18), py(1.9), (bw - 0.36) * S, 0.05 * S);
+      }
+      // the Volksbank board: blue with the orange rim, the name in white
+      const bwid = Math.min(wB - 0.4, 2.6), bh = 0.5, by = 2.7;
+      g.fillStyle = '#1f4fa8';
+      g.fillRect(px(-bwid / 2), py(by + bh / 2), bwid * S, bh * S);
+      g.fillStyle = '#f28c1e';
+      g.fillRect(px(-bwid / 2), py(by - bh / 2 + 0.06), bwid * S, 0.06 * S);
+      g.fillStyle = '#ffffff';
+      g.font = `bold ${Math.round(0.3 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('Volksbank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const [fx, fz] = on(s, -(s.wall?.along ?? 0), 0.04);
+      m.position.set(fx, H / 2, fz);
+      m.rotation.y = faceYaw(s);
+      add(m);
       continue;
     }
     if (s.kind === 'shop') {
