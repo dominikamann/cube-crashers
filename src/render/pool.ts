@@ -77,12 +77,12 @@ export class InstancedPool {
     this.mesh.setMatrixAt(this.count - 1, tmp.matrix);
   }
 
-  /** A unit-length (along +z) instance stretched to `length`, starting at `from`. */
-  addBeam(from: THREE.Vector3, yaw: number, pitch: number, length: number): void {
-    this.add(from.x, from.y, from.z, yaw, 1, undefined, pitch);
+  /** A unit-length (along +z) instance stretched to `length`, starting at `from` (`width`: so many times as thick). */
+  addBeam(from: THREE.Vector3, yaw: number, pitch: number, length: number, color?: number, width = 1): void {
+    this.add(from.x, from.y, from.z, yaw, 1, color, pitch);
     tmp.position.copy(from);
     tmp.rotation.set(pitch, yaw, 0, 'YXZ');
-    tmp.scale.set(1, 1, length);
+    tmp.scale.set(width, width, length);
     tmp.updateMatrix();
     this.mesh.setMatrixAt(this.count - 1, tmp.matrix);
   }

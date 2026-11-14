@@ -1,11 +1,11 @@
 import type { VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
-import { ALL_WEAPONS } from './sim/config/weapons';
+import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
-import { createMusic, type MusicPlayer } from './audio/music';
+import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent } from './audio/sfx';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
@@ -116,6 +116,22 @@ function startGame() {
     if (document.hidden) void audio.ctx.suspend();
     else void audio.ctx.resume();
   });
+  /** the track the game asks for (the menu, the battle, the boss, or nothing); a Disco Ball in the air plays over it */
+  let baseTrack: TrackId | null = null;
+  /** until when a Disco Ball's track plays (seconds on the page's clock) */
+  let discoUntil = 0;
+  /** plays what should play now; a track that is already right goes on */
+  function syncMusic() {
+    if (!audio) return;
+    const id = trackToPlay(baseTrack, discoUntil, performance.now() / 1000);
+    audio.music.playTrack(id, id === 'disco' ? DISCO_FADE_S : undefined);
+  }
+  /** the game's own choice of track (`keepDisco`: a ball that is in the air right now plays on over it) */
+  function playBase(id: TrackId | null, keepDisco = false) {
+    baseTrack = id;
+    if (!keepDisco) discoUntil = 0;
+    syncMusic();
+  }
   function ensureAudio() {
     if (!audio) {
       const ctx = new AudioContext();
@@ -625,13 +641,17 @@ function startGame() {
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
+        // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
+        const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         for (const e of frameEvents) {
           // the fast track belongs to a boss fight and to the highest alarm
           if (e.type === 'bossSpawn') bossesUp++;
           if (e.type === 'bossDead') bossesUp = Math.max(0, bossesUp - 1);
-          if (e.type === 'alarmChanged' || e.type === 'bossSpawn' || e.type === 'bossDead') audio.music.playTrack(s.alarm.level >= 5 || bossesUp > 0 ? 'boss' : 'battle');
-          if (e.type === 'gameWon' || e.type === 'gameLost') audio.music.playTrack(null);
+          if (e.type === 'alarmChanged' || e.type === 'bossSpawn' || e.type === 'bossDead') playBase(s.alarm.level >= 5 || bossesUp > 0 ? 'boss' : 'battle', true);
+          if (e.type === 'gameWon' || e.type === 'gameLost') playBase(null);
+          if (e.type === 'discoZap' && discoHeard(e.pos, ears)) discoUntil = performance.now() / 1000 + DISCO.show + DISCO_TAIL_S;
         }
+        syncMusic();
       }
       for (const e of frameEvents) {
         if ((e.type === 'gameWon' || e.type === 'gameLost') && (mode === 'playing' || mode === 'paused')) finish(e.type === 'gameWon');
@@ -765,7 +785,7 @@ function startGame() {
     frameCounter.reset();
     bossesUp = 0;
     ensureAudio().mixer.setPaused(false);
-    ensureAudio().music.playTrack('battle');
+    playBase('battle');
   }
 
   let lastSoloMode: RunMode = 'run';
@@ -1069,7 +1089,7 @@ function startGame() {
       // nothing of the game rings on in the menu
       audio.mixer.setPaused(false);
       audio.mixer.cutEffects();
-      audio.music.playTrack('menu');
+      playBase('menu');
     }
   }
 
@@ -1220,7 +1240,10 @@ function startGame() {
     if (document.hidden && role === 'solo') pause();
   });
   addEventListener('pointerdown', () => {
-    if (mode === 'title' && audio === null) ensureAudio().music.playTrack('menu');
+    if (mode === 'title' && audio === null) {
+      ensureAudio();
+      playBase('menu');
+    }
   }, { once: true });
   addEventListener('beforeunload', () => leaveLan(false));
 

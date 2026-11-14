@@ -25,8 +25,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 12: little witches walking the Town on their own; its elevator waits for them (1.2.0).
  * 13: the police car of the Town and its siren; the little witches' cackle and shriek; a bigger tank for a second jetpack.
  * 14: the Medic Station, a tower that heals the players near it.
+ * 15: the Disco Ball tells whom its beams hit (for its show and its music).
  */
-export const PROTOCOL_VERSION = 14;
+export const PROTOCOL_VERSION = 15;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

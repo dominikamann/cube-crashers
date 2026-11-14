@@ -9,6 +9,7 @@ const p = { x: 0, z: 0 };
 /** one example per event type; the Record type makes the compiler insist that none is missing */
 const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   shot: { type: 'shot', weapon: 'pixelBlaster', pos: p },
+  discoZap: { type: 'discoZap', playerId: 0, pos: p, enemies: [1], rivals: [], at: [p] },
   weaponSelected: { type: 'weaponSelected', playerId: 0, slot: 1 },
   enemyHit: { type: 'enemyHit', id: 1, pos: p, amount: 5 },
   enemyKilled: { type: 'enemyKilled', kind: 'blob', pos: p, elite: false },

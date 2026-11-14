@@ -2,6 +2,7 @@ import { DOMINIK, DOMINIK_DEATH, dominikGlow, hammerAlong, HAMMER_FLIGHT, hammer
 import * as THREE from 'three';
 import { TICK_RATE, type BossKind, type PowerupKind, type SimEvent, type SimState, type Vec2 } from '../sim/types';
 import { BOSS, laserReach } from '../sim/systems/boss';
+import { createDisco } from './disco';
 import { ENEMY_LOOK } from './entities';
 import { playerColor } from './palette';
 import { glowMat, InstancedPool } from './pool';
@@ -86,6 +87,8 @@ export interface Fx {
   shake(): THREE.Vector3;
   /** fewer particles on low graphics settings */
   setParticleScale(k: number): void;
+  /** the coloured light a Disco Ball throws on what is around it right now (`k` 0: none) */
+  discoLight(): { x: number; z: number; color: number; k: number };
 }
 
 export function createFx(scene: THREE.Scene): Fx {
@@ -169,10 +172,6 @@ export function createFx(scene: THREE.Scene): Fx {
   }
 
   const beams: Beam[] = [];
-  /** Disco Balls in the air: each hangs over its owner for a moment, spinning and throwing light */
-  const discos: { ownerId: number; x: number; z: number; age: number; enemies: number[]; rivals: number[] }[] = [];
-  const DISCO_COLORS = [0xff4dd2, 0x4dd2ff, 0xffe14a];
-  const DISCO_SECONDS = 1.1;
   const beamGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2);
   const beamPools = new Map<number, InstancedPool>();
   const beamPoolFor = (color: number) => {
@@ -351,6 +350,12 @@ export function createFx(scene: THREE.Scene): Fx {
   };
 
   const playerPos = (s: SimState, id: number): Vec2 | undefined => s.players.find(p => p.id === id)?.pos;
+
+  // the Disco Ball's show (see disco.ts): it borrows the glitter and the flashes from here
+  const disco = createDisco(scene, {
+    burst,
+    flash: (x, y, z, size, color, life, ring) => pops.push({ x, y, z, age: 0, life, size, color, ring }),
+  });
 
   return {
     update(s, events, theme, dt, time) {
@@ -631,20 +636,6 @@ export function createFx(scene: THREE.Scene): Fx {
               for (const k of [-0.8, 0, 0.8]) burst({ x: at.x + side.x * k, z: at.z + side.z * k }, 0.85, 4, [0x3bd16f, 0xb8ffcf, 0xffffff], 3, 0.09, 0.3);
               addShake(0.12);
             }
-            if (e.weapon === 'discoBall') {
-              const colors = [0xff4dd2, 0x4dd2ff, 0xffe14a];
-              // a glittering flash just in front of the shooter: seen from above and in first person alike
-              const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
-              const front = who ? { x: e.pos.x + who.aim.x * 1.4, z: e.pos.z + who.aim.z * 1.4 } : e.pos;
-              burst(front, 1.3, 14, colors, 3.5, 0.08, 0.35);
-              // the ball itself: tossed up in front of the shooter, it spins and throws its light about (below)
-              const near = [...s.enemies.map(x => ({ id: x.id, pos: x.pos, rival: false })), ...s.players.filter(p => p !== who && s.versus).map(p => ({ id: p.id, pos: p.pos, rival: true }))]
-                .map(o => ({ ...o, d: Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) }))
-                .filter(o => o.d <= 7.5)
-                .sort((a, b) => a.d - b.d)
-                .slice(0, 8);
-              discos.push({ ownerId: who?.id ?? -1, x: front.x, z: front.z, age: 0, enemies: near.filter(o => !o.rival).map(o => o.id), rivals: near.filter(o => o.rival).map(o => o.id) });
-            }
             break;
         }
       }
@@ -778,6 +769,9 @@ export function createFx(scene: THREE.Scene): Fx {
         if (v.hp < 30 && rand() < 0.3) burst(v.pos, 0.6, 1, [0x333344, 0x666677], 0.5, 0.2);
       }
 
+      // (before the particles and the flashes are drawn: it adds some of its own)
+      disco.update(s, events, dt);
+
       cubes.begin();
       sparks.begin();
       for (let i = particles.length - 1; i >= 0; i--) {
@@ -833,42 +827,6 @@ export function createFx(scene: THREE.Scene): Fx {
         stains.add(b.x, 0.035, b.z, b.turn, b.size * k, b.color);
       }
       stains.end();
-      for (let i = discos.length - 1; i >= 0; i--) {
-        const d = discos[i];
-        d.age += dt;
-        // it stays with whoever threw it
-        const owner = s.players.find(p => p.id === d.ownerId);
-        if (owner) {
-          d.x = owner.pos.x + owner.aim.x * 1.6;
-          d.z = owner.pos.z + owner.aim.z * 1.6;
-        }
-        const at = { x: d.x, z: d.z };
-        const rise = Math.min(1, d.age / 0.22);
-        const y = 1.2 + 1.3 * (1 - (1 - rise) ** 2) + 0.08 * Math.sin(d.age * 9);
-        if (d.age >= DISCO_SECONDS) {
-          // it bursts into glitter
-          burst(at, y, 22, [...DISCO_COLORS, 0xffffff], 4.5, 0.1, 0.6);
-          discos.splice(i, 1);
-          continue;
-        }
-        // a mirror ball: a silver cube with a second one turned against it, spinning faster and faster
-        const spin = d.age * (6 + d.age * 10);
-        cubes.add(d.x, y, d.z, spin, 0.46, 0xe8eeff, 0.6);
-        cubes.add(d.x, y, d.z, -spin * 0.7 + 0.8, 0.4, DISCO_COLORS[Math.floor(d.age * 8) % 3], 1.1);
-        if (rand() < 0.5) burst(at, y, 1, [0xffffff, ...DISCO_COLORS], 2, 0.06, 0.2);
-        if (rise < 1) continue;
-        // spots of light sweep the floor around it
-        for (let k = 0; k < 6; k++) {
-          const a = spin * 0.6 + (k / 6) * Math.PI * 2;
-          const r = 2.6 + 1.4 * Math.sin(d.age * 5 + k * 1.7);
-          beam(at, y, { x: d.x + Math.cos(a) * r, z: d.z + Math.sin(a) * r }, 0.05, DISCO_COLORS[k % 3], 0.05);
-        }
-        // and beams hold on everything it hit, for a moment
-        if (d.age < 0.75) {
-          const hit = [...s.enemies.filter(x => d.enemies.includes(x.id)), ...s.players.filter(p => d.rivals.includes(p.id))];
-          hit.forEach((o, k) => beam(at, y, o.pos, 0.6, DISCO_COLORS[k % 3], 0.07));
-        }
-      }
       for (let i = twigs.length - 1; i >= 0; i--) {
         const w = twigs[i];
         w.age += dt;
@@ -934,6 +892,8 @@ export function createFx(scene: THREE.Scene): Fx {
     shake: () => shakeOffset,
     setParticleScale(k) {
       particleScale = k;
+      disco.setLow(k < 1);
     },
+    discoLight: () => disco.light(),
   };
 }
