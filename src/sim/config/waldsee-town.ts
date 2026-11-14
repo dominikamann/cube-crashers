@@ -443,11 +443,13 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
   { text: "AmannLabs", kind: 'amannlabs', x: 25.4, z: 50.0, dx: 0, dz: 1, len: 5 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
-  { text: "Lädele", kind: 'shop', x: 13.0, z: 70.5, dx: 1, dz: 0, len: 1 },
+  // (on their real houses: the little shop in Ravensburger Strasse 24, beside the optician in number 20)
+  { text: "Lädele", kind: 'shop', x: 13.4, z: 65.6, dx: 0.91, dz: -0.41, len: 2 },
   // (put in by hand, from photos: the inn across the junction, the clothes shop and the optician on the west side of
   // the Ravensburger Strasse, the tattoo studio at the corner of the square)
   { text: "Wirtschaft z. Flasche", kind: 'flasche', x: 61.5, z: 76.0, dx: 0, dz: -1, len: 5 },
-  { text: "NKD", kind: 'nkd', x: 23.0, z: 83.0, dx: 1, dz: 0, len: 2 },
+  // (the clothes shop in Ravensburger Strasse 26)
+  { text: "NKD", kind: 'nkd', x: 17.3, z: 75.2, dx: 0.87, dz: -0.49, len: 3 },
   { text: "die brille", kind: 'brille', x: 9.0, z: 56.5, dx: 1, dz: 0, len: 1 },
   { text: "EMPIRE INK.", kind: 'empire', x: 51.0, z: 61.0, dx: 0, dz: -1, len: 4 },
   { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
