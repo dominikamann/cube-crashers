@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BOLT_MODEL, BONBON, createShots, HOTDOG_MODEL, MAX_PIXELS, shotEnd, slashSweep, voxelGeometry, type ShotFx } from '../../src/render/shots';
 import { THEMES } from '../../src/render/theme';
+import { weaponModel } from '../../src/render/viewmodel';
+import { ALL_RARE } from '../../src/sim/config/rare';
 import { ALL_WEAPONS, HOTDOG } from '../../src/sim/config/weapons';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
@@ -113,6 +115,11 @@ describe('the models of the shots', () => {
       expect(g.getAttribute('color').count).toBe(parts.length * 24);
       expect(g.getIndex()!.count).toBe(parts.length * 36);
     }
+  });
+
+  it('every weapon, and every rare one, has a model of its own to hold', () => {
+    const size = (kind: Parameters<typeof weaponModel>[0]) => weaponModel(kind).children.length;
+    for (const kind of [...ALL_WEAPONS, ...ALL_RARE, 'thunderHammer' as const]) expect(size(kind), kind).toBeGreaterThan(3);
   });
 });
 

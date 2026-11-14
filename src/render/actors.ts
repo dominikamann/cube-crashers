@@ -536,7 +536,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     v.yaw = Math.atan2(-p.aim.x, -p.aim.z);
     // the weapon in its hand is the one that is selected
     const weapon = p.weapons[p.selected];
-    const kind: HeldKind = p.rare && p.rareSelected ? 'rare' : (weapon?.kind ?? 'pixelBlaster');
+    const rare = p.rare && p.rareSelected ? p.rare.kind : null;
+    const kind: HeldKind = rare ?? weapon?.kind ?? 'pixelBlaster';
     if (v.heldKind !== kind) {
       disposeTree(v.held);
       v.held.clear();
@@ -545,7 +546,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.lastCooldown = 0;
     }
     // a fresh cooldown means a shot: the weapon kicks back
-    const cooldown = kind === 'rare' ? (p.rare?.cooldown ?? 0) : (weapon?.cooldown ?? 0);
+    const cooldown = rare ? (p.rare?.cooldown ?? 0) : (weapon?.cooldown ?? 0);
     if (cooldown > v.lastCooldown) v.kick = 1;
     v.lastCooldown = cooldown;
     v.kick = Math.max(0, v.kick - frameDt * 7);
