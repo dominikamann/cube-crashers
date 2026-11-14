@@ -44,6 +44,10 @@ export const WITCH = {
   glareHopTicks: 42,
   hopRadius: 2.3,
   hopDamage: 30,
+  /** in mid-hop (and in the leap to press someone down) her landing spot follows the player at this many tiles a
+   *  second at most, for this share of the flight; nothing on the floor shows where she will land */
+  homing: 2.6,
+  homingShare: 0.7,
   /** "s'Schrättele druckt": how far she leaps for it, how long she is in the air (the ring warns as long), how near her
    *  landing the player must still be, how long she sits on them and what that does a second. Shaking her off takes
    *  `struggle` jumps (a dash counts double); a teammate knocks her off with `knock` of her health in hits. */
@@ -212,7 +216,11 @@ function throwTwigs(s: SimState, b: BossState, me: Enemy, alive: Player[], count
   s.events.push({ type: 'witchTwigs', from: { ...me.pos }, to, at: s.tick + WITCH.twigWarn });
 }
 
-/** She hops at `p`: a ring warns where she comes down; then a blow of her broom there, or she sits on them ("druckt") */
+/**
+ * She hops at `p`: nothing on the floor shows where she comes down (her crouch and her cackle are the warning), and
+ * in the air she bends her flight toward them a little (see steerHop); then a blow of her broom where she lands, or
+ * she sits on them ("druckt")
+ */
 function leapOnto(s: SimState, b: BossState, me: Enemy, p: Player, next: 'hop' | 'press'): void {
   const w = b.witch!;
   const press = next === 'press';
@@ -221,13 +229,27 @@ function leapOnto(s: SimState, b: BossState, me: Enemy, p: Player, next: 'hop' |
   // (never into a wall: with no floor near them she throws her twigs at them instead)
   if (!isFree(s.map, to, me.radius, BLOCKS_ENEMY)) return throwTwigs(s, b, me, [p], w.face === 'glare' ? WITCH.twigs.glare : WITCH.twigs.grin);
   b.leap = { from: { ...me.pos }, to, start: s.tick, land: s.tick + ticks };
-  w.move = { kind: 'hop', at: s.tick, until: s.tick + ticks, from: { ...me.pos }, to, target: p.id, next: press ? 'press' : 'hop' };
+  w.move = { kind: 'hop', at: s.tick, until: s.tick + ticks, from: { ...me.pos }, to: { ...to }, target: p.id, next: press ? 'press' : 'hop' };
   me.dir = unit(me.pos, to);
-  if (press) {
-    // (a ring of its own that shows where she lands; it does no harm, the pressing does)
-    s.events.push({ type: 'blastWarning', pos: { ...to }, radius: WITCH.pressRadius });
-    s.blasts.push({ id: s.nextId++, pos: { ...to }, radius: WITCH.pressRadius, createdAt: s.tick, at: s.tick + ticks, damage: 0 });
-  } else warn(s, to, WITCH.hopRadius, WITCH.hopDamage * harm(w), ticks, to);
+}
+
+/**
+ * In mid-hop she bends her flight toward the player she is after: her landing spot follows them at `homing` tiles a
+ * second at most, and only for the first part of the flight. Who keeps running, or dashes aside late, still gets away.
+ */
+function steerHop(s: SimState, b: BossState, w: WitchState): void {
+  const m = w.move, l = b.leap;
+  if (!m || m.kind !== 'hop' || !l || !m.to) return;
+  if (s.tick - l.start > (l.land - l.start) * WITCH.homingShare) return;
+  const p = s.players.find(x => x.id === m.target && x.downUntil === null);
+  if (!p) return;
+  const d = dist(l.to, p.pos);
+  if (d < 1e-3) return;
+  const step = Math.min(d, WITCH.homing * DT);
+  const to = { x: l.to.x + ((p.pos.x - l.to.x) / d) * step, z: l.to.z + ((p.pos.z - l.to.z) / d) * step };
+  if (!isFree(s.map, to, WITCH.radius, BLOCKS_ENEMY)) return;
+  l.to = to;
+  m.to = { ...to };
 }
 
 /** The Schrättele leaps at `p` to sit on them (or, `next` = 'hop', to strike with her broom where they stand). */
@@ -329,6 +351,7 @@ export function moveWitch(s: SimState, b: BossState): void {
     me.dir = { x: -face.x, z: -face.z };
     return;
   }
+  steerHop(s, b, w);
   const m = w.move;
   if (!m || b.leap) return;
   if (m.kind === 'charge' && s.tick >= m.at && m.to) {
@@ -391,6 +414,9 @@ export function updateWitch(s: SimState, b: BossState, intents?: Map<number, Int
       s.events.push({ type: 'bossAttack', kind: 'witch' });
       leapOnto(s, b, me, p, 'hop');
     }
+  } else if (m.kind === 'hop' && m.next === 'hop') {
+    // she lands: a blow of her broom all round her that throws whoever it hits (no ring warned of it)
+    s.blasts.push({ id: s.nextId++, pos: { ...me.pos }, radius: WITCH.hopRadius, createdAt: s.tick, at: s.tick, damage: WITCH.hopDamage * harm(w), hidden: true, fling: { from: { ...me.pos }, dist: WITCH.fling } });
   } else if (m.kind === 'hop' && m.next === 'press') {
     // she lands: whoever is still under her is pressed down
     if (p && !aloft(s, p) && s.tick >= p.invulnUntil && dist(p.pos, m.to ?? me.pos) <= WITCH.pressRadius + PLAYER_RADIUS && !pressedBy(s, p)) {

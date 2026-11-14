@@ -128,6 +128,45 @@ describe('s\'Schrättele druckt', () => {
     expect(s.boss!.witch!.press).toBeNull();
   });
 
+  it('nothing on the floor shows where she will land', () => {
+    const s = town();
+    calm(s);
+    const p = s.players[0];
+    p.pos = { x: WALDSEE_FIRE.x + 6, z: WALDSEE_FIRE.z + 4 };
+    for (const next of ['press', 'hop'] as const) {
+      s.boss!.witch!.press = null;
+      witchPounce(s, p, next);
+      const events = run(s, 5);
+      expect(events.some(e => e.type === 'blastWarning'), next).toBe(false);
+      expect(s.blasts.filter(b => !b.hidden), next).toHaveLength(0);
+      run(s, 120);
+    }
+  });
+
+  it('in the air she bends her flight after a player who only steps aside a little', () => {
+    const s = town();
+    calm(s);
+    const p = s.players[0];
+    p.pos = { x: WALDSEE_FIRE.x + 6, z: WALDSEE_FIRE.z + 4 };
+    witchPounce(s, p);
+    // a short step aside, then standing still: out of where she aimed, but she follows
+    let n = 0;
+    const events = run(s, WITCH.pressLeapTicks + 2, () => (n++ < 12 ? [{ type: 'move', playerId: 0, dir: { x: 1, z: 0 } }] : []));
+    expect(events.some(e => e.type === 'witchPress')).toBe(true);
+  });
+
+  it('her hop strikes where she lands and throws the player, without a warning on the floor', () => {
+    const s = town();
+    calm(s);
+    const p = s.players[0];
+    p.pos = { x: WALDSEE_FIRE.x + 6, z: WALDSEE_FIRE.z + 4 };
+    const at = { ...p.pos };
+    witchPounce(s, p, 'hop');
+    run(s, WITCH.hopTicks + 4);
+    expect(p.hp).toBeLessThan(p.maxHp);
+    expect(Math.hypot(p.pos.x - at.x, p.pos.z - at.z)).toBeGreaterThan(1);
+  });
+
   it('jumping again and again shakes her off, and she is dazed for a moment', () => {
     const { s, p } = pressed();
     let n = 0;
