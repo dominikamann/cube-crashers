@@ -1046,7 +1046,7 @@ function startGame() {
     if (mode === 'over' && client.server && client.status === 'lobby') showLobby();
     if (mode === 'lobby' && !running) {
       // the countdown ticks in place; only real changes redraw the lobby
-      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote, client.server && { ...client.server, startsIn: client.server.startsIn === null }]);
+      const key = JSON.stringify([client.lobby, client.difficulty, client.status, client.vote, client.game, client.server && { ...client.server, startsIn: client.server.startsIn === null }]);
       if (client.server) screens.lobbyCountdown(client.server);
       if (key === lastLobby) return;
       lastLobby = key;

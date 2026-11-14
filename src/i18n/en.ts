@@ -350,6 +350,7 @@ export const en = {
   'lobby.view.top': 'Top view',
   'lobby.leave': 'Leave',
   'lobby.waiting': 'Waiting for the host to pick a game…',
+  'lobby.waitingStart': 'Waiting for the host to start…',
   'lobby.back': 'Back to lobby',
   'join.title': 'Join a game',
   'join.searching': 'Looking for games on your network…',

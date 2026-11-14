@@ -1266,7 +1266,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           // what the host has picked (an older host does not say: then just how hard it is)
           if (game) gameBadges(s, { ...game, difficulty });
           else text(s, 'p', '', diffLabel(difficulty));
-          text(s, 'p', 'blinking', t('lobby.waiting'));
+          text(s, 'p', 'blinking', t(game ? 'lobby.waitingStart' : 'lobby.waiting'));
         }
         // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
         const foot = document.createElement('div');
@@ -1290,14 +1290,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       // Escape leaves through the same door as Back (which stops the checking)
       back = h.back;
       let list: HTMLElement;
-      show('', s => {
+      show('online', s => {
         text(s, 'h2', '', t('menu.online'));
         text(s, 'p', 'credits-small', t(h.web ? 'online.introWeb' : 'online.intro'));
         list = document.createElement('div');
         list.className = 'server-list txt';
-        s.append(list);
         text(list, 'p', 'blinking', t('online.checking'));
-        // add a server by address: it is remembered on this computer
+        // add a server by address: it is remembered on this computer. Above the list, which gets all the room
+        // that is left under it
         const row = document.createElement('div');
         row.className = 'server-add';
         text(row, 'span', 'setup-label', t('online.addLabel'));
@@ -1324,6 +1324,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const addBtn = button(row, t('online.add'), add);
         addBtn.classList.add('small');
         s.insertBefore(row, error);
+        s.append(list);
         button(s, t('menu.back'), h.back);
       });
       return {
