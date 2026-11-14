@@ -135,7 +135,8 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
 /**
  * A front put onto the real wall nearest to it that looks about the same way. `wall` tells how the real wall is:
  * `width` along the front, `along` where the front's point lies on it (from the wall's middle, in the front's own
- * `along` direction), and `eave`, the height up to the roof
+ * `along` direction), `eave`, the height up to the roof, and `prof`, its outline (gable included) as a painted front's
+ * canvas runs: from the wall's middle, left to right as one looks at it
  */
 export type OnWall = { wall?: { id?: number; width: number; along: number; eave: number; prof?: [number, number][] } };
 const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
@@ -151,7 +152,9 @@ const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
   if (!best || best.d > 4) return f;
   // (the front's `along` runs (-dz, dx): the sign of the wall's direction in it)
   const sgn = Math.sign(-best.nz * best.ex + best.nx * best.ez) || 1;
-  const wall = { id: best.id, width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave, prof: best.prof.map(([t, y]): [number, number] => [(t - best.len / 2) * sgn, y]) };
+  // (the outline as a painted front sees it: across from the wall's middle, the way its canvas runs, which is against
+  // the front's `along`)
+  const wall = { id: best.id, width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave, prof: best.prof.map(([t, y]): [number, number] => [-(t - best.len / 2) * sgn, y]) };
   return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))), wall };
 };
 /** a piece of a house's front: its own wall (a face at its middle), how long it is, where it starts across the
