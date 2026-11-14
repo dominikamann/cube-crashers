@@ -909,39 +909,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         // the house fills the gap between the real house to its left and the one to its right (their walls are
         // measured from the LoD2 feet: the left one at x 22.3 to 21.7, the right one at x 29.3 to 30.5), flush with
         // them. The front stands on z 50 between the two side-alleys (x 22-23 and x 29-30, which stay walkable); behind
-        // the alleys two wings of the house close them as dead ends, up to the neighbours' walls. A gable roof of red
-        // tiles, the eaves as high as the neighbours', plaster sides with windows
+        // the alleys two wings of the house close them as dead ends, up to the neighbours' walls. A gable roof of dark slate
+        // tiles, the eaves as high as the neighbours', all four sides in the same dark glass
         const X0 = 23, X1 = 29, Z0 = 44, Z1 = 50, W = X1 - X0, cx = (X0 + X1) / 2, E = 6.2, RISE = 3.6, S = 80;
         const leftX = (z: number) => 21.65 + Math.max(0, z - 46.55) * 0.193;
         const rightX = (z: number) => 28.31 + (z - 40.09) * 0.245;
-        const PLASTER = '#efe4cc';
-        // plaster with white-framed windows, one storey of about two tiles each; a ground-floor window unless a door is there
-        const plaster = (wB: number, hB: number, groundWindows: boolean): HTMLCanvasElement => {
-          const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
-          c.width = cw;
-          c.height = ch;
-          const g = c.getContext('2d')!;
-          g.fillStyle = PLASTER;
-          g.fillRect(0, 0, cw, ch);
-          g.fillStyle = '#d3c6aa';
-          g.fillRect(0, ch - 0.15 * S, cw, 0.15 * S);
-          const n = Math.max(1, Math.round(wB / 1.4));
-          for (let yc = groundWindows ? 1.5 : 3.5; yc + 0.6 < hB; yc += 2)
-            for (let k = 0; k < n; k++) {
-              const u = (k + 0.5) * (wB / n), ww = 0.62, wh = 0.9, x = (u - ww / 2) * S, y = (hB - yc - wh / 2) * S;
-              g.fillStyle = '#fbf8f0';
-              g.fillRect(x, y, ww * S, wh * S);
-              g.fillStyle = '#566a76';
-              g.fillRect(x + 0.05 * S, y + 0.05 * S, (ww - 0.1) * S, (wh - 0.1) * S);
-              g.fillStyle = '#fbf8f0';
-              g.fillRect(x + (ww / 2 - 0.025) * S, y + 0.05 * S, 0.05 * S, (wh - 0.1) * S);
-              g.fillStyle = '#d3c6aa';
-              g.fillRect(x - 0.05 * S, y + wh * S, (ww + 0.1) * S, 0.06 * S);
-            }
-          return c;
-        };
         // the glass front of the house: dark glass, light mullions, a glowing cyan line under the eaves, four lit windows
-        const curtain = (wB: number, hB: number): HTMLCanvasElement => {
+        const curtain = (wB: number, hB: number, front = true): HTMLCanvasElement => {
           const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
           c.width = cw;
           c.height = ch;
@@ -980,7 +954,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fillStyle = 'rgba(43,240,255,0.22)';
           g.fillRect(0, 0.1 * S, cw, 0.2 * S);
           // (four lit windows over the shop: two storeys, left and right of the middle)
-          for (const ci of [1, 5])
+          for (const ci of front ? [1, 5] : [])
             for (const y0 of [3.85, 4.95]) {
               const x = ci * colW * S, y = (hB - y0 - 0.95) * S, w = 2 * colW * S, h = 0.95 * S;
               g.fillStyle = 'rgba(43,240,255,0.35)';
@@ -988,10 +962,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
               g.fillStyle = '#1de6ff';
               g.fillRect(x + 3, y + 3, w - 6, h - 6);
             }
-          g.fillStyle = '#0a1017';
-          g.fillRect(0, (hB - 2.5) * S, cw, ch - (hB - 2.5) * S);
-          g.fillStyle = '#2bf0ff';
-          g.fillRect(0, (hB - 2.5) * S - 2, cw, 3);
+          if (front) {
+            g.fillStyle = '#0a1017';
+            g.fillRect(0, (hB - 2.5) * S, cw, ch - (hB - 2.5) * S);
+            g.fillStyle = '#2bf0ff';
+            g.fillRect(0, (hB - 2.5) * S - 2, cw, 3);
+          }
           return c;
         };
         // a wall from a to b (its outward side is on the left of a to b, looking down), h high
@@ -1018,16 +994,21 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         };
         // walls: the glass front, the plaster sides and wings, the back
         wallQ(X0, Z1, X1, Z1, E, curtain(W, E), 0.02);
-        wallQ(X0, 47, X0, Z1, E, plaster(Z1 - 47, E, false));
-        wallQ(X1, Z1, X1, 49, E, plaster(Z1 - 49, E, true));
-        const wl = 21.7, wr = rightX(49), hw = E - 0.2;
-        wallQ(leftX(47), 47, X0, 47, hw, plaster(X0 - leftX(47), hw, true));
-        wallQ(X1, 49, wr, 49, hw, plaster(wr - X1, hw, true));
-        wallQ(rightX(Z0), Z0, wl, Z0, hw, plaster(rightX(Z0) - wl, hw, true));
+        wallQ(X0, 47, X0, Z1, E, curtain(Z1 - 47, E, false));
+        wallQ(X1, Z1, X1, 49, E, curtain(Z1 - 49, E, false));
+        const wl = 21.7, wr = rightX(49), hw = E;
+        wallQ(leftX(47), 47, X0, 47, hw, curtain(X0 - leftX(47), hw, false));
+        wallQ(X1, 49, wr, 49, hw, curtain(wr - X1, hw, false));
+        wallQ(rightX(Z0), Z0, wl, Z0, hw, curtain(rightX(Z0) - wl, hw, false));
+        // (and the sides behind and between the wings, so the house is shut all round)
+        wallQ(X0, Z0, X0, 47, E, curtain(3, E, false));
+        wallQ(X1, 49, X1, Z0, E, curtain(5, E, false));
+        wallQ(wl, Z0, leftX(47), 47, E, curtain(3, E, false));
+        wallQ(wr, 49, rightX(Z0), Z0, E, curtain(5, E, false));
         for (const ex of [X0, X1]) box(ex, E / 2, Z1, 0.16, E, 0.16, 0x141c28);
         // the wings: flat tiled tops under the eaves of the main roof
-        flat([[wl, Z0], [X0, Z0], [X0, 47], [leftX(47), 47]], hw, 0xa9553a);
-        flat([[X1, Z0], [rightX(Z0), Z0], [wr, 49], [X1, 49]], hw, 0xa9553a);
+        flat([[wl, Z0], [X0, Z0], [X0, 47], [leftX(47), 47]], hw, 0x1c222c);
+        flat([[X1, Z0], [rightX(Z0), Z0], [wr, 49], [X1, 49]], hw, 0x1c222c);
         // a glass door on the west side, opening onto the left alley
         {
           const dz = 48.5, dx = X0 - 0.16;
@@ -1042,16 +1023,16 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           add(dm);
           lamp(dx - 0.14, 1.15, dz + 0.45, 0.06, 0.5, 0.06, 0x2bf0ff);
         }
-        // the roof: a gable roof of red tiles, the ridge running back from the street, a little overhang; the gables in plaster
+        // the roof: a gable roof of dark slate tiles, the ridge running back from the street, a little overhang; the gables in plaster
         {
           const ov = 0.3, drop = (ov * RISE) / (W / 2), yE = E - drop, yR = E + RISE;
           const tc = document.createElement('canvas');
           tc.width = 64;
           tc.height = 64;
           const tg = tc.getContext('2d')!;
-          tg.fillStyle = '#b25a3e';
+          tg.fillStyle = '#2b3340';
           tg.fillRect(0, 0, 64, 64);
-          tg.fillStyle = '#8f432c';
+          tg.fillStyle = '#171c25';
           for (let r = 0; r < 4; r++) {
             tg.fillRect(0, r * 16, 64, 2);
             for (let k = 0; k < 4; k++) tg.fillRect(k * 16 + (r & 1) * 8, r * 16, 2, 16);
@@ -1060,7 +1041,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           tt.colorSpace = THREE.SRGBColorSpace;
           tt.wrapS = tt.wrapT = THREE.RepeatWrapping;
           const tm = new THREE.MeshLambertMaterial({ map: tt, side: THREE.DoubleSide });
-          const pm = new THREE.MeshLambertMaterial({ color: parseInt(PLASTER.slice(1), 16), side: THREE.DoubleSide });
+          const pm = new THREE.MeshLambertMaterial({ color: 0x141c28, side: THREE.DoubleSide });
           disposables.push(tt, tm, pm);
           const zA = Z1 + ov, zB = Z0 - ov, len = Math.hypot(W / 2 + ov, yR - yE);
           const slope = (xe: number) => {
@@ -1083,8 +1064,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
             disposables.push(geo);
             add(new THREE.Mesh(geo, pm));
           }
-          // (the ridge)
-          box(cx, yR + 0.04, (zA + zB) / 2, 0.22, 0.12, zA - zB, 0x8f432c);
         }
       }
       const ww = Math.max(3, Math.min(5, s.len)) - 0.4;
@@ -2100,6 +2079,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       return best;
     };
     for (const [rx0, rz0, rx1, rz1] of WALDSEE_FENCE_RUNS) {
+      // (none in the AmannLabs gap: its alleys end in the dark glass of the house itself)
+      if ((rx0 + rx1) / 2 > 21.5 && (rx0 + rx1) / 2 < 30.5 && (rz0 + rz1) / 2 > 44 && (rz0 + rz1) / 2 < 52) continue;
       // (from house to house: both ends carried on to the walls beside the run, a little into them)
       const half = Math.hypot(rx1 - rx0, rz1 - rz0) / 2, ux = (rx1 - rx0) / (2 * half), uz = (rz1 - rz0) / (2 * half);
       const mx = (rx0 + rx1) / 2, mz = (rz0 + rz1) / 2;
