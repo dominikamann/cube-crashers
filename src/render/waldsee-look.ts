@@ -1476,10 +1476,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // shop fronts built from photos. Each: a plastered ground floor in the house's own tone, windows of dark
       // glass in pale frames, a door, and what one knows it by
       const span = Math.max(3, Math.min(5, s.len));
-      const pane = (a: number, wd: number, y: number, h: number, frame = 0xf4f1ea) => {
-        onFace(s, a, 0.05, y, wd + 0.12, h + 0.12, 0.05, frame);
-        onFace(s, a, 0.07, y, wd, h, 0.05, 0x33404f);
-      };
       if (s.kind === 'flasche') {
         // the inn: its real wall, painted whole on one plane flush on it: a cream ground floor with small-paned
         // windows and the door, white storeys above with red timber, its name in old letters over the door;
