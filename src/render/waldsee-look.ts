@@ -2216,48 +2216,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   }
 
-  // ---- AmannLabs on the cobbles of the yard left of the police: the mark and the name painted on the ground
-  {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
-    const g = canvas.getContext('2d')!;
-    g.font = 'bold 78px "Helvetica Neue", Arial, sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    const wide = Math.min(360, g.measureText('AmannLabs').width);
-    const draw = (img?: HTMLImageElement) => {
-      g.clearRect(0, 0, 512, 128);
-      g.fillStyle = 'rgba(255,255,255,0.82)';
-      g.save();
-      g.translate(310, 68);
-      g.scale(Math.min(1, 360 / g.measureText('AmannLabs').width), 1);
-      g.fillText('AmannLabs', 0, 0);
-      g.restore();
-      if (img) {
-        const h = 88, w = (img.width / img.height) * h;
-        g.drawImage(img, Math.max(12, 310 - wide / 2 - w - 14), 64 - h / 2, w, h);
-      }
-    };
-    draw();
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    const img = new Image();
-    img.onload = () => {
-      draw(img);
-      tex.needsUpdate = true;
-    };
-    img.src = markUrl;
-    const geo = new THREE.PlaneGeometry(6, 1.5);
-    geo.rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
-    disposables.push(tex, geo, mat);
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(66, 0.02, 38.5);
-    add(m);
-  }
-
   // ---- where a street ends: a barrier of red and white beams on posts, lamps on it. Behind it the street goes on
   for (const b of WALDSEE_BARRIERS) {
     const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax);
