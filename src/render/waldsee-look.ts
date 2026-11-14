@@ -1061,7 +1061,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       for (let k = -2; k <= 2; k++) onFace(s, k * 0.9, 1.2, 0.6, 0.86, 1.2, 0.6, k % 2 ? 0x3f7a3a : 0x478544);
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
       // a row of windows per storey, and the blue-and-orange Volksbank board over the doors
-      const wB = s.wall?.width ?? Math.max(3, s.len), H = s.wall?.eave ?? 6;
+      const wl = (s as OnWall).wall, wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
       canvas.width = cw;
@@ -1130,7 +1130,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
       disposables.push(tex, geo, mat);
       const m = new THREE.Mesh(geo, mat);
-      const [fx, fz] = on(s, -(s.wall?.along ?? 0), 0.04);
+      const [fx, fz] = on(s, -(wl?.along ?? 0), 0.04);
       m.position.set(fx, H / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
