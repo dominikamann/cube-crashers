@@ -16,7 +16,6 @@ import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
 import { createWitchFigures, WITCH_LOOK, type WitchPose } from './witch-figure';
 import { createWitchFires } from './witch-fire';
-import { shotHeight } from '../sim/systems/shot-height';
 import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -48,7 +47,6 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   witchling: { w: 0.4, h: 1.15, d: 0.35, day: 0x2f7d3a, night: 0x3fa04c, eyeY: 0.95, eyeX: 0.05, eye: 0 },
 };
 
-const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
 const KINDS = Object.keys(ENEMY_LOOK) as EnemyKind[];
 
 /** the tall-grass tiles of a map as a lookup, made once per map */
@@ -211,39 +209,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const jetGlow = new InstancedPool(scene, new THREE.BoxGeometry(0.4, 0.12, 0.4), jetGlowMat, 8, false);
   const gumMat = new THREE.MeshStandardMaterial({ color: 0xff7fc8, transparent: true, opacity: 0.45, roughness: 0.2, depthWrite: false });
   const gums = new InstancedPool(scene, new THREE.SphereGeometry(1, 20, 14), gumMat, 16, false);
-  const sawMat = lambert(0xf2c14e);
-  const saws = new InstancedPool(scene, new THREE.CylinderGeometry(0.5, 0.5, 0.08, 10), sawMat, 16);
-  const pepMat = lambert(0xc0392b);
-  const peps = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.1, 0.16), pepMat, 64, false);
   const iceMat = new THREE.MeshStandardMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, roughness: 0.1, depthWrite: false });
   const ice = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), iceMat, 128, false);
   const hostileMat = glowMat(0xff3b3b, 2.2);
   const hostile = new InstancedPool(scene, new THREE.BoxGeometry(0.28, 0.28, 0.28), hostileMat, 128, false);
-  const bananaMat = lambert(0xffe135);
-  const bananas = new InstancedPool(scene, new THREE.BoxGeometry(0.5, 0.16, 0.2), bananaMat, 64);
-  const mineLightMat = glowMat(0xff3b3b, 3);
-  const mineLights = new InstancedPool(scene, new THREE.BoxGeometry(0.1, 0.1, 0.1), mineLightMat, 64, false);
-  const bombMat = lambert(0x2a2a35);
-  const bombs = new InstancedPool(scene, new THREE.BoxGeometry(0.45, 0.45, 0.45), bombMat, 32);
-
-  const boltMat = glowMat(0xfff27a, 1.6);
-  const bolts = new InstancedPool(scene, new THREE.BoxGeometry(0.18, 0.18, 0.5), boltMat, 512, false);
-  const candyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x333333, roughness: 0.4 });
-  const candies = new InstancedPool(scene, new THREE.BoxGeometry(0.22, 0.22, 0.22), candyMat, 512, false);
-  const hotdogMat = lambert(0xd9773a);
-  const hotdogs = new InstancedPool(scene, new THREE.BoxGeometry(0.25, 0.2, 0.7), hotdogMat, 64);
-  const boomerangMat = glowMat(0x2bf0ff, 1.5);
-  const boomerangs = new InstancedPool(scene, new THREE.BoxGeometry(0.8, 0.1, 0.18), boomerangMat, 64);
-  const popcornMat = lambert(0xfff6e0);
-  const popcorns = new InstancedPool(scene, new THREE.BoxGeometry(0.35, 0.35, 0.35), popcornMat, 64);
-  const puddleMat = new THREE.MeshStandardMaterial({
-    color: 0xffd400,
-    emissive: 0xffb000,
-    emissiveIntensity: 0.4,
-    transparent: true,
-    opacity: 0.75,
-  });
-  const puddles = new InstancedPool(scene, new THREE.CylinderGeometry(1, 1, 0.05, 16), puddleMat, 64, false);
 
   const coinMat = new THREE.MeshStandardMaterial({ color: 0xffc928, emissive: 0xffa000, emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.35 });
   coinMat.userData.baseGlow = 0.35;
@@ -401,12 +370,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       warnMat.color.setHex(pal.warn);
       hostileMat.color.setHex(pal.hostileShot);
       hostileMat.emissive.setHex(pal.hostileShot);
-      boltMat.color.setHex(pal.playerShot);
-      boltMat.emissive.setHex(pal.playerShot);
       eyeMat.emissive.copy(eyeMat.color);
       eyeMat.emissiveIntensity = 1.3 * Math.min(theme.glow, 1.5);
-      boomerangMat.emissiveIntensity = 1.5 * theme.glow;
-      boltMat.emissiveIntensity = 3 * theme.glow;
       eyes.begin();
       pupils.begin();
       plates.begin();
@@ -420,7 +385,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       // where each segment sits in its worm: [index, length]
       const wormAt = new Map<number, [number, number]>();
       for (const b of allBosses(s)) for (const w of b.worms) w.forEach((id, i) => wormAt.set(id, [i, w.length]));
-      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, bananas, mineLights, bombs, jetGlow, gums, saws, peps, ice];
+      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, jetGlow, gums, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = pal.blinkWarnings ? (flash ? 0.7 : 0.12) : 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -731,58 +696,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       }
       hostileMat.emissiveIntensity = 4 * Math.min(theme.glow, 1.4);
 
-      for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.begin();
+      // the monsters' shots (the players' own, their mines and their puddles are drawn with the weapons: see shots.ts)
       for (const p of s.projectiles) {
-        // a shot has a height (see shot-height.ts): `up` is how far above the floor's shots it is now
-        const up = shotHeight(p);
-        const arc = p.arc;
-        const dive = arc && p.behavior !== 'lob' && Math.hypot(p.pos.x - arc.x, p.pos.z - arc.z) < arc.reach ? Math.atan2(arc.lift - arc.end, arc.reach) : 0;
-        if (p.hostile) {
-          // colour-blind mode: monster shots are also bigger than the players' bolts
-          hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
-          continue;
-        }
-        // (a missile has its own look, see lock-on.ts)
-        if (p.behavior === 'missile') continue;
-        if (p.behavior === 'saw') {
-          saws.add(p.pos.x, 0.5 + up, p.pos.z, time * 25);
-          for (let i = 0; i < 4; i++) {
-            const a = time * 25 + (i * Math.PI) / 2;
-            peps.add(p.pos.x + Math.cos(a) * 0.28, 0.56 + up, p.pos.z + Math.sin(a) * 0.28, a);
-          }
-          continue;
-        }
-        if (p.kind === 'bubblegumBazooka' || p.kind === 'bubbleWand') {
-          gums.add(p.pos.x, 0.7 + up, p.pos.z, 0, p.kind === 'bubbleWand' ? 0.25 + 0.03 * Math.sin(time * 12) : 0.35);
-          continue;
-        }
-        if (p.behavior === 'lob') {
-          const t = Math.min(1, (s.tick - p.launchedAt!) / (p.until - p.launchedAt!));
-          const y = 0.6 + up + 4 * 2.5 * t * (1 - t);
-          if (p.kind === 'popcorn') popcorns.add(p.pos.x, y, p.pos.z, time * 6, 1, undefined, time * 5);
-          else if (p.kind === 'bomb') bombs.add(p.pos.x, y, p.pos.z, time * 5, 1, undefined, time * 7);
-          else hotdogs.add(p.pos.x, y, p.pos.z, time * 4, 1, undefined, time * 8);
-          continue;
-        }
-        const yaw = Math.atan2(p.vel.x, p.vel.z);
-        if (p.behavior === 'boomerang') {
-          boomerangs.add(p.pos.x, 0.7 + up, p.pos.z, time * 18);
-          boomerangs.add(p.pos.x, 0.7 + up, p.pos.z, time * 18 + Math.PI / 2);
-        } else if (p.kind === 'candyCannon') {
-          candies.add(p.pos.x, 0.6 + up, p.pos.z, time * 10, 1, CANDY_COLORS[p.id % CANDY_COLORS.length]);
-        } else {
-          bolts.addScaled(p.pos.x, 0.6 + up, p.pos.z, yaw, 1, 1, 1, undefined, dive);
-        }
-      }
-      for (const a of s.areas) {
-        const fade = Math.min(1, (a.until - s.tick) / 30);
-        puddles.add(a.pos.x, 0.03, a.pos.z, 0, a.radius * (0.85 + 0.15 * fade));
-      }
-      for (const p of [bolts, candies, hotdogs, boomerangs, popcorns, puddles]) p.end();
-      for (const m of s.mines) {
-        bananas.add(m.pos.x, 0.1, m.pos.z, m.id);
-        bananas.add(m.pos.x, 0.18, m.pos.z, m.id + 0.5, 0.8);
-        if (s.tick >= m.armedAt && Math.floor(time * 4) % 2 === 0) mineLights.add(m.pos.x, 0.32, m.pos.z);
+        // colour-blind mode: monster shots are also bigger than the players' bolts
+        if (p.hostile) hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
       }
       for (const b of s.blasts) {
         // (no warning on the floor for Angry Dominik's thrown hammer: the hammer in the air is the warning)

@@ -301,6 +301,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       entities.update(s, theme, time, events, frameDt);
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);
+      fx.setEyes(views.filter(v => v.fp !== null).map(v => v.id));
       fx.update(s, events, theme, frameDt, time);
       lockOn.update(s, views.map(v => v.id), time, frameDt);
       marks.update(s, time);
