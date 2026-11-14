@@ -516,8 +516,12 @@ export const WALDSEE_BUILT: { house: number; x0: number; z0: number; x1: number;
 /** the pedal boats on the lake behind the police lane, an angler standing on each (tiles), if the lake is there */
 export const WALDSEE_BOAT: [number, number] | null = [102, 45];
 export const WALDSEE_BOAT2: [number, number] | null = [106, 48];
-/** a shark's fin in the water to the right of the boats (tiles) */
-export const WALDSEE_SHARK: [number, number] | null = [103, 52];
+/** sharks' fins out in the lake, spread over it: where (tiles) and which way each swims (radians, 0 = north) */
+export const WALDSEE_SHARKS: { at: [number, number]; heading: number }[] = [
+  { at: [103, 52], heading: 0 },
+  { at: [118, 38], heading: 2.2 },
+  { at: [96, 26], heading: -1.9 },
+];
 
 /** board fences put in by hand, besides those tools/waldsee/fences.py finds: [x0, z0, x1, z1] in tiles (behind the
  * barriers beside the clothes shop, so one does not see on down the lanes) */

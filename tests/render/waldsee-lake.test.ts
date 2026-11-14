@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WALDSEE_LOD2 } from '../../src/render/waldsee-lod2';
 import { LAKE_WIN, shown, waldseeIslet, waldseeLake } from '../../src/render/waldsee-look';
-import { WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_SHARK, WALDSEE_SHORE_TREES } from '../../src/sim/config/waldsee-town';
+import { WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_SHARKS, WALDSEE_SHORE_TREES } from '../../src/sim/config/waldsee-town';
 
 /** the distance (tiles) from a point to the nearest water tile of the lake as drawn (to the tile's edge) */
 const toWater = (x: number, z: number, reach: number): number => {
@@ -31,7 +31,7 @@ describe('the Stadtsee and its shore path', () => {
   });
 
   it('keeps the boats, the anglers and the shark in the water', () => {
-    for (const p of [WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_SHARK]) {
+    for (const p of [WALDSEE_BOAT, WALDSEE_BOAT2, ...WALDSEE_SHARKS.map(s => s.at)]) {
       if (p) expect(waldseeLake(p[0], p[1]), `at ${p}`).toBe(true);
     }
   });

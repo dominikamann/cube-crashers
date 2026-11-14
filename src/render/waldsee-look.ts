@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
-  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FENCES_LEFT_OUT, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
+  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FENCES_LEFT_OUT, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARKS, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
   WALDSEE_SHORE_TREES, WALDSEE_TREES, type WaldseeFace, type WaldseeHouse,
 } from '../sim/config/waldsee-town';
 
@@ -2180,7 +2180,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           }
           eave = Math.min(eave, w.eave);
         }
-        wl = { width: hi - lo, along: 0, eave };
+        // (up to the roof, which lies ROOF_THICK over the wall's top: no strip of the plain wall's windows over it)
+        wl = { width: hi - lo, along: 0, eave: eave + ROOF_THICK };
         mid = (lo + hi) / 2;
       }
       const wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
@@ -3178,18 +3179,23 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   };
   if (WALDSEE_BOAT) boat(WALDSEE_BOAT[0] + 0.5, WALDSEE_BOAT[1] + 0.5, 3.23, 0xe0312a, 0xd8322a, 'Mario', '#b3261e');
   if (WALDSEE_BOAT2) boat(WALDSEE_BOAT2[0] + 0.5, WALDSEE_BOAT2[1] + 0.5, 3.07, 0x1b1b1b, 0x1b1b1b, 'Dom', '#141414');
-  // a small shark's fin breaking the water to the right of the boats
-  if (WALDSEE_SHARK) {
-    const x = WALDSEE_SHARK[0] + 0.5, z = WALDSEE_SHARK[1] + 0.5, grey = 0x5f6a72, dark = 0x474e56;
+  // sharks' fins breaking the water here and there, each swimming its own way
+  for (const { at, heading } of WALDSEE_SHARKS) {
+    const x = at[0] + 0.5, z = at[1] + 0.5, grey = 0x5f6a72, dark = 0x474e56;
+    // (a spot `s` back along the shark from its fin, toward its tail)
+    const back = (s: number): [number, number] => [x + Math.sin(heading) * s, z + Math.cos(heading) * s];
     // its back just under the surface
-    box(x, 0.05, z + 0.05, 0.32, 0.1, 0.9, dark);
+    const [bx, bz] = back(0.05);
+    box(bx, 0.05, bz, 0.32, 0.1, 0.9, dark, heading);
     // the fin: thin slices that narrow and sweep back toward the tip
     for (let k = 0; k < 6; k++) {
-      const t = k / 5, y = 0.08 + t * 0.72, w = 0.68 - t * 0.58, zc = z + t * 0.22;
-      box(x, y, zc, 0.1, 0.16, w, k < 2 ? grey : dark);
+      const t = k / 5, y = 0.08 + t * 0.72, w = 0.68 - t * 0.58;
+      const [fx, fz] = back(t * 0.22);
+      box(fx, y, fz, 0.1, 0.16, w, k < 2 ? grey : dark, heading);
     }
     // a little white wake ahead of it
-    lamp(x, 0.03, z - 0.5, 0.42, 0.02, 0.24, 0xdff1ff);
+    const [wx, wz] = back(-0.5);
+    lamp(wx, 0.03, wz, 0.42, 0.02, 0.24, 0xdff1ff, heading);
   }
 
   // ---- the lakeside promenade: a footpath all round the lake as drawn (see LAKE), about 2.4 m wide, with a low
