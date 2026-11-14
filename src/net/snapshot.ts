@@ -148,14 +148,15 @@ const rows = (list: number[][]): string => {
   }
   return out + ']';
 };
-/** stands where the hand-written rows go (a text no name or message can hold: they carry no control characters) */
+/** stands where the hand-written rows go */
 const ENEMY_ROWS = '\u0001enemies', COIN_ROWS = '\u0001coins';
 
 /** The whole snap message as one string, numbers rounded on the way (one pass, sent to every client). */
 export function serializeSnapshot(s: SimState, events: unknown[]): string {
   const state = encodeSnapshot(s);
   const json = JSON.stringify({ type: 'snap', state: { ...state, enemies: ENEMY_ROWS, coins: COIN_ROWS }, events }, round);
-  return json.replace(JSON.stringify(ENEMY_ROWS), () => rows(state.enemies)).replace(JSON.stringify(COIN_ROWS), () => rows(state.coins));
+  // (found by their keys: a text inside the snapshot, a player's name say, has its quotes escaped and cannot look like one)
+  return json.replace(`"enemies":${JSON.stringify(ENEMY_ROWS)}`, () => `"enemies":${rows(state.enemies)}`).replace(`"coins":${JSON.stringify(COIN_ROWS)}`, () => `"coins":${rows(state.coins)}`);
 }
 
 /** Puts a snapshot into the client's view of the game. Older snapshots than the one shown are ignored. */

@@ -21,5 +21,8 @@ it('writes a snapshot byte for byte as one pass of JSON.stringify would', () => 
     if (s.enemies[0]) Object.assign(s.enemies[0].pos, { x: -0, z: 1e-9 }), (s.enemies[0].hp = NaN), (s.enemies[0].stateUntil = 1e21);
     expect(serializeSnapshot(s, [])).toBe(JSON.stringify({ type: 'snap', state: encodeSnapshot(s), events: [] }, round));
     expect(s.enemies.length).toBeGreaterThan(0);
+    // (a player who calls themselves what stands in for the rows gets their name back, not the rows)
+    s.players[0].name = '\u0001enemies';
+    expect(serializeSnapshot(s, [])).toBe(JSON.stringify({ type: 'snap', state: encodeSnapshot(s), events: [] }, round));
   }
 }, 60_000);

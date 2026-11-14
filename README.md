@@ -471,7 +471,7 @@ docker run -d -p 47800:47800 ghcr.io/dominikamann/cube-crashers-server --mode ca
 | `--countdown <seconds>` | Wait this long for players before a match | 30 |
 | `--monsters` | Monster hordes join versus matches | off |
 | `--web` | Players from the browser version may join (see [below](#let-players-from-the-browser-join)) | off |
-| `--compress` | Squeezes what the server sends (works with the desktop app and the browser version alike). In a measured versus match with four players the upload fell from about 157 KB/s to 5 KB/s per player, for about twice the processor time (1 % → 2 % of one core) | off |
+| `--compress` | Squeezes what the server sends (the desktop app and the browser version both take it). Measured with four players: a versus match went from about 157 KB/s to 5 KB/s of upload per player, a busy co-op floor from about 460 KB/s to 73 KB/s; the server needs one and a half to two times the processor time for it and some 5 to 20 MB more memory | off |
 | `--config <file>` | Read the options from a JSON file | `./server.json` if it exists |
 
 Every option also works as an environment variable (`CC_MODE=gungame`, `CC_BOTS=6`, …), handy with Docker.
