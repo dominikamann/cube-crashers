@@ -81,20 +81,20 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
  * `width` along the front, `along` where the front's point lies on it (from the wall's middle, in the front's own
  * `along` direction), and `eave`, the height up to the roof
  */
-export type OnWall = { wall?: { width: number; along: number; eave: number; prof?: [number, number][] } };
+export type OnWall = { wall?: { id?: number; width: number; along: number; eave: number; prof?: [number, number][] } };
 const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
-  let best: { d: number; x: number; z: number; nx: number; nz: number; len: number; u: number; eave: number; ex: number; ez: number; prof: [number, number][] } | null = null;
+  let best: { d: number; x: number; z: number; nx: number; nz: number; len: number; u: number; eave: number; ex: number; ez: number; prof: [number, number][]; id: number } | null = null;
   for (const w of wallFeet()) {
     if (w.nx * f.dx + w.nz * f.dz < 0.5) continue;
     const ex = w.x1 - w.x0, ez = w.z1 - w.z0, L2 = ex * ex + ez * ez;
     const u = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / L2));
     const x = w.x0 + ex * u, z = w.z0 + ez * u, d = Math.hypot(f.x - x, f.z - z);
-    if (!best || d < best.d) best = { d, x, z, nx: w.nx, nz: w.nz, len: Math.sqrt(L2), u, eave: w.eave, ex, ez, prof: w.prof };
+    if (!best || d < best.d) best = { d, x, z, nx: w.nx, nz: w.nz, len: Math.sqrt(L2), u, eave: w.eave, ex, ez, prof: w.prof, id: w.id };
   }
   if (!best || best.d > 4) return f;
   // (the front's `along` runs (-dz, dx): the sign of the wall's direction in it)
   const sgn = Math.sign(-best.nz * best.ex + best.nx * best.ez) || 1;
-  const wall = { width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave, prof: best.prof.map(([t, y]): [number, number] => [(t - best.len / 2) * sgn, y]) };
+  const wall = { id: best.id, width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave, prof: best.prof.map(([t, y]): [number, number] => [(t - best.len / 2) * sgn, y]) };
   return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))), wall };
 };
 const onBlock = <F extends WaldseeFace>(f: F): F & OnWall => {
@@ -105,6 +105,25 @@ const onBlock = <F extends WaldseeFace>(f: F): F & OnWall => {
   const z = f.dz > 0 ? b.z1 + 1 : f.dz < 0 ? b.z0 : Math.min(Math.max(f.z, b.z0 + 1), b.z1);
   return { ...f, x, z, len: f.dx ? b.z1 - b.z0 + 1 : b.x1 - b.x0 + 1 };
 };
+/**
+ * The real buildings that carry a painted shop front: their plaster (and shutters) in the facade's own colours on
+ * every wall and gable, found by snapping each shop to its wall (the wall's feet know the building)
+ */
+let SHOP_HOUSES: Map<number, { col: number; shut: string }> | null = null;
+const shopHouses = () => (SHOP_HOUSES ??= (() => {
+  const m = new Map<number, { col: number; shut: string }>();
+  const put = (f: WaldseeFace, col: number, shut = '') => {
+    const id = (onBlock(f) as OnWall).wall?.id;
+    if (id !== undefined) m.set(id, { col, shut });
+  };
+  put(WALDSEE_CZARDAS, 0x7096de, 'b3262b');
+  const BY_KIND: Record<string, [number, string?]> = {
+    eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc],
+    flasche: [0xf4f1ea], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
+  };
+  for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
+  return m;
+})());
 /** grass patches out in the water that are not joined to the town: drowned, so no island is left */
 const DROWNED_ISLANDS: Set<number> = (() => {
   const key = (x: number, z: number) => z * MAP_W + x;
@@ -447,8 +466,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       if (!shown(b)) return;
       // (the Czardas's colours belong to the Czardas only: a neighbour whose middle lands on its tile stays neutral)
       const h0 = houseAt(tx, tz), h = h0 && h0.col === '6f93c9' && bi !== 280 ? null : h0;
-      const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
-      const shutters = h?.shut ?? '';
+      // (a house with a painted shop front wears the facade's colours on all its walls and gables)
+      const shop = shopHouses().get(bi);
+      const plaster = shop ? shop.col : h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
+      const shutters = shop ? shop.shut : h?.shut ?? '';
       // (its eaves: the lowest point of its roofs; as many storeys of about two tiles as fit under them)
       let eaves = Infinity;
       for (const [k, q] of b) if (k === 'r') for (let i = 1; i < q.length; i += 3) eaves = Math.min(eaves, q[i]);
