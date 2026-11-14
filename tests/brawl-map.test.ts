@@ -3,7 +3,7 @@ import { FLOORS } from '../src/sim/config/floors';
 import { createSim, stepSim } from '../src/sim/sim';
 import { isBossBody } from '../src/sim/systems/combat';
 import { BLOCKS_ENEMY, isFree } from '../src/sim/map/tilemap';
-import { BRAWL_MAPS, MAP_ROTATION, brawlMapFor } from '../src/ui/screens';
+import { BRAWL_MAPS, MAP_ROTATION, brawlMapFor } from '../src/maps';
 
 describe('the Boss Brawl on other maps', () => {
   it('the arena is the default; random picks one of the others too', () => {
@@ -31,7 +31,7 @@ describe('the Boss Brawl on other maps', () => {
 describe('the Boss Rush on other maps', () => {
   it('by default each boss has its own floor; a chosen map hosts them all; random gives each a map', async () => {
     const { BOSS_RUSH } = await import('../src/sim/config/floors');
-    const { RUSH_OWN, rushMapsFor } = await import('../src/ui/screens');
+    const { RUSH_OWN, rushMapsFor } = await import('../src/maps');
     expect(rushMapsFor(RUSH_OWN, BOSS_RUSH.length)).toBeUndefined();
     expect(rushMapsFor('jungle', BOSS_RUSH.length)).toEqual(BOSS_RUSH.map(() => 'jungle'));
     const random = rushMapsFor(MAP_ROTATION, BOSS_RUSH.length, () => 0.5)!;

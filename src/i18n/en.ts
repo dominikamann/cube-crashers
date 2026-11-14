@@ -29,6 +29,7 @@ export const en = {
   'online.remove': 'Remove',
   'online.yours': 'yours',
   'server.mode.coop': 'Co-op run',
+  'server.mode.quick': 'Single floor',
   'server.mode.brawl': 'Boss Brawl',
   'server.mode.bossrush': 'Boss Rush',
   'server.mode.endless': 'Endless',

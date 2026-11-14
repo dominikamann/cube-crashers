@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_ROTATION, VERSUS_MAPS, versusMapFor } from '../src/ui/screens';
+import { MAP_ROTATION, VERSUS_MAPS, versusMapFor } from '../src/maps';
 
 describe('the versus map rotation', () => {
   it('a chosen arena stays', () => {

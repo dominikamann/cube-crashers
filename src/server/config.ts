@@ -1,5 +1,5 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
-import { DISCOVERY_MAPS } from '../sim/systems/versus';
+import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, withoutTown } from '../maps';
 import type { Difficulty } from '../sim/types';
 import { SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
 
@@ -9,7 +9,11 @@ export interface ServerConfig {
   name: string;
   port: number;
   mode: ServerMode;
-  /** versus: always this arena; null = a different one each match */
+  /**
+   * the map, one of mapChoices(mode): always this arena (versus), this floor (quick), this map for the Boss Brawl
+   * or for every boss of the Boss Rush; "random" = a random one each time; bossrush also "own" (each boss on its
+   * own floor). null = the mode's default: a different one each match (versus, quick), the arena (brawl), own (bossrush)
+   */
   map: string | null;
   /** versus (score, king, rounds): red against blue instead of everyone for themselves */
   teams: boolean;
@@ -30,6 +34,30 @@ export interface ServerConfig {
 export function serverIdentity(c: ServerConfig): { name: string; mode: ServerMode; teams: boolean } {
   const teams = c.mode === 'capture' || c.mode === 'discovery' || ((c.mode === 'score' || c.mode === 'king' || c.mode === 'rounds' || c.mode === 'coinop') && c.teams);
   return { name: c.name, mode: c.mode, teams };
+}
+
+/** the Town: walked in first person only */
+const TOWN = 'waldsee';
+
+/**
+ * What --map may be in a mode: the same maps a LAN host can pick for it, without the Town where the view is fixed
+ * from above. null: the mode brings its own floors (the Tower Run, Endless).
+ */
+export function mapChoices(mode: ServerMode, view: ViewMode = 'both'): string[] | null {
+  const noTown = view === 'top';
+  switch (mode) {
+    case 'coop':
+    case 'endless':
+      return null;
+    case 'quick':
+      return [MAP_ROTATION, ...withoutTown(QUICK_MAPS, noTown)];
+    case 'brawl':
+      return [MAP_ROTATION, ...withoutTown(BRAWL_MAPS, noTown)];
+    case 'bossrush':
+      return [RUSH_OWN, MAP_ROTATION, ...withoutTown(BRAWL_MAPS, noTown)];
+    default:
+      return [MAP_ROTATION, ...withoutTown(VERSUS_MAPS, noTown)];
+  }
 }
 
 const DIFFICULTIES: Difficulty[] = ['ultraLow', 'low', 'medium', 'high', 'ultraHigh'];
@@ -100,7 +128,13 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
   if (raw.countdown !== undefined) c.countdown = int('countdown', raw.countdown, 3, 600);
   if (raw.monsters !== undefined) c.monsters = bool(raw.monsters);
   if (raw.web !== undefined) c.web = bool(raw.web);
-  if (raw.map !== undefined && raw.map !== null && raw.map !== '') c.map = oneOf('map', raw.map, DISCOVERY_MAPS);
+  if (raw.map !== undefined && raw.map !== null && raw.map !== '') {
+    const allowed = mapChoices(c.mode, c.view);
+    // (the Tower Run and Endless bring their own floors: a map left in the settings is not an error, the server says it is unused)
+    if (!allowed) c.map = String(raw.map);
+    else if (raw.map === TOWN && !allowed.includes(TOWN) && mapChoices(c.mode)!.includes(TOWN)) throw new Error(`map ${TOWN} (the Town) is walked in first person only: it cannot be played with view top (set view to both or fp, or pick another map)`);
+    else c.map = oneOf(`map for mode ${c.mode}`, raw.map, allowed);
+  }
   return c;
 }
 
@@ -109,11 +143,23 @@ export const HELP = `Cube Crashers dedicated server
   --name <text>        name in the server list (default "Cube Crashers Server")
   --port <number>      port to listen on (default 47800); open it in your router
   --mode <mode>        ${SERVER_MODES.join(' | ')} (default discovery)
-  --map <arena>        versus always on this arena: ${DISCOVERY_MAPS.join(', ')} (default: a new one each match)
+                       co-op: coop (the Tower Run), quick (a Single floor), brawl (Boss Brawl), bossrush, endless;
+                       versus: discovery (every rule in turn) or one rule
+  --map <map>          the map, by mode (${MAP_ROTATION} = a random one each time):
+                         versus:   ${VERSUS_MAPS.join(', ')}
+                                   (default ${MAP_ROTATION}: a new arena each match)
+                         quick:    ${QUICK_MAPS.join(', ')}
+                                   (default ${MAP_ROTATION}: a new floor each match)
+                         brawl:    ${BRAWL_MAPS.join(', ')}, ${MAP_ROTATION}
+                                   (default ${BRAWL_MAPS[0]})
+                         bossrush: ${RUSH_OWN} (each boss on its own floor), ${MAP_ROTATION} (a random map for each boss),
+                                   or one of the brawl maps for all of them (default ${RUSH_OWN})
+                       coop and endless bring their own floors; ${TOWN} is the Town
   --teams              red against blue (score, king, rounds, coinop); capture is always teams
-  --difficulty <level> co-op floors and versus bots: ${DIFFICULTIES.join(', ')} (default medium)
+  --difficulty <level> co-op games and versus bots: ${DIFFICULTIES.join(', ')} (default medium)
   --bots <0-${MAX_PLAYERS}>         versus: bots fill every match up to this many players (default 4)
-  --view <view>        both | fp (first person only) | top (from above only) (default both)
+  --view <view>        both | fp (first person only) | top (from above only) (default both);
+                       the Town is walked in first person only: with top it is left out
   --countdown <secs>   wait this long for players before a match (default 30)
   --monsters           versus: monster hordes join in
   --web                let players from the browser version join (needs a TLS proxy, see the README)

@@ -5,7 +5,7 @@ import type { Transport } from '../net/transport';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { DT } from '../sim/types';
 import { APP_VERSION } from '../version';
-import { HELP, parseConfig, serverIdentity, type ServerConfig } from './config';
+import { HELP, mapChoices, parseConfig, serverIdentity, type ServerConfig } from './config';
 import { DedicatedServer } from './dedicated';
 
 /** The dedicated server: `node cube-crashers-server.mjs --mode gungame` (see --help). */
@@ -61,7 +61,9 @@ async function main() {
   const host = new HostSession(transport, { name: cfg.name, dedicated: serverIdentity(cfg) });
   const server = new DedicatedServer(host, cfg, { log });
 
-  log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.mode}, port ${net.port}`);
+  // (a map only where the mode takes one)
+  const map = mapChoices(cfg.mode) && cfg.map ? ` on ${cfg.map}` : '';
+  log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.mode}${map}, port ${net.port}`);
   log(`players join with this computer's address and port ${net.port} (open it in your router to play over the internet)`);
   if (cfg.web) log('players in the browser are welcome too: they need wss://, so put a TLS proxy in front (see the README)');
 

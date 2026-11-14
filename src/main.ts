@@ -43,7 +43,8 @@ import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
 import { createGraphicsTest, type GraphicsTest } from './graphics-test';
 import { createSmoother } from './render/smooth';
-import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary, MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './ui/screens';
+import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
+import { MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './maps';
 
 document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;

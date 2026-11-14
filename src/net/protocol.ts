@@ -26,8 +26,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 13: the police car of the Town and its siren; the little witches' cackle and shriek; a bigger tank for a second jetpack.
  * 14: the Medic Station, a tower that heals the players near it.
  * 15: the Disco Ball tells whom its beams hit (for its show and its music); little witches on brooms; a boss comes twice for a big team.
+ * 16: a dedicated server can run a Single floor (its mode 'quick' in the server list and the lobby).
  */
-export const PROTOCOL_VERSION = 15;
+export const PROTOCOL_VERSION = 16;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
@@ -36,11 +37,11 @@ export const SNAPSHOT_EVERY_TICKS = 2;
 /** a server name in the server list */
 export const MAX_SERVER_NAME = 40;
 
-/** what a dedicated server plays: a co-op run, one versus rule, or Discovery (all of them in turn) */
-export type ServerMode = 'coop' | 'brawl' | 'bossrush' | 'endless' | 'discovery' | 'gungame' | 'coinop' | 'score' | 'king' | 'rounds' | 'capture';
-export const SERVER_MODES: ServerMode[] = ['coop', 'brawl', 'bossrush', 'endless', 'discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'];
+/** what a dedicated server plays: a co-op game (the Tower Run, a Single floor, …), one versus rule, or Discovery (all of them in turn) */
+export type ServerMode = 'coop' | 'quick' | 'brawl' | 'bossrush' | 'endless' | 'discovery' | 'gungame' | 'coinop' | 'score' | 'king' | 'rounds' | 'capture';
+export const SERVER_MODES: ServerMode[] = ['coop', 'quick', 'brawl', 'bossrush', 'endless', 'discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'];
 /** the co-op games a server (or a LAN host) can run, and the kind of run each is */
-export const COOP_MODES: Partial<Record<ServerMode, 'run' | 'brawl' | 'bossrush' | 'endless'>> = { coop: 'run', brawl: 'brawl', bossrush: 'bossrush', endless: 'endless' };
+export const COOP_MODES: Partial<Record<ServerMode, 'run' | 'quick' | 'brawl' | 'bossrush' | 'endless'>> = { coop: 'run', quick: 'quick', brawl: 'brawl', bossrush: 'bossrush', endless: 'endless' };
 export const isCoop = (m: ServerMode) => m in COOP_MODES;
 const VERSUS_RULES = ['score', 'rounds', 'king', 'capture', 'gungame', 'coinop'];
 

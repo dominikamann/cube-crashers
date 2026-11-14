@@ -53,7 +53,10 @@ export class HostSession {
   private outEvents: SimEvent[] = [];
   private leftDuringRun: number[] = [];
 
+  /** the host's own unlocks */
   private unlocked = new Set<string>();
+  /** what each client has unlocked, for as long as it is in the lobby (a server runs for weeks: nothing piles up) */
+  private unlockedBy = new Map<number, string[]>();
 
   /** a running versus vote: the two options, who chose what, and when it closes (ms) */
   private vote: { options: [VersusOption, VersusOption]; votes: Record<number, 0 | 1>; until: number } | null = null;
@@ -76,6 +79,7 @@ export class HostSession {
       const was = this.lobby.findIndex(p => p.id === peer);
       if (was < 0) return;
       this.lobby.splice(was, 1);
+      this.unlockedBy.delete(peer);
       this.pending.delete(peer);
       this.lastInput.delete(peer);
       if (this.sim) this.leftDuringRun.push(peer);
@@ -279,7 +283,7 @@ export class HostSession {
       const color = wish ?? [...Array(MAX_PLAYERS).keys()].find(c => !used.has(c)) ?? 0;
       this.lobby.push({ id: from, name: m.name || `Player ${this.lobby.length + 1}`, color, character: m.character });
       // what anyone in the lobby has unlocked is available to everyone
-      for (const u of m.unlocked ?? []) this.unlocked.add(u);
+      this.unlockedBy.set(from, m.unlocked ?? []);
       this.send(from, { type: 'welcome', playerId: from });
       this.syncBots();
       this.broadcastLobby();
@@ -302,6 +306,7 @@ export class HostSession {
       const i = this.lobby.findIndex(p => p.id === from);
       if (i >= 0) {
         this.lobby.splice(i, 1);
+        this.unlockedBy.delete(from);
         if (this.sim) this.leftDuringRun.push(from);
         this.syncBots();
         this.broadcastLobby();
@@ -311,7 +316,7 @@ export class HostSession {
 
   start(seed: number, difficulty: Difficulty = this.difficulty, mode: RunMode = 'run', pickedMap = 'arena', rushMaps?: string[]): void {
     this.difficulty = difficulty;
-    const unlocked = [...this.unlocked];
+    const unlocked = [...new Set([...this.unlocked, ...[...this.unlockedBy.values()].flat()])];
     // bots only play versus: a co-op run is for the humans in the lobby
     const humans = this.lobby.filter(p => !p.bot);
     this.vote = null;
