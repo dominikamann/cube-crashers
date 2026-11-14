@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
   WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
@@ -24,7 +25,44 @@ const MAP_W = WALDSEE_TILES[0].length / 2, MAP_H = WALDSEE_TILES.length;
 /** the houses one knows, built new as clean blocks (see buildWaldseeTown): their tiles are not drawn as town houses */
 const BUILT = new Map(WALDSEE_BUILT.map(b => [b.house, b]));
 /** where a front lies on a house built new: on the edge of its block, the way the front looks */
+/** the feet of the real walls: each a stretch on the ground with the way it looks out */
+const WALL_FEET: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = (() => {
+  const out: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = [];
+  for (const b of WALDSEE_LOD2) {
+    let cx = 0, cz = 0, n = 0;
+    for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
+    cx /= n;
+    cz /= n;
+    for (const [k, q] of b) {
+      if (k !== 'w') continue;
+      const low: [number, number][] = [];
+      for (let i = 0; i < q.length; i += 3) if (q[i + 1] < 0.3) low.push([q[i], q[i + 2]]);
+      if (low.length < 2) continue;
+      const [[x0, z0], [x1, z1]] = [low[0], low[low.length - 1]];
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      if (len < 0.3) continue;
+      let nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
+      if (nx * ((x0 + x1) / 2 - cx) + nz * ((z0 + z1) / 2 - cz) < 0) ((nx = -nx), (nz = -nz));
+      out.push({ x0, z0, x1, z1, nx, nz });
+    }
+  }
+  return out;
+})();
+/** a front put onto the real wall nearest to it that looks about the same way */
+const onWall = <F extends WaldseeFace>(f: F): F => {
+  let best: { d: number; x: number; z: number; nx: number; nz: number; len: number } | null = null;
+  for (const w of WALL_FEET) {
+    if (w.nx * f.dx + w.nz * f.dz < 0.5) continue;
+    const ex = w.x1 - w.x0, ez = w.z1 - w.z0, L2 = ex * ex + ez * ez;
+    const u = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / L2));
+    const x = w.x0 + ex * u, z = w.z0 + ez * u, d = Math.hypot(f.x - x, f.z - z);
+    if (!best || d < best.d) best = { d, x, z, nx: w.nx, nz: w.nz, len: Math.sqrt(L2) };
+  }
+  if (!best || best.d > 4) return f;
+  return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))) };
+};
 const onBlock = <F extends WaldseeFace>(f: F): F => {
+  if (WALDSEE_LOD2.length) return onWall(f);
   const b = BUILT.get(codeAt(Math.floor(f.x - f.dx * 0.5 - (f.dx ? 0 : 0.0001)), Math.floor(f.z - f.dz * 0.5 - (f.dz ? 0 : 0.0001))) - 6);
   if (!b) return f;
   const x = f.dx > 0 ? b.x1 + 1 : f.dx < 0 ? b.x0 : Math.min(Math.max(f.x, b.x0 + 1), b.x1);
@@ -72,11 +110,19 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   if (alley(tx, tz)) return 'street';
   if (c >= 6 && (WALDSEE_REPLACED.includes(c - 6) || BUILT.has(c - 6))) return 'street';
   if (takenAway(c) || drowned(tx, tz)) return 'water';
-  return c === 0 ? 'water' : c === 3 ? 'street' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : c < 6 ? 'yard' : 'house';
+  // (a house tile is a low block hidden inside the real building that stands there, see buildWaldseeTown)
+  return c === 0 ? 'water' : c === 3 ? 'street' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : 'yard';
+};
+/** the plan's house at a tile, for its colours (the real building there takes them) */
+const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
+  const c = codeAt(tx, tz);
+  return c >= 6 && !takenAway(c) && !WALDSEE_REPLACED.includes(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
 };
 export const waldseeHouse = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
-  return c >= 6 && !takenAway(c) && !alley(tx, tz) && !WALDSEE_REPLACED.includes(c - 6) && !BUILT.has(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
+  // (the houses are the real buildings now, drawn whole: no house is drawn tile by tile)
+  void c;
+  return null;
 };
 /** how high the roof stands over the walls at a tile, in blocks */
 export const waldseeRoof = (tx: number, tz: number): number => (waldseeHouse(tx, tz) ? Number(WALDSEE_ROOFS[tz]?.[tx] ?? 0) * 0.2 : 0);
@@ -253,10 +299,110 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   });
 
+  // ---- the buildings as they really stand: their walls and roofs as polygons (LoD2 building models), the walls
+  // in their house's plaster with a window to every tile and storey, the roofs in its tiles. (Not the houses
+  // taken away for the view of the lake, nor the AmannLabs shop, which is built on its own.)
+  {
+    const wallPos: number[] = [], wallUv: number[] = [], wallCol: number[] = [], roofPos: number[] = [], roofCol: number[] = [];
+    const col = new THREE.Color();
+    const PALE = [0xf4f1ea, 0xf1e7c9, 0xecd0a0, 0xe9b9a6, 0xcfe0c0, 0xc6d9e6, 0xefe6d6, 0xf6efe0, 0xe8d5bd];
+    const TILES = [0xb45a3c, 0xc06544, 0xa9553a, 0xb8623f, 0x9c5038];
+    WALDSEE_LOD2.forEach((b, bi) => {
+      let cx = 0, cz = 0, n = 0;
+      for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
+      const tx = Math.floor(cx / n), tz = Math.floor(cz / n), c = codeAt(tx, tz);
+      if (c >= 6 && (takenAway(c) || WALDSEE_REPLACED.includes(c - 6))) return;
+      const g = waldseeGround(tx, tz);
+      if (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz)) return;
+      const h = houseAt(tx, tz);
+      const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
+      for (const [k, q] of b) {
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
+        if (pts.length < 3) continue;
+        // (the polygon's plane: its normal by Newell, then its points in two dimensions on that plane)
+        const nrm = new THREE.Vector3();
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], d = pts[(i + 1) % pts.length];
+          nrm.x += (a.y - d.y) * (a.z + d.z);
+          nrm.y += (a.z - d.z) * (a.x + d.x);
+          nrm.z += (a.x - d.x) * (a.y + d.y);
+        }
+        if (nrm.lengthSq() < 1e-9) continue;
+        nrm.normalize();
+        const u = Math.abs(nrm.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(-nrm.z, 0, nrm.x).normalize();
+        const v = new THREE.Vector3().crossVectors(nrm, u);
+        const flat = pts.map(p => new THREE.Vector2(p.dot(u), p.dot(v)));
+        const tris = THREE.ShapeUtils.triangulateShape(flat, []);
+        const wall = k === 'w';
+        col.setHex(wall ? plaster : tiles);
+        if (!wall) col.multiplyScalar(0.9 + 0.12 * Math.max(0, nrm.y));
+        for (const t of tris)
+          for (const i of t) {
+            const p = pts[i];
+            (wall ? wallPos : roofPos).push(p.x, p.y, p.z);
+            (wall ? wallCol : roofCol).push(col.r, col.g, col.b);
+            // (a window to every tile along the wall and every storey up it)
+            if (wall) wallUv.push(p.x * -nrm.z + p.z * nrm.x, (p.y + 0.4) / 1.9);
+          }
+      }
+    });
+    const mesh = (pos: number[], colours: number[], mat: THREE.Material, uv?: number[]) => {
+      if (!pos.length) return;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+      if (uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, mat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      disposables.push(geo, mat);
+      add(m);
+    };
+    const windows = (() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      const g = canvas.getContext('2d')!;
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#f7f5f0';
+      g.fillRect(19, 14, 26, 34);
+      g.fillStyle = '#3d4a5c';
+      g.fillRect(22, 17, 20, 28);
+      g.fillStyle = '#f7f5f0';
+      g.fillRect(31, 17, 2, 28);
+      g.fillRect(22, 29, 20, 2);
+      g.fillStyle = '#e4e1da';
+      g.fillRect(17, 48, 30, 3);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      disposables.push(tex);
+      return tex;
+    })();
+    mesh(wallPos, wallCol, new THREE.MeshLambertMaterial({ map: windows, vertexColors: true, side: THREE.DoubleSide }), wallUv);
+    mesh(roofPos, roofCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    // the lake round the Town, flat on the ground beyond the map
+    for (const ring of WALDSEE_LAKES) {
+      const shape = new THREE.Shape();
+      for (let i = 0; i < ring.length; i += 2) (i ? shape.lineTo(ring[i], ring[i + 1]) : shape.moveTo(ring[i], ring[i + 1]));
+      const geo = new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2);
+      const mat = new THREE.MeshLambertMaterial({ color: 0x4f9fd6, side: THREE.DoubleSide });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.y = -0.37;
+      m.receiveShadow = true;
+      disposables.push(geo, mat);
+      add(m);
+    }
+  }
+
   // ---- the houses one knows, built new on their lot as clean blocks: plaster in their own colour from the
   // ground to the eaves, three storeys of windows (with shutters where they have them) on every side that looks
   // onto a street, and a gable roof along the longer side with a little overhang
-  for (const b of WALDSEE_BUILT) {
+  // (only where the real buildings are missing)
+  for (const b of WALDSEE_LOD2.length ? [] : WALDSEE_BUILT) {
     const h = WALDSEE_HOUSES[b.house];
     if (!h) continue;
     const w = b.x1 - b.x0 + 1, d = b.z1 - b.z0 + 1, cx = b.x0 + w / 2, cz = b.z0 + d / 2, top = h.wall;

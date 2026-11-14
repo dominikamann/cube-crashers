@@ -743,7 +743,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   // ground around the map, so the city does not float in the sky
   const outerMat = new THREE.MeshLambertMaterial({ color: 0x88aa66 });
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(map.w + 160, map.h + 160), outerMat);
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(map.w + (map.id === 'waldsee' ? 420 : 160), map.h + (map.id === 'waldsee' ? 420 : 160)), outerMat);
   outer.rotation.x = -Math.PI / 2;
   outer.position.set(map.w / 2, -0.42, map.h / 2);
   outer.receiveShadow = true;
@@ -1105,7 +1105,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
         if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;
         // (round the Town lies the lake: where the map ends there is water, into the haze)
-        outerMat.color.setHex(town ? 0x4f9fd6 : theme.hemiGround).multiplyScalar(town ? 1 : 0.75);
+        // (round the Town the streets go on, the lake lies on them: see waldsee-look.ts)
+        outerMat.color.setHex(town ? 0xb3ada0 : theme.hemiGround).multiplyScalar(town ? 1 : 0.75);
       }
       const maze = s.run.maze;
       if (mazePixels) {
