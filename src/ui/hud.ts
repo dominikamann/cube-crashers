@@ -185,8 +185,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let lastWeaponsKey = '';
   let lastDash = '';
 
-  function toast(text: string, kind: '' | 'warn' | 'good' | 'final' = '') {
+  /** a message over the play, and under it in smaller letters what to do about it, if anything */
+  function toast(text: string, kind: '' | 'warn' | 'good' | 'final' = '', how?: string) {
     const e = el('div', `toast txt ${kind}`, toasts, text);
+    if (how) el('div', 'toast-how', e, how);
     setTimeout(() => e.remove(), kind === 'final' ? 3900 : 1900);
     while (toasts.childElementCount > 4) toasts.firstElementChild!.remove();
   }
@@ -434,8 +436,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'witchPress':
             // (long enough to read while she holds you down)
-            if (e.playerId === p.id) toast(t('toast.witchPress'), 'final');
-            else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn');
+            if (e.playerId === p.id) toast(t('toast.witchPress'), 'final', t('toast.witchPressHow'));
+            else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn', t('toast.witchPressMateHow'));
             break;
           case 'witchDance':
             toast(t('toast.witchDance'), 'warn');
