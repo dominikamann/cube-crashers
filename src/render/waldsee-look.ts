@@ -634,11 +634,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         let a0 = Infinity, a1 = -Infinity;
         for (const p of pts) ((a0 = Math.min(a0, p.dot(u))), (a1 = Math.max(a1, p.dot(u))));
         const across = Math.max(1, Math.round((a1 - a0) / 2)) / Math.max(0.01, a1 - a0);
+        // (a piece too short for a window, like those of a rounded corner, is plain plaster)
+        const narrow = a1 - a0 < 1.2;
         const put = (p: THREE.Vector3, gable: boolean) => {
           (wall ? walls(shutters).pos : roofPos).push(p.x, p.y, p.z);
           (wall ? walls(shutters).col : roofCol).push(col.r, col.g, col.b);
           // (the gable over the eaves is plain plaster: a corner of the texture where there is no window)
-          if (wall) walls(shutters).uv.push(gable ? 0.03 : (p.dot(u) - a0) * across, gable ? 0.97 : Math.min(storeys, (p.y + 0.4) / storey));
+          if (wall) walls(shutters).uv.push(gable || narrow ? 0.03 : (p.dot(u) - a0) * across, gable || narrow ? 0.97 : Math.min(storeys, (p.y + 0.4) / storey));
         };
         for (const t of tris) {
           const tri = t.map(i => pts[i]);
@@ -1160,9 +1162,11 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       tex.anisotropy = 8;
       const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
       disposables.push(tex, mat);
+      // (each piece a little wider than its wall, so on the curve no gap opens between it and the next)
+      const OVER = 0.05;
       run.forEach((w, k) => {
-        const L = len(w), geo = new THREE.PlaneGeometry(L, H), uv = geo.attributes.uv;
-        for (let i = 0; i < uv.count; i++) uv.setX(i, (from[k] + uv.getX(i) * L) / W);
+        const L = len(w), geo = new THREE.PlaneGeometry(L + 2 * OVER, H), uv = geo.attributes.uv;
+        for (let i = 0; i < uv.count; i++) uv.setX(i, (from[k] - OVER + uv.getX(i) * (L + 2 * OVER)) / W);
         disposables.push(geo);
         const m = new THREE.Mesh(geo, mat);
         m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
