@@ -37,7 +37,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
   // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight with
-  // the Schrättele at her fire. She belongs to the Town: no other boss list has her
+  // Die Hex at her fire beside the fountain (elsewhere she lights a fire of her own, see witch.ts)
   [floorWaldsee.id]: { map: floorWaldsee, theme: 'waldsee', kind: 'boss', boss: 'witch', name: 'floor.waldsee', eliteBonus: 0.05 },
   [floorUnderwater.id]: { map: floorUnderwater, theme: 'underwater', kind: 'boss', boss: 'kraken', name: 'floor.underwater', eliteBonus: 0 },
   [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
@@ -67,13 +67,13 @@ export function runFloors(seed: number): string[] {
 /**
  * The bosses a boss floor of a Tower Run can have, picked by the seed like the worlds: the Mega Block's arena is
  * also where the Rhino has room to charge, and on the roof the run ends with the Segment Worm, King Rex or the
- * Tarantula Queen. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
+ * Tarantula Queen; Die Hex can be in either, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
  * of each list is the floor's own boss: the one a Single floor has.
  */
 export const RUN_BOSSES: Record<string, BossKind[]> = {
-  [floorArena.id]: ['megaBlock', 'rhino'],
+  [floorArena.id]: ['megaBlock', 'rhino', 'witch'],
   [floorUnderwater.id]: ['kraken'],
-  [floorRooftop.id]: ['worm', 'rex', 'spider'],
+  [floorRooftop.id]: ['worm', 'rex', 'spider', 'witch'],
 };
 
 /** the boss of each floor of one run (none on a floor without one), by the seed; no boss comes twice */
@@ -99,6 +99,8 @@ export const BOSS_RUSH: { map: string; boss: BossKind }[] = [
   { map: floorJungle.id, boss: 'rhino' },
   { map: floorServers.id, boss: 'spider' },
   { map: floorNeon.id, boss: 'rex' },
+  // Die Hex in her own town, at her fire beside the fountain
+  { map: floorWaldsee.id, boss: 'witch' },
   // the very last one comes to the roof, at night, in a thunderstorm
   { map: floorRooftop.id, boss: 'dominik' },
 ];

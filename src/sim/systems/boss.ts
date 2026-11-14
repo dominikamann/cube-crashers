@@ -172,7 +172,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     e.speed = BOSS.spiderSpeed;
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
   } else if (kind === 'witch') {
-    // the Schrättele walks like a tank in the rules, with a body of her own; her fire burns where she appears
+    // the witch walks like a tank in the rules, with a body of her own; her fire burns where she appears
     const e = spawnEnemy(s, 'tank', centre);
     e.hp = e.maxHp = WITCH.hp * bossScale(s);
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
@@ -222,7 +222,7 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
 export const WILD_WAKE = 9;
 
 export const BRAWL = {
-  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider'] as BossKind[],
+  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider', 'witch'] as BossKind[],
   /** this many of them come a second time */
   extra: 2,
   dominikChance: 0.25,
@@ -768,7 +768,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
         const a = (i / BOSS.spiderCall) * Math.PI * 2;
         spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
       }
-    // the Schrättele calls no horde: the small Schrättele come to dance with her round the fire
+    // the witch calls no horde: the little witches come to dance with her round the fire
     if (b.kind === 'witch') {
       if (!b.wild) startDance(s, b, b.phase);
       continue;
@@ -796,7 +796,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     body.speed = b.waiting;
     b.waiting = undefined;
   }
-  // (the Schrättele finishes what she is doing before she starts on something new)
+  // (the witch finishes what she is doing before she starts on something new)
   if (s.tick >= b.nextAttackAt && !witchBusy(b)) {
     attack(s, b);
     const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : 1;

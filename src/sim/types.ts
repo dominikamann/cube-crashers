@@ -432,11 +432,11 @@ export interface BossState {
   gate?: number;
   /** the share of its health it takes in full a second (left out: BOSS_HP.gate.share) */
   gateShare?: number;
-  /** the Schrättele: her fire, her mask, her moves (see witch.ts) */
+  /** the witch: her fire, her mask, her moves (see witch.ts) */
   witch?: WitchState;
 }
 
-/** what the Schrättele of the Town is up to (see systems/witch.ts) */
+/** what the witch of the Town is up to (see systems/witch.ts) */
 export interface WitchState {
   /** her bonfire: where it burns, and how far its heat reaches right now (it grows while she dances) */
   fire: Vec2;
@@ -453,9 +453,9 @@ export interface WitchState {
    * player she is after, `next` what follows the scan or the hop.
    */
   move: { kind: 'scan' | 'charge' | 'hop' | 'sweep' | 'throw' | 'reel'; at: number; until: number; from: Vec2; to?: Vec2; target?: number; next?: 'charge' | 'hop' | 'press' } | null;
-  /** "s'Schrättele druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
+  /** "die Hex druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
   press: { playerId: number; at: Vec2; until: number; struggle: number; hurt: number; held: boolean } | null;
-  /** the Schrättelestanz: the small Schrättele dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
+  /** the Hexentanz: the little witches dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
   dance: { helpers: number[]; at: number; until: number } | null;
   /** burning twigs on the floor: they burn from `from` until `until` */
   embers: { id: number; pos: Vec2; radius: number; from: number; until: number }[];
@@ -549,7 +549,7 @@ export interface VersusState {
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;
-  /** chaos with a boss: now and then King Rex or the Rhino breaks in; when the next one comes */
+  /** chaos with a boss: now and then King Rex, the Rhino or Die Hex breaks in; when the next one comes */
   boss?: boolean;
   nextBossAt?: number;
   /** king of the cube: the zone, its radius and when it moves on */
@@ -722,10 +722,10 @@ export type SimEvent =
   /** a baby dino breaks out of its egg */
   | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }
-  /** the Schrättele sits on a player ("s'Schrättele druckt"), and lets go of them (`broke`: they shook her off, or a teammate knocked her off) */
+  /** the witch sits on a player ("die Hex druckt"), and lets go of them (`broke`: they shook her off, or a teammate knocked her off) */
   | { type: 'witchPress'; playerId: number; pos: Vec2 }
   | { type: 'witchRelease'; playerId: number; broke: boolean; pos: Vec2 }
-  /** the Schrättelestanz begins round the fire, a drum is struck while it lasts, and it is broken */
+  /** the Hexentanz begins round the fire, a drum is struck while it lasts, and it is broken */
   | { type: 'witchDance'; pos: Vec2 }
   | { type: 'witchDrum'; pos: Vec2; beat: number }
   | { type: 'witchDanceEnd'; pos: Vec2 }

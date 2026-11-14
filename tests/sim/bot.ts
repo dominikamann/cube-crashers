@@ -146,7 +146,7 @@ export function createBot(): (s: SimState) => Command[] {
     }
     // out of a marked area before it goes off (a boss's strike, a coconut, a stomp): the one thing every
     // player learns first
-    // (and out of a fire on the floor: the Schrättele's bonfire and the twigs burning where they fell)
+    // (and out of a fire on the floor: the witch's bonfire and the twigs burning where they fell)
     const witch = s.boss?.witch;
     const fires = witch ? [{ pos: witch.fire, radius: witch.heat + 0.3, at: 0 }, ...witch.embers.filter(e => e.from <= s.tick + 20).map(e => ({ pos: e.pos, radius: e.radius, at: e.from }))] : [];
     const blast = [...s.blasts.filter(b => !b.hidden), ...fires].filter(b => d(b.pos, p.pos) < b.radius + 0.4).sort((a, b) => a.at - b.at)[0];
@@ -187,7 +187,7 @@ export function createBot(): (s: SimState) => Command[] {
         if (p.selected === pick.slot) cmds.push({ type: 'fire', playerId: 0 });
       }
     }
-    // held down by the Schrättele: jump and jump again to shake her off
+    // held down by the witch: jump and jump again to shake her off
     if (witch?.press?.playerId === p.id) {
       if (s.tick % 8 === 0) cmds.push({ type: 'jump', playerId: 0 });
       return cmds;

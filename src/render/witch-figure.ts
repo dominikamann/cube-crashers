@@ -3,7 +3,7 @@ import { FLASH } from './pool';
 import { Sculpt } from './figure';
 
 /**
- * The Schrättele of the Narrenzunft Waldsee, and the small ones that dance with her: a figure of boxes in the game's
+ * Die Hex, the witch of the Town's Fasnet, and the small ones that dance with her: a figure of boxes in the game's
  * voxel style. She stands on y = 0 and looks along +z (as the monsters do), about 2.3 high before `scale`.
  *
  * Her carved wooden mask has two faces, the grinning one in front and the glaring one at the back of her head: at

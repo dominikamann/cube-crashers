@@ -1,5 +1,6 @@
 import { PLAYER_RADIUS } from '../config/balance';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, reachable } from '../map/tilemap';
+import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import { DT, TICK_RATE, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2, type WitchState } from '../types';
 import { dist } from '../util';
 import { spawnEnemy } from './enemies';
@@ -7,12 +8,12 @@ import { damagePlayer } from './player';
 import { aloft } from './rare';
 
 /**
- * The Schrättele of the Narrenzunft Waldsee, the boss of the Town. She has her bonfire beside the Federle-Brunnen,
+ * Die Hex, the witch of the Fasnet, the boss of the Town. She has her bonfire beside the Federle-Brunnen,
  * and its heat hurts whoever comes too close (the logs are low: a jump takes you over the flames). She crouches and
  * looks about, then charges or hops at someone with her broom raised; she leaps onto a player and presses them down
- * ("s'Schrättele druckt") until they shake her off or a teammate knocks her off; she sweeps her burning broom and
+ * ("die Hex druckt") until they shake her off or a teammate knocks her off; she sweeps her burning broom and
  * throws burning twigs that keep burning on the floor. From the second phase on she dances round the fire with
- * small Schrättele (the Schrättelestanz): the heat grows, the drums go, and she hardly feels a hit until the small
+ * little witches (the Hexentanz): the heat grows, the drums go, and she hardly feels a hit until the small
  * ones are beaten. At half her health she turns her mask from the grinning face to the glaring one, and is quicker
  * and harder from then on. She never moves in time with anything: her pace wavers all the while.
  */
@@ -48,7 +49,7 @@ export const WITCH = {
    *  second at most, for this share of the flight; nothing on the floor shows where she will land */
   homing: 2.6,
   homingShare: 0.7,
-  /** "s'Schrättele druckt": how far she leaps for it, how long she is in the air (the ring warns as long), how near her
+  /** "die Hex druckt": how far she leaps for it, how long she is in the air (the ring warns as long), how near her
    *  landing the player must still be, how long she sits on them and what that does a second. Shaking her off takes
    *  `struggle` jumps (a dash counts double); a teammate knocks her off with `knock` of her health in hits. */
   pressReach: 9,
@@ -107,15 +108,41 @@ const unit = (from: Vec2, to: Vec2): Vec2 => {
 const waver = (t: number, seed: number) => (Math.sin(t * 1.37 + seed) + Math.sin(t * 0.61 + seed * 2.3) * 0.7 + Math.sin(t * 2.93 + seed * 0.7) * 0.4) / 2.1;
 const harm = (w: WitchState) => (w.face === 'glare' ? WITCH.glareHarm : 1);
 
-/** Sets the Schrättele up on her body: the fire at `fire`, she beside it. */
-export function setupWitch(s: SimState, b: BossState, body: Enemy, fire: Vec2): void {
+/**
+ * Where she lights her fire on a map that has no place for it (the Town has, beside the fountain): the open floor
+ * closest to `near` with room for the heat ring all round it (as wide as it gets while she dances, or at least as it
+ * burns), on the floor the players walk on, and away from where they come in and from the elevator.
+ */
+export function fireSpot(s: SimState, near: Vec2): Vec2 {
+  if (s.map.id === 'waldsee') return { ...WALDSEE_FIRE };
+  const walk = reachable(s.map, s.map.spawn, BLOCKS_WALKER);
+  const ok = (q: Vec2, room: number) =>
+    q.x > 0 && q.z > 0 && q.x < s.map.w && q.z < s.map.h && walk[Math.floor(q.z) * s.map.w + Math.floor(q.x)] === 1 && isFree(s.map, q, room, BLOCKS_ENEMY) && dist(q, s.map.elevator) > room + 3 && dist(q, s.map.spawn) > room + 3;
+  for (const room of [WITCH.danceHeat, WITCH.heat + 0.4]) {
+    for (let r = 0; r <= 14; r += 0.5) {
+      const n = Math.max(1, Math.round(r * 4));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const q = { x: Math.floor(near.x + Math.cos(a) * r) + 0.5, z: Math.floor(near.z + Math.sin(a) * r) + 0.5 };
+        if (ok(q, room)) return q;
+      }
+    }
+  }
+  return nearestFree(s.map, near, WITCH.heat, BLOCKS_ENEMY);
+}
+
+/** Sets her up on her body near `near`: she lights her fire (see fireSpot) and stands beside it. */
+export function setupWitch(s: SimState, b: BossState, body: Enemy, near: Vec2): void {
+  const fire = fireSpot(s, near);
   body.radius = WITCH.radius;
   body.speed = WITCH.speed;
-  body.pos = nearestFree(s.map, { x: fire.x, z: fire.z + WITCH.standOff }, body.radius, BLOCKS_ENEMY);
-  body.dir = { x: 0, z: 1 };
+  // (beside the fire, out of its heat: south of it in the Town, else between it and where she came in)
+  const away = s.map.id === 'waldsee' || dist(near, fire) < 0.5 ? { x: 0, z: 1 } : unit(fire, near);
+  body.pos = nearestFree(s.map, { x: fire.x + away.x * WITCH.standOff, z: fire.z + away.z * WITCH.standOff }, body.radius, BLOCKS_ENEMY);
+  body.dir = { x: away.x, z: away.z };
   b.lastPos = { ...body.pos };
   b.gateShare = WITCH.gate;
-  b.witch = { fire: { ...fire }, heat: WITCH.heat, speed: WITCH.speed, face: 'grin', move: null, press: null, dance: null, embers: [], nextDrumAt: 0, nextCrackleAt: s.tick + TICK_RATE };
+  b.witch = { fire, heat: WITCH.heat, speed: WITCH.speed, face: 'grin', move: null, press: null, dance: null, embers: [], nextDrumAt: 0, nextCrackleAt: s.tick + TICK_RATE };
 }
 
 /** She is in the middle of something: no new attack until it is over. */
@@ -132,7 +159,7 @@ export function witchHit(b: BossState, amount: number, byPlayerId?: number): num
   return w.dance ? amount * WITCH.danceArmor : amount;
 }
 
-/** is this player held down by a Schrättele right now? */
+/** is this player held down by a witch right now? */
 export function pressedBy(s: SimState, p: Player): BossState | undefined {
   return [s.boss, ...(s.bosses ?? [])].find(b => b?.witch?.press?.playerId === p.id) ?? undefined;
 }
@@ -252,7 +279,7 @@ function steerHop(s: SimState, b: BossState, w: WitchState): void {
   m.to = { ...to };
 }
 
-/** The Schrättele leaps at `p` to sit on them (or, `next` = 'hop', to strike with her broom where they stand). */
+/** The witch leaps at `p` to sit on them (or, `next` = 'hop', to strike with her broom where they stand). */
 export function witchPounce(s: SimState, p: Player, next: 'hop' | 'press' = 'press', b: BossState | null = s.boss): void {
   const me = b?.witch && b.enemyId !== null ? byId(s, b.enemyId) : undefined;
   if (!b || !me) return;
@@ -275,7 +302,7 @@ function charge(s: SimState, b: BossState, me: Enemy, p: Player): void {
   s.events.push({ type: 'bossAttack', kind: 'witch' });
 }
 
-/** The small Schrättele come out of the dark and dance with her round the fire. */
+/** The little witches come out of the dark and dance with her round the fire. */
 export function startDance(s: SimState, b: BossState, phase: 2 | 3): void {
   const w = b.witch;
   if (!w || w.dance) return;

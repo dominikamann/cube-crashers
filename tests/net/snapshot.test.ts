@@ -56,7 +56,7 @@ describe('floor changes over the network', () => {
     expect(view.run.floor).toBe(1);
   });
 
-  it("carry the Schrättele: her fire, her dance with the small ones, the player she presses and the twigs burning", () => {
+  it("carry the witch: her fire, her dance with the small ones, the player she presses and the twigs burning", () => {
     const host = createSim(FLOORS.waldsee.map, 4, { mode: 'quick', players: 2 });
     const body = host.enemies.find(e => e.id === host.boss!.enemyId)!;
     host.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
