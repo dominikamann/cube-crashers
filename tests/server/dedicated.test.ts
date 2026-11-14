@@ -109,6 +109,14 @@ describe('the dedicated server', () => {
     }
   });
 
+  it('gun game takes monster hordes when they are set, as it does in the game', () => {
+    const { host, cs, run } = setup({ mode: 'gungame', monsters: true });
+    cs[0].setReady(true);
+    run(1);
+    expect(host.sim!.versus?.rule).toBe('gungame');
+    expect(host.sim!.versus?.chaos).toBe(true);
+  });
+
   it('gun game moves on to another map each match: any arena of the game, never the same twice in a row', () => {
     const { host, cs, run } = setup({ mode: 'gungame' });
     const maps: string[] = [];

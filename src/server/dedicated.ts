@@ -87,7 +87,7 @@ export class DedicatedServer {
         return { ...d, map, chaos: d.chaos || this.cfg.monsters };
       }
       case 'gungame':
-        return { mode: 'ffa', rule: 'gungame', map };
+        return { mode: 'ffa', rule: 'gungame', map, chaos: this.cfg.monsters };
       case 'capture':
         return { mode: 'team', rule: 'capture', map, chaos: this.cfg.monsters };
       default:
