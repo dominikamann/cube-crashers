@@ -468,8 +468,9 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [10.36, 60.26], dir: [-0.946, 0.325], half: 6.88, lake: false },
   { at: [54.72, 75.4], dir: [-0.845, 0.535], half: 4.69, lake: false },
   { at: [85.42, 47.53], dir: [0.978, -0.21], half: 4.69, lake: true },
-  // (the narrow lane north between the ice-cream parlour's block and the next one: shut where it leaves the street)
-  { at: [83.4, 70.0], dir: [0, -1], half: 1.5, lake: false },
+  // (the narrow lane north between the ice-cream parlour's block and the next one: shut where it leaves the street,
+  // between the two house corners at (82.1, 69.5) and (84.1, 69.5))
+  { at: [83.1, 69.5], dir: [0, -1], half: 1.0, lake: false },
 ];
 /** trees on the meadows by the lake and on its far side (tiles); nobody gets there */
 export const WALDSEE_SHORE_TREES: [number, number][] = [[91, 40], [90, 42], [89, 44]];
