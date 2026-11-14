@@ -584,6 +584,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     // soft contact shadows next to walls and barriers
     const blocks = (tx: number, tz: number) => {
       const t = tileOf(tx, tz);
+      // (in the Town a wall tile under a paved street casts none: the real house stands along its own slanted
+      // line, and a shadow along the tile edge would show the grid as steps on the cobbles)
+      if (map.id === 'waldsee' && t === Tile.Wall && waldseeGround(tx, tz) === 'street') return 0;
       return t === Tile.Wall ? 0.34 : t === Tile.LowWall ? 0.2 : 0;
     };
     const reach = px * 0.6;
