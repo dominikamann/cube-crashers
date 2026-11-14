@@ -1357,6 +1357,11 @@ function startGame() {
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';
     newVersusGame();
+    // dev: &crown=1 gives the player the lead and Quad Damage, to look at the crown and the glow
+    if (import.meta.env.DEV && params.has('crown') && solo.versus) {
+      solo.versus.scores[solo.players[0].id] = 5;
+      solo.players[0].quadUntil = Number.MAX_SAFE_INTEGER;
+    }
     // dev: &view=top keeps the camera above the arena (for recordings)
     if (params.get('view') === 'top') keyboard.setFirstPerson(false, { x: 0, z: -1 });
   } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : params.get('mode') === 'brawl' ? 'brawl' : 'quick');

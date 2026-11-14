@@ -29,7 +29,7 @@ export interface Marks {
  */
 export function createMarks(scene: THREE.Scene): Marks {
   const crowns = new InstancedPool(scene, crown(), new THREE.MeshStandardMaterial({ color: 0xffd23d, emissive: 0xa86a00, roughness: 0.35, metalness: 0.4, flatShading: true }), 2);
-  const glows = new InstancedPool(scene, new THREE.IcosahedronGeometry(0.5, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 12, false);
+  const glows = new InstancedPool(scene, new THREE.IcosahedronGeometry(0.5, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 12, false);
   return {
     update(s, time) {
       crowns.begin();
