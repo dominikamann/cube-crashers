@@ -11,6 +11,8 @@ export const LOCK_COLORS = { seeking: 0xffd23d, locked: 0xff2b2b };
 const OPEN = 1.7;
 /** a missile's trail: puffs a second, and how long one hangs there */
 const PUFFS = 60, PUFF_LIFE = 0.55, MAX_PUFFS = 120;
+/** a missile lays no smoke for its first ticks */
+const CLEAR_TICKS = 12;
 
 /** the eight corners of a cube with edges of 1 round the origin, each as three short bars */
 function brackets(): THREE.BufferGeometry {
@@ -91,6 +93,8 @@ export function createLockOn(scene: THREE.Scene): LockOn {
         const flick = 0.75 + 0.25 * Math.sin(time * 60 + m.id);
         flames.add(m.pos.x - bx * 0.5, 0.85, m.pos.z - bz * 0.5, time * 20, 0.34 * flick, 0xffb13d);
         flames.add(m.pos.x - bx * 0.72, 0.85, m.pos.z - bz * 0.72, -time * 14, 0.2 * flick, 0xff5a2b);
+        // (no smoke right at the launcher: in first person it would hang in front of the eyes)
+        if (s.tick - (m.launchedAt ?? 0) < CLEAR_TICKS) continue;
         for (let i = 0; i < lay && puffs.length < MAX_PUFFS; i++) puffs.push({ x: m.pos.x - bx * 0.7, y: 0.85, z: m.pos.z - bz * 0.7, age: 0 });
       }
       for (let i = puffs.length - 1; i >= 0; i--) {
