@@ -220,7 +220,8 @@ export class HostSession {
 
   /** A versus match on `option`'s map with the whole lobby, bots included. */
   startVersus(option: VersusOption, seed: number): void {
-    const def = FLOORS[option.map];
+    // (the Town is walked in first person only: not with the view fixed from above)
+    const def = FLOORS[option.map === 'waldsee' && this.viewMode === 'top' ? 'arena' : option.map];
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
     this.running(true);

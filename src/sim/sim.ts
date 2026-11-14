@@ -133,6 +133,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
   const difficulty = opts.difficulty ?? 'medium';
   const mode = opts.mode ?? 'quick';
   const rush = (b: { map: string }, i: number) => (opts.rushMaps?.[i] && FLOORS[opts.rushMaps[i]] ? opts.rushMaps[i] : b.map);
+  // (the Town is walked in first person only: with the view fixed from above its fights move to the arena)
   const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map((b, i) => (opts.noTown && rush(b, i) === 'waldsee' ? 'arena' : rush(b, i))) : [firstMap.id];
   const between = opts.between ?? (opts.noTown ? betweenOf(seed, floors.length, ['town']) : undefined);
   const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : mode === 'bossrush' ? FLOORS[floors[0]].map : firstMap;

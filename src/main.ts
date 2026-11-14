@@ -253,7 +253,7 @@ function startGame() {
     startMode: (coop: 'quick' | 'brawl' | 'bossrush' | 'endless') => {
       if (!host) return;
       lanBots = [];
-      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop, coop === 'brawl' ? brawlMapFor(settings.brawlMap) : coop === 'quick' ? settings.quickMap : undefined, coop === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined);
+      host.start(Number(params.get('seed')) || randomSeed(), host.difficulty, coop, coop === 'brawl' ? brawlMapFor(settings.brawlMap, Math.random, lanView === 'top') : coop === 'quick' ? settings.quickMap : undefined, coop === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length, Math.random, lanView === 'top') : undefined);
       enterPlay();
     },
     vote: (choice: 0 | 1) => (host ? host.castVote(choice) : client?.castVote(choice)),
@@ -265,8 +265,12 @@ function startGame() {
     autoFill: () => autoFill,
     setViewMode: (v: 'both' | 'fp' | 'top') => {
       lanView = v;
-      // (the Town is first person only: a Single floor there goes back to the first floor)
+      // (the Town is first person only: a Single floor there goes back to the first floor, a Brawl, a Boss Rush or a
+      // versus match there to the arena)
       if (v === 'top' && settings.quickMap === 'waldsee') settings.quickMap = RUN_FLOORS[0];
+      if (v === 'top' && settings.brawlMap === 'waldsee') settings.brawlMap = 'arena';
+      if (v === 'top' && settings.rushMap === 'waldsee') settings.rushMap = 'own';
+      if (v === 'top' && settings.versusMap === 'waldsee') settings.versusMap = 'arena';
       if (host) host.viewMode = v;
       lastLobby = '';
     },

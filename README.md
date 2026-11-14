@@ -304,8 +304,8 @@ and slams into the floor, and lightning with everything he does. He leaves a cra
 
 **Boss Brawl** (also on the Tower Run page) puts every boss into the Mega Block Arena: one or two at a time, by
 the dice, and some of them twice. After each wave you get a breather and a heart; now and then a stray shark
-swims through. The **Rhino** is in the mix too. Best with friends. The arena is the default map; a click on the map button picks another floor or a random
-one. The Boss Rush has the same button: each boss on its own floor, all on one map, or a random map each.
+swims through. The **Rhino** is in the mix too. Best with friends. The arena is the default map; a click on the map button picks another floor (the Town
+too) or a random one. The Boss Rush has the same button: each boss on its own floor, all on one map, or a random map each.
 
 ## Daily Run
 
@@ -505,7 +505,8 @@ Once it is merged, every game shows it the next time the list is opened.
 From the title (**Versus**, with bots) or in the LAN lobby (**Versus…**). Everyone starts with the Pixel
 Blaster; crates with weapons, karts and a jetpack lie around. Whoever goes down **drops their two best extra
 weapons and their jetpack** for the others to grab (in Gun Game: a few coins). From a kart or the unicorn you
-pick things up by riding over them. Up to 10 players, bots fill up. With the map set to **Rotation** every match is on a random arena, a new one
+pick things up by riding over them. Up to 10 players, bots fill up. Every floor with room to fight is an arena, the boss floors and the Town too
+(the Town in first person). With the map set to **Rotation** every match is on a random arena, a new one
 after each. Pick how well the
 bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (sharp and instant).
 

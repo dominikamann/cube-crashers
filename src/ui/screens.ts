@@ -119,33 +119,39 @@ export function withDefaults<T extends { name: string; color: number | null }>(s
   };
 }
 
-/** arenas for versus: the floors with room to fight */
-export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
+/** arenas for versus: every floor with room to fight, the boss floors and the Town too */
+export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop', 'jungle', 'servers', 'underwater', 'waldsee'];
 /** the map choice "rotation": a random arena for every match, a new one after each */
 export const MAP_ROTATION = 'random';
 
 /** where a Boss Brawl can be fought: the arena first (the default), then every other floor with room for it */
-export const BRAWL_MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'jungle', 'servers', 'underwater'];
+export const BRAWL_MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'jungle', 'servers', 'underwater', 'waldsee'];
+
+/** the maps of a list one may play: the Town is walked in first person only, so not with the view fixed from above */
+export const withoutTown = (maps: string[], noTown: boolean): string[] => (noTown ? maps.filter(id => id !== 'waldsee') : maps);
 
 /** The map of a Boss Brawl: the chosen one, or a random one. */
-export function brawlMapFor(choice: string, random: () => number = Math.random): string {
-  if (choice === MAP_ROTATION) return BRAWL_MAPS[Math.floor(random() * BRAWL_MAPS.length)];
-  return BRAWL_MAPS.includes(choice) ? choice : BRAWL_MAPS[0];
+export function brawlMapFor(choice: string, random: () => number = Math.random, noTown = false): string {
+  const maps = withoutTown(BRAWL_MAPS, noTown);
+  if (choice === MAP_ROTATION) return maps[Math.floor(random() * maps.length)];
+  return maps.includes(choice) ? choice : maps[0];
 }
 
 /** the Boss Rush's map choice "each boss on its own floor" (the default) */
 export const RUSH_OWN = 'own';
 
 /** The maps of a Boss Rush, one per boss: undefined for their own floors, else the chosen map or a random one each. */
-export function rushMapsFor(choice: string, bosses: number, random: () => number = Math.random): string[] | undefined {
-  if (choice === MAP_ROTATION) return Array.from({ length: bosses }, () => BRAWL_MAPS[Math.floor(random() * BRAWL_MAPS.length)]);
-  return BRAWL_MAPS.includes(choice) ? Array.from({ length: bosses }, () => choice) : undefined;
+export function rushMapsFor(choice: string, bosses: number, random: () => number = Math.random, noTown = false): string[] | undefined {
+  const maps = withoutTown(BRAWL_MAPS, noTown);
+  if (choice === MAP_ROTATION) return Array.from({ length: bosses }, () => maps[Math.floor(random() * maps.length)]);
+  return maps.includes(choice) ? Array.from({ length: bosses }, () => choice) : undefined;
 }
 
 /** The arena to play on: the chosen one, or with the rotation a random one that is not `last`. */
-export function versusMapFor(choice: string, last: string | null, random: () => number = Math.random): string {
-  if (choice !== MAP_ROTATION) return choice;
-  const pool = VERSUS_MAPS.filter(m => m !== last);
+export function versusMapFor(choice: string, last: string | null, random: () => number = Math.random, noTown = false): string {
+  const maps = withoutTown(VERSUS_MAPS, noTown);
+  if (choice !== MAP_ROTATION) return maps.includes(choice) ? choice : maps[0];
+  const pool = maps.filter(m => m !== last);
   return pool[Math.floor(random() * pool.length)];
 }
 
@@ -835,8 +841,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     box.append(list);
   };
   /** the Boss Brawl's map (the arena, random, then every other floor) or the Boss Rush's (their own floors first) */
-  const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap') =>
-    mapPicker(parent, redraw, key, key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...BRAWL_MAPS] : [BRAWL_MAPS[0], MAP_ROTATION, ...BRAWL_MAPS.slice(1)]);
+  const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap', lan?: LanActions) => {
+    const maps = withoutTown(BRAWL_MAPS, lan?.viewMode() === 'top');
+    if (settings[key] === 'waldsee' && !maps.includes('waldsee')) settings[key] = key === 'rushMap' ? RUSH_OWN : maps[0];
+    mapPicker(parent, redraw, key, key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...maps] : [maps[0], MAP_ROTATION, ...maps.slice(1)]);
+  };
   /** the maps of a Single floor one may pick: the Town is walked in first person only, so not where a LAN host has
    * fixed the view from above */
   const quickMaps = (lan?: LanActions) => (lan?.viewMode() === 'top' ? QUICK_MAPS.filter(id => id !== 'waldsee') : QUICK_MAPS);
@@ -848,7 +857,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   };
 
   /** the versus match the settings describe (the map rotation picks a random arena) */
-  const versusOption = (): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena), chaos: settings.versusChaos !== false, boss: settings.versusChaos === 'boss' });
+  const versusOption = (lan?: LanActions): VersusChoice => ({ mode: settings.versusRule === 'capture' ? 'team' : settings.versusRule === 'gungame' ? 'ffa' : settings.versusMode, rule: settings.versusRule, map: versusMapFor(settings.versusMap, lastArena, Math.random, lan?.viewMode() === 'top'), chaos: settings.versusChaos !== false, boss: settings.versusChaos === 'boss' });
   /** the arena of the last match started from the lobby (the rotation picks another one) */
   let lastArena: string | null = null;
   const startOption = (): VersusChoice => {
@@ -916,9 +925,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         }
         choose<boolean | 'boss'>(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }, { label: t('versus.chaosBoss'), value: 'boss' }], settings.versusChaos, v => (settings.versusChaos = v));
-        if (!VERSUS_MAPS.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = VERSUS_MAPS[0];
+        const vsMaps = withoutTown(VERSUS_MAPS, lan?.viewMode() === 'top');
+        if (!vsMaps.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = vsMaps[0];
         // "Rotation": a random arena, and a new one after every match
-        choose(t('setup.map'), [{ label: t('setup.rotation'), value: MAP_ROTATION }, ...VERSUS_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id }))], settings.versusMap, v => (settings.versusMap = v), true);
+        choose(t('setup.map'), [{ label: t('setup.rotation'), value: MAP_ROTATION }, ...vsMaps.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza'), value: id }))], settings.versusMap, v => (settings.versusMap = v), true);
       }
       if (mode === 'versus') {
         if (!lan) {
@@ -970,7 +980,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         rush.className = 'daily-box rush-box';
         text(rush, 'div', 'setup-label', t('bossrush.title'));
         text(rush, 'p', 'mode-hint', t('bossrush.sub'));
-        brawlMapChip(rush, () => setupScreen(mode, lan), 'rushMap');
+        brawlMapChip(rush, () => setupScreen(mode, lan), 'rushMap', lan);
         const rb = button(rush, t('bossrush.play'), actions.bossRush);
         rb.classList.add('small');
         cards.append(rush);
@@ -979,7 +989,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         brawl.className = 'daily-box rush-box';
         text(brawl, 'div', 'setup-label', t('brawl.title'));
         text(brawl, 'p', 'mode-hint', t('brawl.sub'));
-        brawlMapChip(brawl, () => setupScreen(mode, lan));
+        brawlMapChip(brawl, () => setupScreen(mode, lan), 'brawlMap', lan);
         const bb = button(brawl, t('brawl.play'), actions.bossBrawl);
         bb.classList.add('small');
         cards.append(brawl);
@@ -1193,7 +1203,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           if (settings.lanGame === 'versus') {
             const vs = rowOf(t('lobby.matchRow'));
             // the match Start will begin, and the page that changes it (rule, map, or a vote)
-            const o = versusOption();
+            const o = versusOption(lan);
             const what = settings.versusDiscovery ? t('versus.discovery') : `${t(`versus.${o.rule}` as 'versus.score')} · ${settings.versusMap === MAP_ROTATION ? t('setup.rotation') : t(FLOORS[o.map].name as 'floor.plaza')}`;
             text(vs, 'span', 'lobby-note', what);
             if (!vote) chip(vs, t('lobby.versus'), false, () => setupScreen('versus', lan));
@@ -1208,8 +1218,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             chip(botsRow, '+', false, () => stepTo(at + 1));
           } else {
             if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), lan);
-            if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
-            if (settings.lanGame === 'bossrush') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'rushMap');
+            if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'brawlMap', lan);
+            if (settings.lanGame === 'bossrush') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'rushMap', lan);
             const diffRow = rowOf(t('settings.difficulty'));
             for (const d of DIFFICULTIES) chip(diffRow, t(`difficulty.${d}` as 'difficulty.medium'), d === difficulty, () => lan.setDifficulty(d));
           }
