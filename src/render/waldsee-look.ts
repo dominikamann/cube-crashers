@@ -44,6 +44,21 @@ const shownBase = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   const lake = WALDSEE_BARRIERS.find(x => x.lake);
   return !(lake && cx > lake.at[0] && cz < lake.at[1] + 6);
 };
+/** the convex outline round some points (a wall with its gable on top), counter-clockwise */
+const hull = (pts: [number, number][]): [number, number][] => {
+  const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: [number, number][]) => {
+    const h: [number, number][] = [];
+    for (const q of list) {
+      while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop();
+      h.push(q);
+    }
+    h.pop();
+    return h;
+  };
+  return [...half(p), ...half([...p].reverse())];
+};
 type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number; eave: number; prof: [number, number][] };
 // (worked out on first use: shown() needs waldseeGround, which comes further down)
 let FEET: Foot[] | null = null;
@@ -71,7 +86,24 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
       // (the outline of the wall: how far along from its first foot, and how high, so a gable shows)
       const prof: [number, number][] = [];
       for (let i = 0; i < q.length; i += 3) prof.push([Math.hypot(q[i] - x0, q[i + 2] - z0), q[i + 1]]);
-      out.push({ x0, z0, x1, z1, nx, nz, id, eave, prof });
+      // (a gable can be a wall of its own over the eaves, with no foot on the ground: in the same plane as this
+      // wall and over it, it belongs to its outline, so a front painted on the wall reaches up into the gable)
+      let gabled = false;
+      for (const [k2, q2] of b) {
+        if (k2 !== 'w' || q2 === q) continue;
+        let foot = false, inPlane = true;
+        const pts: [number, number][] = [];
+        for (let i = 0; i < q2.length; i += 3) {
+          if (q2[i + 1] < 0.3) foot = true;
+          const t = ((q2[i] - x0) * (x1 - x0) + (q2[i + 2] - z0) * (z1 - z0)) / len;
+          if (Math.abs((q2[i] - x0) * nx + (q2[i + 2] - z0) * nz) > 0.25 || t < -0.3 || t > len + 0.3) inPlane = false;
+          pts.push([t, q2[i + 1]]);
+        }
+        if (foot || !inPlane) continue;
+        prof.push(...pts);
+        gabled = true;
+      }
+      out.push({ x0, z0, x1, z1, nx, nz, id, eave, prof: gabled ? hull(prof) : prof });
     }
   }
   return out;
@@ -1440,22 +1472,23 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       m.position.set(fx, H / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
+      // (the canvas runs against the face's `along`: a point `u` across it lies at `mid - u`)
       // the canopy sticks out a little over the front
       onFace(s, mid, 0.18, CAN + 0.1, W - 0.1, 0.08, 0.36, 0x5a5d62);
       // three grey stone steps up to the door
-      for (let k = 0; k < 3; k++) onFace(s, mid - W / 2 + 0.75, 0.1 + (2 - k) * 0.15, 0.04 + k * 0.04, 0.9, 0.08 + k * 0.08, 0.15, 0x8c8e90);
+      for (let k = 0; k < 3; k++) onFace(s, mid + W / 2 - 0.75, 0.1 + (2 - k) * 0.15, 0.04 + k * 0.04, 0.9, 0.08 + k * 0.08, 0.15, 0x8c8e90);
       // the blade sign on its iron arm: up at the left corner of the front, clear of the name: a white board, a red A
-      const bx = mid - W / 2 + 0.22;
+      const bx = mid + W / 2 - 0.22;
       onFace(s, bx, 0.22, yw + 0.3, 0.04, 0.04, 0.45, 0x1a1a1c);
       onFace(s, bx, 0.46, yw, 0.04, 0.4, 0.3, 0xf4f1ea);
       onFace(s, bx, 0.47, yw + 0.02, 0.05, 0.2, 0.14, 0xb8322a);
       // the olive tree with fairy lights left of the steps, and two bistro tables with red-blanketed chairs
-      onFace(s, mid - W / 2 + 0.2, 0.6, 0.15, 0.3, 0.3, 0.3, 0x3a3a3e);
-      onFace(s, mid - W / 2 + 0.2, 0.6, 0.6, 0.06, 0.6, 0.06, 0x5a4a3a);
-      onFace(s, mid - W / 2 + 0.2, 0.6, 1.0, 0.45, 0.55, 0.45, 0x5f7a4a);
-      onFace(s, mid - W / 2 + 0.2, 0.6, 1.0, 0.48, 0.3, 0.48, 0xffe9a8, true);
+      onFace(s, mid + W / 2 - 0.2, 0.6, 0.15, 0.3, 0.3, 0.3, 0x3a3a3e);
+      onFace(s, mid + W / 2 - 0.2, 0.6, 0.6, 0.06, 0.6, 0.06, 0x5a4a3a);
+      onFace(s, mid + W / 2 - 0.2, 0.6, 1.0, 0.45, 0.55, 0.45, 0x5f7a4a);
+      onFace(s, mid + W / 2 - 0.2, 0.6, 1.0, 0.48, 0.3, 0.48, 0xffe9a8, true);
       for (const u of [0.1, 0.9]) {
-        const tu = mid + (gx0 + gx1) / 2 + u - 0.5;
+        const tu = mid - ((gx0 + gx1) / 2 + u - 0.5);
         onFace(s, tu, 0.75, 0.42, 0.34, 0.04, 0.34, 0x2a2a2e);
         onFace(s, tu, 0.75, 0.21, 0.04, 0.42, 0.04, 0x2a2a2e);
         for (const sd of [-1, 1]) {
@@ -1636,7 +1669,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           rect(u - 0.025, y0 + 0.06, y1 - 0.06, 0.05, '#fbf8f0');
           rect(u - ww / 2 - 0.12, y0 - 0.07, y0 - 0.01, ww + 0.24, '#fbf8f0');
         };
-        const top = H - 0.35, wy1 = Math.min(4.35, top), wy0 = wy1 - 0.95;
+        // (the windows stay clear of the name painted just over the ledge)
+        const top = H - 0.35, wy0 = Math.max(Math.min(4.35, top) - 0.95, G + 0.8), wy1 = Math.max(wy0 + 0.5, Math.min(wy0 + 0.95, top));
         const nWin = Math.max(1, Math.floor((W - 1.0) / 1.9));
         for (let k = 0; k < nWin; k++) {
           const u = 0.5 + (k + 0.5) * ((W - 1.0) / nWin);
@@ -1696,7 +1730,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.textBaseline = 'middle';
           g.fillText('5', px(0.3), py(1.45));
         }
-        // the name painted over the ledge: dark grey capitals, a thin line, the small line under it
+        // the name painted just over the ledge, below the upstairs windows: dark grey capitals
         if (street) {
           g.fillStyle = '#4b4e53';
           g.textAlign = 'center';
@@ -1704,19 +1738,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           const mid = Math.min(W - 1.7, 3.7), maxW = (W - 1.8) * S;
           g.font = `bold ${Math.round(0.4 * S)}px Arial, Helvetica, sans-serif`;
           const wide = g.measureText('FRAUENZIMMER').width;
-          const sc = Math.min(1, maxW / wide);
           g.save();
-          g.translate(px(mid), py(G + 0.95));
-          g.scale(sc, 1);
+          g.translate(px(mid), py(G + 0.38));
+          g.scale(Math.min(1, maxW / wide), 1);
           g.fillText('FRAUENZIMMER', 0, 0);
-          g.restore();
-          rect(mid - (wide * sc) / S / 2 - 0.1, G + 0.64, G + 0.67, (wide * sc) / S + 0.2, '#4b4e53');
-          g.font = `${Math.round(0.23 * S)}px Arial, Helvetica, sans-serif`;
-          const wide2 = g.measureText('FRAUENMODE - KINDERMODE').width;
-          g.save();
-          g.translate(px(mid), py(G + 0.4));
-          g.scale(Math.min(1, maxW / wide2), 1);
-          g.fillText('FRAUENMODE - KINDERMODE', 0, 0);
           g.restore();
         }
         const tex = new THREE.CanvasTexture(canvas);
@@ -1785,7 +1810,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         for (let k = 0; k < 6; k++) box(hx + ax * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.45, hz + az * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.03, 0.9, 0.03, 0x3a3d42, yaw);
       }
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
-      // a row of windows per storey, and the blue-and-orange board "Bank" up high (no brand name)
+      // a row of windows per storey, and the name "Bank" in plain letters between the shop windows and the first
+      // storey (no brand name)
       // (the whole house front: every wall of the building that looks the same way, side by side)
       let wl = (s as OnWall).wall, mid = -(wl?.along ?? 0);
       let near: ReturnType<typeof wallFeet>[number] | undefined;
@@ -1797,7 +1823,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       if (near) {
         let lo = Infinity, hi = -Infinity, eave = Infinity;
         for (const w of wallFeet()) {
+          // (only the walls in the same plane: an annex set back behind it is not covered)
           if (w.id !== near.id || w.nx * near.nx + w.nz * near.nz < 0.95) continue;
+          if (Math.abs((w.x0 - near.x0) * near.nx + (w.z0 - near.z0) * near.nz) > 0.3) continue;
           for (const [x, z] of [[w.x0, w.z0], [w.x1, w.z1]]) {
             const a = -(x - s.x) * s.dz + (z - s.z) * s.dx;
             lo = Math.min(lo, a);
@@ -1860,17 +1888,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(px(u - 0.02), py(2.12), 0.04 * S, 1.8 * S);
         if (door) g.fillRect(px(u - bw / 2 + 0.18), py(1.9), (bw - 0.36) * S, 0.05 * S);
       }
-      // the board: blue with the orange rim, the name in white
-      const bwid = Math.min(wB - 0.4, 2.4), bh = 0.7, by = Math.min(3.4, H - 0.9);
-      g.fillStyle = '#1f4fa8';
-      g.fillRect(px(-bwid / 2), py(by + bh / 2), bwid * S, bh * S);
-      g.fillStyle = '#f28c1e';
-      g.fillRect(px(-bwid / 2), py(by - bh / 2 + 0.06), bwid * S, 0.06 * S);
-      g.fillStyle = '#ffffff';
-      g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      // the name: dark letters on the plaster, halfway between the shop windows and the lowest windows above
+      const low = storeys ? H - (storeys - 0.5) * ((H - 2.6) / storeys) - 0.1 - 0.45 : H - 0.3;
+      g.fillStyle = '#2c3e5c';
+      g.font = `bold ${Math.round(0.42 * S)}px "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText('Bank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
+      g.fillText('Bank', cw / 2, py((2.2 + low) / 2), (wB - 0.6) * S);
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -2212,19 +2236,20 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         m.position.set(fx, H / 2, fz);
         m.rotation.y = faceYaw(mid);
         add(m);
+        // (the canvas runs against the face's `along`: a point `u` across the canvas lies at `-u` along it)
         // the lantern on its arm, by the door
-        const [lx, lz] = on(mid, doorU - 0.75, 0.25);
+        const [lx, lz] = on(mid, -(doorU - 0.75), 0.25);
         box(lx, GF - 0.1, lz, 0.05, 0.05, 0.4, 0x2a2d30, faceYaw(mid));
         lamp(lx, GF - 0.3, lz, 0.18, 0.28, 0.18, 0xffcf7a);
-        // bistro tables with chairs on the left, box trees in big pots along the front
-        for (const a of [left + 0.7, left + 2.2]) {
-          const [x, z] = on(mid, a, 1.4);
+        // bistro tables with chairs centred before the windows, the way to the door free; box trees in big pots
+        for (const a of [(left + right) / 2 - 1.0, (left + right) / 2 + 1.0]) {
+          const [x, z] = on(mid, -a, 1.4);
           box(x, 0.36, z, 0.1, 0.72, 0.1, 0x4a4f5c);
           box(x, 0.74, z, 0.7, 0.06, 0.7, 0x8a5a36);
           for (const t of [0, 2.1, 4.2]) box(x + Math.cos(t) * 0.6, 0.25, z + Math.sin(t) * 0.6, 0.3, 0.5, 0.3, 0x6b4a32, t);
         }
-        for (const a of [left + 1.45, doorU - 1.0, doorU + 1.3]) {
-          const [x, z] = on(mid, a, 0.55);
+        for (const a of [left + 0.3, doorU - 1.0, doorU + 1.3]) {
+          const [x, z] = on(mid, -a, 0.55);
           box(x, 0.3, z, 0.5, 0.6, 0.5, 0xb5653a, 0.4);
           box(x, 0.95, z, 0.6, 0.7, 0.6, 0x3f7a3a, 0.6);
         }
@@ -2654,8 +2679,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       return best;
     };
     // (no wider than the lane just behind it either: where a house front stands back, the barrier does not run on
-    // in front of the house beside the lane)
-    const reach = (sx: number) => Math.min(reachFrom(b.at[0], b.at[1], sx), reachFrom(b.at[0] + b.dir[0] * 0.8, b.at[1] + b.dir[1] * 0.8, sx), reachFrom(b.at[0] + b.dir[0] * 1.6, b.at[1] + b.dir[1] * 1.6, sx));
+    // in front of the house beside the lane; a wall that only slants into the lane is met where the barrier stands)
+    const reach = (sx: number) => {
+      const here = reachFrom(b.at[0], b.at[1], sx);
+      const behind = Math.min(reachFrom(b.at[0] + b.dir[0] * 0.8, b.at[1] + b.dir[1] * 0.8, sx), reachFrom(b.at[0] + b.dir[0] * 1.6, b.at[1] + b.dir[1] * 1.6, sx));
+      return here - behind > 0.8 ? behind : here;
+    };
     const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
     const at = [b.at[0] + ax * mid, b.at[1] + az * mid];
     const n = Math.max(2, Math.round(width / 0.6));
