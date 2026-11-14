@@ -4,7 +4,7 @@ import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import { DT, TICK_RATE, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2, type WitchState } from '../types';
 import { dist } from '../util';
 import { spawnEnemy } from './enemies';
-import { spawnHorde } from './hordes';
+import { hordeScale } from './coop';
 import { damagePlayer } from './player';
 import { aloft } from './rare';
 
@@ -519,8 +519,10 @@ export const TOWN_WITCHLINGS = 5;
 export function spreadWitchlings(s: SimState, fire: Vec2): void {
   const pool = s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS && dist(w, fire) > 10);
   if (pool.length === 0) return;
+  // (as many more of them as hordes grow for more players and harder levels, each still on her own)
+  const n = Math.max(1, Math.round(TOWN_WITCHLINGS * hordeScale(s)));
   const chosen: Vec2[] = [s.rng.pick(pool)];
-  while (chosen.length < Math.min(TOWN_WITCHLINGS, pool.length)) {
+  while (chosen.length < Math.min(n, pool.length)) {
     let best = pool[0], far = -1;
     for (const w of pool) {
       const d = Math.min(...chosen.map(c => dist(c, w)));
@@ -528,7 +530,11 @@ export function spreadWitchlings(s: SimState, fire: Vec2): void {
     }
     chosen.push(best);
   }
-  for (const w of chosen) spawnHorde(s, w, [{ kind: 'witchling', count: 1 }]);
+  for (const w of chosen) {
+    const h = { id: s.nextId++, waypoint: { ...w }, aggro: false, rush: false, nextWanderAt: s.tick + Math.floor(s.rng.range(60, 180)) };
+    s.hordes.push(h);
+    spawnEnemy(s, 'witchling', nearestFree(s.map, w, 0.6, BLOCKS_ENEMY), { hordeId: h.id });
+  }
 }
 
 /** whether one of the little witches that walk the Town is still about (not the ones dancing with the witch) */

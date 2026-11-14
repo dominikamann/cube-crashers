@@ -105,6 +105,8 @@ describe('the new worlds', () => {
 describe('under water', () => {
   it('the sea is full of fish and sharks from the start, and the Kraken keeps calling new schools', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    // (it has seen the players: until then its sea waits with it, see boss-unaware.test.ts)
+    alertBoss(s, s.boss!);
     s.players[0].invulnUntil = 1e9;
     const sea = () => s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0);
     expect(sea().filter(e => e.kind === 'fish').length).toBeGreaterThanOrEqual(15);

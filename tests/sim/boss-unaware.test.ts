@@ -58,3 +58,39 @@ describe('a boss that has not seen anyone yet', () => {
     expect(run(s, 6 * 60, me)).toBeGreaterThan(0);
   });
 });
+
+describe('what the review found', () => {
+  it('from inside a wall the nearest free spot is still found (no sight needed from in there)', async () => {
+    const { nearestFloor, isFree, BLOCKS_ENEMY, Tile } = await import('../../src/sim/map/tilemap');
+    const m = FLOORS.arena.map;
+    const wall = m.tiles.findIndex((t, i) => t === Tile.Wall && m.tiles[i + 2 * m.w] === Tile.Floor && m.tiles[i + m.w] === Tile.Wall && i % m.w > 3 && i % m.w < m.w - 3);
+    const inWall = { x: (wall % m.w) + 0.5, z: Math.floor(wall / m.w) + 0.5 };
+    expect(isFree(m, inWall, 0.3, BLOCKS_ENEMY)).toBe(false);
+    expect(isFree(m, nearestFloor(m, inWall, 0.4, BLOCKS_ENEMY), 0.4, BLOCKS_ENEMY)).toBe(true);
+  });
+
+  it('the climbers see over the walls they climb', async () => {
+    const { seenBy, spawnBoss } = await import('../../src/sim/systems/boss');
+    const s = createSim(FLOORS.arena.map, 4, { mode: 'quick', players: 1 });
+    s.enemies = [];
+    s.boss = null;
+    spawnBoss(s, 'spider');
+    const queen = bodyOf(s);
+    // (on a wall, the player 10 tiles off behind it)
+    const m = s.map, wall = m.tiles.findIndex((t, i) => t === 1 && i % m.w > 5 && i % m.w < m.w - 5 && Math.floor(i / m.w) > 3);
+    queen.pos = { x: (wall % m.w) + 0.5, z: Math.floor(wall / m.w) + 0.5 };
+    s.players[0].pos = nearestFree(m, { x: queen.pos.x, z: queen.pos.z + 10 }, 0.4, BLOCKS_WALKER);
+    expect(seenBy(s, s.boss!).length).toBe(1);
+  });
+
+  it('as many little Schrättele as the hordes grow, each on her own', async () => {
+    const { hordeScale } = await import('../../src/sim/systems/coop');
+    const { TOWN_WITCHLINGS } = await import('../../src/sim/systems/witch');
+    for (const [players, difficulty] of [[1, 'medium'], [1, 'high'], [2, 'medium']] as const) {
+      const s = createSim(FLOORS.waldsee.map, 4, { mode: 'quick', players, difficulty });
+      const out = s.enemies.filter(e => e.kind === 'witchling' && e.hordeId !== null);
+      expect(out.length, `${players} on ${difficulty}`).toBe(Math.round(TOWN_WITCHLINGS * hordeScale(s)));
+      expect(new Set(out.map(e => e.hordeId)).size).toBe(out.length);
+    }
+  });
+});

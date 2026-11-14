@@ -1,5 +1,5 @@
 import { clearSpot } from './ground';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFloor, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { AGGRO_RADIUS, BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
@@ -221,17 +221,6 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
 /** how close a player comes before a waiting wild boss goes for them */
 export const WILD_WAKE = 9;
 
-/** the nearest spot on the floor for a body that is in a wall (from in there it sees nothing, so not by sight) */
-function outOfWall(s: SimState, e: Enemy): Vec2 {
-  const r = Math.min(e.radius, 0.9);
-  for (let ring = 0.5; ring <= 10; ring += 0.5)
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2, c = { x: e.pos.x + Math.cos(a) * ring, z: e.pos.z + Math.sin(a) * ring };
-      if (isFree(s.map, c, r, BLOCKS_ENEMY)) return c;
-    }
-  return e.pos;
-}
-
 /** A boss knows the players are there: it stops wandering or keeping watch (it has seen someone, or is hurt). */
 export function alertBoss(s: SimState, b: BossState): void {
   b.unseen = undefined;
@@ -251,8 +240,10 @@ export function seenBy(s: SimState, b: BossState): Player[] {
   if (!from) return [];
   // (one standing right by it is noticed, even where a wall beside them both is in the way of the line between them)
   const close = (body?.radius ?? 1) + 2.5;
-  // (one up on a wall top stands over the walls: seen as far as it sees)
-  return s.players.filter(p => p.downUntil === null && (dist(p.pos, from) <= close || (dist(p.pos, from) <= BOSS_SIGHT && (p.perched || hasLos(s.map, from, p.pos)))));
+  // (one up on a wall top stands over the walls: seen as far as it sees; and the climbers, the Tarantula Queen and the
+  // Kraken, look over the walls they climb)
+  const over = b.kind === 'spider' || b.kind === 'kraken';
+  return s.players.filter(p => p.downUntil === null && (dist(p.pos, from) <= close || (dist(p.pos, from) <= BOSS_SIGHT && (over || p.perched || hasLos(s.map, from, p.pos)))));
 }
 
 /**
@@ -767,8 +758,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   const living = bodies(s, b);
   // a body that has ended up in a wall (a leap or a shove too far) steps back out onto the floor: in there it
   // sees nobody and nobody sees it. (Not the climbers, which go over walls, nor a worm's pieces, nor in mid-leap)
-  if (!b.leap && b.kind !== 'spider' && b.kind !== 'kraken' && b.kind !== 'worm')
-    for (const e of living) if (!isFree(s.map, e.pos, 0.3, BLOCKS_ENEMY)) e.pos = outOfWall(s, e);
+  if (!b.leap && ((b.kind === 'spider' && b.brood) || (b.kind !== 'spider' && b.kind !== 'kraken' && b.kind !== 'worm')))
+    for (const e of living) if (!isFree(s.map, e.pos, 0.3, BLOCKS_ENEMY)) e.pos = nearestFloor(s.map, e.pos, Math.min(e.radius, 0.9), BLOCKS_ENEMY);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
   if (living.length === 0 && b.kind === 'spider' && !b.brood) {
@@ -778,7 +769,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     b.brood = [];
     for (let i = 0; i < BOSS.spiderBrood; i++) {
       const a = (i / BOSS.spiderBrood) * Math.PI * 2, r = 0.8 + (i % 3) * 0.7;
-      b.brood.push(spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * r, z: b.lastPos.z + Math.sin(a) * r }, 0.3, BLOCKS_ENEMY)).id);
+      b.brood.push(spawnEnemy(s, 'spiderling', nearestFloor(s.map, { x: b.lastPos.x + Math.cos(a) * r, z: b.lastPos.z + Math.sin(a) * r }, 0.3, BLOCKS_ENEMY)).id);
     }
     // (the bar is the brood from here on)
     b.maxHp = hpOf(s, b);
@@ -830,7 +821,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     if (b.kind === 'spider' && b.enemyId !== null && !b.wild)
       for (let i = 0; i < BOSS.spiderCall; i++) {
         const a = (i / BOSS.spiderCall) * Math.PI * 2;
-        spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
+        spawnEnemy(s, 'spiderling', nearestFloor(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
       }
     // the witch calls no horde: the little witches come to dance with her round the fire
     if (b.kind === 'witch') {
@@ -840,7 +831,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0 && !b.wild) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }
-  if (b.nextSchoolAt !== undefined && s.tick >= b.nextSchoolAt) {
+  // (not while it has not seen anyone yet: its sea goes for the players with it)
+  if (b.nextSchoolAt !== undefined && s.tick >= b.nextSchoolAt && b.roam === undefined) {
     // the Kraken calls the sea: a new school sweeps in from somewhere away from the players
     b.nextSchoolAt = s.tick + BOSS.schoolSeconds[b.phase] * TICK_RATE;
     const sea = s.enemies.filter(e => (e.kind === 'fish' || e.kind === 'shark') && e.hp > 0).length;
@@ -850,7 +842,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   if (b.unseen) {
     // the Schrättele by her fire: no attack until she sees someone (as near and as clear as a horde would) or is hurt
     const body = living[0];
-    const seen = s.players.some(p => p.downUntil === null && dist(p.pos, body.pos) <= AGGRO_RADIUS && hasLos(s.map, body.pos, p.pos));
+    const seen = s.players.some(p => p.downUntil === null && (dist(p.pos, body.pos) <= body.radius + 2.5 || (dist(p.pos, body.pos) <= AGGRO_RADIUS && (p.perched || hasLos(s.map, body.pos, p.pos)))));
     if (!seen && body.hp >= body.maxHp) {
       b.nextAttackAt = s.tick + TICK_RATE;
       return;
@@ -862,7 +854,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     // it has seen nobody yet: it wanders and does not attack, until its horde has seen someone or it is hurt
     const body = living[0];
     const h = s.hordes.find(x => x.id === b.roam);
-    if (h && !h.aggro && body.hp >= body.maxHp) {
+    const climberNear = (b.kind === 'spider' || b.kind === 'kraken') && s.players.some(p => p.downUntil === null && dist(p.pos, body.pos) <= AGGRO_RADIUS);
+    if (h && !h.aggro && !climberNear && body.hp >= body.maxHp) {
       b.nextAttackAt = s.tick + TICK_RATE;
       body.cooldownUntil = Math.max(body.cooldownUntil, s.tick + TICK_RATE);
       return;

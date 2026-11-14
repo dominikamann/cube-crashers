@@ -19,7 +19,7 @@ import {
   REGEN_DELAY_TICKS,
 } from '../config/balance';
 import { JETPACK } from '../config/rare';
-import { BLOCKS_AIR, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_AIR, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2 } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
@@ -134,14 +134,17 @@ function pushOutOfBosses(s: SimState, p: Player): void {
     const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
     // (out to its edge that way; where a wall is there, round its edge to the nearest side that is free: never
     // into the wall, from where nobody could get out again)
+    // (and only to a spot the player could walk to from where they are: not through a thin wall into a closed room)
     const toward = Math.atan2(nz, nx);
-    for (let k = 0; k <= 12; k++) {
+    let moved = false;
+    for (let k = 0; k <= 24 && !moved; k++) {
       const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 12);
       const out = { x: e.pos.x + Math.cos(a) * edge, z: e.pos.z + Math.sin(a) * edge };
-      if (!isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER)) continue;
+      if (!isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER) || !hasLos(s.map, p.pos, out)) continue;
       p.pos = out;
-      break;
+      moved = true;
     }
+    if (!moved) p.pos = nearestFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER);
   }
 }
 

@@ -337,6 +337,20 @@ export function reachable(m: FloorMap, from: Vec2, blocks: Blocks): Uint8Array {
   return mask;
 }
 
+/**
+ * The nearest free spot for something that is inside a wall: from in there nothing is in sight, so unlike
+ * nearestFree it takes the nearest free spot at all (rings round it, up to 10 tiles out).
+ */
+export function nearestFloor(m: FloorMap, pos: Vec2, r: number, blocks: Blocks): Vec2 {
+  if (isFree(m, pos, r, blocks)) return { ...pos };
+  for (let ring = 0.5; ring <= 10; ring += 0.5)
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, c = { x: pos.x + Math.cos(a) * ring, z: pos.z + Math.sin(a) * ring };
+      if (isFree(m, c, r, blocks)) return c;
+    }
+  return { ...pos };
+}
+
 /** The free spot closest to `pos` for a circle of radius `r` (searches outward in rings). */
 export function nearestFree(m: FloorMap, pos: Vec2, r: number, blocks: Blocks, minDist = 0): Vec2 {
   if (minDist === 0 && isFree(m, pos, r, blocks)) return { ...pos };
