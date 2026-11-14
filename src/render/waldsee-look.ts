@@ -2167,12 +2167,19 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const d = Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z);
         if (!near || d < Math.hypot((near.x0 + near.x1) / 2 - s.x, (near.z0 + near.z1) / 2 - s.z)) near = w;
       }
+      // (the outlines of those walls, gables included, as `along` the front and height: the front is clipped to them)
+      const outlines: [number, number][][] = [];
       if (near) {
         let lo = Infinity, hi = -Infinity, eave = Infinity;
         for (const w of wallFeet()) {
           // (only the walls in the same plane: an annex set back behind it is not covered)
           if (w.id !== near.id || w.nx * near.nx + w.nz * near.nz < 0.95) continue;
           if (Math.abs((w.x0 - near.x0) * near.nx + (w.z0 - near.z0) * near.nz) > 0.3) continue;
+          const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
+          outlines.push(w.prof.map(([t, y]): [number, number] => {
+            const x = w.x0 + ((w.x1 - w.x0) * t) / len, z = w.z0 + ((w.z1 - w.z0) * t) / len;
+            return [-(x - s.x) * s.dz + (z - s.z) * s.dx, y > 0.3 ? y + ROOF_THICK : y];
+          }));
           for (const [x, z] of [[w.x0, w.z0], [w.x1, w.z1]]) {
             const a = -(x - s.x) * s.dz + (z - s.z) * s.dx;
             lo = Math.min(lo, a);
@@ -2184,7 +2191,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         wl = { width: hi - lo, along: 0, eave: eave + ROOF_THICK };
         mid = (lo + hi) / 2;
       }
-      const wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
+      // (the storeys go up to the eaves, `E`; the canvas up to the gable's tip, `H`, plain plaster there)
+      const wB = wl?.width ?? Math.max(3, s.len), E = wl?.eave ?? 6, H = Math.max(E, ...outlines.flat().map(p => p[1]));
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
       canvas.width = cw;
@@ -2192,6 +2200,15 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const g = canvas.getContext('2d')!;
       const px = (u: number) => (u + wB / 2) * S;
       const py = (y: number) => (H - y) * S;
+      // (only inside the walls' outlines: a canvas spot `u` lies at `mid - u` along the front)
+      if (outlines.length) {
+        g.beginPath();
+        for (const o of outlines) {
+          o.forEach(([a, y], i) => (i ? g.lineTo(px(mid - a), py(y)) : g.moveTo(px(mid - a), py(y))));
+          g.closePath();
+        }
+        g.clip();
+      }
       g.fillStyle = '#c3ccd3';
       g.fillRect(0, 0, cw, ch);
       g.fillStyle = '#9aa3a9';
@@ -2202,10 +2219,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       g.fillStyle = shadow;
       g.fillRect(0, 0, cw, 0.5 * S);
       // upper storeys (about 2 tiles each): grey-framed windows with a dark glass and a pale sill
-      const storeys = Math.max(1, Math.round(H / 2) - 1);
+      const storeys = Math.max(1, Math.round(E / 2) - 1);
       const nUp = Math.max(1, Math.round(wB / 1.4));
       for (let r = 0; r < storeys; r++) {
-        const yc = H - (r + 0.5) * ((H - 2.6) / storeys) - 0.15 * 0 - 0.1;
+        const yc = E - (r + 0.5) * ((E - 2.6) / storeys) - 0.1;
         for (let k = 0; k < nUp; k++) {
           const u = -wB / 2 + (k + 0.5) * (wB / nUp), ww = 0.74, wh = 0.9;
           g.fillStyle = '#8d9096';
@@ -2237,7 +2254,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         if (door) g.fillRect(px(u - bw / 2 + 0.18), py(1.9), (bw - 0.36) * S, 0.05 * S);
       }
       // the name: dark letters on the plaster, halfway between the shop windows and the lowest windows above
-      const low = storeys ? H - (storeys - 0.5) * ((H - 2.6) / storeys) - 0.1 - 0.45 : H - 0.3;
+      const low = storeys ? E - (storeys - 0.5) * ((E - 2.6) / storeys) - 0.1 - 0.45 : E - 0.3;
       g.fillStyle = '#2c3e5c';
       g.font = `bold ${Math.round(0.42 * S)}px "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = 'center';
@@ -2246,7 +2263,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
-      const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+      const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
       disposables.push(tex, geo, mat);
       const m = new THREE.Mesh(geo, mat);
       const [fx, fz] = on(s, mid, 0.04);

@@ -192,7 +192,8 @@ function startGame() {
     setColorBlindWords(settings.colorBlind);
     document.body.classList.toggle('color-blind', settings.colorBlind);
     // (dev: &gfx=low|medium|high|ultra looks at the game in that quality, without changing the settings)
-    renderer.setQuality(import.meta.env.DEV && params.has('gfx') ? (params.get('gfx') as typeof settings.graphics) : settings.graphics);
+    const gfx = params.get('gfx');
+    renderer.setQuality(import.meta.env.DEV && (gfx === 'low' || gfx === 'medium' || gfx === 'high' || gfx === 'ultra') ? gfx : settings.graphics);
     renderer.setDamageNumbers(settings.damageNumbers);
   }
   applySettings();
