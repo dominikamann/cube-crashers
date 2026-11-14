@@ -99,8 +99,9 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
       for (let i = 0; i < q.length; i += 3) if (q[i + 1] < 0.3) low.push([q[i], q[i + 2]]);
       if (low.length < 2) continue;
       const [[x0, z0], [x1, z1]] = [low[0], low[low.length - 1]];
+      // (short pieces too: a rounded corner is made of many, and each needs its paint)
       const len = Math.hypot(x1 - x0, z1 - z0);
-      if (len < 0.3) continue;
+      if (len < 0.05) continue;
       let nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
       if (nx * ((x0 + x1) / 2 - cx) + nz * ((z0 + z1) / 2 - cz) < 0) ((nx = -nx), (nz = -nz));
       // (the outline of the wall: how far along from its first foot, and how high, so a gable shows)
@@ -140,7 +141,8 @@ export type OnWall = { wall?: { id?: number; width: number; along: number; eave:
 const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
   let best: { d: number; x: number; z: number; nx: number; nz: number; len: number; u: number; eave: number; ex: number; ez: number; prof: [number, number][]; id: number } | null = null;
   for (const w of wallFeet()) {
-    if (w.nx * f.dx + w.nz * f.dz < 0.5) continue;
+    // (a front goes on a wall of some length, not on a piece of a rounded corner)
+    if (w.nx * f.dx + w.nz * f.dz < 0.5 || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) < 0.3) continue;
     const ex = w.x1 - w.x0, ez = w.z1 - w.z0, L2 = ex * ex + ez * ez;
     const u = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / L2));
     const x = w.x0 + ex * u, z = w.z0 + ez * u, d = Math.hypot(f.x - x, f.z - z);
