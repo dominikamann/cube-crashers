@@ -1717,15 +1717,86 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         }
         sign(s, 'die brille', 2.7, Math.min(2.2, W), { back: '#e9ecef', ink: '#3a3f46', rim: '#3a3f46' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
       } else {
-        // the tattoo studio at the corner: rough cream plaster, grey painted bands round the windows, a doorway
-        // set back up five steps, the street's name on a dark plate, its own name on small grey boards
-        onFace(s, span * 0.18, 0.04, 1.75, span * 0.56, 1.6, 0.04, 0xb9bcc2);
-        pane(0.1, 0.8, 1.6, 0.9, 0xdcd6c4);
-        pane(span * 0.36, 0.7, 1.6, 0.9, 0xdcd6c4);
-        onFace(s, -span * 0.3, 0.04, 1.5, 1.2, 2.4, 0.05, 0x2a2d33);
-        [0.25, 0.45, 0.65, 0.85, 1.05].forEach((o, k) => onFace(s, -span * 0.3, o, 0.62 - k * 0.12, 1.2, 0.12, 0.2, 0x8e9299));
-        onFace(s, -span * 0.3 - 0.9, 0.05, 2.2, 0.7, 0.2, 0.03, 0x1c1e24);
-        sign(s, s.text, 1.6, 1.0, { back: '#8e9299', ink: '#f4f1ea', rim: '#f4f1ea' }, 'bold 70px "Helvetica Neue", Arial, sans-serif');
+        // the tattoo studio at the corner: the whole wall painted flush on the real house. Rough cream plaster,
+        // grey painted bands round the ground-floor windows, a dark doorway up four steps, small windows on every
+        // floor above, the street's name on a dark plate and its own name on a small grey board
+        const real = (s as OnWall).wall, W = real?.width ?? span, H = real?.eave ?? 6, S = 64;
+        const cw = Math.round(W * S), ch = Math.round(H * S);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const g = canvas.getContext('2d')!;
+        const px = (u: number) => (u + W / 2) * S;
+        const py = (y: number) => (H - y) * S;
+        g.fillStyle = '#e6dcc4';
+        g.fillRect(0, 0, cw, ch);
+        // (a little grain in the plaster, a darker plinth and the shadow under the eaves)
+        for (let k = 0; k < (cw * ch) / 90; k++) {
+          g.fillStyle = k % 2 ? 'rgba(120,104,80,0.10)' : 'rgba(255,250,236,0.12)';
+          g.fillRect(hash(k, 3) * cw, hash(k, 7) * ch, 2, 2);
+        }
+        g.fillStyle = '#c9bfa8';
+        g.fillRect(0, py(0.25), cw, 0.25 * S);
+        const eave = g.createLinearGradient(0, 0, 0, 0.5 * S);
+        eave.addColorStop(0, 'rgba(66,58,44,0.30)');
+        eave.addColorStop(1, 'rgba(66,58,44,0)');
+        g.fillStyle = eave;
+        g.fillRect(0, 0, cw, 0.5 * S);
+        const win = (u: number, yc: number, ww: number, wh: number, band: boolean) => {
+          if (band) {
+            g.fillStyle = '#a9adb3';
+            g.fillRect(px(u - ww / 2 - 0.22), py(yc + wh / 2 + 0.22), (ww + 0.44) * S, (wh + 0.44) * S);
+          }
+          g.fillStyle = '#f2eee2';
+          g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
+          g.fillStyle = '#3d4b58';
+          g.fillRect(px(u - ww / 2 + 0.06), py(yc + wh / 2 - 0.06), (ww - 0.12) * S, (wh - 0.12) * S);
+          g.fillStyle = 'rgba(255,255,255,0.22)';
+          g.fillRect(px(u - ww / 2 + 0.06), py(yc + wh / 2 - 0.06), (ww - 0.12) * S * 0.3, (wh - 0.12) * S);
+          g.fillStyle = '#f2eee2';
+          g.fillRect(px(u - 0.025), py(yc + wh / 2 - 0.06), 0.05 * S, (wh - 0.12) * S);
+          g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.02), (ww + 0.1) * S, 0.07 * S);
+        };
+        // the doorway at the left end, the shop windows to its right, clear of it
+        const doorU = -W / 2 + Math.min(1.2, W * 0.22);
+        g.fillStyle = '#a9adb3';
+        g.fillRect(px(doorU - 0.65), py(2.5), 1.3 * S, 2.3 * S);
+        g.fillStyle = '#2a2d33';
+        g.fillRect(px(doorU - 0.5), py(2.4), 1.0 * S, 2.2 * S);
+        g.fillStyle = 'rgba(160,190,205,0.35)';
+        g.fillRect(px(doorU - 0.4), py(2.1), 0.8 * S, 1.5 * S);
+        const wl = doorU + 1.1, nWin = Math.max(0, Math.min(2, Math.floor((W / 2 - wl) / 1.25)));
+        for (let k = 0; k < nWin; k++) win(wl + 0.7 + k * 1.5, 1.45, 0.85, 1.0, true);
+        // the floors above: small windows in a row, a floor about two tiles high, fitted under the eave
+        for (let y = 3.55; y + 0.55 < H - 0.15; y += 1.95) {
+          const n = Math.max(1, Math.round(W / 1.5));
+          for (let k = 0; k < n; k++) win(-W / 2 + (k + 0.5) * (W / n), y, 0.62, 0.88, false);
+        }
+        // the street's name on a dark plate at the corner, over the doorway
+        g.fillStyle = '#23262c';
+        g.fillRect(px(doorU - 0.55), py(2.99), 1.1 * S, 0.28 * S);
+        g.fillStyle = '#f4f1ea';
+        g.font = `bold ${Math.round(0.17 * S)}px "Helvetica Neue", Arial, sans-serif`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('HOCHSTATT', px(doorU), py(2.85));
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(W, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        const mid = -(real?.along ?? 0);
+        const [fx, fz] = on(s, mid, 0.04);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(s);
+        add(m);
+        // four stone steps up to the door
+        for (let k = 0; k < 4; k++) onFace(s, mid + doorU, 0.5 - k * 0.12, (0.14 + k * 0.14) / 2, 1.3, 0.14 + k * 0.14, 0.24, 0x8e9299);
+        // its own name on a small grey board over the shop windows
+        const bw = Math.min(1.9, W * 0.4);
+        const [bx, bz] = on(s, mid + W / 2 - bw / 2 - 0.25, 0);
+        sign({ ...s, x: bx, z: bz }, s.text, 2.72, bw, { back: '#8e9299', ink: '#f4f1ea', rim: '#f4f1ea' }, 'bold 70px "Helvetica Neue", Arial, sans-serif');
       }
       continue;
     }
