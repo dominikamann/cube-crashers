@@ -126,6 +126,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     camera: THREE.PerspectiveCamera;
     composer: EffectComposer | null;
     bloom: GlowPass | null;
+    /** the ambient occlusion pass, where the quality has one */
+    ao: AmbientPass | null;
     camPos: THREE.Vector3;
     camLook: THREE.Vector3;
     /** 1 = normal, higher = further away */
@@ -141,6 +143,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     camera: new THREE.PerspectiveCamera(45, 1, 0.1, 220),
     composer: null,
     bloom: null,
+    ao: null,
     camPos: new THREE.Vector3(at.x, 15, at.z + 11),
     camLook: new THREE.Vector3(at.x, 0, at.z - 2),
     zoom: 1,
@@ -189,8 +192,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       // (the first pass after the scene takes the picture from it; one that writes a new picture hands it on
       // in the composer's buffer)
       let from = smooth;
+      v.ao = null;
       if (q.ao) {
-        const ao = new AmbientPass(scene, v.camera, 1, 1);
+        const ao = (v.ao = new AmbientPass(scene, v.camera, 1, 1));
         ao.source = from;
         from = null;
         ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1.2 });
@@ -398,6 +402,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         const shown = hidden.map(o => o.visible);
         for (const o of hidden) o.visible = false;
         if (i === 0 || hidden.length > 0 || hidBefore) renderer.shadowMap.needsUpdate = true;
+        // (no ambient occlusion in first person: looking along a wall from close by it draws dark seams and pale
+        // halos on the plaster that are not there; it is made for the view from above)
+        if (v.ao) v.ao.blendIntensity = v.fp === null ? 1 : 0;
         hidBefore = hidden.length > 0;
         v.composer!.render();
         hidden.forEach((o, k) => (o.visible = shown[k]));
