@@ -1,5 +1,6 @@
 {
   "servers": [
-    { "name": "AmannLabs Discovery Chaos", "address": "92.5.153.196:47800" }
+    { "name": "AmannLabs Versus Discovery Chaos", "address": "92.5.153.196:47800" },
+    { "name": "AmannLabs Tower Run Easy", "address": "158.101.168.15:47800" }
   ]
 }
