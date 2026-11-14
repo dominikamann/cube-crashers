@@ -340,14 +340,14 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'e6c98c', roof: 'c46b48', wall: 5.34, cx: 19.75, cz: 8.2, ang: 0.854 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'c06544', wall: 4.31, cx: 18.81, cz: 95.86, ang: -0.502 },
   { kind: 'house', name: "", col: '8fb1e0', roof: '8f4c38', wall: 4.05, cx: 9.42, cz: 80.32, ang: -0.643 },
-  { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.56, cx: 16.93, cz: 88.11, ang: -0.567 },
+  { kind: 'house', name: "", col: 'eeeeea', roof: 'a9553a', wall: 4.56, cx: 16.93, cz: 88.11, ang: -0.567 },
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.64, cx: 34.9, cz: 14.83, ang: -0.116 },
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.6, cx: 6.73, cz: 114.64, ang: 1.503 },
-  { kind: 'house', name: "", col: 'ecd0a0', roof: 'c06544', wall: 4.5, cx: 10.48, cz: 68.32, ang: -0.467 },
+  { kind: 'house', name: "", col: 'ece8df', roof: 'c06544', wall: 4.5, shut: 'b97a8c', cx: 10.48, cz: 68.32, ang: -0.467 },
   { kind: 'house', name: "", col: 'f1c8a8', roof: '8f4c38', wall: 5.76, cx: 3.21, cz: 69.29, ang: -1.558 },
   { kind: 'house', name: "", col: 'b9d8a0', roof: 'b8623f', wall: 4.85, cx: 36.92, cz: 32.47, ang: -0.307 },
   { kind: 'house', name: "", col: 'dfe3e8', roof: '9c5038', wall: 5.09, cx: 87.17, cz: 60.61, ang: 0.013 },
-  { kind: 'house', name: "", col: 'f1c8a8', roof: '8f4c38', wall: 4.04, cx: 4.5, cz: 57.75, ang: -0.339 },
+  { kind: 'house', name: "", col: 'f6f5f1', roof: '8f4c38', wall: 4.04, shut: '9a1f2c', cx: 4.5, cz: 57.75, ang: -0.339 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'b45a3c', wall: 4.27, cx: 75.74, cz: 95.76, ang: 1.353 },
   { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.77, cx: 26.9, cz: 22.23, ang: -0.668 },
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'c06544', wall: 4.51, cx: 83.74, cz: 96.23, ang: 1.424 },
@@ -373,7 +373,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.57, cx: 32.59, cz: 80.92, ang: -0.872 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'b45a3c', wall: 4.28, cx: 36.28, cz: 84.74, ang: 0.014 },
   { kind: 'house', name: "", col: 'e8d5bd', roof: 'a85a40', wall: 5.56, cx: 39.52, cz: 77.73, ang: 1.091 },
-  { kind: 'house', name: "", col: 'c6d9e6', roof: '9c5038', wall: 5.04, cx: 49.56, cz: 69.25, ang: -0.791 },
+  { kind: 'house', name: "", col: 'e9e4d6', roof: '9c5038', wall: 5.04, cx: 49.56, cz: 69.25, ang: -0.791 },
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'c06544', wall: 4.52, cx: 38.75, cz: 66.93, ang: 0.93 },
   { kind: 'house', name: "", col: 'f1e7c9', roof: 'b45a3c', wall: 4.26, cx: 33.34, cz: 71.3, ang: 1.269 },
   { kind: 'house', name: "", col: 'cfe0c0', roof: 'b8623f', wall: 4.77, cx: 28.72, cz: 70.09, ang: 1.443 },
@@ -386,7 +386,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'b9d8a0', roof: 'b8623f', wall: 4.89, cx: 49.53, cz: 91.57, ang: 0.486 },
   { kind: 'house', name: "", col: 'f7f3ee', roof: '8f4c38', wall: 5.66, cx: 65.83, cz: 102.86, ang: -1.501 },
   { kind: 'house', name: "", col: 'e9b9a6', roof: 'a9553a', wall: 4.63, cx: 61.86, cz: 87.29, ang: 0.05 },
-  { kind: 'house', name: "", col: 'd9e2d0', roof: 'c46b48', wall: 5.4, cx: 60.96, cz: 80.24, ang: -1.3 },
+  { kind: 'house', name: "", col: 'f4f1ea', roof: 'c46b48', wall: 5.4, cx: 60.96, cz: 80.24, ang: -1.3 },
   { kind: 'house', name: "", col: 'f3dc86', roof: 'c06544', wall: 4.37, cx: 55.73, cz: 82.35, ang: 1.309 },
   { kind: 'house', name: "", col: 'c6d9e6', roof: '9c5038', wall: 4.99, cx: 126.5, cz: 111.0, ang: 1.571 },
   { kind: 'house', name: "", col: 'f0c9c9', roof: 'a9553a', wall: 4.73, cx: 101.71, cz: 111.0, ang: 1.545 },
@@ -437,7 +437,7 @@ export const WALDSEE_CZARDAS: WaldseeFace = {"x": 54.5, "z": 44, "dx": 0, "dz": 
 /** the second door of the Czardas, on its side toward the Hauptstrasse (if there is one) */
 export const WALDSEE_CZARDAS_SIDE: WaldseeFace | null = {"x": 55.0, "z": 42.5, "dx": 1, "dz": 0, "len": 1};
 /** names over doors; 'amannlabs' is the shop by the fountain with robots behind its glass */
-export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' })[] = [
+export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nkd' | 'brille' | 'empire' | 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' })[] = [
   { text: "Eisdiele", kind: 'eis', x: 68.0, z: 68.5, dx: -1, dz: 0, len: 1 },
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
@@ -445,6 +445,12 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'eis' | 'amadeu
   { text: "AmannLabs", kind: 'amannlabs', x: 26.5, z: 50.0, dx: 0, dz: 1, len: 5 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
   { text: "Lädele", kind: 'shop', x: 13.0, z: 70.5, dx: 1, dz: 0, len: 1 },
+  // (put in by hand, from photos: the inn across the junction, the clothes shop and the optician on the west side of
+  // the Ravensburger Strasse, the tattoo studio at the corner of the square)
+  { text: "Wirtschaft z. Flasche", kind: 'flasche', x: 61.5, z: 76.0, dx: 0, dz: -1, len: 5 },
+  { text: "NKD", kind: 'nkd', x: 23.0, z: 83.0, dx: 1, dz: 0, len: 2 },
+  { text: "die brille", kind: 'brille', x: 9.0, z: 56.5, dx: 1, dz: 0, len: 1 },
+  { text: "EMPIRE INK.", kind: 'empire', x: 51.0, z: 61.0, dx: 0, dz: -1, len: 4 },
   { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */

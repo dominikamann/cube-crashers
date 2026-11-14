@@ -811,6 +811,84 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       sign(s, s.text, 2.95, Math.min(2.2, w + 0.4), { back: '#f4f1ea', ink: '#c0281f', rim: '#c0281f' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
       continue;
     }
+    if (s.kind === 'flasche' || s.kind === 'nkd' || s.kind === 'brille' || s.kind === 'empire') {
+      // shop fronts built from photos. Each: a plastered ground floor in the house's own tone, windows of dark
+      // glass in pale frames, a door, and what one knows it by
+      const span = Math.max(3, Math.min(5, s.len));
+      const pane = (a: number, wd: number, y: number, h: number, frame = 0xf4f1ea) => {
+        onFace(s, a, 0.05, y, wd + 0.12, h + 0.12, 0.05, frame);
+        onFace(s, a, 0.07, y, wd, h, 0.05, 0x33404f);
+      };
+      if (s.kind === 'flasche') {
+        // the inn: a cream ground floor with small-paned windows, red timber on white above, its name in old
+        // letters, tables and big terracotta pots with little trees before it
+        onFace(s, 0, 0.03, 1.3, span, 2.6, 0.05, 0xefe6cf);
+        for (const a of [-span * 0.34, -span * 0.08, span * 0.18]) pane(a, 0.8, 1.35, 0.9, 0x7a4a36);
+        onFace(s, span * 0.4, 0.06, 1.0, 0.7, 2.0, 0.06, 0x5a3a26);
+        onFace(s, 0, 0.04, 4.0, span, 2.6, 0.05, 0xf4f1ea);
+        for (const y of [2.72, 3.6, 4.5, 5.3]) onFace(s, 0, 0.07, y, span, 0.12, 0.06, 0xa33a2c);
+        for (let k = 0; k <= span * 2; k++) onFace(s, -span / 2 + k / 2, 0.07, 4.0, 0.1, 2.6, 0.06, 0xa33a2c);
+        for (let k = 0; k < span * 2; k += 2) {
+          const [x, z] = on(s, -span / 2 + k / 2 + 0.25, 0.08);
+          box(x, 3.15, z, 0.07, 0.95, 0.07, 0xa33a2c, faceYaw(s), k % 4 ? 0.5 : -0.5);
+        }
+        for (const a of [-span * 0.3, 0, span * 0.3]) pane(a, 0.5, 4.05, 0.7, 0x7a4a36);
+        sign(s, s.text, 2.36, Math.min(3.4, span), { back: '#efe6cf', ink: '#7a2a20', rim: '#efe6cf' }, 'bold 58px Georgia, "Times New Roman", serif');
+        for (const [a, o] of [[-1.2, 1.4], [0.3, 1.6], [1.5, 1.2]]) {
+          const [x, z] = on(s, a, o);
+          box(x, 0.36, z, 0.1, 0.72, 0.1, 0x4a4f5c);
+          box(x, 0.74, z, 0.7, 0.06, 0.7, 0x8a5a36);
+          for (const t of [0, 2.1, 4.2]) box(x + Math.cos(t) * 0.6, 0.25, z + Math.sin(t) * 0.6, 0.3, 0.5, 0.3, 0x6b4a32, t);
+        }
+        for (const a of [-2, 2.2]) {
+          const [x, z] = on(s, a, 0.9);
+          box(x, 0.3, z, 0.5, 0.6, 0.5, 0xb5653a, 0.4);
+          box(x, 1.0, z, 0.1, 0.9, 0.1, 0x6b4a32);
+          box(x, 1.6, z, 0.6, 0.6, 0.6, 0x4f9a4a, 0.6);
+        }
+      } else if (s.kind === 'nkd') {
+        // the clothes shop: a grey band over wide windows, its three red letters, a red awning, and racks of
+        // clothes and red parasols out on the street
+        onFace(s, 0, 0.04, 2.55, span, 0.7, 0.06, 0xd9dbe0);
+        pane(-span * 0.22, span * 0.4, 1.15, 1.7);
+        pane(span * 0.26, span * 0.36, 1.15, 1.7);
+        for (let k = 0; k < span * 4; k++) onFace(s, -span / 2 + (k + 0.5) / 4, 0.45, 2.1, 0.26, 0.07, 0.9, 0xd0202a);
+        sign(s, s.text, 2.6, 1.5, { back: '#d9dbe0', ink: '#d0202a', rim: '#d9dbe0' }, 'bold 96px "Helvetica Neue", Arial, sans-serif');
+        for (const a of [-1.3, 0.4]) {
+          const [x, z] = on(s, a, 1.5);
+          box(x, 1.25, z, 1.3, 0.05, 0.05, 0xb9bcc2, faceYaw(s));
+          for (const e of [-0.6, 0.6]) box(x - s.dz * e, 0.62, z + s.dx * e, 0.05, 1.25, 0.05, 0xb9bcc2);
+          [0xd0202a, 0x2f5fbf, 0xf2c94c, 0x4f9a4a, 0xe9b9c6].forEach((col, k) => box(x - s.dz * (k * 0.24 - 0.48), 0.85, z + s.dx * (k * 0.24 - 0.48), 0.2, 0.7, 0.3, col, faceYaw(s)));
+          box(x, 1.3, z + 0.0, 0.06, 2.6, 0.06, 0xe6e8ef);
+          box(x, 2.55, z, 1.9, 0.1, 1.9, 0xd0202a, 0.3);
+        }
+      } else if (s.kind === 'brille') {
+        // the optician: a white house with dark red shutters, two great windows hung with red cloth either
+        // side of a glass door up four steps, grey planters with little firs, its name on a pale board
+        pane(-span * 0.27, span * 0.38, 1.4, 1.7, 0x4a4f5c);
+        pane(span * 0.29, span * 0.34, 1.4, 1.7, 0x4a4f5c);
+        for (const a of [-span * 0.27, span * 0.29]) onFace(s, a, 0.09, 1.25, span * 0.2, 1.1, 0.04, 0xb02a5a);
+        onFace(s, 0.02, 0.06, 1.45, 0.6, 1.9, 0.06, 0x9fb0b8);
+        [0.2, 0.4, 0.6, 0.8].forEach((o, k) => onFace(s, 0.02, o, 0.5 - k * 0.12, 0.9, 0.12, 0.2, 0x3a3f46));
+        for (const a of [-span / 2 + 0.2, span / 2 - 0.2]) {
+          onFace(s, a, 0.4, 0.4, 0.4, 0.8, 0.4, 0x8e9299);
+          onFace(s, a, 0.4, 1.1, 0.3, 0.6, 0.3, 0x3f7a3a);
+        }
+        for (const a of [-1.2, 0.1, 1.3]) for (const side of [-1, 1]) onFace(s, a + side * 0.42, 0.05, 3.6, 0.3, 0.8, 0.05, 0x9a1f2c);
+        sign(s, 'die brille', 2.7, 2.2, { back: '#e9ecef', ink: '#3a3f46', rim: '#3a3f46' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      } else {
+        // the tattoo studio at the corner: rough cream plaster, grey painted bands round the windows, a doorway
+        // set back up five steps, the street's name on a dark plate, its own name on small grey boards
+        onFace(s, span * 0.18, 0.04, 1.75, span * 0.56, 1.6, 0.04, 0xb9bcc2);
+        pane(0.1, 0.8, 1.6, 0.9, 0xdcd6c4);
+        pane(span * 0.36, 0.7, 1.6, 0.9, 0xdcd6c4);
+        onFace(s, -span * 0.3, 0.04, 1.5, 1.2, 2.4, 0.05, 0x2a2d33);
+        [0.25, 0.45, 0.65, 0.85, 1.05].forEach((o, k) => onFace(s, -span * 0.3, o, 0.62 - k * 0.12, 1.2, 0.12, 0.2, 0x8e9299));
+        onFace(s, -span * 0.3 - 0.9, 0.05, 2.2, 0.7, 0.2, 0.03, 0x1c1e24);
+        sign(s, s.text, 1.6, 1.0, { back: '#8e9299', ink: '#f4f1ea', rim: '#f4f1ea' }, 'bold 70px "Helvetica Neue", Arial, sans-serif');
+      }
+      continue;
+    }
     if (s.kind === 'hasen') {
       // the Hasen: a wooden board with its name and a lantern beside it
       onFace(s, 0, 0.03, 1, 0.9, 2, 0.06, 0x5a3a26);
@@ -1055,22 +1133,33 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
     const MEADOW = [0x7fb866, 0x76ae5e, 0x88c06e];
     const Y = -0.01; // one flat level for the whole promenade
-    let lastLantern = -99;
-    for (let tz = 34; tz <= 58; tz++) {
-      if (edge[tz] < 0) continue;
-      const target = Math.max(edge[tz], Math.round(m * tz + c));
-      for (let tx = edge[tz] + 1; tx <= target; tx++)
-        if (waldseeGround(tx, tz) === 'water') box(tx + 0.5, Y, tz + 0.5, 1.02, 0.05, 1.02, MEADOW[(tx + tz) % 3]);
-      // the path on the straight edge, and a stone rim in the water
-      box(target + 0.5, Y + 0.02, tz + 0.5, 1.0, 0.05, 1.0, 0xd0c8b4);
-      box(target + 1.0, Y - 0.04, tz + 0.5, 0.12, 0.18, 1.02, 0xc7c0af);
-      if (tz - lastLantern >= 8) {
-        lastLantern = tz;
-        const lx = target + 0.5, lz = tz + 0.5;
-        box(lx, Y + 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
-        box(lx, Y + 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
-        lamp(lx, Y + 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
-        box(lx, Y + 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+    // the shore is that line, moved out so that no land lies beyond it; the path runs along it in one piece, two
+    // tiles wide, from the first row of the shore to the last, the meadow filled out up to it
+    if (pts.length > 1) {
+      const out = Math.max(...pts.map(([tz, e]) => e - (m * tz + c)));
+      const shore = (tz: number) => Math.round(m * tz + c + out);
+      const z0 = pts[0][0], z1 = pts[pts.length - 1][0];
+      let lastLantern = -99;
+      for (let tz = z0; tz <= z1; tz++) {
+        const x1 = shore(tz);
+        // (from where this row's own land ends, or from the last land of a row beside it)
+        let from = x1 - 1;
+        for (let tx = x1; tx >= 76; tx--) {
+          const g = waldseeGround(tx, tz);
+          if (g !== 'water') break;
+          from = tx;
+        }
+        for (let tx = from; tx <= x1 - 2; tx++) box(tx + 0.5, Y, tz + 0.5, 1.02, 0.05, 1.02, MEADOW[(tx + tz) % 3]);
+        for (const tx of [x1 - 1, x1]) box(tx + 0.5, Y + 0.02, tz + 0.5, 1.02, 0.06, 1.02, (tx + tz) % 2 ? 0xd0c8b4 : 0xc9c1ac);
+        box(x1 + 1.06, Y - 0.04, tz + 0.5, 0.14, 0.2, 1.02, 0xb9b2a2);
+        if (tz - lastLantern >= 8) {
+          lastLantern = tz;
+          const lx = x1 + 0.7, lz = tz + 0.5;
+          box(lx, Y + 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
+          box(lx, Y + 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
+          lamp(lx, Y + 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
+          box(lx, Y + 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+        }
       }
     }
   }
