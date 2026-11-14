@@ -1,5 +1,7 @@
 # Cube Crashers
 
+[![Download](https://img.shields.io/badge/download-latest%20release-ff2bd6?style=for-the-badge&logo=github)](https://github.com/dominikamann/cube-crashers/releases/latest)
+
 [![Latest release](https://img.shields.io/github/v/release/dominikamann/cube-crashers?label=version&color=ff2bd6)](https://github.com/dominikamann/cube-crashers/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/dominikamann/cube-crashers/total?color=2bf0ff)](https://github.com/dominikamann/cube-crashers/releases)
 [![Try it in the browser](https://img.shields.io/badge/try%20it-in%20the%20browser-fa5c5c?logo=itchdotio&logoColor=white)](https://amannlabs.itch.io/cube-crashers)
@@ -19,8 +21,8 @@ with up to nine friends on your LAN or online, together against the monsters or 
 **Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
 **first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
-Runs on Windows and macOS; a browser version lets you try it first.**[Installer → always the latest release](https://github.com/dominikamann/cube-crashers/releases/latest)**:
-`.exe` for Windows, `.dmg` for macOS. 
+**[⬇️ Download the installer: always the latest release](https://github.com/dominikamann/cube-crashers/releases/latest)**
+(`.exe` for Windows, `.dmg` for macOS). Or try it first in the [browser version](https://amannlabs.itch.io/cube-crashers).
 
 <table>
   <tr>
