@@ -475,6 +475,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [85.42, 47.53], dir: [0.978, -0.21], half: 4.69, lake: true },
   // (the narrow lane north between the ice-cream parlour's block and the next one: shut where it leaves the street)
   { at: [83.4, 70.0], dir: [0, -1], half: 1.5, lake: false },
+  // (the lane left of the clothes shop, at its mouth)
+  { at: [18.60, 80.60], dir: [-0.6, 0.8], half: 1.9, lake: false },
 ];
 /** trees on the meadows by the lake and on its far side (tiles); nobody gets there */
 export const WALDSEE_SHORE_TREES: [number, number][] = [[91, 40], [90, 42], [89, 44]];
