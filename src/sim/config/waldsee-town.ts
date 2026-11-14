@@ -521,4 +521,12 @@ export const WALDSEE_SHARK: [number, number] | null = [103, 52];
 
 /** board fences put in by hand, besides those tools/waldsee/fences.py finds: [x0, z0, x1, z1] in tiles (behind the
  * barriers beside the clothes shop, so one does not see on down the lanes) */
-export const WALDSEE_EXTRA_FENCES: number[][] = [[11.34, 70.41, 12.66, 73.11], [16.68, 80.66, 19.08, 82.46]];
+export const WALDSEE_EXTRA_FENCES: number[][] = [
+  [11.34, 70.41, 12.66, 73.11],
+  [16.68, 80.66, 19.08, 82.46],
+  // (the notch between the house at the corner of the square and the rounded corner house: closed where it opens,
+  // corner to corner, so no little lane is left in front of the fence)
+  [44.3, 66.23, 44.91, 67.5],
+];
+/** fences tools/waldsee/fences.py finds that are left out (a hand-placed one above stands in for each) */
+export const WALDSEE_FENCES_LEFT_OUT: number[][] = [[45.14, 67.972, 42.644, 68.88]];
