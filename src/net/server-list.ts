@@ -162,6 +162,8 @@ export function createServerBrowser(deps: ServerBrowserDeps) {
     start() {
       if (running) return;
       running = true;
+      // every time the list is opened: a server added meanwhile shows up
+      listAt = -Infinity;
       void round(++loop);
     },
     stop() {

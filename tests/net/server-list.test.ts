@@ -92,13 +92,19 @@ describe('the server browser', () => {
     const timers: { at: number; fn: () => void }[] = [];
     const probed: string[] = [];
     const updates: ServerRow[][] = [];
+    const fetched = { count: 0 };
     const browser = createServerBrowser({
-      fetchList: async () => listJson,
+      fetchList: async () => {
+        fetched.count++;
+        return listJson;
+      },
       probe: async address => {
         probed.push(address);
         return address.startsWith('up') ? { data: JSON.stringify({ type: 'info', ...info({ name: address }) }), ms: 12 } : null;
       },
       own: () => ['up-own:47800'],
+      // not the servers.json the game ships with: that one changes whenever a server joins the list
+      builtIn: [],
       protocol: 3,
       onUpdate: rows => updates.push(rows),
       setTimer: (fn, ms) => {
@@ -115,7 +121,7 @@ describe('the server browser', () => {
       }
       await new Promise(r => setTimeout(r, 0));
     };
-    return { browser, probed, updates, advance };
+    return { browser, probed, updates, fetched, advance };
   }
 
   it('loads the list from GitHub, checks every server and checks again every few seconds', async () => {
@@ -147,6 +153,16 @@ describe('the server browser', () => {
     await advance(10_000);
     // two addresses (own + list), one round per 10 seconds
     expect(probed.length - afterStart).toBe(4);
+  });
+
+  it('loads the list again each time it is opened, so a server added meanwhile shows up', async () => {
+    const { browser, fetched, advance } = setup({ servers: [{ name: 'Up', address: 'up1:1' }] });
+    browser.start();
+    await advance(0);
+    browser.stop();
+    browser.start();
+    await advance(0);
+    expect(fetched.count).toBe(2);
   });
 
   it('keeps working with the built-in list when GitHub cannot be reached', async () => {
