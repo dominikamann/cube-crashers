@@ -285,6 +285,28 @@ describe('mouse steering', () => {
     expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
   });
 
+  it('the view key does nothing while the view is fixed (the Town, a LAN host\'s view)', () => {
+    const s = createSim(floor01, 1);
+    const k = new Keyboard();
+    k.setFirstPerson(true, { x: 0, z: -1 });
+    k.yaw = 1.3;
+    k.pitch = 0.2;
+    k.viewLocked = true;
+    k.keyDown('KeyV', 0);
+    k.commands(s, 0, 10);
+    k.keyUp('KeyV');
+    expect(k.firstPerson).toBe(true);
+    expect(k.yaw).toBe(1.3);
+    expect(k.pitch).toBe(0.2);
+    // (and the press is not kept for later)
+    k.viewLocked = false;
+    k.commands(s, 0, 20);
+    expect(k.firstPerson).toBe(true);
+    k.keyDown('KeyV', 0);
+    k.commands(s, 0, 30);
+    expect(k.firstPerson).toBe(false);
+  });
+
   it('without a rare weapon Q goes on to the next weapon, once per press', () => {
     const s = createSim(floor01, 1);
     s.players[0].weapons.push({ kind: 'bomb', level: 1, cooldown: 0 }, { kind: 'laserSword', level: 1, cooldown: 0 });

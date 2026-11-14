@@ -29,6 +29,8 @@ export class Keyboard {
   yaw = 0;
   pitch = PITCH_START;
   private toggleView = false;
+  /** the view is not the player's to choose right now (the Town, a LAN host's fixed view): the view key does nothing */
+  viewLocked = false;
   private forward: Vec2 = { x: 0, z: -1 };
   /** the pad the open menu belongs to */
   menuPad: number | null = null;
@@ -243,6 +245,7 @@ export class Keyboard {
     this.shopKey = null;
     this.buys = [];
     this.readyPressed = false;
+    if (this.viewLocked) this.toggleView = false;
     if (this.toggleView) {
       this.toggleView = false;
       this.firstPerson = !this.firstPerson;

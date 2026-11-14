@@ -73,6 +73,7 @@ export type SoundId =
   | 'witchGiggle'
   | 'witchShriek'
   | 'siren'
+  | 'sharkLeap'
   | 'maskTurn'
   | 'gameWon'
   | 'gameLost'
@@ -382,6 +383,12 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
       { wave: 'sawtooth', freq: freq * 2, attack: 0.02, sustain: 0.33, decay: 0.05, volume: 0.022, lowpass: 2400, at: i * 0.4 },
     ]),
   ],
+  // a shark breaks out of the lake: the water bursts, a deep snarl under it, and the splash rains down
+  sharkLeap: [
+    { wave: 'noise', freq: 1200, attack: 0.01, sustain: 0.12, decay: 0.45, volume: 0.32, lowpass: 2200 },
+    { wave: 'sawtooth', freq: 150, freqEnd: 70, attack: 0.03, sustain: 0.3, decay: 0.3, volume: 0.16, vibrato: { rate: 26, depth: 18 }, lowpass: 700, at: 0.05 },
+    { wave: 'noise', freq: 5000, attack: 0.05, sustain: 0.2, decay: 0.5, volume: 0.07, lowpass: 7000, at: 0.25 },
+  ],
   // the wooden mask turns round: a slow creak of wood
   maskTurn: [
     { wave: 'sawtooth', freq: 140, freqEnd: 105, attack: 0.03, sustain: 0.4, decay: 0.15, volume: 0.12, vibrato: { rate: 23, depth: 18 }, lowpass: 1100 },
@@ -573,6 +580,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('dash', 1.2);
     case 'unicornAppeared':
       return one('cardPicked', 1.5);
+    case 'sharkLeap':
+      return one('sharkLeap');
     case 'coinOpRule':
       // an arcade jingle: the rules just changed
       return one('cardPicked', 1.15);

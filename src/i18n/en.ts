@@ -203,6 +203,7 @@ export const en = {
   'floor.waldsee': 'The Town',
   'floor.underwater': 'Sunken Arcade',
   'toast.unicorn': 'A unicorn appeared! Ride it with {key.use}',
+  'toast.sharkLeap': 'A shark leaps out of the lake!',
   'bossrush.title': 'Boss Rush',
   'bossrush.sub': 'Every boss in a row, with a shop between them.',
   'bossrush.play': 'Play',

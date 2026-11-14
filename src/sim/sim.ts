@@ -14,6 +14,7 @@ import { updateMaze } from './systems/maze';
 import { setupVersus, updateVersus } from './systems/versus';
 import { moveBoss, updateBoss } from './systems/boss';
 import { awaitWitchlings, witchVoices } from './systems/witch';
+import { updateLakeShark } from './systems/lake-shark';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -299,6 +300,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateBoss(s, intents);
   awaitWitchlings(s);
   witchVoices(s);
+  updateLakeShark(s);
   updateEggs(s);
   updateWebs(s);
   updateMiniDominik(s);

@@ -790,6 +790,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const wallTopY = (tx: number, tz: number) => wallH(tx, tz) - 0.4;
   // (Bad Waldsee: the houses are the walls; its gardens and the lake are blocks of their own, without windows)
   const town = look === 'waldsee';
+  // (what moves in the Town: the boats and the sharks out on the lake)
+  let townLife: { update(time: number): void } | null = null;
   const walls = layer((t, c) => t === Tile.Wall && (!town || waldseeGround(c.tx, c.tz) === 'house'), [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
   if (town) {
     const ground = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -798,7 +800,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     const beds = layer((t, c) => t === Tile.Wall && waldseeGround(c.tx, c.tz) !== 'house' && waldseeGround(c.tx, c.tz) !== 'street', ground, wallH, -0.4, false, wallGeo);
     beds.list.forEach((c, i) => beds.mesh.setColorAt(i, new THREE.Color(waldseeBlockColor(c.tx, c.tz))));
     if (beds.mesh.instanceColor) beds.mesh.instanceColor.needsUpdate = true;
-    buildWaldseeTown(addToScene, disposables);
+    townLife = buildWaldseeTown(addToScene, disposables);
   }
 
   const trims: { x: number; z: number; sx: number; sz: number; y: number }[] = [];
@@ -1059,6 +1061,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   return {
     update(s, theme, time, events) {
+      townLife?.update(time);
       for (const m of logoMats) m.opacity = 0.78 + 0.22 * Math.sin(time * 1.8);
       // a shot at the wall logo: it shakes and flares for a moment (the rules only report hits while the logo
       // still has a prize left on this floor and is not resting after an answer, see logo-egg.ts)

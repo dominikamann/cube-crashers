@@ -238,6 +238,8 @@ export interface Enemy {
   frozenUntil: number;
   /** caught in a gum bubble */
   stuckUntil: number;
+  /** in mid-leap out of the Town's lake: carried from `from` to `to` through the air, and held meanwhile (see lake-shark.ts) */
+  leap?: { from: Vec2; to: Vec2; at: number; until: number };
   /** a wall slam from the leaf blower cannot repeat before this tick */
   slamUntil: number;
 }
@@ -697,6 +699,8 @@ export type SimEvent =
   /** the police car's siren, again and again while it is driven */
   | { type: 'siren'; pos: Vec2 }
   | { type: 'unicornAppeared'; pos: Vec2 }
+  /** a shark leaps out of the Town's lake at the player who watched the sharks */
+  | { type: 'sharkLeap'; pos: Vec2; playerId: number }
   | { type: 'kartRam'; pos: Vec2 }
   | { type: 'kartJump'; pos: Vec2 }
   | { type: 'kartLand'; pos: Vec2 }
@@ -813,6 +817,8 @@ export interface SimState {
   witchlingsWait?: boolean;
   /** when one of the little witches near a player cackles next (see witchVoices) */
   witchCackleAt?: number;
+  /** the Town's lake: how long someone has been watching its sharks, and when one may leap again (see lake-shark.ts) */
+  lakeWatch?: { ticks: number; restUntil: number };
   score: number;
   stats: RunStats;
   /** a versus match (PvP), or null in the co-op modes */

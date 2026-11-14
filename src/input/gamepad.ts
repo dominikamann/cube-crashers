@@ -68,6 +68,8 @@ export class PadControls {
   menuPad: number | null = null;
   /** first-person view (View button): the right stick turns, the left stick walks where it looks */
   firstPerson = false;
+  /** the view is not the player's to choose right now (the Town, a LAN host's fixed view): the View button does nothing */
+  viewLocked = false;
   yaw = 0;
   pitch = PITCH_START;
   private lastNow: number | null = null;
@@ -137,7 +139,7 @@ export class PadControls {
 
     const dt = this.lastNow === null ? 0 : Math.min(0.1, Math.max(0, (now - this.lastNow) / 1000));
     this.lastNow = now;
-    if (press(PAD.BACK)) {
+    if (press(PAD.BACK) && !this.viewLocked) {
       this.firstPerson = !this.firstPerson;
       if (this.firstPerson && p) {
         this.yaw = yawOf(lookOf(p));

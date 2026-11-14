@@ -602,7 +602,32 @@ interface Piece {
 }
 
 /** Everything that stands on the plan. Two meshes of boxes (lit ones and glowing ones) and the name signs. */
-export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: { dispose(): void }[]): void {
+export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: { dispose(): void }[]): { update(time: number): void } {
+  // what moves (the boats, their anglers, the sharks) is built of meshes of its own, each moved by a step in `life`
+  const life: ((time: number) => void)[] = [];
+  const unit = new THREE.BoxGeometry(1, 1, 1);
+  disposables.push(unit);
+  const paints = new Map<string, THREE.Material>();
+  const paint = (color: number, glowing: boolean): THREE.Material => {
+    const key = `${color}${glowing ? 'g' : ''}`;
+    let m = paints.get(key);
+    if (!m) {
+      m = glowing ? new THREE.MeshBasicMaterial({ color, toneMapped: false }) : new THREE.MeshLambertMaterial({ color });
+      paints.set(key, m);
+      disposables.push(m);
+    }
+    return m;
+  };
+  /** a box of a moving thing, in the thing's own space */
+  const cube = (into: THREE.Object3D, x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number, glowing = false, lean = 0): THREE.Mesh => {
+    const m = new THREE.Mesh(unit, paint(color, glowing));
+    m.position.set(x, y, z);
+    m.scale.set(sx, sy, sz);
+    m.rotation.z = lean;
+    m.castShadow = !glowing;
+    into.add(m);
+    return m;
+  };
   const lit: Piece[] = [], glow: Piece[] = [];
   const box = (x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number, yaw = 0, lean = 0) => lit.push({ x, y, z, sx, sy, sz, color, yaw, lean });
   const lamp = (x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number, yaw = 0) => glow.push({ x, y, z, sx, sy, sz, color, yaw, lean: 0 });
@@ -3138,7 +3163,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
 
   // ---- out on the lake behind the police lane: two pedal boats side by side, rods out toward the barrier, so
   // Mario (red) and Dom (black) can be seen from it
-  const textTag = (x: number, y: number, z: number, yaw: number, text: string, w = 0.7, ink = '#ffffff') => {
+  const textTag = (x: number, y: number, z: number, yaw: number, text: string, w = 0.7, ink = '#ffffff', into?: THREE.Object3D) => {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 96;
@@ -3161,14 +3186,17 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
     m.rotation.y = yaw;
-    add(m);
+    if (into) into.add(m);
+    else add(m);
   };
-  const boat = (x: number, z: number, turn: number, shirt: number, cap: number, name: string, ink: string) => {
-    const at = (lx: number, lz: number): [number, number] => [x + Math.cos(turn) * lx + Math.sin(turn) * lz, z - Math.sin(turn) * lx + Math.cos(turn) * lz];
-    const part = (lx: number, y: number, lz: number, sx: number, sy: number, sz: number, color: number, lean = 0) => {
-      const [px, pz] = at(lx, lz);
-      box(px, y, pz, sx, sy, sz, color, turn, lean);
-    };
+  // (the boats drift a little forward and back, each at its own pace; the anglers fish, reel in and cast again; the
+  // sharks circle)
+  const boat = (x: number, z: number, turn: number, shirt: number, cap: number, name: string, ink: string, pace: number) => {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.rotation.y = turn;
+    add(g);
+    const part = (lx: number, y: number, lz: number, sx: number, sy: number, sz: number, color: number) => cube(g, lx, y, lz, sx, sy, sz, color);
     for (const side of [-1, 1]) part(side * 0.55, 0.02, 0, 0.4, 0.3, 2.6, 0xf4f1ea);
     part(0, 0.2, 0, 1.5, 0.1, 2.0, 0xffd23f);
     part(0, 0.42, -0.5, 1.2, 0.36, 0.12, 0xd8322a);
@@ -3182,34 +3210,79 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     part(0.1, 1.6, 0.2, 0.24, 0.12, 0.24, cap);
     part(0.225, 1.6, 0.2, 0.02, 0.08, 0.08, 0xffffff);
     part(0.34, 1.05, 0.34, 0.1, 0.1, 0.4, shirt);
-    part(1.2, 1.55, 0.5, 2.0, 0.04, 0.04, 0x3a2a1c, 0.5);
-    const [lx, lz] = at(2.05, 0.5);
-    lamp(lx, 1.05, lz, 0.015, 1.95, 0.015, 0xffffff);
-    lamp(lx, 0.02, lz, 0.1, 0.08, 0.1, 0xd8322a);
+    // the rod turns about the hand that holds it; the line runs from its tip to the float
+    const HAND = { x: 0.32, y: 1.07 }, ROD = 2, OUT = 2.05, REST = 0.5;
+    const rod = new THREE.Group();
+    rod.position.set(HAND.x, HAND.y, 0.5);
+    g.add(rod);
+    cube(rod, ROD / 2, 0, 0, ROD, 0.04, 0.04, 0x3a2a1c);
+    const line = cube(g, 0, 0, 0.5, 1, 0.015, 0.015, 0xffffff, true);
+    const float = cube(g, OUT, 0.02, 0.5, 0.1, 0.08, 0.1, 0xd8322a, true);
     // the name on the white side of the boat, low on the hull and turned to the shore (the +x side)
-    const [nx, nz] = at(0.8, 0);
-    textTag(nx, 0.09, nz, turn + Math.PI / 2, name, 0.62, ink);
+    textTag(0.8, 0.09, 0, Math.PI / 2, name, 0.62, ink, g);
+    const ease = (v: number) => v * v * (3 - 2 * v);
+    life.push(time => {
+      // (forward and back along its length, slowly, and a little rocking on the water)
+      const drift = 1.3 * Math.sin(time * 0.11 * pace + pace * 5) + 0.7 * Math.sin(time * 0.047 * pace + pace * 11);
+      g.position.set(x + Math.sin(turn) * drift, 0.03 * Math.sin(time * 1.3 + pace * 3), z + Math.cos(turn) * drift);
+      g.rotation.y = turn + 0.05 * Math.sin(time * 0.23 * pace + pace);
+      g.rotation.z = 0.02 * Math.sin(time * 0.9 + pace * 7);
+      // fishing for a good while, then: reel in, swing the rod back, cast, let it settle
+      const u = (time * pace / 16 + pace * 0.37) % 1;
+      let lean = REST, fx = OUT, fy = 0.02 + 0.015 * Math.sin(time * 2.2 + pace);
+      const tip = (a: number) => ({ x: HAND.x + Math.cos(a) * ROD, y: HAND.y + Math.sin(a) * ROD });
+      if (u >= 0.7 && u < 0.82) {
+        const k = ease((u - 0.7) / 0.12);
+        lean = REST + 0.45 * k;
+        fx = OUT - 1.15 * k;
+        fy = 0.02 + 0.5 * k * k;
+      } else if (u >= 0.82 && u < 0.9) {
+        const k = ease((u - 0.82) / 0.08);
+        lean = REST + 0.45 + 1.0 * k;
+        const end = tip(lean);
+        fx = 0.9 + (end.x - 0.9) * k;
+        fy = 0.52 + (end.y - 0.7 - 0.52) * k;
+      } else if (u >= 0.9 && u < 0.96) {
+        const k = (u - 0.9) / 0.06;
+        lean = REST + 1.45 - 1.6 * ease(k);
+        const from = tip(REST + 1.45);
+        fx = from.x + (OUT - from.x) * k;
+        fy = from.y - 0.7 + (0.02 - (from.y - 0.7)) * k + 1.4 * Math.sin(Math.PI * k);
+      } else if (u >= 0.96) {
+        lean = REST - 0.15 * (1 - ease((u - 0.96) / 0.04));
+      }
+      rod.rotation.z = lean;
+      float.position.set(fx, fy, 0.5);
+      const end = tip(lean), dx = fx - end.x, dy = fy - end.y;
+      line.position.set((end.x + fx) / 2, (end.y + fy) / 2, 0.5);
+      line.scale.x = Math.max(0.01, Math.hypot(dx, dy));
+      line.rotation.z = Math.atan2(dy, dx);
+    });
   };
-  if (WALDSEE_BOAT) boat(WALDSEE_BOAT[0] + 0.5, WALDSEE_BOAT[1] + 0.5, 3.23, 0xe0312a, 0xd8322a, 'Mario', '#b3261e');
-  if (WALDSEE_BOAT2) boat(WALDSEE_BOAT2[0] + 0.5, WALDSEE_BOAT2[1] + 0.5, 3.07, 0x1b1b1b, 0x1b1b1b, 'Dom', '#141414');
-  // sharks' fins breaking the water here and there, each swimming its own way
-  for (const { at, heading } of WALDSEE_SHARKS) {
-    const x = at[0] + 0.5, z = at[1] + 0.5, grey = 0x5f6a72, dark = 0x474e56;
-    // (a spot `s` back along the shark from its fin, toward its tail)
-    const back = (s: number): [number, number] => [x + Math.sin(heading) * s, z + Math.cos(heading) * s];
-    // its back just under the surface
-    const [bx, bz] = back(0.05);
-    box(bx, 0.05, bz, 0.32, 0.1, 0.9, dark, heading);
+  if (WALDSEE_BOAT) boat(WALDSEE_BOAT[0] + 0.5, WALDSEE_BOAT[1] + 0.5, 3.23, 0xe0312a, 0xd8322a, 'Mario', '#b3261e', 1);
+  if (WALDSEE_BOAT2) boat(WALDSEE_BOAT2[0] + 0.5, WALDSEE_BOAT2[1] + 0.5, 3.07, 0x1b1b1b, 0x1b1b1b, 'Dom', '#141414', 0.83);
+  // sharks' fins breaking the water here and there, each swimming round and round in a circle of its own
+  WALDSEE_SHARKS.forEach(({ at, heading }, i) => {
+    const grey = 0x5f6a72, dark = 0x474e56;
+    const g = new THREE.Group();
+    add(g);
+    // (the shark looks along -z, its tail toward +z) its back just under the surface
+    cube(g, 0, 0.05, 0.05, 0.32, 0.1, 0.9, dark);
     // the fin: thin slices that narrow and sweep back toward the tip
     for (let k = 0; k < 6; k++) {
-      const t = k / 5, y = 0.08 + t * 0.72, w = 0.68 - t * 0.58;
-      const [fx, fz] = back(t * 0.22);
-      box(fx, y, fz, 0.1, 0.16, w, k < 2 ? grey : dark, heading);
+      const t = k / 5;
+      cube(g, 0, 0.08 + t * 0.72, t * 0.22, 0.1, 0.16, 0.68 - t * 0.58, k < 2 ? grey : dark);
     }
     // a little white wake ahead of it
-    const [wx, wz] = back(-0.5);
-    lamp(wx, 0.03, wz, 0.42, 0.02, 0.24, 0xdff1ff, heading);
-  }
+    cube(g, 0, 0.03, -0.5, 0.42, 0.02, 0.24, 0xdff1ff, true);
+    const r = 2.6 + i * 0.7, turns = (i % 2 ? -1 : 1) * (0.2 + i * 0.03);
+    life.push(time => {
+      // (round the spot it has in the plan, now a little wider, now a little closer; the fin dips as it goes)
+      const a = heading + time * turns, rr = r + 0.5 * Math.sin(time * 0.31 + i * 2);
+      g.position.set(at[0] + 0.5 + Math.cos(a) * rr, -0.06 + 0.06 * Math.sin(time * 0.8 + i), at[1] + 0.5 + Math.sin(a) * rr);
+      g.rotation.y = (turns > 0 ? Math.PI : 0) - a;
+    });
+  });
 
   // ---- the lakeside promenade: a footpath all round the lake as drawn (see LAKE), about 2.4 m wide, with a low
   // stone rim at the water and a lantern every ten metres or so; behind it a strip of meadow and a few trees, then
@@ -3295,4 +3368,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     });
     add(mesh);
   }
+  for (const step of life) step(0);
+  return { update: time => life.forEach(step => step(time)) };
 }

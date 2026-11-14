@@ -551,6 +551,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           climb = (climbOf.get(e.id) ?? 0) + (top - (climbOf.get(e.id) ?? 0)) * Math.min(1, frameDt * 7);
           climbOf.set(e.id, climb);
         } else if (e.kind === 'spiderling' && e.state === 'charge') climb = Math.sin(Math.PI * Math.max(0, Math.min(1, 1 - e.chargeLeft / 4.5))) * 0.8;
+        // (a shark in mid-leap out of the Town's lake: up in an arc over the barrier)
+        if (e.leap) climb = Math.sin(Math.PI * Math.max(0, Math.min(1, (s.tick - e.leap.at) / (e.leap.until - e.leap.at)))) * 3.2;
         const hover = climb + (e.kind === 'teleporter' ? 0.25 + 0.1 * Math.sin(time * 3 + e.id) : e.kind === 'fish' || e.kind === 'shark' ? 0.45 + 0.12 * Math.sin(time * 2.5 + e.id) : (e.kind === 'megaBlock' || spiderBoss) && leapOf(e.id) ? Math.sin(Math.PI * Math.min(1, (s.tick - leapOf(e.id)!.start) / (leapOf(e.id)!.land - leapOf(e.id)!.start))) * (spiderBoss ? 4.4 : 3.2) : e.kind === 'megaBlock' && attack === 1 ? 0.35 : 0);
         let y = (l.h / 2) * scale * squash + (rhinoBoss ? RHINO_LIFT : spiderBoss ? SPIDER_LIFT : dominik ? DOMINIK.lift : (MONSTER_LIFT[e.kind] ?? 0)) * scale + hover + (e.kind === 'swarmer' ? 1.3 + Math.sin(time * 9 + e.id) * 0.25 : held || dominik ? 0 : seg ? 0.06 + 0.1 * (1 + Math.sin(time * 6 - seg[0] * 0.9)) : bob(e.id, time, e.kind === 'tank' || e.kind === 'rammer' ? 0.06 : 0.2));
         // Angry Dominik drops to his knees as his hammer comes down on the floor, stays there for a moment and

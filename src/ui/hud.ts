@@ -569,6 +569,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'unicornAppeared':
             toast(t('toast.unicorn'), 'good');
             break;
+          case 'sharkLeap':
+            toast(t('toast.sharkLeap'), 'warn');
+            break;
           case 'jetpackPicked':
             if (e.playerId === p.id) toast(t('toast.jetpack'), 'good');
             break;

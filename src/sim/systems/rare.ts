@@ -247,6 +247,6 @@ function landingSpot(s: SimState, pos: Vec2): Vec2 {
 
 /** Frozen or stuck monsters cannot move or attack. */
 export function held(s: SimState, e: Enemy): boolean {
-  return e.frozenUntil > s.tick || e.stuckUntil > s.tick;
+  return e.frozenUntil > s.tick || e.stuckUntil > s.tick || e.leap !== undefined;
 }
 
