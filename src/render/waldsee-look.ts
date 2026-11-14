@@ -1177,12 +1177,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   // a little way in, a yard): a fence of upright boards one cannot see through
   {
     const wood = [0x7a5638, 0x6b4a32, 0x86603e];
-    for (const [x0, z0, x1, z1] of WALDSEE_FENCE_RUNS) {
-      const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, yaw = Math.atan2(ux, uz);
+    // (how far from (ox, oz) along (dx, dz) to the foot of a real wall one sees)
+    const toWall = (ox: number, oz: number, dx: number, dz: number, max: number): number => {
+      let best = max;
+      for (const w of wallFeet()) {
+        const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = dx * ez - dz * ex;
+        if (Math.abs(den) < 1e-6) continue;
+        const t = ((w.x0 - ox) * ez - (w.z0 - oz) * ex) / den, u = ((w.x0 - ox) * dz - (w.z0 - oz) * dx) / den;
+        if (t > 0 && u >= -0.02 && u <= 1.02 && t < best) best = t;
+      }
+      return best;
+    };
+    for (const [rx0, rz0, rx1, rz1] of WALDSEE_FENCE_RUNS) {
+      // (from house to house: both ends carried on to the walls beside the run, a little into them)
+      const half = Math.hypot(rx1 - rx0, rz1 - rz0) / 2, ux = (rx1 - rx0) / (2 * half), uz = (rz1 - rz0) / (2 * half);
+      const mx = (rx0 + rx1) / 2, mz = (rz0 + rz1) / 2;
+      const a = Math.min(toWall(mx, mz, -ux, -uz, half + 1.5), half + 1.5) + 0.1, b = Math.min(toWall(mx, mz, ux, uz, half + 1.5), half + 1.5) + 0.1;
+      const x0 = mx - ux * a, z0 = mz - uz * a, x1 = mx + ux * b, z1 = mz + uz * b;
+      const len = a + b, yaw = Math.atan2(ux, uz);
       const boards = Math.round(len / 0.25);
       for (let k = 0; k < boards; k++) {
         const t = (k + 0.5) * (len / boards);
-        box(x0 + ux * t, 1.2 + (k % 3) * 0.04, z0 + uz * t, 0.08, 2.4, len / boards - 0.02, wood[k % 3], yaw);
+        // (boards a little wider than their spacing: no slit to look through)
+        box(x0 + ux * t, 1.3 + (k % 3) * 0.04, z0 + uz * t, 0.08, 2.6, len / boards + 0.03, wood[k % 3], yaw);
       }
       // (the rails, on the walkable side)
       for (const y of [0.5, 1.9]) box((x0 + x1) / 2 - uz * 0.06, y, (z0 + z1) / 2 + ux * 0.06, 0.05, 0.1, len, 0x5a3a26, yaw);

@@ -153,38 +153,50 @@ for name, pts in re.findall(r"b\.put\('(.)', (.*?)\);", src):
     for a, b in re.findall(r"\[(\d+), (\d+)\]", pts):
         if rows[int(b)][int(a)] == '#': print('marker', name, a, b, 'now on a wall')
 
-# the fences: where one can walk up to a wall of the plan that no real building stands on (a gap between two
-# houses, a yard), a board fence stands on that tile edge, so one does not look through to what lies behind.
-# Edges as runs [x0, z0, x1, z1] in tiles, the walkable side to the right of the run's direction
-cover = {}
-def covered_at(x, z):
-    if (x, z) not in cover:
-        cover[(x, z)] = sum(1 for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8) if any(inside(x + a, z + b, r) for f in footprints for r in f))
-    return cover[(x, z)]
-edges = []
+# the fences: where one can walk up to a wall of the plan and look past the real buildings into a gap between
+# them (or at a wall no building stands on), a board fence stands a little way in, from house to house.
+# Segments [x0, z0, x1, z1] in tiles
+rings = [(min(r[0::2]), max(r[0::2]), min(r[1::2]), max(r[1::2]), r) for f in footprints for r in f]
+def built(px, pz):
+    return any(a <= px <= b and c <= pz <= d and inside(px, pz, r) for a, b, c, d, r in rings)
+DEPTH, STEPS = 0.6, 16
+segs = []
 for z in range(1, N - 1):
     for x in range(1, N - 1):
         if rows[z][x] != '.': continue
         for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             X, Z = x + dx, z + dz
-            if rows[Z][X] != '#' or code(X, Z) in (0, 3, 4, 5) or covered_at(X, Z) > 0: continue
-            # (the edge between the two tiles, walkable side on the right)
-            if dx == 1: edges.append((x + 1, z, x + 1, z + 1))
-            if dx == -1: edges.append((x, z + 1, x, z))
-            if dz == 1: edges.append((x + 1, z + 1, x, z + 1))
-            if dz == -1: edges.append((x, z, x + 1, z))
-# joined into straight runs
+            if rows[Z][X] != '#' or code(X, Z) in (0, 3, 4, 5): continue
+            # (the line a little way into the wall tile, along the edge)
+            ex, ez = x + 0.5 + dx * (0.5 + DEPTH), z + 0.5 + dz * (0.5 + DEPTH)
+            ax, az = abs(dz), abs(dx)
+            open_ = [not built(ex + ax * ((k + 0.5) / STEPS - 0.5), ez + az * ((k + 0.5) / STEPS - 0.5)) for k in range(STEPS)]
+            k = 0
+            while k < STEPS:
+                if not open_[k]: k += 1; continue
+                j = k
+                while j < STEPS and open_[j]: j += 1
+                t0, t1 = k / STEPS - 0.5, j / STEPS - 0.5
+                segs.append([round(ex + ax * t0, 3), round(ez + az * t0, 3), round(ex + ax * t1, 3), round(ez + az * t1, 3)])
+                k = j
+# joined where they meet on one line
+segs.sort()
 runs = []
-left = set(edges)
-while left:
-    x0, z0, x1, z1 = left.pop()
-    dx, dz = x1 - x0, z1 - z0
-    while (x1, z1, x1 + dx, z1 + dz) in left: left.remove((x1, z1, x1 + dx, z1 + dz)); x1 += dx; z1 += dz
-    while (x0 - dx, z0 - dz, x0, z0) in left: left.remove((x0 - dx, z0 - dz, x0, z0)); x0 -= dx; z0 -= dz
-    runs.append([x0, z0, x1, z1])
-runs.sort()
+for sg in segs:
+    for r in runs:
+        if (r[0] == r[2]) == (sg[0] == sg[2]) and abs(r[2] - sg[0]) < 1e-6 and abs(r[3] - sg[1]) < 1e-6 and (r[0] == r[2] or r[1] == r[3]) and (sg[0] == sg[2] or sg[1] == sg[3]):
+            r[2], r[3] = sg[2], sg[3]; break
+    else: runs.append(list(sg))
+# only real gaps: houses on both ends of the run (not a corner where a front merely ends), and not too wide
+def gap(r):
+    x0, z0, x1, z1 = r
+    L = abs(x1 - x0) + abs(z1 - z0)
+    if L > 6: return False
+    ux, uz = (x1 - x0) / L, (z1 - z0) / L
+    return built(x0 - ux * 0.2, z0 - uz * 0.2) and built(x1 + ux * 0.2, z1 + uz * 0.2)
+runs = [r for r in runs if gap(r)]
 with open(OUT, 'a') as f:
-    f.write('/** board fences where one can walk up to a wall that no real building stands on: [x0, z0, x1, z1] in tiles, the\n * walkable side to the right going from (x0, z0) to (x1, z1) */\nexport const WALDSEE_FENCE_RUNS: number[][] = ')
+    f.write('/** board fences in the gaps between the real buildings where one can walk up to them: [x0, z0, x1, z1] in tiles */\nexport const WALDSEE_FENCE_RUNS: number[][] = ')
     f.write(json.dumps(runs, separators=(',', ':')))
     f.write(';\n')
-print(len(runs), 'fence runs,', len(edges), 'tile edges')
+print(len(runs), 'fence runs from', len(segs), 'pieces')
