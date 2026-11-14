@@ -1137,13 +1137,84 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'shop') {
-      // the little shop: a grey canopy over its windows, things in them, pink shutters upstairs, its name on a blue board
-      for (let k = 0; k < w * 4; k++) onFace(s, -w / 2 + (k + 0.5) / 4, 0.36, 2.25, 0.25, 0.07, 0.74, 0x9aa0a8);
-      for (const a of [-0.9, 0.2, 1.1]) for (const side of [-1, 1]) onFace(s, a + side * 0.36, 0.05, 3.3, 0.22, 0.62, 0.05, 0xb97a8c);
-      onFace(s, -0.7, 0.03, 1, 0.8, 2, 0.06, 0x7a5638);
-      onFace(s, 0.5, 0.03, 1.25, 1.2, 1.2, 0.05, 0xfff1c0, true);
-      for (const [a, c] of [[0.2, 0xd8322a], [0.5, 0x2f7a4a], [0.8, 0x2f5fbf]] as const) onFace(s, a, 0.1, 0.9, 0.16, 0.3, 0.1, c);
-      sign(s, s.text, 2.9, Math.min(2.2, w + 0.2), { back: '#1f3f8f', ink: '#ffd23f', rim: '#ffd23f' });
+      // the little shop: the whole real wall painted flush: a grey canopy over big windows full of things and a
+      // glass door, pink shutters on the windows upstairs, its name on a blue board
+      const S = 80, real = (s as OnWall).wall, wB = real?.width ?? w, H = real?.eave ?? 6;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(wB * S);
+      canvas.height = Math.round(H * S);
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => (u + wB / 2) * S;
+      const py = (y: number) => (H - y) * S;
+      g.fillStyle = '#ece3d0';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      g.fillStyle = '#d3c9b4';
+      g.fillRect(0, py(0.2), canvas.width, 0.2 * S);
+      const shade = g.createLinearGradient(0, 0, 0, 0.6 * S);
+      shade.addColorStop(0, 'rgba(66,58,44,0.30)');
+      shade.addColorStop(1, 'rgba(66,58,44,0)');
+      g.fillStyle = shade;
+      g.fillRect(0, 0, canvas.width, 0.6 * S);
+      // upstairs: a window with a pair of pink shutters per storey and per 1.5 tiles, as many as fit under the eave
+      const nUp = Math.max(1, Math.round(wB / 1.6));
+      for (let st = 1; (st + 1) * 2 <= H + 0.3; st++) {
+        const yc = st * 2 + 1.05;
+        for (let k = 0; k < nUp; k++) {
+          const u = -wB / 2 + (k + 0.5) * (wB / nUp);
+          g.fillStyle = '#b97a8c';
+          for (const side of [-1, 1]) g.fillRect(px(u + side * 0.43 - 0.11), py(yc + 0.45), 0.22 * S, 0.9 * S);
+          g.fillStyle = '#fbf8f0';
+          g.fillRect(px(u - 0.3), py(yc + 0.44), 0.6 * S, 0.88 * S);
+          g.fillStyle = '#5d717d';
+          g.fillRect(px(u - 0.25), py(yc + 0.39), 0.5 * S, 0.78 * S);
+          g.fillStyle = '#fbf8f0';
+          g.fillRect(px(u - 0.02), py(yc + 0.39), 0.04 * S, 0.78 * S);
+        }
+      }
+      // downstairs: the door at one end (the left, as one looks at it) and a big window, with the canopy above both
+      const doorU = -wB / 2 + 0.75, winL = doorU + 0.75, winR = wB / 2 - 0.15;
+      g.fillStyle = '#4a3a30';
+      g.fillRect(px(doorU - 0.55), py(2.05), 1.1 * S, 2.05 * S);
+      g.fillStyle = '#3b4a54';
+      g.fillRect(px(doorU - 0.45), py(1.95), 0.9 * S, 1.85 * S);
+      g.fillStyle = '#d8d2c4';
+      g.fillRect(px(doorU + 0.28), py(1.0), 0.05 * S, 0.3 * S);
+      if (winR - winL > 0.8) {
+        g.fillStyle = '#4a3a30';
+        g.fillRect(px(winL), py(2.0), (winR - winL) * S, 1.6 * S);
+        const glass = g.createLinearGradient(0, py(1.9), 0, py(0.5));
+        glass.addColorStop(0, '#46535b');
+        glass.addColorStop(1, '#6b5a40');
+        g.fillStyle = glass;
+        g.fillRect(px(winL + 0.08), py(1.92), (winR - winL - 0.16) * S, 1.44 * S);
+        // a lit shelf with boxes in many colours
+        g.fillStyle = '#e8c88a';
+        g.fillRect(px(winL + 0.08), py(1.0), (winR - winL - 0.16) * S, 0.06 * S);
+        const cols = ['#d8322a', '#2f7a4a', '#2f5fbf', '#f2b632', '#8a5a9a'];
+        const n = Math.max(2, Math.round((winR - winL - 0.4) / 0.3));
+        for (let i = 0; i < n; i++) {
+          g.fillStyle = cols[i % cols.length];
+          g.fillRect(px(winL + 0.22 + i * ((winR - winL - 0.44) / n)), py(1.0 + 0.2 + (i % 3) * 0.1), 0.16 * S, (0.2 + (i % 3) * 0.1) * S);
+        }
+      }
+      // the canopy: a grey strip over door and window
+      g.fillStyle = '#9aa0a8';
+      g.fillRect(px(-wB / 2 + 0.1), py(2.3), (wB - 0.2) * S, 0.2 * S);
+      g.fillStyle = '#7d838b';
+      g.fillRect(px(-wB / 2 + 0.1), py(2.12), (wB - 0.2) * S, 0.04 * S);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(wB, H);
+      const mat = new THREE.MeshLambertMaterial({ map: tex });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const [fx, fz] = on(s, -(real?.along ?? 0), 0.05);
+      m.position.set(fx, H / 2, fz);
+      m.rotation.y = faceYaw(s);
+      add(m);
+      const mid = { ...s, x: fx, z: fz };
+      sign(mid, s.text, 2.62, Math.min(2.2, wB - 0.2), { back: '#1f3f8f', ink: '#ffd23f', rim: '#ffd23f' });
       continue;
     }
     if (s.kind === 'nemo') {
