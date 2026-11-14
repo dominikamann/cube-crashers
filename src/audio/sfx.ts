@@ -72,6 +72,7 @@ export type SoundId =
   | 'witchPress'
   | 'witchGiggle'
   | 'witchShriek'
+  | 'witchLaugh'
   | 'siren'
   | 'sharkLeap'
   | 'maskTurn'
@@ -369,6 +370,15 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sawtooth', freq: 240, freqEnd: 150, attack: 0.01, sustain: 0.08, decay: 0.12, volume: 0.045, vibrato: { rate: 23, depth: 30 }, lowpass: 900, at: 0.5 },
     { wave: 'noise', freq: 2600, attack: 0.02, sustain: 0.42, decay: 0.12, volume: 0.03, lowpass: 4200 },
   ],
+  // the witch herself laughs: slow and deep in the throat, hoarse, each "ha" lower than the last, and the last one
+  // drawn out and falling away
+  witchLaugh: [
+    ...[330, 312, 296, 278, 262, 244].map((freq, i): SynthParams => ({ wave: 'sawtooth', freq, freqEnd: freq * 0.78, attack: 0.012, sustain: 0.08, decay: 0.07, volume: 0.11, vibrato: { rate: 19, depth: 26 }, lowpass: 1500, at: i * 0.19 })),
+    ...[660, 624, 592, 556, 524, 488].map((freq, i): SynthParams => ({ wave: 'square', freq, freqEnd: freq * 0.8, attack: 0.012, sustain: 0.07, decay: 0.06, volume: 0.04, vibrato: { rate: 31, depth: 50 }, lowpass: 2300, at: i * 0.19 })),
+    { wave: 'sawtooth', freq: 226, freqEnd: 96, attack: 0.02, sustain: 0.35, decay: 0.5, volume: 0.12, vibrato: { rate: 11, depth: 22 }, lowpass: 1200, at: 1.14 },
+    { wave: 'square', freq: 452, freqEnd: 190, attack: 0.02, sustain: 0.3, decay: 0.4, volume: 0.035, vibrato: { rate: 27, depth: 60 }, lowpass: 2000, at: 1.14 },
+    { wave: 'noise', freq: 1800, attack: 0.05, sustain: 1.5, decay: 0.4, volume: 0.035, lowpass: 2600 },
+  ],
   // a little witch sees someone and comes for them: a shriek that shoots up, shrill and ragged, and breaks off
   witchShriek: [
     { wave: 'square', freq: 980, freqEnd: 2500, attack: 0.02, sustain: 0.3, decay: 0.16, volume: 0.07, vibrato: { rate: 27, depth: 170 }, lowpass: 4200 },
@@ -546,6 +556,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'siren':
       return one('siren');
     case 'witchCackle':
+      // (the witch herself: a bigger, lower shriek, and her own laugh)
+      if (e.boss) return e.shriek ? [{ id: 'witchShriek', pitch: 0.7 }] : one('witchLaugh');
       return one(e.shriek ? 'witchShriek' : 'witchGiggle');
     case 'kartRam':
       return one('kartRam');
@@ -660,7 +672,7 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'wormSplit':
       return one('wormSplit');
     case 'witchPress':
-      return [{ id: 'witchPress', pitch: 1 }, { id: 'roar_witch', pitch: 0.85 }];
+      return [{ id: 'witchPress', pitch: 1 }, { id: 'witchLaugh', pitch: 1.1 }];
     case 'witchRelease':
       return one('dash', e.broke ? 1.2 : 0.9);
     case 'witchDance':
@@ -671,7 +683,7 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'witchDanceEnd':
       return [{ id: 'fireWhoosh', pitch: 0.7 }, { id: 'roar_witch', pitch: 0.7 }];
     case 'witchFace':
-      return [{ id: 'maskTurn', pitch: 1 }, { id: 'roar_witch', pitch: 0.75 }];
+      return [{ id: 'maskTurn', pitch: 1 }, { id: 'witchLaugh', pitch: 0.85 }];
     case 'witchSweep':
       return one('fireWhoosh');
     case 'witchTwigs':

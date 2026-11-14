@@ -849,6 +849,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     }
     b.unseen = undefined;
     b.nextAttackAt = Math.max(b.nextAttackAt, s.tick + TICK_RATE);
+    // (she has seen someone: her laugh rings over the square)
+    if (b.kind === 'witch') s.events.push({ type: 'witchCackle', pos: { ...body.pos }, shriek: false, boss: true });
   }
   if (b.roam !== undefined) {
     // it has seen nobody yet: it wanders and does not attack, until its horde has seen someone or it is hurt

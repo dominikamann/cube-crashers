@@ -258,6 +258,8 @@ function leapOnto(s: SimState, b: BossState, me: Enemy, p: Player, next: 'hop' |
   const to = nearestFree(s.map, p.pos, me.radius, BLOCKS_ENEMY);
   // (never into a wall: with no floor near them she throws her twigs at them instead)
   if (!isFree(s.map, to, me.radius, BLOCKS_ENEMY)) return throwTwigs(s, b, me, [p], w.face === 'glare' ? WITCH.twigs.glare : WITCH.twigs.grin);
+  // (she shrieks as she takes off)
+  s.events.push({ type: 'witchCackle', pos: { ...me.pos }, shriek: true, boss: true });
   b.leap = { from: { ...me.pos }, to, start: s.tick, land: s.tick + ticks };
   w.move = { kind: 'hop', at: s.tick, until: s.tick + ticks, from: { ...me.pos }, to: { ...to }, target: p.id, next: press ? 'press' : 'hop' };
   me.dir = unit(me.pos, to);
@@ -301,6 +303,7 @@ function charge(s: SimState, b: BossState, me: Enemy, p: Player): void {
   const n = Math.max(1, Math.floor(len / WITCH.chargeStep));
   for (let i = 1; i <= n; i++) warn(s, { x: me.pos.x + dir.x * i * WITCH.chargeStep, z: me.pos.z + dir.z * i * WITCH.chargeStep }, 1.2, WITCH.chargeDamage * harm(w), WITCH.chargeWarn + i * 3, me.pos);
   me.dir = dir;
+  s.events.push({ type: 'witchCackle', pos: { ...me.pos }, shriek: true, boss: true });
   w.move = { kind: 'charge', at: s.tick + WITCH.chargeWarn, until: s.tick + WITCH.chargeWarn + n * 3, from: { ...me.pos }, to, target: p.id };
   s.events.push({ type: 'bossAttack', kind: 'witch' });
 }

@@ -694,8 +694,9 @@ export type SimEvent =
   | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
   | { type: 'powerupPicked'; kind: PowerupKind; playerId: number }
   | { type: 'kartEnter'; playerId: number }
-  /** a little witch near a player cackles, or shrieks as she sees someone and comes for them */
-  | { type: 'witchCackle'; pos: Vec2; shriek: boolean }
+  /** a little witch near a player cackles, or shrieks as she sees someone and comes for them; `boss`: the witch
+   *  herself, who laughs when she first sees someone and shrieks as she leaps or charges */
+  | { type: 'witchCackle'; pos: Vec2; shriek: boolean; boss?: boolean }
   /** the police car's siren, again and again while it is driven */
   | { type: 'siren'; pos: Vec2 }
   | { type: 'unicornAppeared'; pos: Vec2 }
