@@ -63,6 +63,16 @@ describe('ranking the servers', () => {
     ['d:1', { info: info({ players: 6, bots: 6 }), ping: 10 }],
   ]);
 
+  it('keeps servers with as many real players in the order of the list, whatever their ping is this time', () => {
+    const two = [{ name: 'One', address: 'x:1' }, { name: 'Two', address: 'y:1' }];
+    const order = (pingX: number, pingY: number, humansY = 0) =>
+      rankServers(two, new Map<string, Probe>([['x:1', { info: info({ players: 4, bots: 4 }), ping: pingX }], ['y:1', { info: info({ players: humansY, bots: 0 }), ping: pingY }]]), 3, []).map(r => r.address);
+    expect(order(20, 19)).toEqual(['x:1', 'y:1']);
+    expect(order(19, 20)).toEqual(['x:1', 'y:1']);
+    // (someone real on the second one: now it has something the first has not, and goes up)
+    expect(order(19, 20, 1)).toEqual(['y:1', 'x:1']);
+  });
+
   it('lists playable servers first (most real players first), then other versions, then offline ones', () => {
     const rows = rankServers(entries, probes, 3, []);
     expect(rows.map(r => [r.address, r.status])).toEqual([
