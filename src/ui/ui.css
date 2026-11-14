@@ -283,6 +283,11 @@ body.split .build .card { width: 96px; }
 .alarm-extra { color: var(--red); font-size: 12px; margin-left: 4px; }
 .unlocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; width: min(820px, 92vw); }
 .unlocks .btn { min-width: 0; font-size: 11px; line-height: 1.6; }
+/* what is unlocked already: ticked off, not a button */
+.unlocks-label { margin: 0; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.unlocks-owned { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(820px, 92vw); }
+.unlock-owned { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 6px 8px; border: 1.5px solid rgba(59, 209, 111, 0.5); border-radius: 6px; background: rgba(0, 0, 0, 0.3); font-size: 10px; color: rgba(255, 255, 255, 0.85); }
+.unlock-owned i { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--green); color: #0b2a16; font-style: normal; font-size: 10px; text-shadow: none; }
 /* greyed out, but still readable (opacity alone washed the label into the background) */
 .btn:disabled { background: #8ab6c4; color: rgba(27, 20, 64, 0.8); cursor: default; }
 .btn:disabled:hover { transform: none; }

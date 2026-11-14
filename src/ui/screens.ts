@@ -397,24 +397,38 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'h2', '', t('unlocks.title'));
       text(s, 'div', 'bigscore', t('unlocks.tickets', { n: profile.tickets }));
       text(s, 'p', '', t('unlocks.hint'));
+      const nameOf = (u: (typeof UNLOCKS)[number]) => (u.kind === 'weapon' ? t(`weapon.${u.id}` as 'weapon.bomb') : u.kind === 'character' ? t(`character.${u.id}`) : t(`unlock.${u.id}` as 'unlock.roller'));
+      const has = (u: (typeof UNLOCKS)[number]) => profile.unlocked.includes(u.id);
+      // what can still be bought comes first, as buttons
       const grid = document.createElement('div');
       grid.className = 'unlocks';
-      for (const u of UNLOCKS) {
-        const owned = profile.unlocked.includes(u.id);
-        const name = u.kind === 'weapon' ? t(`weapon.${u.id}` as 'weapon.bomb') : u.kind === 'character' ? t(`character.${u.id}`) : t(`unlock.${u.id}` as 'unlock.roller');
+      for (const u of UNLOCKS.filter(u => !has(u))) {
+        const name = nameOf(u);
         // a character for the end of the game shows from the start, locked until its boss is beaten
         const boss = bossToBeat(profile, u.id);
-        const b = button(grid, owned ? `${name} ✓` : boss ? t('unlocks.beat', { name, boss: t(`boss.${boss}` as 'boss.rex'), cost: u.cost }) : t('unlocks.buy', { name, cost: u.cost }), () => {
-          if (owned) return;
+        const b = button(grid, boss ? t('unlocks.beat', { name, boss: t(`boss.${boss}` as 'boss.rex'), cost: u.cost }) : t('unlocks.buy', { name, cost: u.cost }), () => {
           if (buyUnlock(profile, u.id)) {
             saveProfile();
             unlocksScreen();
           }
         });
-        if (owned) b.classList.add('alt');
-        else if (boss || profile.tickets < u.cost) b.disabled = true;
+        if (boss || profile.tickets < u.cost) b.disabled = true;
       }
-      s.append(grid);
+      if (grid.children.length > 0) s.append(grid);
+      // what is unlocked already stands after it, ticked off: nothing to click there
+      const owned = UNLOCKS.filter(has);
+      if (owned.length > 0) {
+        text(s, 'p', 'unlocks-label', t('unlocks.owned'));
+        const done = document.createElement('div');
+        done.className = 'unlocks-owned';
+        for (const u of owned) {
+          const el = text(done, 'span', 'unlock-owned', nameOf(u));
+          const tick = document.createElement('i');
+          tick.textContent = '✓';
+          el.prepend(tick);
+        }
+        s.append(done);
+      }
       button(s, t('menu.back'), () => back());
     });
   }
