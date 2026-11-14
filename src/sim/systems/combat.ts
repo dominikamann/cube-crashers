@@ -14,6 +14,7 @@ import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
 import { aimShot, atHeightOf, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
+import { witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
 
@@ -65,6 +66,8 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
     if (source === 'stomp' || source === 'kart') amount *= BOSS_BODY_RESIST;
     // a boss cannot be burst down: beyond what it takes in full right now, a hit counts only in part
     const boss = allBosses(s).find(b => b.enemyId === e.id || (e.kind === 'wormSegment' && b.worms.some(w => w.includes(e.id))));
+    // (the Schrättele hardly feels a hit while she dances, and a teammate's hits knock her off whoever she presses)
+    if (boss?.witch) amount = witchHit(boss, amount, byPlayerId);
     if (boss) {
       const left = boss.gate ?? boss.maxHp * (boss.gateShare ?? BOSS_HP.gate.share) * BOSS_HP.gate.bank;
       const full = Math.min(amount, left);

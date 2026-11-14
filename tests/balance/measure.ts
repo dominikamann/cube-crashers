@@ -3,6 +3,7 @@ import { FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { ALL_WEAPONS, MAX_WEAPON_LEVEL } from '../../src/sim/config/weapons';
 import { createSim, stepSim } from '../../src/sim/sim';
+import { BLOCKS_WALKER, hasLos, isFree } from '../../src/sim/map/tilemap';
 import { spawnBoss } from '../../src/sim/systems/boss';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnWild } from '../../src/sim/systems/wild-boss';
@@ -17,7 +18,7 @@ import { quietSim } from '../sim/helpers';
  */
 
 export const LEVELS = Array.from({ length: MAX_WEAPON_LEVEL }, (_, i) => i + 1);
-export const BOSSES: BossKind[] = ['megaBlock', 'kraken', 'worm', 'rex', 'rhino', 'spider', 'dominik'];
+export const BOSSES: BossKind[] = ['megaBlock', 'kraken', 'worm', 'rex', 'rhino', 'spider', 'dominik', 'witch'];
 /** the weapons that are fought with at arm's length: measured there, the others from across the arena */
 const MELEE: WeaponKind[] = ['laserSword', 'flySwatter', 'bananaMine'];
 
@@ -68,6 +69,39 @@ export function bossHealth(kind: BossKind, o: BossSetup = {}): number {
   if (o.wild) spawnWild(s, kind, { x: s.map.w / 2, z: s.map.h / 2 });
   else spawnBoss(s, kind);
   return s.boss!.maxHp;
+}
+
+/**
+ * The quickest a boss can fall on its own floor to one player who never misses, never stops firing and is never hurt:
+ * the player is kept at arm's length of it (melee weapons) or a little further, aims at it every tick, and every
+ * helper it calls is gone the moment it appears. No real player does better.
+ */
+export function fastestKill(kind: BossKind, map: string, weapon: WeaponKind, level: number, difficulty: Difficulty, seed = 3): number {
+  const s = createSim(FLOORS[map].map, seed, { mode: 'quick', difficulty });
+  s.crates = [];
+  s.enemies = s.enemies.filter(e => e.id === s.boss?.enemyId);
+  if (s.boss?.kind !== kind) throw new Error(`${map} has no ${kind}`);
+  const p = s.players[0];
+  p.weapons = [{ kind: weapon, level, cooldown: 0 }];
+  p.selected = 0;
+  p.invulnUntil = Number.MAX_SAFE_INTEGER;
+  const far = MELEE.includes(weapon) ? 2.2 : 5.2;
+  const start = s.tick;
+  for (let i = 0; i < 10 * 60 * TICK_RATE && s.boss; i++) {
+    const body = s.enemies.find(e => e.id === s.boss!.enemyId);
+    if (!body) break;
+    for (const e of s.enemies) if (e !== body) e.hp = 0;
+    // (round it, on open floor it can see from)
+    for (let k = 0; k < 12; k++) {
+      const a = (i / TICK_RATE) * 0.7 + k * 0.52;
+      const spot = { x: body.pos.x + Math.cos(a) * far, z: body.pos.z + Math.sin(a) * far };
+      if (!isFree(s.map, spot, 0.4, BLOCKS_WALKER) || !hasLos(s.map, body.pos, spot)) continue;
+      p.pos = spot;
+      break;
+    }
+    stepSim(s, [{ type: 'aim', playerId: 0, point: body.pos }, { type: 'fire', playerId: 0 }]);
+  }
+  return (s.tick - start) / TICK_RATE;
 }
 
 export interface Fight {

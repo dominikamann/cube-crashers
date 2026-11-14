@@ -533,7 +533,7 @@ function startGame() {
           [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
         );
         // the Town is walked in first person, and stays so while one is there
-        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused') && !params.has('see');
+        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused') && !params.has('see') && params.get('demo') !== 'witch';
         const controls = [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }];
         townView.update(inTown, controls);
         if (inTown) for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
@@ -1222,7 +1222,7 @@ function applyDemo(sim: SimState) {
   sim.players[0].coins = 200;
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
-  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider'].includes(bossKind)) {
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch'].includes(bossKind)) {
     sim.enemies = [];
     sim.nests = [];
     sim.boss = null;
@@ -1253,6 +1253,37 @@ function applyDemo(sim: SimState) {
         if (!params.has('act')) sim.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
       }
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
+    });
+  }
+  // ?demo=witch&map=waldsee: the Schrättele on show beside her fire (on another map: in its middle), and the camera
+  // circles her (&angle=…: it stands still). She stands and looks about (&act=1: she fights, &act=stand: she attacks without walking; &face=glare:
+  // the glaring face; &dance=1: she dances round the fire with the small ones; &r=…, &h=…, &look=… as for Dominik)
+  if (params.get('demo') === 'witch') {
+    sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    sim.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
+    void Promise.all([import('./sim/systems/boss'), import('./sim/config/floor-waldsee')]).then(([m, town]) => {
+      if (sim.boss?.kind !== 'witch') {
+        sim.enemies = [];
+        sim.nests = [];
+        sim.boss = null;
+        m.spawnBoss(sim, 'witch', sim.map.id === 'waldsee' ? town.WALDSEE_FIRE : { x: sim.map.w / 2, z: sim.map.h / 2 });
+      }
+      const b = sim.boss!, w = b.witch!;
+      const body = sim.enemies.find(e => e.id === b.enemyId);
+      sim.enemies = sim.enemies.filter(e => e === body);
+      if (params.get('face') === 'glare') {
+        w.face = 'glare';
+        w.turnedAt = sim.tick;
+      }
+      if (params.get('act') !== '1') {
+        w.speed = 0;
+        if (!params.has('act')) b.nextAttackAt = Number.MAX_SAFE_INTEGER;
+      }
+      // (into the second phase, above half her health: the dance starts, the mask stays as it is)
+      if (params.has('dance') && body) body.hp = body.maxHp * 0.6;
+      const at = params.has('dance') ? w.fire : body?.pos ?? w.fire;
+      // (&angle=…: the camera stands still at that angle, 0 in front of her)
+      showroom?.({ x: at.x, z: at.z, height: Number(params.get('h')) || 2.6, radius: Number(params.get('r')) || (params.has('dance') ? 10 : 6), ...(params.has('look') ? { look: Number(params.get('look')) } : {}), ...(params.has('angle') ? { angle: (Number(params.get('angle')) * Math.PI) / 180 } : {}) });
     });
   }
   // &calm=1: nothing on the map but you (no monsters, no nests, no alarm): to walk about and look

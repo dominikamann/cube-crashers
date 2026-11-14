@@ -36,9 +36,9 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
-  // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight
-  // (until the witch is built, King Rex stands in for her)
-  [floorWaldsee.id]: { map: floorWaldsee, theme: 'waldsee', kind: 'boss', boss: 'rex', name: 'floor.waldsee', eliteBonus: 0.05 },
+  // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight with
+  // the Schrättele at her fire. She belongs to the Town: no other boss list has her
+  [floorWaldsee.id]: { map: floorWaldsee, theme: 'waldsee', kind: 'boss', boss: 'witch', name: 'floor.waldsee', eliteBonus: 0.05 },
   [floorUnderwater.id]: { map: floorUnderwater, theme: 'underwater', kind: 'boss', boss: 'kraken', name: 'floor.underwater', eliteBonus: 0 },
   [floorShaft.id]: { map: floorShaft, theme: 'shaft', kind: 'shaft', name: 'floor.shaft', eliteBonus: 0 },
   [floorRace.id]: { map: floorRace, theme: 'race', kind: 'race', name: 'floor.race', eliteBonus: 0 },

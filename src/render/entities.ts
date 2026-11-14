@@ -13,6 +13,8 @@ import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
+import { createWitchFigures, WITCH_LOOK, type WitchPose } from './witch-figure';
+import { createWitchFires } from './witch-fire';
 import { shotHeight } from '../sim/systems/shot-height';
 import { Tile, tileAt } from '../sim/map/tilemap';
 
@@ -41,6 +43,8 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   kraken: { w: 3.0, h: 2.2, d: 2.6, day: 0xd04a8a, night: 0xff6ab0, eyeY: 1.5, eyeX: 0.6, eye: 0.45 },
   phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
   trex: { w: 1.1, h: 2.0, d: 2.2, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.8, eyeX: 0.26, eye: 0.16 },
+  // the small Schrättele: a figure of her own (see witch-figure.ts); this is her size and her green skirt
+  witchling: { w: 0.4, h: 1.15, d: 0.35, day: 0x2f7d3a, night: 0x3fa04c, eyeY: 0.95, eyeX: 0.05, eye: 0 },
 };
 
 const CANDY_COLORS = [0xff4d6d, 0x4dd2ff, 0xffe14a, 0x7dff6b, 0xff8cf0, 0xff9f43];
@@ -167,6 +171,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // for a moment before they burst (see fx.ts)
   const domStood = new Map<number, { x: number; z: number; yaw: number }>();
   const domDying: { x: number; z: number; yaw: number; until: number }[] = [];
+  // the Schrättele and the small ones: figures of their own, and her bonfire
+  const witches = createWitchFigures(scene);
+  const witchFires = createWitchFires(scene);
+  /** her steps follow the ground she covers: where each one was, how far into the stride, and how long she counts as moving */
+  const witchWalk = new Map<number, { x: number; z: number; stride: number; moving: number }>();
   const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
@@ -442,7 +451,49 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       // King Rex leans back into the roar slowly and comes out of it slowly: at boss size a sudden tilt swings the whole screen
       const roarSeconds = BOSS.warnTicks / TICK_RATE;
       const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
+      witches.begin();
       for (const e of s.enemies) {
+        // the Schrättele and the small Schrättele have figures of their own
+        const witchBoss = e.kind === 'tank' ? allBosses(s).find(b => b.kind === 'witch' && b.enemyId === e.id) : undefined;
+        if (witchBoss || e.kind === 'witchling') {
+          let born = bornAt.get(e.id);
+          if (born === undefined) bornAt.set(e.id, (born = time));
+          const w = witchBoss?.witch;
+          const dancing = w ? !!w.dance : allBosses(s).some(b => b.witch?.dance?.helpers.includes(e.id));
+          const scale = w ? WITCH_LOOK.scale : WITCH_LOOK.small * popIn(Math.min(1, (time - born) / 0.3));
+          let walk = witchWalk.get(e.id);
+          if (!walk) witchWalk.set(e.id, (walk = { x: e.pos.x, z: e.pos.z, stride: e.id, moving: 0 }));
+          const stepped = Math.hypot(e.pos.x - walk.x, e.pos.z - walk.z) / scale;
+          walk.x = e.pos.x;
+          walk.z = e.pos.z;
+          walk.stride += (stepped / 1.3) * Math.PI * 2;
+          walk.moving = stepped > 1e-4 ? 0.12 : Math.max(0, walk.moving - frameDt);
+          let act: WitchPose['act'] = dancing ? 'dance' : 'walk', t = 0, air = 0, ready = false, lift = 1.6;
+          const m = w?.move;
+          if (w && !dancing) {
+            if (w.press) act = 'press';
+            else if (witchBoss!.leap) {
+              const L = witchBoss!.leap;
+              act = 'hop';
+              air = Math.sin(Math.PI * Math.max(0, Math.min(1, (s.tick - L.start) / Math.max(1, L.land - L.start))));
+              lift = m?.next === 'press' ? 2.4 : 1.7;
+            } else if (m && m.kind !== 'hop') {
+              act = m.kind;
+              t = Math.max(0, Math.min(1, (s.tick - m.at) / Math.max(1, m.until - m.at)));
+              ready = m.kind === 'charge' && s.tick < m.at;
+            }
+          }
+          const turned = w?.face === 'glare' ? Math.max(0, Math.min(1, (s.tick - (w.turnedAt ?? 0)) / 40)) : 0;
+          witches.add({
+            id: e.id, x: e.pos.x, y: air * lift, z: e.pos.z, yaw: Math.atan2(e.dir.x, e.dir.z), scale,
+            act, t, ready, air, stride: walk.stride, moving: walk.moving > 0, face: turned * turned * (3 - 2 * turned),
+            // (the broom's twigs burn while she dances, sweeps and throws, and for good once she glares; the small ones' always)
+            burning: !w || dancing || act === 'sweep' || act === 'throw' || w.face === 'glare',
+            time: time + e.id * 0.37,
+            tint: (flashUntil.get(e.id) ?? 0) > time ? FLASH : undefined,
+          });
+          continue;
+        }
         // King Rex is a T-Rex grown to boss size
         const kingRex = allBosses(s).some(b => b.kind === 'rex' && b.enemyId === e.id);
         const rhinoBoss = e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
@@ -631,6 +682,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
       }
       for (const k of KINDS) bodies.get(k)!.end();
+      witches.end();
+      witchFires.update(s, events, time, frameDt, theme.pointLights);
+      for (const id of witchWalk.keys()) if (!s.enemies.some(e => e.id === id)) witchWalk.delete(id);
       rhinoBodies.end();
       spiderBodies.end();
       spiderLegs.end();

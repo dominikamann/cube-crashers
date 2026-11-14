@@ -15,6 +15,7 @@ import { aloft } from './rare';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
 import { spawnHorde, type HordeComp } from './hordes';
+import { moveWitch, setupWitch, startDance, updateWitch, witchAttack, witchBusy, witchDown, WITCH } from './witch';
 
 export const BOSS = {
   deathCoins: 60,
@@ -170,6 +171,12 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     e.radius = BOSS.spiderRadius;
     e.speed = BOSS.spiderSpeed;
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
+  } else if (kind === 'witch') {
+    // the Schrättele walks like a tank in the rules, with a body of her own; her fire burns where she appears
+    const e = spawnEnemy(s, 'tank', centre);
+    e.hp = e.maxHp = WITCH.hp * bossScale(s);
+    b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
+    setupWitch(s, b, e, centre);
   } else if (kind === 'dominik') {
     // Angry Dominik walks like a tank in the rules, but is a body of his own
     const e = spawnEnemy(s, 'tank', centre);
@@ -355,6 +362,8 @@ function attack(s: SimState, b: BossState): void {
       }
       for (let i = 1; i <= BOSS.spiderFangs; i++) telegraph(s, { x: spider.pos.x + dir.x * (2 + i * BOSS.waveStep), z: spider.pos.z + dir.z * (2 + i * BOSS.waveStep) }, 1.2, BOSS.strikeDamage, 45 + i * 4);
     }
+  } else if (b.kind === 'witch') {
+    witchAttack(s, b);
   } else if (b.kind === 'dominik') {
     const dom = byId(s, b.enemyId!);
     if (!dom) return;
@@ -647,6 +656,7 @@ function drag(s: SimState, b: BossState, intents?: Map<number, Intent>): void {
 export function moveBoss(s: SimState): void {
   const all = allBosses(s);
   for (const b of all) if (b.kind === 'worm') moveWorms(s, b);
+  for (const b of all) if (b.kind === 'witch') moveWitch(s, b);
   if (all.length > 1) keepApart(s, all);
 }
 
@@ -698,6 +708,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   drag(s, b, intents);
   leap(s, b);
   laser(s, b);
+  updateWitch(s, b, intents);
   const living = bodies(s, b);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
@@ -717,6 +728,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   }
   if (living.length === 0) {
     if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
+    witchDown(s, b);
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
     dropCoins(s, b.lastPos, BOSS.deathCoins);
     if (b.kind === 'rex') layEggs(s, b.lastPos);
@@ -756,6 +768,11 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
         const a = (i / BOSS.spiderCall) * Math.PI * 2;
         spawnEnemy(s, 'spiderling', nearestFree(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
       }
+    // the Schrättele calls no horde: the small Schrättele come to dance with her round the fire
+    if (b.kind === 'witch') {
+      if (!b.wild) startDance(s, b, b.phase);
+      continue;
+    }
     const entries = s.map.waypoints.filter(w => dist(w, b.lastPos) > 10);
     if (entries.length > 0 && !b.wild) spawnHorde(s, s.rng.pick(entries), (b.kind === 'kraken' ? SEA_REINFORCEMENTS : REINFORCEMENTS)[b.phase], { rush: true });
   }
@@ -779,8 +796,10 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     body.speed = b.waiting;
     b.waiting = undefined;
   }
-  if (s.tick >= b.nextAttackAt) {
+  // (the Schrättele finishes what she is doing before she starts on something new)
+  if (s.tick >= b.nextAttackAt && !witchBusy(b)) {
     attack(s, b);
-    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * (b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : 1));
+    const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : 1;
+    b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * haste);
   }
 }

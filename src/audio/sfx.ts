@@ -66,6 +66,11 @@ export type SoundId =
   | 'bossPhase'
   | 'bossDead'
   | 'wormSplit'
+  | 'witchDrum'
+  | 'fireCrackle'
+  | 'fireWhoosh'
+  | 'witchPress'
+  | 'maskTurn'
   | 'gameWon'
   | 'gameLost'
   | 'uiClick';
@@ -324,6 +329,40 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 1500, freqEnd: 700, attack: 0.01, sustain: 0.45, decay: 0.2, volume: 0.06, vibrato: { rate: 55, depth: 500 }, lowpass: 3200 },
     { wave: 'sawtooth', freq: 110, freqEnd: 70, attack: 0.04, sustain: 0.4, decay: 0.35, volume: 0.14, vibrato: { rate: 42, depth: 22 }, lowpass: 700 },
   ],
+  // the Schrättele: a cackle, high and nasal, that falls and wavers ("hä-hä-hä-hä"), with a breath of air in it
+  roar_witch: [
+    ...[1180, 1090, 1150, 1020, 940].map((freq, i): SynthParams => ({ wave: 'square', freq, freqEnd: freq * 0.82, attack: 0.006, sustain: 0.05, decay: 0.06, volume: 0.075, vibrato: { rate: 34, depth: 60 }, lowpass: 2600, at: i * 0.105 })),
+    ...[590, 545, 575, 510, 470].map((freq, i): SynthParams => ({ wave: 'sawtooth', freq, freqEnd: freq * 0.8, attack: 0.006, sustain: 0.05, decay: 0.06, volume: 0.05, lowpass: 1500, at: i * 0.105 })),
+    { wave: 'noise', freq: 2000, attack: 0.02, sustain: 0.4, decay: 0.15, volume: 0.05, lowpass: 3800 },
+  ],
+  // a drum of the Schrättelestanz: a low skin struck hard, a slap on top
+  witchDrum: [
+    { wave: 'sine', freq: 118, freqEnd: 48, attack: 0.002, sustain: 0.03, decay: 0.32, volume: 0.5 },
+    { wave: 'noise', freq: 500, attack: 0.001, sustain: 0.015, decay: 0.07, volume: 0.22, lowpass: 1300 },
+    { wave: 'triangle', freq: 74, freqEnd: 55, attack: 0.004, sustain: 0.05, decay: 0.25, volume: 0.2 },
+  ],
+  // the bonfire: a few dry cracks of the wood, one after the other, and a soft roar under them
+  fireCrackle: [
+    ...[0, 0.07, 0.19, 0.24, 0.41].map((at, i): SynthParams => ({ wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.004, decay: 0.025 + (i % 2) * 0.02, volume: 0.07 + (i % 3) * 0.02, lowpass: 5200 - i * 500, at })),
+    { wave: 'noise', freq: 300, attack: 0.15, sustain: 0.25, decay: 0.2, volume: 0.05, lowpass: 420 },
+  ],
+  // fire swept through the air: a rushing breath that swells and dies away
+  fireWhoosh: [
+    { wave: 'noise', freq: 800, attack: 0.12, sustain: 0.1, decay: 0.3, volume: 0.24, lowpass: 900 },
+    { wave: 'noise', freq: 2000, attack: 0.05, sustain: 0.08, decay: 0.2, volume: 0.08, lowpass: 2600 },
+    { wave: 'sine', freq: 80, freqEnd: 140, attack: 0.1, sustain: 0.1, decay: 0.2, volume: 0.12 },
+  ],
+  // she comes down on someone: a heavy, muffled thump, and the breath pressed out of them
+  witchPress: [
+    { wave: 'sine', freq: 90, freqEnd: 36, attack: 0.002, sustain: 0.06, decay: 0.35, volume: 0.6 },
+    { wave: 'noise', freq: 400, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.25, lowpass: 700 },
+    { wave: 'sawtooth', freq: 160, freqEnd: 95, attack: 0.05, sustain: 0.25, decay: 0.3, volume: 0.08, vibrato: { rate: 9, depth: 6 }, lowpass: 600, at: 0.08 },
+  ],
+  // the wooden mask turns round: a slow creak of wood
+  maskTurn: [
+    { wave: 'sawtooth', freq: 140, freqEnd: 105, attack: 0.03, sustain: 0.4, decay: 0.15, volume: 0.12, vibrato: { rate: 23, depth: 18 }, lowpass: 1100 },
+    { wave: 'square', freq: 280, freqEnd: 230, attack: 0.03, sustain: 0.35, decay: 0.1, volume: 0.04, vibrato: { rate: 41, depth: 30 }, lowpass: 1400 },
+  ],
   // she bursts: a wet pop, and a swarm of small clicks running off
   bossBurst: [
     { wave: 'noise', freq: 900, attack: 0.002, sustain: 0.08, decay: 0.3, volume: 0.5, lowpass: 1400 },
@@ -557,7 +596,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'bossPhase':
       return one('bossPhase');
     case 'bossDead':
-      return e.kind === 'dominik' ? [{ id: 'thunder', pitch: 1 }, { id: 'bossDead', pitch: 1 }] : one('bossDead');
+      // (the Schrättele goes up in her fire)
+      return e.kind === 'dominik' ? [{ id: 'thunder', pitch: 1 }, { id: 'bossDead', pitch: 1 }] : e.kind === 'witch' ? [{ id: 'fireWhoosh', pitch: 0.55 }, { id: 'bossDead', pitch: 1 }, { id: 'roar_witch', pitch: 1.6 }] : one('bossDead');
     case 'dominikJoined':
       return [{ id: 'thunder', pitch: 1.3 }, { id: 'roar_dominik', pitch: 1.5 }];
     case 'dominikLeft':
@@ -580,6 +620,25 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return [{ id: 'bubblePop', pitch: 0.8 }, { id: 'roar_rex', pitch: 2.4 }];
     case 'wormSplit':
       return one('wormSplit');
+    case 'witchPress':
+      return [{ id: 'witchPress', pitch: 1 }, { id: 'roar_witch', pitch: 0.85 }];
+    case 'witchRelease':
+      return one('dash', e.broke ? 1.2 : 0.9);
+    case 'witchDance':
+      return [{ id: 'witchDrum', pitch: 1 }, { id: 'roar_witch', pitch: 1.15 }];
+    case 'witchDrum':
+      // (every third beat a deeper one)
+      return one('witchDrum', e.beat % 3 === 0 ? 0.8 : 1 + (e.beat % 2) * 0.12);
+    case 'witchDanceEnd':
+      return [{ id: 'fireWhoosh', pitch: 0.7 }, { id: 'roar_witch', pitch: 0.7 }];
+    case 'witchFace':
+      return [{ id: 'maskTurn', pitch: 1 }, { id: 'roar_witch', pitch: 0.75 }];
+    case 'witchSweep':
+      return one('fireWhoosh');
+    case 'witchTwigs':
+      return one('fireWhoosh', 1.4);
+    case 'fireCrackle':
+      return one('fireCrackle');
     case 'gameWon':
       return one('gameWon');
     case 'gameLost':

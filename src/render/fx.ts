@@ -66,6 +66,7 @@ const BOSS_WRECK: Record<BossKind, number[]> = {
   dominik: [0x1b1c21, 0x1b1c21, 0x1b1c21, 0xd3936e, 0xd3936e, 0x20295c, 0x20295c, 0x2bc8ff, 0xd62bff, 0x8a919e, 0x4a3222],
   spider: [0x3a2a22, 0x3a2a22, 0x241a15, 0x5a4034, 0xd9701e, 0xd9701e, 0xff3b3b],
   rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
+  witch: [0x2f7d3a, 0xc0262c, 0xd6a12a, 0x18181d, 0x18181d, 0xbd8752, 0xe2c062, 0xc4262e],
 };
 
 /** the colours of the unicorn's trail */
@@ -340,6 +341,14 @@ export function createFx(scene: THREE.Scene): Fx {
   };
   /** Angry Dominik's hammer in the air: out along its line and back, after the warning (see boss.ts) */
   const hammers: { from: Vec2; to: Vec2; age: number }[] = [];
+  /** the Schrättele's burning twigs in the air: from her hand to where they come down, in `flight` seconds */
+  const twigs: { from: Vec2; to: Vec2; flight: number; age: number }[] = [];
+  /** fire colours: her broom, her twigs, her end */
+  const FIRE = [0xff4a0a, 0xff7a14, 0xffa524, 0xffd040, 0xffffff];
+  /** a spark of fire at a point in the air */
+  const ember = (x: number, y: number, z: number, life: number, size: number, color: number, vy = 0.6) => {
+    if (particles.length < MAX_PARTICLES) particles.push({ x, y, z, vx: (rand() - 0.5) * 0.6, vy, vz: (rand() - 0.5) * 0.6, life, maxLife: life, size, color, spin: 0, spark: true });
+  };
 
   const playerPos = (s: SimState, id: number): Vec2 | undefined => s.players.find(p => p.id === id)?.pos;
 
@@ -368,6 +377,13 @@ export function createFx(scene: THREE.Scene): Fx {
               if (time - (chipped.get(en.id) ?? -1e9) < 0.35) break;
               chipped.set(en.id, time);
               burst(e.pos, (en.id === s.mini?.enemyId ? DOMINIK.small : DOMINIK.scale) * 2.2, 3, DOMINIK_CHIPS, 3, 0.07, 0.7);
+              break;
+            }
+            // (the Schrättele loses bits of her clothes and her straw)
+            if ([s.boss, ...(s.bosses ?? [])].some(b => b?.kind === 'witch' && b.enemyId === en.id)) {
+              if (time - (chipped.get(en.id) ?? -1e9) < 0.2) break;
+              chipped.set(en.id, time);
+              burst(e.pos, 1.5, 3, BOSS_WRECK.witch, 3, 0.07, 0.7);
               break;
             }
             const l = ENEMY_LOOK[en.kind];
@@ -406,6 +422,23 @@ export function createFx(scene: THREE.Scene): Fx {
             // (Angry Dominik goes in a thunderstorm: bolt after bolt where he stood)
             // (Angry Dominik goes in a thunderstorm: bolt after bolt strikes him where he stands, closer and
             // faster, and only then he bursts; see `dying`)
+            if (e.kind === 'witch') {
+              // the Schrättele goes up in flames: a burst of fire where she stood, her rags and her mask flying, a
+              // column of sparks that rises a long way, and the pieces of her burning broom (her fire burns down
+              // by itself, see witch-fire.ts)
+              pops.push({ x: e.pos.x, y: 1.4, z: e.pos.z, age: 0, life: 0.35, size: 7, color: 0xffb040, ring: false });
+              pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: 0, life: 0.6, size: 12, color: 0xff7a14, ring: true });
+              chunks(e.pos, 1.4, 40, BOSS_WRECK.witch, 7, 0.14, 0.34);
+              chunks(e.pos, 1.8, 14, [0x6b5236, 0x4c3a26, 0xe8e2d4, 0xff7a14], 9, 0.06, 0.12);
+              for (let i = 0; i < 160 && particles.length < MAX_PARTICLES; i++) {
+                const a = rand() * Math.PI * 2, r = rand() * 0.8, life = 0.8 + rand() * 1.6;
+                particles.push({ x: e.pos.x + Math.cos(a) * r, y: 0.3 + rand() * 1.8, z: e.pos.z + Math.sin(a) * r, vx: Math.cos(a) * 1.4, vy: 4 + rand() * 8, vz: Math.sin(a) * 1.4, life, maxLife: life, size: 0.06 + rand() * 0.1, color: FIRE[i % FIRE.length], spin: 0, spark: true });
+              }
+              splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 12, size: 3.5, color: 0x1e1410, turn: rand() * Math.PI * 2 });
+              ring(e.pos, 5, [0xffd040, 0xff7a14]);
+              addShake(0.6);
+              break;
+            }
             if (e.kind === 'dominik') {
               thunderstorm(e.pos, 14, 2.6, DOMINIK_DEATH);
               dying.push({ at: { ...e.pos }, in: DOMINIK_DEATH });
@@ -438,6 +471,27 @@ export function createFx(scene: THREE.Scene): Fx {
             break;
           case 'hammerThrow':
             hammers.push({ from: e.from, to: e.to, age: 0 });
+            break;
+          case 'witchTwigs':
+            for (const to of e.to) twigs.push({ from: { ...e.from }, to: { ...to }, flight: Math.max(0.2, (e.at - s.tick) / TICK_RATE), age: 0 });
+            break;
+          case 'witchSweep':
+            // fire flies off her broom as it goes round
+            spray(e.pos, e.dir, 1.6, FIRE, Math.ceil(36 * particleScale));
+            break;
+          case 'witchPress':
+            // she comes down on them: dust flies, the floor shakes
+            tearFloor(e.pos, 0.9);
+            addShake(0.25);
+            break;
+          case 'witchRelease':
+            if (e.broke) burst(e.pos, 1, 16, [0xffffff, 0xd6a12a, 0x2f7d3a], 4, 0.1, 0.8);
+            break;
+          case 'witchFace':
+            // the mask turns: chips of wood fly off it and sparks come out of its eyes
+            burst(e.pos, 2.1, 14, [0xbd8752, 0x8e4f2c, 0x3a2314], 3, 0.08, 0.9);
+            burst(e.pos, 2.1, 18, [0xff3020, 0xffa524, 0xffffff], 4, 0.06, 1.2);
+            addShake(0.2);
             break;
           case 'lightning':
             bolt(e.pos);
@@ -809,6 +863,20 @@ export function createFx(scene: THREE.Scene): Fx {
           const hit = [...s.enemies.filter(x => d.enemies.includes(x.id)), ...s.players.filter(p => d.rivals.includes(p.id))];
           hit.forEach((o, k) => beam(at, y, o.pos, 0.6, DISCO_COLORS[k % 3], 0.07));
         }
+      }
+      for (let i = twigs.length - 1; i >= 0; i--) {
+        const w = twigs[i];
+        w.age += dt;
+        if (w.age >= w.flight) {
+          twigs.splice(i, 1);
+          continue;
+        }
+        // a burning bundle in a high arc, trailing sparks
+        const k = w.age / w.flight;
+        const x = w.from.x + (w.to.x - w.from.x) * k, z = w.from.z + (w.to.z - w.from.z) * k, y = 1.8 + Math.sin(Math.PI * k) * 3 - 1.7 * k;
+        ember(x, y, z, 0.05, 0.22, 0xffd040, 0);
+        ember(x, y, z, 0.05, 0.14, 0x6b5236, 0);
+        if (rand() < 0.7) ember(x, y, z, 0.35 + rand() * 0.3, 0.07, FIRE[Math.floor(rand() * 4)]);
       }
       for (let i = hammers.length - 1; i >= 0; i--) {
         const h = hammers[i];
