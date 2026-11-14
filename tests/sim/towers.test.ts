@@ -159,10 +159,10 @@ describe('tower behaviour', () => {
     // one pulse in the first second
     expect(p.hp).toBe(50 + TOWERS.medic.heal!);
     expect(events).toContainEqual({ type: 'towerHealed', pos: pad, radius: TOWERS.medic.range, targets: [p.pos] });
-    // about 2 health a second: nothing to stand in a horde with
+    // almost 3 health a second: nothing to stand in a horde with
     run(s, 9 * 60);
-    expect(p.hp - 50).toBeGreaterThan(15);
-    expect(p.hp - 50).toBeLessThanOrEqual(24);
+    expect(p.hp - 50).toBeGreaterThan(20);
+    expect(p.hp - 50).toBeLessThanOrEqual(32);
     p.hp = p.maxHp - 1;
     run(s, 180);
     expect(p.hp).toBe(p.maxHp);
@@ -200,10 +200,10 @@ describe('tower behaviour', () => {
 
   it('an upgraded medic station reaches further and heals more, more often', () => {
     const now = towerStats('medic', 1), top = towerStats('medic', MAX_TOWER_LEVEL);
-    expect(now.heal! / now.cooldown).toBeCloseTo(2, 5);
+    expect(now.heal! / now.cooldown).toBeCloseTo(2.67, 1);
     expect(top.range).toBe(now.range + 2);
     expect(top.heal).toBe(now.heal! * 2);
-    expect(top.heal! / top.cooldown).toBeCloseTo(5.54, 1);
+    expect(top.heal! / top.cooldown).toBeCloseTo(7.38, 1);
     const { s, p, pad } = onPad(500);
     stepSim(s, [build(PAD, 'medic')]);
     s.towers[0].buildLeft = 0;

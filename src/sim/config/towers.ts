@@ -17,8 +17,8 @@ export const TOWERS: Record<TowerKind, TowerDef> = {
   frost: { cost: 50, hp: 40, range: 5, cooldown: 1.5, damage: 0 },
   tesla: { cost: 70, hp: 40, range: 5.5, cooldown: 1.3, damage: 10 },
   bumper: { cost: 45, hp: 70, range: 2.6, cooldown: 1.4, damage: 3 },
-  // 2 health a second (3.5 and 5.5 with the upgrades): a breather between fights, far less than a horde deals
-  medic: { cost: 55, hp: 40, range: 4, cooldown: 1.5, damage: 0, heal: 3 },
+  // almost 3 health a second (4.7 and 7.4 with the upgrades): a breather between fights, far less than a horde deals
+  medic: { cost: 55, hp: 40, range: 4, cooldown: 1.5, damage: 0, heal: 4 },
 };
 
 /** the build menu's cards from left to right (keys 1–6) */

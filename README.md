@@ -687,10 +687,10 @@ once it is finished. Towers are solid: you walk round them, and work on them fro
 | **Popcorn Mortar** | 60 | 60 / 90 | Lobs shells that hit everything in an area. |
 | **Bumper** | 45 | 45 / 68 | Knocks monsters around it away like a pinball bumper (into walls, ouch). |
 | **Tesla Coil** | 70 | 70 / 105 | Lightning that jumps from monster to monster, up to four in a row. |
-| **Medic Station** | 55 | 55 / 83 | Heals every hurt player within 4 tiles (in sight of it) by about 2 health a second. It does not attack and does not help up the fallen; two stations do not add up. |
+| **Medic Station** | 55 | 55 / 83 | Heals every hurt player within 4 tiles (in sight of it) by almost 3 health a second. It does not attack and does not help up the fallen; two stations do not add up. |
 
 - **Upgrade:** press E next to a finished tower and E again. Each level gives +50 % damage and health, +1 range
-  and fires faster (the Medic Station heals about 3.5 and 5.5 health a second on levels 2 and 3). The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
+  and fires faster (the Medic Station heals about 4.7 and 7.4 health a second on levels 2 and 3). The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
   meanwhile. Gold marks on the base show the level.
 - **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
 
