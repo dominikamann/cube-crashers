@@ -433,7 +433,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('toast.dominikJoined'), 'warn');
             break;
           case 'witchPress':
-            if (e.playerId === p.id) toast(t('toast.witchPress'), 'warn');
+            // (long enough to read while she holds you down)
+            if (e.playerId === p.id) toast(t('toast.witchPress'), 'final');
             else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn');
             break;
           case 'witchDance':
@@ -516,7 +517,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             else toast(t('race.end'), 'good');
             break;
           case 'floorStart':
-            toast(t('toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
+            // (the Town is the game between two floors, not a floor of its own)
+            toast(t(s.run.side ? 'toast.between' : 'toast.floor', { n: e.floor + 1, name: t((floorDef(e.mapId)?.name ?? 'floor.plaza') as 'floor.plaza') }), 'good');
             break;
           case 'bought':
             if (e.playerId === p.id) toast(t('toast.bought'), 'good');

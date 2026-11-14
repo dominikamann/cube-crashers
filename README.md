@@ -164,8 +164,8 @@ See [Development](#development). You need Node.js 20 or newer.
 
 1. Start the game, pick a mode under **Play** and click it:
    - **Tower Run**: the full game over five floors.
-   - **Single floor**: one map of your choice, a short game. Every world, the bosses and the three
-     minigames (Kart Rally, Lane Defense, Glitch Maze) are there to pick.
+   - **Single floor**: one map of your choice, a short game. Every world, the bosses, the three
+     minigames (Kart Rally, Lane Defense, Glitch Maze) and the Town are there to pick.
    - **Versus**: players against players, with bots to fill up (see [Versus](#versus-players-against-players)).
    - **Endless**: once unlocked (see [Unlocks](#unlocks-and-endless-mode)).
    - Under **Tower Run** you also find the **Daily Run** and the **Boss Rush**; **LAN party** and **Online
@@ -214,14 +214,15 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 
 | Floor | Theme | What happens | Then |
 |---|---|---|---|
-| 1 | Arcade Plaza | Nests, daylight | **Kart Rally** |
-| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | **Lane Defense** |
-| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block** *or* the **Rhino** in the arena, or under water **the Kraken** with fish and sharks | **Glitch Maze** |
-| 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | **Shaft ride** |
-| 5 | Rooftop | **Final boss: Segment Worm**, **King Rex** *or* the **Tarantula Queen** | – |
+| 1 | Arcade Plaza | Nests, daylight | a game between |
+| 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
+| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block** *or* the **Rhino** in the arena, or under water **the Kraken** with fish and sharks (or **Die Hex**) | a game between |
+| 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
+| 5 | Rooftop | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **Die Hex** | – |
 
 Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
-look quite the same; no boss comes twice in a run, and on the LAN everyone gets the same ones. Every world can also be played on its own under **Single floor**.
+look quite the same; no boss comes twice in a run (a run that goes through the Town meets Die Hex there and on no
+floor), and on the LAN everyone gets the same ones. Every world can also be played on its own under **Single floor**.
 
 **Wild bosses:** now and then a smaller boss waits by the elevator once the last nest has fallen: rarely on
 the first floor, more often the higher you are. It is never a boss your run has a floor for, and always one that
@@ -286,8 +287,8 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
 map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
-under everyone, and at the very end, on the roof at night, **Die Hex** (in the Town, by her bonfire), and at the very end, on the roof at night,
-**Angry Dominik**: laser eyes, a hammer he throws
+under everyone, **Die Hex** (in the Town, by her bonfire; in the arena when a LAN host has fixed the view from above), and at
+the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
 
@@ -361,7 +362,8 @@ Up to **10 players** on the same network (Wi-Fi or cable), all with the desktop 
      the button to go on to the next one); every co-op game has its difficulty next to it.
    - **Versus**: **Change…** opens the match setup (or **Let everyone vote** between two matches for 30
      seconds). **Bots** fills every match up to that many players; friends who join take a bot's place.
-   - **View**: *Both* (everyone switches with V), *First person* only or *Top view* only, for everyone.
+   - **View**: *Both* (everyone switches with V), *First person* only or *Top view* only, for everyone. The Town
+     is made for first person: with *Top view* it is neither a game between the floors nor a map to pick.
    - **Start** (right of **Leave**) begins the game for everyone.
 
 **Everyone else joins:**

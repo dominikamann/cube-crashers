@@ -27,7 +27,7 @@ import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
 import { buildRunLog, saveRunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
-import { BOSS_RUSH, FLOORS } from './sim/config/floors';
+import { BOSS_RUSH, FLOORS, RUN_FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
 import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
@@ -263,6 +263,8 @@ function startGame() {
     autoFill: () => autoFill,
     setViewMode: (v: 'both' | 'fp' | 'top') => {
       lanView = v;
+      // (the Town is first person only: a Single floor there goes back to the first floor)
+      if (v === 'top' && settings.quickMap === 'waldsee') settings.quickMap = RUN_FLOORS[0];
       if (host) host.viewMode = v;
       lastLobby = '';
     },
@@ -1128,7 +1130,9 @@ function startGame() {
     }
     // V (or the player's view key): first person on or off; the mouse gets captured to turn the view
     // (not when the LAN host fixed the view)
-    const fixedView = role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false;
+    // (nor in the Town, which is walked in first person only)
+    const inTown = view().map.id === 'waldsee' && view().run.stage === 'floor';
+    const fixedView = inTown || (role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false);
     if (mode === 'playing' && e.code === settings.bindings.view && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
