@@ -1,3 +1,5 @@
 {
-  "servers": []
+  "servers": [
+    { "name": "AmannLabs Discovery Chaos", "address": "92.5.153.196:47800" }
+  ]
 }
