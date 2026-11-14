@@ -3,6 +3,8 @@ import { playSynth, soundDuration } from './synth';
 
 export const MAX_VOICES_PER_SOUND = 4;
 export const MIN_RESTART_SECONDS = 0.02;
+/** how much of the music is left while the game is paused */
+export const PAUSED_MUSIC = 0.35;
 
 /** Keeps hundreds of hits per second from stacking into noise. Pure: times are passed in. */
 export class VoiceLimiter {
@@ -28,6 +30,10 @@ export interface Mixer {
   setMuted(on: boolean): void;
   setMusicVolume(v: number): void;
   setSfxVolume(v: number): void;
+  /** the music steps back while the game is paused */
+  setPaused(on: boolean): void;
+  /** every effect still ringing falls silent (the game was left): new ones play as before */
+  cutEffects(): void;
   readonly musicBus: GainNode;
   readonly limiter: VoiceLimiter;
 }
@@ -43,10 +49,12 @@ function softClipCurve(): Float32Array<ArrayBuffer> {
 }
 
 export function createMixer(ctx: BaseAudioContext): Mixer {
-  const sfxBus = ctx.createGain();
+  let sfxBus = ctx.createGain();
   const musicBus = ctx.createGain();
+  let sfxVolume = 1, musicVolume = 1, paused = false;
   sfxBus.gain.value = 0.8;
   musicBus.gain.value = 0.5;
+  const setMusic = () => musicBus.gain.setTargetAtTime(0.5 * musicVolume * (paused ? PAUSED_MUSIC : 1), ctx.currentTime, 0.08);
 
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -10;
@@ -85,10 +93,26 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
       for (const layer of layers) playSynth(ctx, sfxBus, layer, now, p);
     },
     setMusicVolume(v) {
-      musicBus.gain.value = 0.5 * v;
+      musicVolume = v;
+      setMusic();
     },
     setSfxVolume(v) {
+      sfxVolume = v;
       sfxBus.gain.value = 0.8 * v;
+    },
+    setPaused(on) {
+      paused = on;
+      setMusic();
+    },
+    cutEffects() {
+      // the old bus fades out with everything on it; a fresh one takes the effects from here on
+      const old = sfxBus;
+      old.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
+      setTimeout(() => old.disconnect(), 400);
+      sfxBus = ctx.createGain();
+      sfxBus.gain.value = 0.8 * sfxVolume;
+      sfxBus.connect(comp);
+      limiter.reset();
     },
     musicBus,
     limiter,

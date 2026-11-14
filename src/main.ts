@@ -764,6 +764,7 @@ function startGame() {
     loop.resume();
     frameCounter.reset();
     bossesUp = 0;
+    ensureAudio().mixer.setPaused(false);
     ensureAudio().music.playTrack('battle');
   }
 
@@ -1040,6 +1041,7 @@ function startGame() {
     padCtl.releaseAll(split ? (pads.length >= 2 ? pads[0] : undefined) : pads[0]);
     padCtl2.releaseAll(split ? (pads.length >= 2 ? pads[1] : pads[0]) : undefined);
     if (role === 'solo') loop.resume();
+    audio?.mixer.setPaused(false);
   }
 
   function pause() {
@@ -1050,6 +1052,7 @@ function startGame() {
     padCtl2.releaseAll();
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
+    audio?.mixer.setPaused(true);
     screens.pause();
   }
 
@@ -1062,7 +1065,12 @@ function startGame() {
     solo = createSim(floor01, 1);
     setHudVisible(false);
     screens.title();
-    if (audio) audio.music.playTrack('menu');
+    if (audio) {
+      // nothing of the game rings on in the menu
+      audio.mixer.setPaused(false);
+      audio.mixer.cutEffects();
+      audio.music.playTrack('menu');
+    }
   }
 
   /** when the last game ended: A is ignored for a moment after it, so players still mashing A do not hit "Play again" */
