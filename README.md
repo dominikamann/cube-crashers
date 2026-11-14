@@ -533,7 +533,8 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
   brings a smaller King Rex or Rhino into the arena every minute or two. Beating it wins nothing but a crate.
 - **Discovery**: a new match every time, through every rule, teams and free for all taking turns, a new map,
   now and then monsters. The default.
-- Towers have an owner and fire at rivals, but only at a third of their strength.
+- Towers have an owner and fire at rivals, but only at a third of their strength. A Medic Station heals only
+  its owner (and the owner's team).
 
 **Kill cam:** knocked out by a rival, you watch the last five seconds again through their eyes while you wait to
 come back (a click skips it; *Settings → Kill cam* switches it off).
@@ -561,7 +562,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `Q` | Select the rare weapon when you have one; without one, switch to the next weapon |
 | `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you (several in a row get weaker). Only the top of a jump is out of the monsters' reach. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
-| `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`5` to choose), hold to build it right away |
+| `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`6` to choose), hold to build it right away |
 | `E` (hold) | Plant a charge · help a teammate up · finish or repair a tower |
 | `1`–`4`, `Enter` | In the elevator shop: buy an offer, say you are ready |
 | `Esc` / `P` | Menu (pauses when playing alone) |
@@ -674,7 +675,7 @@ breather, not a fortress. (The outer walls of the map do not count.)
 ### Towers
 
 Stand on a pad and press **E** (controller: **X**): the towers open with the first one selected. Choose with
-the mouse wheel, **1–5** or ◀ ▶, press **E** again to build it, or simply keep holding **E** to build the
+the mouse wheel, **1–6** or ◀ ▶, press **E** again to build it, or simply keep holding **E** to build the
 selected one right away. You pay right away, then a scaffold goes up: keep **holding E** for about 2.5 seconds
 until the tower stands. If you let go, it stays half-built and you can finish it later. A tower only fires
 once it is finished. Towers are solid: you walk round them, and work on them from right beside them.
@@ -686,9 +687,10 @@ once it is finished. Towers are solid: you walk round them, and work on them fro
 | **Popcorn Mortar** | 60 | 60 / 90 | Lobs shells that hit everything in an area. |
 | **Bumper** | 45 | 45 / 68 | Knocks monsters around it away like a pinball bumper (into walls, ouch). |
 | **Tesla Coil** | 70 | 70 / 105 | Lightning that jumps from monster to monster, up to four in a row. |
+| **Medic Station** | 55 | 55 / 83 | Heals every hurt player within 4 tiles (in sight of it) by about 2 health a second. It does not attack and does not help up the fallen; two stations do not add up. |
 
 - **Upgrade:** press E next to a finished tower and E again. Each level gives +50 % damage and health, +1 range
-  and fires faster. The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
+  and fires faster (the Medic Station heals about 3.5 and 5.5 health a second on levels 2 and 3). The upgrade is built like a tower (3 seconds of holding E); the tower keeps firing
   meanwhile. Gold marks on the base show the level.
 - **Repair:** hold E on a damaged tower. It heals a quarter of its health per second, for free.
 

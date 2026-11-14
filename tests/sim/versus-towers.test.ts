@@ -41,6 +41,31 @@ describe('towers in versus', () => {
     expect(s.players[1].hp).toBe(100);
   });
 
+  it('a medic station heals its owner, not a rival', () => {
+    const s = withTower();
+    const t = s.towers[0];
+    t.kind = 'medic';
+    const [owner, rival] = s.players;
+    owner.pos = { x: t.pos.x - 1.5, z: t.pos.z };
+    rival.pos = { x: t.pos.x + 1.5, z: t.pos.z };
+    owner.hp = rival.hp = 50;
+    for (let i = 0; i < 60; i++) stepSim(s, []);
+    expect(owner.hp).toBe(50 + TOWERS.medic.heal!);
+    expect(rival.hp).toBe(50);
+  });
+
+  it('a medic station heals the owner\'s teammates', () => {
+    const s = withTower('team');
+    const t = s.towers[0];
+    t.kind = 'medic';
+    const mate = s.players[1];
+    mate.team = s.players[0].team;
+    mate.pos = { x: t.pos.x + 1.5, z: t.pos.z };
+    mate.hp = 50;
+    for (let i = 0; i < 60; i++) stepSim(s, []);
+    expect(mate.hp).toBe(50 + TOWERS.medic.heal!);
+  });
+
   it('one tower per player: a new one replaces the old', () => {
     const s = withTower();
     const owner = s.players[0];

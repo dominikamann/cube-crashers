@@ -592,6 +592,11 @@ export function createFx(scene: THREE.Scene): Fx {
             // green sparkles rise from every monster that got mended
             for (const t of e.targets) burst(t, 0.8, 5, [0x5fff9a, 0xffffff], 1.5, 0.07, 1.2);
             break;
+          case 'towerHealed':
+            // a soft green ring out to the station's reach, and sparkles rising from everyone it patched up
+            ring(e.pos, e.radius, [0x5fff9a, 0xd8ffe6]);
+            for (const t of e.targets) burst(t, 0.9, 6, [0x5fff9a, 0xffffff], 1.2, 0.08, 1.4);
+            break;
           case 'enemyBlink':
             // a puff of purple where it vanished and where it appears
             burst(e.from, 0.6, 10, [0x7a5cff, 0xd8ccff], 3, 0.08, 0.8);

@@ -1,7 +1,7 @@
 import { rivals, VERSUS } from './versus';
 import { damagePlayer } from './player';
 import { BUILD_TICKS, BUMPER, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TESLA, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
-import { DT, TICK_RATE, type Intent, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
+import { DT, TICK_RATE, type Intent, type Player, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
 import { BLOCKS_WALKER, hasLos, moveCircle } from '../map/tilemap';
 import { PLAYER_RADIUS } from '../config/balance';
 import { airborne } from './rare';
@@ -89,6 +89,12 @@ export function updateTowerWork(s: SimState, intents: Map<number, Intent>): void
   }
 }
 
+/** A medic station reaches `p`: in range and in sight, and in versus only its owner (and the owner's team). */
+function mends(s: SimState, t: Tower, p: Player): boolean {
+  if (s.versus && p.id !== t.ownerId && (s.versus.mode === 'ffa' || p.team !== s.players.find(o => o.id === t.ownerId)?.team)) return false;
+  return dist(p.pos, t.pos) <= towerStats(t.kind, t.level).range && hasLos(s.map, t.pos, p.pos);
+}
+
 /** Fires `t` if something is in range. Returns true when it fired. */
 function fire(s: SimState, t: Tower): boolean {
   const def = towerStats(t.kind, t.level);
@@ -172,6 +178,16 @@ function fire(s: SimState, t: Tower): boolean {
         damagePlayer(s, r, def.damage * VERSUS.towerScale, 'other', t.ownerId);
       }
       s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...t.pos } });
+      return true;
+    }
+    case 'medic': {
+      // stations do not add up: where two reach a player, the stronger one (or the older) does the healing
+      const better = (o: Tower) => o.kind === 'medic' && (o.buildLeft === 0 || o.upgrading) && (o.level > t.level || (o.level === t.level && o.id < t.id));
+      // only the hurt, and nobody who is down: helping up stays a teammate's job
+      const hurt = s.players.filter(p => p.downUntil === null && !p.out && p.hp < p.maxHp && mends(s, t, p) && !s.towers.some(o => better(o) && mends(s, o, p)));
+      if (hurt.length === 0) return false;
+      for (const p of hurt) p.hp = Math.min(p.maxHp, p.hp + (def.heal ?? 0));
+      s.events.push({ type: 'towerHealed', pos: { ...t.pos }, radius: def.range, targets: hurt.map(p => ({ ...p.pos })) });
       return true;
     }
     case 'frost': {

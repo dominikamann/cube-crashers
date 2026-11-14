@@ -81,7 +81,7 @@ export function createBuildMenu(root: HTMLElement, onChoose: (kind: TowerKind) =
           const now = towerStats(tower.kind, tower.level), next = towerStats(tower.kind, tower.level + 1);
           up.innerHTML = max
             ? `<div class="name">${t(`tower.${tower.kind}`)} · ${t('tower.level', { n: tower.level })}</div><div>${t('tower.maxLevel')}</div>`
-            : `<div class="key">${useKey}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
+            : `<div class="key">${useKey}</div><div class="name">${t('tower.upgrade', { n: tower.level + 1 })}</div><div>${now.damage > 0 ? t('tower.upgradeDesc', { dmg: Math.round((next.damage / now.damage - 1) * 100), range: next.range - now.range }) : now.heal && next.heal ? t('tower.upgradeDescMedic', { heal: Math.round((next.heal / now.heal - 1) * 100), range: next.range - now.range }) : t('tower.upgradeDescFrost', { range: next.range - now.range })}</div><div class="cost">● ${cost}</div>`;
         }
         up.classList.toggle('poor', max || coins < cost);
       } else {

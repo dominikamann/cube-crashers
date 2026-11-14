@@ -149,6 +149,72 @@ describe('tower behaviour', () => {
     expect(e.hp).toBeLessThan(TANK);
   });
 
+  it('the medic station heals a hurt player in reach, a little at a time, and never past full health', () => {
+    const { s, p, pad } = onPad(500);
+    stepSim(s, [build(PAD, 'medic')]);
+    s.towers[0].buildLeft = 0;
+    p.pos = rel(pad, 2, 0);
+    p.hp = 50;
+    const events = run(s, 60);
+    // one pulse in the first second
+    expect(p.hp).toBe(50 + TOWERS.medic.heal!);
+    expect(events).toContainEqual({ type: 'towerHealed', pos: pad, radius: TOWERS.medic.range, targets: [p.pos] });
+    // about 2 health a second: nothing to stand in a horde with
+    run(s, 9 * 60);
+    expect(p.hp - 50).toBeGreaterThan(15);
+    expect(p.hp - 50).toBeLessThanOrEqual(24);
+    p.hp = p.maxHp - 1;
+    run(s, 180);
+    expect(p.hp).toBe(p.maxHp);
+    // nobody hurt: it rests, and stays quiet
+    expect(run(s, 180).some(e => e.type === 'towerHealed')).toBe(false);
+  });
+
+  it('the medic station leaves alone who is out of reach, and who is down', () => {
+    const { s, p, pad } = onPad(500);
+    stepSim(s, [build(PAD, 'medic')]);
+    s.towers[0].buildLeft = 0;
+    p.pos = rel(pad, TOWERS.medic.range + 0.5, 0);
+    p.hp = 50;
+    run(s, 180);
+    expect(p.hp).toBe(50);
+    p.pos = rel(pad, 2, 0);
+    p.hp = 1;
+    p.downUntil = s.tick + 10_000;
+    p.reviveUntil = s.tick + 10_000;
+    run(s, 180);
+    expect(p.hp).toBe(1);
+  });
+
+  it('two medic stations do not add up', () => {
+    const { s, p, pad } = onPad(500);
+    stepSim(s, [build(PAD, 'medic')]);
+    const first = s.towers[0];
+    first.buildLeft = 0;
+    s.towers.push({ ...first, id: s.nextId++, padId: -1, pos: rel(pad, 4, 0) });
+    p.pos = rel(pad, 2, 0);
+    p.hp = 50;
+    run(s, 60);
+    expect(p.hp).toBe(50 + TOWERS.medic.heal!);
+  });
+
+  it('an upgraded medic station reaches further and heals more, more often', () => {
+    const now = towerStats('medic', 1), top = towerStats('medic', MAX_TOWER_LEVEL);
+    expect(now.heal! / now.cooldown).toBeCloseTo(2, 5);
+    expect(top.range).toBe(now.range + 2);
+    expect(top.heal).toBe(now.heal! * 2);
+    expect(top.heal! / top.cooldown).toBeCloseTo(5.54, 1);
+    const { s, p, pad } = onPad(500);
+    stepSim(s, [build(PAD, 'medic')]);
+    s.towers[0].buildLeft = 0;
+    s.towers[0].level = MAX_TOWER_LEVEL;
+    // out of a new station's reach, inside this one's
+    p.pos = rel(pad, now.range + 1.5, 0);
+    p.hp = 50;
+    run(s, 60);
+    expect(p.hp).toBe(50 + top.heal!);
+  });
+
   it('popcorn mortar damages enemies in an area', () => {
     const { s, p, pad } = onPad(TOWERS.popcorn.cost);
     stepSim(s, [build(PAD, 'popcorn')]);

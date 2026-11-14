@@ -78,7 +78,7 @@ describe('key bindings', () => {
     expect(h['key.use']).toBe('E');
     expect(h['key.move']).toBe('WASD');
     expect(h['key.weapons']).toBe('1–6');
-    expect(h['key.towers']).toBe('1–5');
+    expect(h['key.towers']).toBe('1–6');
     const moved = keyHints({ ...DEFAULT_BINDINGS, up: 'KeyI', left: 'KeyJ', down: 'KeyK', right: 'KeyL', weapon2: 'KeyX' });
     expect(moved['key.move']).toBe('IJKL');
     expect(moved['key.weapons']).toBe('1/X/3/4/5/6');
