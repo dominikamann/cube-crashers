@@ -643,9 +643,11 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
       // cyan roofline; the lit ground floor holds the shop window with the robots, the name glowing above
       {
-        // a modern glass tower, taller than its neighbours, with a hipped roof and PV; flush with the house to its
-        // left (west, x 22.6) and stopping short of the house to its right (x 28.3), whose door is beside it
-        const X0 = 22.6, X1 = 28.2, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
+        // a modern glass tower, taller than its neighbours, with a hipped roof and PV, in the middle between the house
+        // to its left (x 22.6) and the one to its right (x 28.3); the gaps either side are closed by a wall a step
+        // back, so they are niches, not ways through
+        for (const [g0, g1] of [[22.55, 23.2], [27.7, 28.35]]) box((g0 + g1) / 2, 1.6, 50 - 1.2, g1 - g0, 4, 0.3, 0xe9e4d6);
+        const X0 = 23.2, X1 = 27.7, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
         const curtain = (wB: number, hB: number, front: boolean) => {
           const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
           c.width = cw;
@@ -1138,15 +1140,28 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
 
   // ---- where a street ends: a barrier of red and white beams on posts, lamps on it. Behind it the street goes on
   for (const b of WALDSEE_BARRIERS) {
-    const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax), width = b.half * 2 + 1.5;
+    const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax);
+    // (from wall to wall: as far as the real fronts on either side, measured along the barrier)
+    const reach = (sx: number): number => {
+      let best = b.half + 2;
+      for (const w of WALL_FEET) {
+        const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
+        if (Math.abs(den) < 1e-6) continue;
+        const t = ((w.x0 - b.at[0]) * ez - (w.z0 - b.at[1]) * ex) / den, u = ((w.x0 - b.at[0]) * az * sx - (w.z0 - b.at[1]) * ax * sx) / den;
+        if (t > 0.2 && u >= -0.02 && u <= 1.02 && t < best) best = t;
+      }
+      return best;
+    };
+    const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
+    const at = [b.at[0] + ax * mid, b.at[1] + az * mid];
     const n = Math.max(2, Math.round(width / 0.6));
     for (const y of [0.55, 1.05])
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) / n - 0.5;
-        box(b.at[0] + ax * t * width, y, b.at[1] + az * t * width, width / n + 0.01, 0.2, 0.08, k % 2 ? 0xf4f1ea : 0xd8322a, yaw);
+        box(at[0] + ax * t * width, y, at[1] + az * t * width, width / n + 0.01, 0.2, 0.08, k % 2 ? 0xf4f1ea : 0xd8322a, yaw);
       }
     for (let k = 0; k <= 3; k++) {
-      const t = k / 3 - 0.5, x = b.at[0] + ax * t * width, z = b.at[1] + az * t * width;
+      const t = (k / 3 - 0.5) * (1 - 0.3 / width), x = at[0] + ax * t * width, z = at[1] + az * t * width;
       box(x, 0.6, z, 0.1, 1.2, 0.1, 0x4a4f5c);
       box(x, 0.06, z, 0.5, 0.12, 0.3, 0x2a2d33, yaw);
       lamp(x, 1.28, z, 0.16, 0.16, 0.16, 0xffa52b);
