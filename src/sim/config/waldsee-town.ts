@@ -457,7 +457,8 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   // (the tattoo studio: Hochstatt 1, the corner house across from the optician, next to AmannLabs; its door at the
   // corner to the Ravensburger Strasse)
   { text: "TATTOO LADEN", kind: 'empire', x: 17.35, z: 54.0, dx: 0.48, dz: 0.88, len: 4 },
-  { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
+  // (the bank, Grabenmühlweg 1: the house at the end of the lane behind the barrier at 10.4/60.3, its north face)
+  { text: "Bank", kind: 'bank', x: 2.6, z: 64.5, dx: -0.28, dz: -0.96, len: 5 },
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */
 export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; half: number; lake: boolean }[] = [
