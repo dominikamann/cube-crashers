@@ -467,7 +467,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [58.39, 35.95], dir: [-0.372, -0.928], half: 4.43, lake: false },
   // (the Ravensburger Strasse toward the Hasen: right behind the optician's flower pot)
   { at: [9.13, 51.54], dir: [-0.426, -0.905], half: 6.88, lake: false },
-  { at: [32.16, 90.56], dir: [0.714, 0.7], half: 6.88, lake: false },
+  // (the Ravensburger Strasse past the Amadeus: level with the start of the kebab shop's name)
+  { at: [29.30, 87.76], dir: [0.714, 0.7], half: 6.88, lake: false },
   { at: [12.9, 71.32], dir: [-0.899, 0.437], half: 6.88, lake: false },
   // (the Wurzacher Strasse: the barrier a metre further forward)
   { at: [87.06, 72.82], dir: [0.969, 0.247], half: 4.69, lake: false },
@@ -517,5 +518,5 @@ export const WALDSEE_BOAT2: [number, number] | null = [106, 48];
 export const WALDSEE_SHARK: [number, number] | null = [103, 52];
 
 /** board fences put in by hand, besides those tools/waldsee/fences.py finds: [x0, z0, x1, z1] in tiles (behind the
- * barrier between the clothes shop and the little shop, so one does not see on down the lane) */
-export const WALDSEE_EXTRA_FENCES: number[][] = [[11.34, 70.41, 12.66, 73.11]];
+ * barriers beside the clothes shop, so one does not see on down the lanes) */
+export const WALDSEE_EXTRA_FENCES: number[][] = [[11.34, 70.41, 12.66, 73.11], [16.68, 80.66, 19.08, 82.46]];
