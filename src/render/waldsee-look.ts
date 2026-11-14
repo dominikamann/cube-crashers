@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
+import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
   WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
@@ -44,9 +44,12 @@ const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   const lake = WALDSEE_BARRIERS.find(x => x.lake);
   return !(lake && cx > lake.at[0] && cz < lake.at[1] + 6);
 };
-const WALL_FEET: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = (() => {
-  const out: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = [];
-  for (const b of WALDSEE_LOD2) {
+type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number };
+// (worked out on first use: shown() needs waldseeGround, which comes further down)
+let FEET: Foot[] | null = null;
+const wallFeet = (): Foot[] => (FEET ??= (() => {
+  const out: Foot[] = [];
+  for (const [id, b] of WALDSEE_LOD2.entries()) {
     if (!shown(b)) continue;
     let cx = 0, cz = 0, n = 0;
     for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
@@ -62,15 +65,15 @@ const WALL_FEET: { x0: number; z0: number; x1: number; z1: number; nx: number; n
       if (len < 0.3) continue;
       let nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
       if (nx * ((x0 + x1) / 2 - cx) + nz * ((z0 + z1) / 2 - cz) < 0) ((nx = -nx), (nz = -nz));
-      out.push({ x0, z0, x1, z1, nx, nz });
+      out.push({ x0, z0, x1, z1, nx, nz, id });
     }
   }
   return out;
-})();
+})());
 /** a front put onto the real wall nearest to it that looks about the same way */
 const onWall = <F extends WaldseeFace>(f: F): F => {
   let best: { d: number; x: number; z: number; nx: number; nz: number; len: number } | null = null;
-  for (const w of WALL_FEET) {
+  for (const w of wallFeet()) {
     if (w.nx * f.dx + w.nz * f.dz < 0.5) continue;
     const ex = w.x1 - w.x0, ez = w.z1 - w.z0, L2 = ex * ex + ez * ez;
     const u = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / L2));
@@ -1170,13 +1173,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     sign(s, s.text, 2.9, Math.min(2.8, w + 0.4), { back: '#e9ecef', ink: '#1f3b63', rim: '#1f3b63' }, 'bold 80px "Helvetica Neue", Arial, sans-serif');
   }
 
+  // ---- where one can walk up to a wall of the plan that no real building stands on (a gap between two houses
+  // a little way in, a yard): a fence of upright boards one cannot see through
+  {
+    const wood = [0x7a5638, 0x6b4a32, 0x86603e];
+    for (const [x0, z0, x1, z1] of WALDSEE_FENCE_RUNS) {
+      const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, yaw = Math.atan2(ux, uz);
+      const boards = Math.round(len / 0.25);
+      for (let k = 0; k < boards; k++) {
+        const t = (k + 0.5) * (len / boards);
+        box(x0 + ux * t, 1.2 + (k % 3) * 0.04, z0 + uz * t, 0.08, 2.4, len / boards - 0.02, wood[k % 3], yaw);
+      }
+      // (the rails, on the walkable side)
+      for (const y of [0.5, 1.9]) box((x0 + x1) / 2 - uz * 0.06, y, (z0 + z1) / 2 + ux * 0.06, 0.05, 0.1, len, 0x5a3a26, yaw);
+    }
+  }
+
   // ---- where a street ends: a barrier of red and white beams on posts, lamps on it. Behind it the street goes on
   for (const b of WALDSEE_BARRIERS) {
     const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax);
     // (from wall to wall: as far as the real fronts on either side, measured along the barrier)
     const reach = (sx: number): number => {
       let best = b.half + 2;
-      for (const w of WALL_FEET) {
+      for (const w of wallFeet()) {
         const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
         if (Math.abs(den) < 1e-6) continue;
         const t = ((w.x0 - b.at[0]) * ez - (w.z0 - b.at[1]) * ex) / den, u = ((w.x0 - b.at[0]) * az * sx - (w.z0 - b.at[1]) * ax * sx) / den;

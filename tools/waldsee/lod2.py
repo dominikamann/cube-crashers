@@ -152,3 +152,39 @@ print(covered, 'floor tiles under real buildings made wall')
 for name, pts in re.findall(r"b\.put\('(.)', (.*?)\);", src):
     for a, b in re.findall(r"\[(\d+), (\d+)\]", pts):
         if rows[int(b)][int(a)] == '#': print('marker', name, a, b, 'now on a wall')
+
+# the fences: where one can walk up to a wall of the plan that no real building stands on (a gap between two
+# houses, a yard), a board fence stands on that tile edge, so one does not look through to what lies behind.
+# Edges as runs [x0, z0, x1, z1] in tiles, the walkable side to the right of the run's direction
+cover = {}
+def covered_at(x, z):
+    if (x, z) not in cover:
+        cover[(x, z)] = sum(1 for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8) if any(inside(x + a, z + b, r) for f in footprints for r in f))
+    return cover[(x, z)]
+edges = []
+for z in range(1, N - 1):
+    for x in range(1, N - 1):
+        if rows[z][x] != '.': continue
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            X, Z = x + dx, z + dz
+            if rows[Z][X] != '#' or code(X, Z) in (0, 3, 4, 5) or covered_at(X, Z) > 0: continue
+            # (the edge between the two tiles, walkable side on the right)
+            if dx == 1: edges.append((x + 1, z, x + 1, z + 1))
+            if dx == -1: edges.append((x, z + 1, x, z))
+            if dz == 1: edges.append((x + 1, z + 1, x, z + 1))
+            if dz == -1: edges.append((x, z, x + 1, z))
+# joined into straight runs
+runs = []
+left = set(edges)
+while left:
+    x0, z0, x1, z1 = left.pop()
+    dx, dz = x1 - x0, z1 - z0
+    while (x1, z1, x1 + dx, z1 + dz) in left: left.remove((x1, z1, x1 + dx, z1 + dz)); x1 += dx; z1 += dz
+    while (x0 - dx, z0 - dz, x0, z0) in left: left.remove((x0 - dx, z0 - dz, x0, z0)); x0 -= dx; z0 -= dz
+    runs.append([x0, z0, x1, z1])
+runs.sort()
+with open(OUT, 'a') as f:
+    f.write('/** board fences where one can walk up to a wall that no real building stands on: [x0, z0, x1, z1] in tiles, the\n * walkable side to the right going from (x0, z0) to (x1, z1) */\nexport const WALDSEE_FENCE_RUNS: number[][] = ')
+    f.write(json.dumps(runs, separators=(',', ':')))
+    f.write(';\n')
+print(len(runs), 'fence runs,', len(edges), 'tile edges')
