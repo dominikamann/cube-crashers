@@ -326,7 +326,7 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
     for (const [x, z] of kept) for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) {
       if (dx * dx + dz * dz <= 12.25 && inside(x + dx, z + dz)) water[at(x + dx, z + dz)] = 0;
     }
-    // little patches of land out in the water (not joined to the shore, no house on them) are islets: just green
+    // little patches of land out in the water (not joined to the shore, no house on them) are flooded: no islands
     const islet = new Uint8Array(W * H), mark = new Uint8Array(W * H), keep = new Set<number>();
     for (const [x, z] of kept) if (inside(x, z)) keep.add(at(x, z));
     for (let i = 0; i < W * H; i++) {
@@ -344,7 +344,7 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
           if (!water[n] && !mark[n]) ((mark[n] = 1), comp.push(n));
         }
       }
-      if (!edge && !house && comp.length < 40) for (const c of comp) islet[c] = 1;
+      if (!edge && !house && comp.length < 40) for (const c of comp) water[c] = 1;
     }
     return { water, islet, hidden };
   };
