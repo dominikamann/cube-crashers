@@ -477,7 +477,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         eaves = 0;
         for (const [, q] of b) for (let i = 1; i < q.length; i += 3) eaves = Math.max(eaves, q[i]);
       }
-      const storeys = Math.max(1, Math.round(eaves / 2)), storey = eaves / storeys;
       for (const [k, q] of b) {
         const pts: THREE.Vector3[] = [];
         for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
@@ -497,6 +496,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const flat = pts.map(p => new THREE.Vector2(p.dot(u), p.dot(v)));
         const tris = THREE.ShapeUtils.triangulateShape(flat, []);
         const wall = k === 'w';
+        // (each wall its own eaves: the lowest of its top corners, so a tall part of a house next to a low annex
+        // gets windows all the way up, not only as high as the annex's roof)
+        let eave = Infinity;
+        if (wall) for (const p of pts) if (p.y > 0.3) eave = Math.min(eave, p.y);
+        if (!isFinite(eave)) eave = eaves;
+        const storeys = Math.max(1, Math.round(eave / 2)), storey = eave / storeys;
         col.setHex(wall ? plaster : tiles);
         if (!wall) col.multiplyScalar(0.9 + 0.12 * Math.max(0, nrm.y));
         // (along the wall: as many windows as fit two tiles apart, spread evenly from end to end)
@@ -511,12 +516,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         };
         for (const t of tris) {
           const tri = t.map(i => pts[i]);
-          if (!wall || Math.max(...tri.map(p => p.y)) <= eaves + 0.05) for (const p of tri) put(p, false);
-          else if (Math.min(...tri.map(p => p.y)) >= eaves - 0.05) for (const p of tri) put(p, true);
+          if (!wall || Math.max(...tri.map(p => p.y)) <= eave + 0.05) for (const p of tri) put(p, false);
+          else if (Math.min(...tri.map(p => p.y)) >= eave - 0.05) for (const p of tri) put(p, true);
           else {
             // (a triangle across the eaves: cut there, windows below, plaster above)
-            const cut = (pa: THREE.Vector3, pb: THREE.Vector3) => pa.clone().lerp(pb, (eaves - pa.y) / (pb.y - pa.y));
-            const below = tri.filter(p => p.y <= eaves), above = tri.filter(p => p.y > eaves);
+            const cut = (pa: THREE.Vector3, pb: THREE.Vector3) => pa.clone().lerp(pb, (eave - pa.y) / (pb.y - pa.y));
+            const below = tri.filter(p => p.y <= eave), above = tri.filter(p => p.y > eave);
             const lone = below.length === 1 ? below[0] : above[0], pair = below.length === 1 ? above : below;
             const c0 = cut(lone, pair[0]), c1 = cut(lone, pair[1]);
             const low = below.length === 1, single = [lone, c0, c1], quad = [c0, pair[0], pair[1], c1];
