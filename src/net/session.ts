@@ -109,6 +109,14 @@ export class HostSession {
     this.broadcastLobby();
   }
 
+  /** dedicated server: where the next match is played, and by which rule if the server takes turns (see ServerStatus) */
+  setNext(map: string | undefined, rule?: string): void {
+    if (!this.server || (this.server.map === map && this.server.rule === rule)) return;
+    this.server.map = map;
+    this.server.rule = rule;
+    this.broadcastLobby();
+  }
+
   /** every human in the lobby is ready (and there is at least one) */
   allReady(): boolean {
     const humans = this.lobby.filter(p => !p.bot);

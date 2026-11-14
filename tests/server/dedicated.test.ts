@@ -398,4 +398,44 @@ describe('the dedicated server', () => {
     run(1);
     expect(cs[0].viewMode).toBe('fp');
   });
+
+  it('tells the lobby where the next match is played, and the match is played there', () => {
+    const { host, hub, cs, run } = setup({ mode: 'quick', countdown: 10 });
+    run(1);
+    const map = cs[0].server?.map;
+    expect(QUICK_MAPS).toContain(map);
+    expect(cs[0].server?.rule).toBeUndefined();
+    run(10);
+    expect(host.sim?.map.id).toBe(map);
+    // (while it runs the lobby of a late joiner still names it)
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    run(0.1);
+    expect(late.server).toMatchObject({ running: true, map });
+  });
+
+  it('a server that takes turns between the rules names the rule of the next match too', () => {
+    const { host, cs, run } = setup({ mode: 'discovery', countdown: 10 });
+    run(1);
+    const { map, rule } = cs[0].server!;
+    expect(VERSUS_MAPS).toContain(map);
+    expect(rule).toBeTruthy();
+    run(10);
+    expect(host.sim?.map.id).toBe(map);
+    expect(host.sim?.versus?.rule).toBe(rule);
+  });
+
+  it('names a fixed map, a random one for each boss of a rush, and nothing where the game brings its floors', () => {
+    const next = (cfg: Partial<ServerConfig>) => {
+      const { cs, run } = setup({ countdown: 10, ...cfg });
+      run(1);
+      return cs[0].server?.map;
+    };
+    expect(next({ mode: 'brawl' })).toBe(BRAWL_MAPS[0]);
+    expect(next({ mode: 'capture', map: 'waldsee' })).toBe('waldsee');
+    expect(next({ mode: 'bossrush', map: 'random' })).toBe('random');
+    expect(next({ mode: 'bossrush', map: 'jungle' })).toBe('jungle');
+    expect(next({ mode: 'bossrush' })).toBeUndefined();
+    expect(next({ mode: 'coop' })).toBeUndefined();
+  });
 });

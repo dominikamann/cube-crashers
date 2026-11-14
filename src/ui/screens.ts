@@ -1210,6 +1210,12 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         } else if (server) {
           // a dedicated server starts by itself: the countdown, and a button to say you are ready
           if (isCoop(server.mode)) text(s, 'p', '', diffLabel(difficulty));
+          // where the next match is played (or the one that runs), and by which rule on a server that takes turns
+          if (server.map) {
+            const where = server.map === MAP_ROTATION ? t('setup.random') : FLOORS[server.map] ? t(FLOORS[server.map].name as 'floor.plaza') : server.map;
+            const what = server.rule ? `${t(`versus.${server.rule}` as 'versus.score')} · ${where}` : where;
+            text(s, 'p', 'lobby-map', t(server.running ? 'lobby.mapNow' : 'lobby.mapNext', { map: what }));
+          }
           countdown = text(s, 'p', 'lobby-countdown', countdownText(server));
           // ready only counts between matches
           if (!server.running) {

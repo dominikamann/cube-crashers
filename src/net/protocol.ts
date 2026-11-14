@@ -54,6 +54,11 @@ export interface ServerStatus {
   startsIn: number | null;
   /** a match is running: newcomers wait for the next one */
   running: boolean;
+  /** where the next match is played (while one runs: where that one is): a floor's id, 'random' for a Boss Rush
+   *  on a random map per boss; left out where the game brings its own floors */
+  map?: string;
+  /** a server that takes turns between the versus rules: the rule of that match */
+  rule?: string;
 }
 
 /** the answer to a server-list probe */
@@ -142,7 +147,7 @@ const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
 const validServer = (v: unknown) =>
-  v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)));
+  v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)) && (v.map === undefined || typeof v.map === 'string') && (v.rule === undefined || typeof v.rule === 'string'));
 const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && (v.boss === undefined || typeof v.boss === 'boolean') && validTeams(v.teams));
 
 /** Parses and validates one message from the network. Anything unexpected is dropped (null). */

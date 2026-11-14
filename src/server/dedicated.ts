@@ -26,6 +26,8 @@ export class DedicatedServer {
   private lastMap: string | null = null;
   /** the dice for the maps: their own row of numbers, so the seeds of the matches stay as they were */
   private dice: number;
+  /** the match that comes next, drawn as soon as someone waits for it: the lobby shows its map (and rule) */
+  private plan: { versus: VersusOption } | { map?: string; rush?: string[] } | null = null;
   private now: () => number;
   private log: (line: string) => void;
 
@@ -60,6 +62,7 @@ export class DedicatedServer {
       this.host.setStartsIn(null);
       return;
     }
+    this.announce();
     this.startsAt ??= this.now() + this.cfg.countdown * 1000;
     const left = Math.max(0, Math.ceil((this.startsAt - this.now()) / 1000));
     this.host.setStartsIn(left);
@@ -87,28 +90,43 @@ export class DedicatedServer {
     }
   }
 
+  /** Draws the next match if it is not drawn yet and tells the lobby where it will be. */
+  private announce(): void {
+    if (!this.plan) {
+      const run = COOP_MODES[this.cfg.mode];
+      if (run) {
+        // the maps a LAN host picks in its lobby: the Boss Brawl's (the arena unless set), a Single floor's (a new one
+        // each time unless set), the Boss Rush's (the bosses' own floors unless set)
+        const noTown = this.cfg.view === 'top';
+        const map = run === 'brawl' ? brawlMapFor(this.cfg.map ?? BRAWL_MAPS[0], this.random, noTown) : run === 'quick' ? quickMapFor(this.cfg.map ?? MAP_ROTATION, this.lastMap, this.random, noTown) : undefined;
+        const rush = run === 'bossrush' ? rushMapsFor(this.cfg.map ?? RUSH_OWN, BOSS_RUSH.length, this.random, noTown) : undefined;
+        this.plan = { map, rush };
+      } else this.plan = { versus: this.next() };
+    }
+    if ('versus' in this.plan) this.host.setNext(this.plan.versus.map, this.cfg.mode === 'discovery' ? this.plan.versus.rule : undefined);
+    else this.host.setNext(this.plan.map ?? (this.plan.rush ? (this.cfg.map === MAP_ROTATION ? MAP_ROTATION : this.plan.rush[0]) : undefined));
+  }
+
   private start(): void {
     this.startsAt = null;
     this.overSince = null;
     this.seed = (this.seed * 48271) % 2147483647 || 1;
-    const run = COOP_MODES[this.cfg.mode];
-    if (run) {
-      // the maps a LAN host picks in its lobby: the Boss Brawl's (the arena unless set), a Single floor's (a new one
-      // each time unless set), the Boss Rush's (the bosses' own floors unless set)
-      const noTown = this.cfg.view === 'top';
-      const map = run === 'brawl' ? brawlMapFor(this.cfg.map ?? BRAWL_MAPS[0], this.random, noTown) : run === 'quick' ? quickMapFor(this.cfg.map ?? MAP_ROTATION, this.lastMap, this.random, noTown) : undefined;
-      const rush = run === 'bossrush' ? rushMapsFor(this.cfg.map ?? RUSH_OWN, BOSS_RUSH.length, this.random, noTown) : undefined;
-      if (map) this.lastMap = map;
-      this.host.start(this.seed, this.cfg.difficulty, run, map, rush);
-      this.bots = [];
-      const where = map ?? (rush ? (this.cfg.map === MAP_ROTATION ? 'random maps' : rush[0]) : null);
-      this.log(`${this.cfg.mode}${where ? ` on ${where}` : ''} started with ${this.humans()} player(s)`);
-    } else {
-      const option = this.next();
+    this.announce();
+    const plan = this.plan!;
+    this.plan = null;
+    if ('versus' in plan) {
+      const option = plan.versus;
       this.host.startVersus(option, this.seed);
       // --difficulty: how hard the co-op floors are, and how well the bots play in versus
       this.bots = this.host.lobby.filter(p => p.bot).map(p => createVersusBot(p.id, this.cfg.difficulty));
       this.log(`${option.rule} on ${option.map} started with ${this.humans()} player(s) and ${this.bots.length} bot(s)`);
+    } else {
+      const { map, rush } = plan;
+      if (map) this.lastMap = map;
+      this.host.start(this.seed, this.cfg.difficulty, COOP_MODES[this.cfg.mode]!, map, rush);
+      this.bots = [];
+      const where = map ?? (rush ? (this.cfg.map === MAP_ROTATION ? 'random maps' : rush[0]) : null);
+      this.log(`${this.cfg.mode}${where ? ` on ${where}` : ''} started with ${this.humans()} player(s)`);
     }
   }
 
