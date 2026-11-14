@@ -42,3 +42,17 @@ describe('the roofs of the Town', () => {
     for (const c of all) for (const p of c.now) expect(dist(p, c.was), `building ${c.id}`).toBeLessThan(0.71);
   });
 });
+
+describe('the rounded corner house across the square from the ice-cream parlour (building 406)', () => {
+  it('has its shallow roof reach out round its curved walls, with a band along the whole curve', () => {
+    const id = 406, b = WALDSEE_LOD2[id], over = roofsOver(b, id);
+    // (the big roof over the curved parts: the roof polygon with the most corners, a plane of about ten degrees)
+    const big = b.filter(([k]) => k === 'r').map(([, q]) => q).sort((p, q) => q.length - p.length)[0];
+    const now = over.roofs.get(big);
+    expect(now).toBeDefined();
+    let moved = 0;
+    for (let i = 0; i < big.length; i += 3) if (dist(big.slice(i, i + 3), now!.slice(i, i + 3)) > 0.3) moved++;
+    expect(moved).toBeGreaterThan(40);
+    expect(over.edges.length).toBeGreaterThan(100);
+  });
+});

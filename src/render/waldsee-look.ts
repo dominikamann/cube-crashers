@@ -82,7 +82,7 @@ const wallEave = (q: number[]): number => {
 type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number; eave: number; prof: [number, number][] };
 // (worked out on first use: shown() needs waldseeGround, which comes further down)
 let FEET: Foot[] | null = null;
-export const wallFeet = (): Foot[] => (FEET ??= (() => {
+const wallFeet = (): Foot[] => (FEET ??= (() => {
   const out: Foot[] = [];
   for (const [id, b] of WALDSEE_LOD2.entries()) {
     if (!shown(b)) continue;
@@ -407,10 +407,9 @@ export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): { roofs
   // (where a corner should go, by its key: each roof that moves it says so, and every roof with that corner follows,
   // so the roofs stay joined along their ridges, hips and valleys)
   const goes = new Map<string, THREE.Vector3[]>();
-  for (const q of roofs) {
-    const m = q.length / 3;
-    if (m < 3) continue;
-    const P = Array.from({ length: m }, (_, i) => new THREE.Vector3(q[3 * i], q[3 * i + 1], q[3 * i + 2]));
+  // (each roof's plane and its outline on the ground: whether a spot lies under a higher roof of the same house)
+  const planes = roofs.map(q => {
+    const m = q.length / 3, P = Array.from({ length: m }, (_, i) => new THREE.Vector3(q[3 * i], q[3 * i + 1], q[3 * i + 2]));
     const n = new THREE.Vector3();
     for (let i = 0; i < m; i++) {
       const a = P[i], d = P[(i + 1) % m];
@@ -418,18 +417,30 @@ export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): { roofs
       n.y += (a.z - d.z) * (a.x + d.x);
       n.z += (a.x - d.x) * (a.y + d.y);
     }
-    if (n.lengthSq() < 1e-9) continue;
-    n.normalize();
-    // (a flat roof keeps to its walls)
-    if (Math.abs(n.y) > 0.97) continue;
+    return { q, P, n: n.lengthSq() < 1e-9 ? null : n.normalize() };
+  });
+  const underOwn = (x: number, y: number, z: number, not: number[]): boolean =>
+    planes.some(({ q, P, n }) => {
+      if (q === not || !n || Math.abs(n.y) < 0.05) return false;
+      let c = false;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i, i++)
+        if (P[i].z > z !== P[j].z > z && x < ((P[j].x - P[i].x) * (z - P[i].z)) / (P[j].z - P[i].z) + P[i].x) c = !c;
+      return c && P[0].y - (n.x * (x - P[0].x) + n.z * (z - P[0].z)) / n.y > y + 0.3;
+    });
+  for (const { q, P, n } of planes) {
+    const m = P.length;
+    if (m < 3 || !n) continue;
+    // (a flat roof keeps to its walls; a shallow one, a few degrees of pitch, is a roof like any other)
+    if (Math.abs(n.y) > 0.995) continue;
     const mid = P.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(m);
-    // each edge: its direction, the way out of the roof in its plane, and whether it reaches out
+    // each edge: its direction, the way out of the roof in its plane, and whether it reaches out (not into another
+    // house, nor into a higher part of its own)
     const E = P.map((a, i) => {
       const d = P[(i + 1) % m].clone().sub(a);
       const t = d.clone().normalize(), o = new THREE.Vector3().crossVectors(t, n).normalize();
       if (o.dot(a.clone().add(P[(i + 1) % m]).multiplyScalar(0.5).sub(mid)) < 0) o.negate();
       const c = a.clone().add(P[(i + 1) % m]).multiplyScalar(0.5);
-      const free = edges.get(edgeKey(q, i, (i + 1) % m)) === 1 && !underRoof(c.x + o.x * 0.6, c.z + o.z * 0.6, id) && d.length() > 0.05;
+      const free = edges.get(edgeKey(q, i, (i + 1) % m)) === 1 && d.length() > 0.05 && !underRoof(c.x + o.x * 0.6, c.z + o.z * 0.6, id) && !underOwn(c.x + o.x * 0.6, c.y, c.z + o.z * 0.6, q);
       return { t, o, free };
     });
     const toward = (p: THREE.Vector3, i: number): THREE.Vector3 => {
@@ -692,13 +703,27 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   // in their house's plaster with a window to every tile and storey, the roofs in its tiles. (Not the houses
   // taken away for the view of the lake, nor the AmannLabs shop, which is built on its own.)
   {
-    const roofPos: number[] = [], roofCol: number[] = [];
+    const roofPos: number[] = [], roofCol: number[] = [], roofNrm: number[] = [];
     /** the walls, one set to each colour of shutters ('' none) */
-    const wallSets = new Map<string, { pos: number[]; uv: number[]; col: number[] }>();
+    const wallSets = new Map<string, { pos: number[]; uv: number[]; col: number[]; nrm: number[] }>();
     const walls = (shut: string) => {
       let w = wallSets.get(shut);
-      if (!w) wallSets.set(shut, (w = { pos: [], uv: [], col: [] }));
+      if (!w) wallSets.set(shut, (w = { pos: [], uv: [], col: [], nrm: [] }));
       return w;
+    };
+    /**
+     * The normals of the triangles put into `pos` from `first` on: `n` for all of them (the side each triangle's
+     * corners face kept), or each triangle's own where `n` is null
+     */
+    const litFlat = (pos: number[], out: number[], first: number, n: THREE.Vector3 | null) => {
+      const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      for (let i = first; i + 8 < pos.length; i += 9) {
+        a.fromArray(pos, i);
+        b.fromArray(pos, i + 3).sub(a);
+        c.fromArray(pos, i + 6).sub(a);
+        const own = b.cross(c).normalize(), m = n ? (own.dot(n) >= 0 ? n : n.clone().negate()) : own;
+        for (let k = 0; k < 3; k++) out.push(m.x, m.y, m.z);
+      }
     };
     const col = new THREE.Color();
     const PALE = [0xf4f1ea, 0xf1e7c9, 0xecd0a0, 0xe9b9a6, 0xcfe0c0, 0xc6d9e6, 0xefe6d6, 0xf6efe0, 0xe8d5bd];
@@ -767,6 +792,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           // (the gable over the eaves is plain plaster: a corner of the texture where there is no window)
           if (wall) walls(shutters).uv.push(gable || narrow ? 0.03 : (p.dot(u) - a0) * across, gable || narrow ? 0.97 : Math.min(storeys, (p.y + 0.4) / storey));
         };
+        const into = wall ? walls(shutters) : { pos: roofPos, nrm: roofNrm }, first = into.pos.length;
         for (const t of tris) {
           const tri = t.map(i => pts[i]);
           if (!wall || Math.max(...tri.map(p => p.y)) <= eave + 0.05) for (const p of tri) put(p, false);
@@ -782,23 +808,31 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
             for (const p of [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]) put(p, low);
           }
         }
+        // (one light for the whole polygon: the walls and roofs of the data are not quite flat, and each triangle
+        // lit its own way showed the polygon split along its diagonals; each triangle keeps the side its corners face)
+        litFlat(into.pos, into.nrm, first, nrm);
       }
       // the band along the edges that reach out: from the roof's edge down by its thickness, a little darker
       col.setHex(tiles).multiplyScalar(0.72);
       for (const [x0, y0, z0, x1, y1, z1] of over.edges) {
         const a = [x0, y0 + ROOF_THICK, z0], b2 = [x1, y1 + ROOF_THICK, z1], c = [x1, y1, z1], d = [x0, y0, z0];
+        const first = roofPos.length;
         for (const p of [a, b2, c, a, c, d]) (roofPos.push(p[0], p[1], p[2]), roofCol.push(col.r, col.g, col.b));
+        litFlat(roofPos, roofNrm, first, null);
       }
     });
-    const mesh = (pos: number[], colours: number[], mat: THREE.Material, uv?: number[]) => {
+    const mesh = (pos: number[], colours: number[], mat: THREE.Material, uv?: number[], normals?: number[]) => {
       if (!pos.length) return;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
       if (uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-      geo.computeVertexNormals();
+      if (normals) geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      else geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, mat);
+        const first = roofPos.length;
       m.castShadow = true;
+        litFlat(roofPos, roofNrm, first, null);
       m.receiveShadow = true;
       disposables.push(geo, mat);
       add(m);
@@ -833,8 +867,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       disposables.push(tex);
       return tex;
     };
-    for (const [shut, w] of wallSets) mesh(w.pos, w.col, new THREE.MeshLambertMaterial({ map: windows(shut), vertexColors: true, side: THREE.DoubleSide }), w.uv);
-    mesh(roofPos, roofCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    for (const [shut, w] of wallSets) mesh(w.pos, w.col, new THREE.MeshLambertMaterial({ map: windows(shut), vertexColors: true, side: THREE.DoubleSide }), w.uv, w.nrm);
+    mesh(roofPos, roofCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), undefined, roofNrm);
     // the lake round the Town, flat on the ground beyond the map
     for (const ring of WALDSEE_LAKES) {
       const shape = new THREE.Shape();
@@ -1187,8 +1221,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
 
   // ---- the big rounded corner house across the square from the ice-cream parlour: cream plaster, a grey plinth and
   // cornice, white-framed windows in grey surrounds in even rows on every street-facing wall segment of the real
-  // building (each segment one textured plane flush on it, clipped to the wall's outline), a flat entrance with a
-  // stone frame, a bench, bollards and a bicycle rack at the wall. Nothing of it is solid.
+  // building (each run of walls one textured strip flush on them, up to the walls' tops under the roof), a flat
+  // entrance with a stone frame, a bench, bollards and a bicycle rack at the wall. Nothing of it is solid.
   {
     const id = (onBlock(CORNER_HOUSE) as OnWall).wall?.id;
     const S = 64;
@@ -1212,23 +1246,63 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const leftFirst = (w: Foot) => (w.x1 - w.x0) * w.nz - (w.z1 - w.z0) * w.nx >= 0;
     const leftEnd = (w: Foot): [number, number] => (leftFirst(w) ? [w.x0, w.z0] : [w.x1, w.z1]);
     const rightEnd = (w: Foot): [number, number] => (leftFirst(w) ? [w.x1, w.z1] : [w.x0, w.z0]);
-    const joins = (a: Foot, b: Foot) => a !== b && a.nx * b.nx + a.nz * b.nz > 0.6 && Math.hypot(rightEnd(a)[0] - leftEnd(b)[0], rightEnd(a)[1] - leftEnd(b)[1]) < 0.2;
+    const gap = (a: Foot, b: Foot) => Math.hypot(rightEnd(a)[0] - leftEnd(b)[0], rightEnd(a)[1] - leftEnd(b)[1]);
+    const joins = (a: Foot, b: Foot) => a !== b && a.nx * b.nx + a.nz * b.nz > 0.6 && gap(a, b) < 0.2;
     const runs: Foot[][] = [], used = new Set<Foot>();
+    // (the piece that follows one: the nearest of those joined to its right end, so on the curve, where the pieces
+    // are shorter than the join's reach, none is skipped and left out on its own)
+    const after = (w: Foot) => feet.filter(o => !used.has(o) && joins(w, o)).sort((a, b) => gap(w, a) - gap(w, b))[0];
     for (const first of [...feet.filter(w => !feet.some(o => joins(o, w))), ...feet]) {
       if (used.has(first)) continue;
       const run = [first];
       used.add(first);
-      for (let next = feet.find(o => !used.has(o) && joins(first, o)); next; next = feet.find(o => !used.has(o) && joins(run[run.length - 1], o))) {
+      for (let next = after(first); next; next = after(run[run.length - 1])) {
         used.add(next);
         run.push(next);
       }
       runs.push(run);
     }
+    // (how high the wall is at a spot: the highest top edge of the building's walls over it, so the front reaches
+    // up over the lower wall's top into the upper walls of the curved parts, up to the roof, which lies ROOF_THICK
+    // over the walls' tops like every roof)
+    const polys = id === undefined ? [] : WALDSEE_LOD2[id].filter(([k]) => k === 'w').map(([, q]) => q);
+    const topAt = (x: number, z: number): number => {
+      let top = 0;
+      for (const q of polys) {
+        const m = q.length / 3;
+        for (let i = 0; i < m; i++) {
+          const j = (i + 1) % m;
+          if (q[3 * i + 1] <= 0.3 || q[3 * j + 1] <= 0.3) continue;
+          const ex = q[3 * j] - q[3 * i], ez = q[3 * j + 2] - q[3 * i + 2], L2 = ex * ex + ez * ez;
+          if (L2 < 1e-6) continue;
+          const t = ((x - q[3 * i]) * ex + (z - q[3 * i + 2]) * ez) / L2;
+          if (t < -0.02 || t > 1.02 || Math.hypot(x - q[3 * i] - ex * t, z - q[3 * i + 2] - ez * t) > 0.15) continue;
+          top = Math.max(top, q[3 * i + 1] + (q[3 * j + 1] - q[3 * i + 1]) * Math.max(0, Math.min(1, t)));
+        }
+      }
+      return top + ROOF_THICK;
+    };
     for (const run of runs) {
       const from: number[] = [];
       let W = 0;
       for (const w of run) ((from.push(W)), (W += len(w)));
-      const ymax = Math.max(...run.flatMap(w => w.prof.map(p => p[1])));
+      // (the run's joints from left to right: where they are, how far across the canvas, how high the wall is there,
+      // and the way out of the wall between the two pieces that meet there, so one mesh runs smoothly round the curve)
+      const joints: { x: number; z: number; u: number; top: number; nx: number; nz: number }[] = [];
+      run.forEach((w, k) => {
+        const prev = run[k - 1], [lx, lz] = leftEnd(w);
+        const x = prev ? (lx + rightEnd(prev)[0]) / 2 : lx, z = prev ? (lz + rightEnd(prev)[1]) / 2 : lz;
+        const l = prev ? Math.hypot(w.nx + prev.nx, w.nz + prev.nz) : 1;
+        joints.push({ x, z, u: from[k], top: topAt(x, z), nx: prev ? (w.nx + prev.nx) / l : w.nx, nz: prev ? (w.nz + prev.nz) / l : w.nz });
+        if (k === run.length - 1) joints.push({ x: rightEnd(w)[0], z: rightEnd(w)[1], u: W, top: topAt(rightEnd(w)[0], rightEnd(w)[1]), nx: w.nx, nz: w.nz });
+      });
+      // (how high the wall is at a spot across the run)
+      const topU = (u: number) => {
+        const k = Math.max(1, Math.min(joints.length - 1, joints.findIndex(j => j.u > u)));
+        const a = joints[k - 1], b = joints[k];
+        return a.top + (b.top - a.top) * Math.max(0, Math.min(1, (u - a.u) / Math.max(1e-6, b.u - a.u)));
+      };
+      const ymax = Math.max(...joints.map(j => j.top));
       const H = Math.ceil(ymax * S) / S, E = Math.min(...run.map(w => w.eave));
       // (a spot `t` along piece `k` from its first foot, across the run's canvas)
       const cu = (k: number, t: number) => from[k] + (leftFirst(run[k]) ? t : len(run[k]) - t);
@@ -1241,24 +1315,28 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = c;
         g.fillRect(px(u), py(y1), ww * S, (y1 - y0) * S);
       };
-      // only inside the walls' outlines (the gable and mansard stand higher than the eaves)
-      g.beginPath();
-      run.forEach((w, k) => {
-        w.prof.forEach(([t, y], i) => (i ? g.lineTo(px(cu(k, t)), py(y)) : g.moveTo(px(cu(k, t)), py(y))));
-        g.closePath();
-      });
-      g.clip();
       rect(0, 0, H, W, '#eee3bd');
       rect(0, 0, 0.55, W, '#a3a4a6');
       rect(0, 0.55, 0.6, W, '#8f9094');
-      // the slim grey cornice over the ground floor, a darker band at the eaves
+      // the slim grey cornice over the ground floor
       rect(0, 2.0, 2.12, W, '#b5b3ad');
-      if (E < H - 0.3) rect(0, E - 0.02, E + 0.1, W, '#b5b3ad');
-      // the windows: as many as fit 1.3 tiles apart, spread evenly along the whole run
+      // a band at the lower eaves where the wall goes on above them (the front and the curved parts stand a storey
+      // higher), and a cornice right under the roof, following the wall's top however it slopes
+      if (ymax - E >= 1.2) rect(0, E - 0.02, E + 0.1, W, '#b5b3ad');
+      g.fillStyle = '#b5b3ad';
+      g.beginPath();
+      joints.forEach((j, k) => (k ? g.lineTo(px(j.u), py(j.top)) : g.moveTo(px(j.u), py(j.top))));
+      for (let k = joints.length - 1; k >= 0; k--) g.lineTo(px(joints[k].u), py(joints[k].top - 0.12));
+      g.closePath();
+      g.fill();
+      // the windows: as many as fit 1.3 tiles apart, spread evenly along the whole run; their rows spread evenly
+      // over the storeys under the lower eaves, and one more row in the storey above them wherever the wall goes on
+      // high enough, every window a sensible distance under the roof (none where the sloping top comes too close)
       const n = Math.max(W > 0.8 ? 1 : 0, Math.round(W / 1.3));
       const mk = main ? run.indexOf(main) : -1;
       const doorU = main && mk >= 0 ? cu(mk, toCorner(main) ? len(main) - DOOR : DOOR) : -9;
       const win = (u: number, y0: number, y1: number, ww: number) => {
+        if (y1 + 0.3 > Math.min(topU(u - ww / 2 - 0.1), topU(u + ww / 2 + 0.1))) return;
         rect(u - ww / 2 - 0.07, y0 - 0.07, y1 + 0.07, ww + 0.14, '#9a9ca0');
         rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
         const glass = g.createLinearGradient(0, py(y1), 0, py(y0));
@@ -1269,15 +1347,15 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         rect(u - ww / 2 + 0.05, y1 - 0.28, y1 - 0.25, ww - 0.1, '#fbf8f0');
         rect(u - ww / 2 - 0.09, y0 - 0.1, y0 - 0.03, ww + 0.18, '#a7a8ab');
       };
+      const nLow = Math.max(1, Math.round(E / 2.2)), sLow = E / nLow;
       for (let k = 0; k < n; k++) {
         const u = (k + 0.5) * (W / n);
-        for (let fl = 0; fl * 2 < ymax - 0.6; fl++) {
-          const f0 = fl * 2, top = Math.min(ymax, f0 + 2);
-          if (fl === 0) {
-            if (Math.abs(u - doorU) > 0.85) win(u, 0.75, 1.75, 0.6);
-          } else if (top - f0 >= 1.8 || f0 + 2 <= E + 0.1) win(u, f0 + 0.55, f0 + 1.55, 0.6);
-          else if (top - f0 >= 1.1) win(u, f0 + 0.3, f0 + 0.95, 0.5);
-        }
+        if (Math.abs(u - doorU) > 0.85) win(u, 0.75, 1.75, 0.6);
+        for (let r = 1; r < nLow; r++) win(u, r * sLow + 0.55, r * sLow + 1.55, 0.6);
+        // (the top row: level over the lower eaves' band, a little lower and shorter where the sloping top comes
+        // down toward it, left out where there is no room)
+        const y1 = Math.min(E + 1.6, Math.min(topU(u - 0.4), topU(u + 0.4)) - 0.3);
+        if (y1 - (E + 0.4) >= 0.6) win(u, Math.max(E + 0.4, y1 - 1), y1, 0.6);
       }
       // the entrance: a flat door in a grey stone frame with pilasters and a lintel
       if (doorU > 0) {
@@ -1291,19 +1369,28 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
-      const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
+      const mat = new THREE.MeshLambertMaterial({ map: tex });
       disposables.push(tex, mat);
-      // (each piece a little wider than its wall, so on the curve no gap opens between it and the next)
-      const OVER = 0.05;
-      run.forEach((w, k) => {
-        const L = len(w), geo = new THREE.PlaneGeometry(L + 2 * OVER, H), uv = geo.attributes.uv;
-        for (let i = 0; i < uv.count; i++) uv.setX(i, (from[k] - OVER + uv.getX(i) * (L + 2 * OVER)) / W);
-        disposables.push(geo);
-        const m = new THREE.Mesh(geo, mat);
-        m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
-        m.rotation.y = Math.atan2(w.nx, w.nz);
-        add(m);
+      // one mesh for the whole run: a strip a little in front of the walls with a vertex at the foot and the top of
+      // every joint, the canvas across it by the way along the wall, its top the walls' tops, so round the curve
+      // nothing overlaps and no gap opens, and the light runs smoothly round it (the ends reach a little past the
+      // run, to the corner where the next run starts)
+      const pos: number[] = [], nrm: number[] = [], uv: number[] = [], idx: number[] = [];
+      joints.forEach((j, k) => {
+        const end = k === 0 ? run[0] : k === joints.length - 1 ? run[run.length - 1] : null, sgn = k === 0 ? -1 : 1;
+        const x = j.x + j.nx * 0.04 + (end ? -end.nz * 0.04 * sgn : 0), z = j.z + j.nz * 0.04 + (end ? end.nx * 0.04 * sgn : 0);
+        pos.push(x, 0, z, x, j.top, z);
+        nrm.push(j.nx, 0, j.nz, j.nx, 0, j.nz);
+        uv.push(j.u / W, 0, j.u / W, j.top / H);
+        if (k) idx.push(2 * k - 2, 2 * k, 2 * k + 1, 2 * k - 2, 2 * k + 1, 2 * k - 1);
       });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.setIndex(idx);
+      disposables.push(geo);
+      add(new THREE.Mesh(geo, mat));
     }
     for (const w of feet) {
       const L = len(w), ex = (w.x1 - w.x0) / L, ez = (w.z1 - w.z0) / L;
@@ -2303,11 +2390,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       g.fillRect(0, py(0.2), cw, 0.2 * S);
       g.fillStyle = '#d4cdbd';
       g.fillRect(0, py(gh + 0.06), cw, 0.1 * S);
-      // upper storeys: white-framed windows, one per bay, about two tiles a storey
-      const storeys = Math.max(1, Math.round((H - gh) / 2));
-      const sh = (H - gh) / storeys, nUp = Math.max(1, Math.round(wB / 1.5));
+      // (the name's board sits on the cornice, clear of the arched windows below it)
+      const boardLo = gh + 0.08, boardHi = boardLo + 0.45;
+      // upper storeys over the board: white-framed windows, one per bay, about two tiles a storey
+      const up = boardHi + 0.1, storeys = Math.max(1, Math.round((H - up) / 2));
+      const sh = (H - up) / storeys, nUp = Math.max(1, Math.round(wB / 1.5));
       for (let st = 0; st < storeys; st++) for (let k = 0; k < nUp; k++) {
-        const u = -wB / 2 + (k + 0.5) * (wB / nUp), yc = gh + (st + 0.5) * sh, ww = 0.6, wh = Math.min(0.9, sh - 0.5);
+        const u = -wB / 2 + (k + 0.5) * (wB / nUp), yc = up + (st + 0.5) * sh, ww = 0.6, wh = Math.min(0.9, sh - 0.3);
         g.fillStyle = '#fbf8f0';
         g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
         g.fillStyle = '#4d626d';
@@ -2355,18 +2444,18 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fill();
         }
       }
-      // the name in red on a white board over the arches
-      const bwid = Math.min(wB - 0.4, 2.8);
+      // the name in red on a white board over the arches, on the cornice
+      const bwid = Math.min(wB - 0.4, 2.8), bh = boardHi - boardLo;
       g.fillStyle = '#f4f1ea';
-      g.fillRect(px(-bwid / 2), py(gh - 0.05), bwid * S, 0.5 * S);
+      g.fillRect(px(-bwid / 2), py(boardHi), bwid * S, bh * S);
       g.strokeStyle = '#c0281f';
       g.lineWidth = 4;
-      g.strokeRect(px(-bwid / 2) + 4, py(gh - 0.05) + 4, bwid * S - 8, 0.5 * S - 8);
+      g.strokeRect(px(-bwid / 2) + 4, py(boardHi) + 4, bwid * S - 8, bh * S - 8);
       g.fillStyle = '#c0281f';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = `bold ${Math.round(0.34 * S)}px "Helvetica Neue", Arial, sans-serif`;
-      g.fillText('Memo Kebap', cw / 2, py(gh - 0.3));
+      g.fillText('Memo Kebap', cw / 2, py((boardLo + boardHi) / 2));
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
