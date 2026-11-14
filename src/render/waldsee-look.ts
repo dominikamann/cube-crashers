@@ -636,7 +636,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
 
   // ---- names over doors, each with what belongs to the place
   for (const s0 of WALDSEE_SIGNS) {
-    const s = onBlock(s0);
+    // (the AmannLabs shop is a building of its own: its window and name stay on its own front)
+    const s = s0.kind === 'amannlabs' ? s0 : onBlock(s0);
     const w = Math.max(2, Math.min(4, s.len));
     if (s.kind === 'amannlabs') {
       // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
