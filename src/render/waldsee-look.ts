@@ -885,7 +885,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     // its second door, on the side toward the Hauptstrasse: the same house, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
       const sd = onBlock(WALDSEE_CZARDAS_SIDE), alongS = sd.wall?.along ?? 0;
-      const door2 = at(sd, wallPlane(sd, alongS, false, 'Czardas') - alongS);
+      const door2 = at(sd, wallPlane(sd, 0, false, 'Czardas') - alongS);
       // (a small lamp each side of the door)
       for (const e of [-1, 1]) {
         const [lx, lz] = on(door2, e * 0.78, 0.1);
