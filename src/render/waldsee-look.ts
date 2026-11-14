@@ -1168,28 +1168,82 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         onFace(s, a, 0.07, y, wd, h, 0.05, 0x33404f);
       };
       if (s.kind === 'flasche') {
-        // the inn: a cream ground floor with small-paned windows, red timber on white above, its name in old
-        // letters, tables and big terracotta pots with little trees before it
-        onFace(s, 0, 0.03, 1.3, span, 2.6, 0.05, 0xefe6cf);
-        for (const a of [-span * 0.34, -span * 0.08, span * 0.18]) pane(a, 0.8, 1.35, 0.9, 0x7a4a36);
-        onFace(s, span * 0.4, 0.06, 1.0, 0.7, 2.0, 0.06, 0x5a3a26);
-        onFace(s, 0, 0.04, 4.0, span, 2.6, 0.05, 0xf4f1ea);
-        for (const y of [2.72, 3.6, 4.5, 5.3]) onFace(s, 0, 0.07, y, span, 0.12, 0.06, 0xa33a2c);
-        for (let k = 0; k <= span * 2; k++) onFace(s, -span / 2 + k / 2, 0.07, 4.0, 0.1, 2.6, 0.06, 0xa33a2c);
-        for (let k = 0; k < span * 2; k += 2) {
-          const [x, z] = on(s, -span / 2 + k / 2 + 0.25, 0.08);
-          box(x, 3.15, z, 0.07, 0.95, 0.07, 0xa33a2c, faceYaw(s), k % 4 ? 0.5 : -0.5);
+        // the inn: its real wall, painted whole on one plane flush on it: a cream ground floor with small-paned
+        // windows and the door, white storeys above with red timber, its name in old letters over the door;
+        // tables and big pots with little trees before it
+        const real = (s as OnWall).wall;
+        const W = real?.width ?? span, H = real?.eave ?? 5.3, S = 64;
+        const [mx, mz] = on(s, -(real?.along ?? 0), 0);
+        const mid: WaldseeFace = { ...s, x: mx, z: mz };
+        const cw = Math.round(W * S), ch = Math.round(H * S);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const g = canvas.getContext('2d')!;
+        const px = (u: number) => (u + W / 2) * S;
+        const py = (y: number) => (H - y) * S;
+        const GF = Math.min(2.6, H * 0.5);
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(0, 0, cw, ch);
+        g.fillStyle = '#efe6cf';
+        g.fillRect(0, py(GF), cw, GF * S);
+        // the timber of the storeys above: a band at each floor, uprights between the windows
+        const storeys = Math.max(1, Math.round((H - GF) / 1.5));
+        const sh = (H - GF) / storeys;
+        g.fillStyle = '#a33a2c';
+        for (let k = 0; k <= storeys; k++) g.fillRect(0, py(GF + k * sh) - 0.05 * S, cw, 0.1 * S);
+        const nUp = Math.max(1, Math.round(W / 1.5));
+        for (let k = 0; k <= nUp; k++) g.fillRect(px(-W / 2 + (k * W) / nUp) - 0.05 * S, py(H), 0.1 * S, (H - GF) * S);
+        const win = (u: number, y0: number, wd: number, h: number, frame: string) => {
+          g.fillStyle = frame;
+          g.fillRect(px(u - wd / 2 - 0.06), py(y0 + h + 0.06), (wd + 0.12) * S, (h + 0.12) * S);
+          g.fillStyle = '#33404f';
+          g.fillRect(px(u - wd / 2), py(y0 + h), wd * S, h * S);
+          g.fillStyle = frame;
+          g.fillRect(px(u) - 0.02 * S, py(y0 + h), 0.04 * S, h * S);
+          g.fillRect(px(u - wd / 2), py(y0 + h / 2) - 0.02 * S, wd * S, 0.04 * S);
+        };
+        // the door at the right, the windows spread over the rest
+        const doorU = W / 2 - Math.min(1.1, W * 0.18);
+        const slots = Math.max(1, Math.round((W - 1.8) / 1.5));
+        for (let k = 0; k < slots; k++) win(-W / 2 + 0.7 + ((k + 0.5) * (doorU - 0.9 - (-W / 2 + 0.7))) / slots, 0.7, 0.8, 1.0, '#7a4a36');
+        g.fillStyle = '#7a4a36';
+        g.fillRect(px(doorU - 0.43), py(2.1), 0.86 * S, 2.1 * S);
+        g.fillStyle = '#5a3a26';
+        g.fillRect(px(doorU - 0.35), py(2.02), 0.7 * S, 2.02 * S);
+        g.fillStyle = '#c9a06a';
+        g.fillRect(px(doorU + 0.2), py(1.05), 0.06 * S, 0.12 * S);
+        for (let st = 0; st < storeys; st++) {
+          const y0 = GF + st * sh + (sh - 0.9) / 2;
+          for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), y0, Math.min(0.7, W / nUp - 0.3), 0.9, '#7a4a36');
         }
-        for (const a of [-span * 0.3, 0, span * 0.3]) pane(a, 0.5, 4.05, 0.7, 0x7a4a36);
-        sign(s, s.text, 2.36, Math.min(3.4, span), { back: '#efe6cf', ink: '#7a2a20', rim: '#efe6cf' }, 'bold 58px Georgia, "Times New Roman", serif');
+        const eaveShade = g.createLinearGradient(0, 0, 0, 0.5 * S);
+        eaveShade.addColorStop(0, 'rgba(66,58,44,0.28)');
+        eaveShade.addColorStop(1, 'rgba(66,58,44,0)');
+        g.fillStyle = eaveShade;
+        g.fillRect(0, 0, cw, 0.5 * S);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(W, H);
+        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        const [fx, fz] = on(mid, 0, 0.04);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(mid);
+        add(m);
+        // its name on a board over the windows, left of the door
+        const left = -W / 2 + 0.1, right = doorU - 0.6, bw = Math.min(3.4, right - left);
+        sign({ ...mid, x: on(mid, (left + right) / 2, 0)[0], z: on(mid, (left + right) / 2, 0)[1] }, s.text, 1.95 + bw / 8, bw, { back: '#efe6cf', ink: '#7a2a20', rim: '#efe6cf' }, 'bold 58px Georgia, "Times New Roman", serif');
         for (const [a, o] of [[-1.2, 1.4], [0.3, 1.6], [1.5, 1.2]]) {
-          const [x, z] = on(s, a, o);
+          const [x, z] = on(mid, a, o);
           box(x, 0.36, z, 0.1, 0.72, 0.1, 0x4a4f5c);
           box(x, 0.74, z, 0.7, 0.06, 0.7, 0x8a5a36);
           for (const t of [0, 2.1, 4.2]) box(x + Math.cos(t) * 0.6, 0.25, z + Math.sin(t) * 0.6, 0.3, 0.5, 0.3, 0x6b4a32, t);
         }
-        for (const a of [-2, 2.2]) {
-          const [x, z] = on(s, a, 0.9);
+        for (const a of [-W / 2 + 0.3, W / 2 - 0.3]) {
+          const [x, z] = on(mid, a, 0.7);
           box(x, 0.3, z, 0.5, 0.6, 0.5, 0xb5653a, 0.4);
           box(x, 1.0, z, 0.1, 0.9, 0.1, 0x6b4a32);
           box(x, 1.6, z, 0.6, 0.6, 0.6, 0x4f9a4a, 0.6);
