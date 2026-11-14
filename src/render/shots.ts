@@ -483,7 +483,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
         spray(mx, y - 0.3, mz, ax, az, (CANDY.spreadDeg * Math.PI) / 180, some(10), 7, 0.22, 0.05, CANDY_COLORS);
         break;
       case 'hotdogSlinger':
-        spray(mx, y, mz, ax, az, 1.2, some(5), 3, 0.3, 0.07, MUSTARD);
+        if (far) spray(mx, y, mz, ax, az, 1.2, some(5), 3, 0.3, 0.07, MUSTARD);
         break;
       case 'bubbleWand':
         spray(mx, y - 0.2, mz, ax, az, 1.6, some(5), 2.2, 0.5, 0.08, [0xffffff, 0xbfefff], { fall: -1, drag: 2 });
@@ -624,7 +624,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           else if (p.kind === 'bomb') {
             // it tumbles, its fuse spits sparks, and a ring on the floor closes on the spot where it will come down
             bombs.add(p.pos.x, y, p.pos.z, dir, 1, Math.floor(time * 30) % 2 ? 0xffffff : 0xffb020, time * 9 + p.id);
-            if (Math.floor(time * 60) % 2 === 0) emit(p.pos.x, y + 0.2, p.pos.z, (rand() - 0.5) * 2, 1 + rand() * 2, (rand() - 0.5) * 2, 0.2 + rand() * 0.15, 0.05, [0xffffff, 0xffe14a, 0xff8c42], { fall: 5 });
+            if (t > 0.12 && Math.floor(time * 60) % 2 === 0) emit(p.pos.x, y + 0.2, p.pos.z, (rand() - 0.5) * 2, 1 + rand() * 2, (rand() - 0.5) * 2, 0.2 + rand() * 0.15, 0.05, [0xffffff, 0xffe14a, 0xff8c42], { fall: 5 });
             const r = p.land?.radius ?? 3;
             hoops.add(p.target!.x, 0.06, p.target!.z, 0, r * 2, 0xff5a2b);
             hoops.add(p.target!.x, 0.07, p.target!.z, time * 3, r * 2 * (1 - 0.85 * t), Math.floor(time * (6 + 14 * t)) % 2 ? 0xffe14a : 0xff3b3b);
@@ -633,7 +633,8 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           } else {
             // the hot dog turns end over end and drips
             hotdogs.add(p.pos.x, y, p.pos.z, dir, 1, undefined, time * 11 + p.id);
-            if (Math.floor(time * 60) % 4 === 0) emit(p.pos.x, y, p.pos.z, (rand() - 0.5) * 0.8, 0, (rand() - 0.5) * 0.8, 0.4, 0.06, rand() < 0.5 ? KETCHUP : MUSTARD, { fall: 12 });
+            // (not before it is well out of the hand: the first drops would fall in front of the thrower's eyes)
+            if (t > 0.2 && Math.floor(time * 60) % 4 === 0) emit(p.pos.x, y, p.pos.z, (rand() - 0.5) * 0.8, 0, (rand() - 0.5) * 0.8, 0.4, 0.06, rand() < 0.5 ? KETCHUP : MUSTARD, { fall: 12 });
           }
         } else if (p.behavior === 'saw') {
           pizzas.add(p.pos.x, 0.5 + up, p.pos.z, time * 25, 1);
