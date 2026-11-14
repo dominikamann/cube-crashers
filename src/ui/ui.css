@@ -571,7 +571,7 @@ body.no-map .mapbox { display: none; }
 .badge.rule { color: #ff8be6; }
 .badge.map { color: var(--gold); }
 .badge.live { color: var(--green); }
-.badge.humans.here { color: var(--green); }
+.badge.humans.here { color: #0b2a16; background: var(--green); border-color: var(--green); }
 .badge.bots, .badge.ping { color: rgba(255, 255, 255, 0.55); }
 .badge.ping.slow { color: var(--gold); }
 .badge.ping.bad { color: #ff6b6b; }
