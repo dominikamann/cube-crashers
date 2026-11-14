@@ -1090,8 +1090,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'amadeus') {
-      // the Amadeus: one cream plaster facade painted flush on its real wall: a door at the left, a wide glass front
-      // with a pink glow, the name in dark red on the plaster, white-framed windows above; and a small red blade sign
+      // the Amadeus: one rough grey-white plaster facade painted flush on its real wall: grey-framed lit windows
+      // upstairs with a tinsel garland, the name over a grey canopy band, below it the recessed cream ground floor
+      // (a wooden door up three steps, a "Burgers" chalkboard, a wide white-framed glass front lit violet); a black
+      // blade sign on an iron arm, an olive tree with fairy lights and a few bistro tables stand before it
       const wl = (s as OnWall).wall, W = wl?.width ?? 4, E = wl?.eave ?? 4.5, S = 80, mid = -(wl?.along ?? 0);
       const cw = Math.round(W * S), ch = Math.round(E * S);
       const canvas = document.createElement('canvas');
@@ -1100,71 +1102,99 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const g = canvas.getContext('2d')!;
       const px = (u: number) => (u + W / 2) * S;
       const py = (y: number) => (E - y) * S;
-      g.fillStyle = '#ece0c6';
+      g.fillStyle = '#ece6d4';
       g.fillRect(0, 0, cw, ch);
-      g.fillStyle = '#cdbf9f';
-      g.fillRect(0, py(0.15), cw, 0.15 * S);
       const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
-      shadow.addColorStop(0, 'rgba(66,58,44,0.28)');
-      shadow.addColorStop(1, 'rgba(66,58,44,0)');
+      shadow.addColorStop(0, 'rgba(60,56,50,0.28)');
+      shadow.addColorStop(1, 'rgba(60,56,50,0)');
       g.fillStyle = shadow;
       g.fillRect(0, 0, cw, 0.5 * S);
-      // windows upstairs, one storey of about two tiles each above the shopfront
+      // windows upstairs: grey frames, warm lit rooms, a tinsel garland along the sills
       const win = (u: number, yc: number) => {
-        const ww = 0.62, wh = 0.9;
-        g.fillStyle = '#fbf8f0';
+        const ww = 0.7, wh = 0.9;
+        g.fillStyle = '#8a8d92';
         g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
-        g.fillStyle = '#566a76';
-        g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S, (wh - 0.1) * S);
-        g.fillStyle = '#fbf8f0';
-        g.fillRect(px(u - 0.025), py(yc + wh / 2 - 0.05), 0.05 * S, (wh - 0.1) * S);
-        g.fillStyle = '#cdbf9f';
-        g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.04), (ww + 0.1) * S, 0.06 * S);
+        g.fillStyle = '#f0c98a';
+        g.fillRect(px(u - ww / 2 + 0.07), py(yc + wh / 2 - 0.07), (ww - 0.14) * S, (wh - 0.14) * S);
+        g.fillStyle = '#f7f1e4';
+        g.fillRect(px(u - 0.02), py(yc + wh / 2 - 0.07), 0.04 * S, (wh - 0.14) * S);
+        g.fillStyle = '#7a7d82';
+        g.fillRect(px(u - ww / 2 - 0.06), py(yc - wh / 2 - 0.04), (ww + 0.12) * S, 0.07 * S);
       };
-      const nUp = Math.max(1, Math.round(W / 1.3));
-      for (let yc = 3.9; yc + 0.6 < E; yc += 2) for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), yc);
-      // downstairs: a dark door with a glass pane at the left, then the glass front, warm pink inside
-      const dw = 0.95, du = -W / 2 + 0.3 + dw / 2;
-      g.fillStyle = '#3a2a26';
-      g.fillRect(px(du - dw / 2), py(2.35), dw * S, 2.2 * S);
-      g.fillStyle = '#7a3a5a';
-      g.fillRect(px(du - dw / 2 + 0.15), py(2.1), (dw - 0.3) * S, 1.1 * S);
-      const gx0 = du + dw / 2 + 0.3, gx1 = W / 2 - 0.2;
-      if (gx1 - gx0 > 0.6) {
-        g.fillStyle = '#d8ccb0';
-        g.fillRect(px(gx0), py(2.45), (gx1 - gx0) * S, 2.3 * S);
-        const glass = g.createLinearGradient(0, py(2.35), 0, py(0.3));
-        glass.addColorStop(0, '#34242f');
-        glass.addColorStop(0.55, '#a8407f');
-        glass.addColorStop(1, '#4a2a3c');
-        g.fillStyle = glass;
-        g.fillRect(px(gx0 + 0.08), py(2.37), (gx1 - gx0 - 0.16) * S, 2.14 * S);
-        g.fillStyle = '#d8ccb0';
-        g.fillRect(px((gx0 + gx1) / 2 - 0.03), py(2.37), 0.06 * S, 2.14 * S);
+      const nUp = Math.max(1, Math.round(W / 1.5));
+      for (let yc = 4.55; yc + 0.6 < E; yc += 2) {
+        for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), yc);
+        g.fillStyle = '#9aa0a8';
+        g.fillRect(0, py(yc - 0.5), cw, 0.03 * S);
       }
-      // a dark canopy over the shopfront, then the name on the plaster: a big red A, the rest smaller, and the trade below
-      g.fillStyle = '#3a3238';
-      g.fillRect(px(-W / 2 + 0.2), py(2.62), (W - 0.4) * S, 0.14 * S);
+      // the grey canopy band along the whole front, then the cream recessed ground floor under it
+      g.fillStyle = '#e9e3d2';
+      g.fillRect(0, py(2.5), cw, 2.5 * S);
+      g.fillStyle = '#c9c1ac';
+      g.fillRect(0, py(2.5), cw, 0.12 * S);
+      g.fillStyle = '#f2efe8';
+      g.fillRect(0, py(3.1), cw, 0.06 * S);
+      g.fillStyle = '#5a5d62';
+      g.fillRect(0, py(3.04), cw, 0.3 * S);
+      // the name: a big red A, the rest smaller, and the trade below it
       g.fillStyle = '#8c1f2a';
       g.textBaseline = 'alphabetic';
       g.textAlign = 'left';
-      const big = `${Math.round(0.5 * S)}px Georgia, "Times New Roman", serif`, small = `${Math.round(0.3 * S)}px Georgia, "Times New Roman", serif`;
+      const big = `${Math.round(0.62 * S)}px Georgia, "Times New Roman", serif`, small = `${Math.round(0.36 * S)}px Georgia, "Times New Roman", serif`;
       g.font = big;
       const wa = g.measureText('A').width;
       g.font = small;
-      const wr = g.measureText('MADEUS').width, tot = wa + wr + 4, sc = Math.min(1, (0.8 * cw) / tot);
+      const wr = g.measureText('MADEUS').width, tot = wa + wr + 2, sc = Math.min(1, (0.7 * cw) / tot);
+      const nx = cw * 0.5 + 0.15 * S - (tot * sc) / 2;
       g.save();
-      g.translate(cw / 2 - (tot * sc) / 2, py(2.97));
+      g.translate(nx, py(3.65));
       g.scale(sc, 1);
       g.font = big;
       g.fillText('A', 0, 0);
+      g.fillStyle = '#2a2428';
       g.font = small;
-      g.fillText('MADEUS', wa + 4, 0);
+      g.fillText('MADEUS', wa + 2, 0);
       g.restore();
-      g.fillStyle = '#6a5a52';
-      g.font = `${Math.round(0.13 * S)}px Georgia, "Times New Roman", serif`;
+      g.fillStyle = '#2a2428';
+      g.font = `${Math.round(0.15 * S)}px Georgia, "Times New Roman", serif`;
       g.textAlign = 'center';
-      g.fillText('Bar · Lounge · Restaurant', cw / 2 + 0.2 * S, py(2.97 - 0.22));
+      g.fillText('Bar · Lounge · Restaurant', nx + (tot * sc) / 2 + 0.2 * S, py(3.65 - 0.3));
+      // downstairs: a wooden glazed door at the left, a black chalkboard, then the glass front lit violet
+      const du = -W / 2 + 0.95, dw = 0.85;
+      g.fillStyle = '#b97a3e';
+      g.fillRect(px(du - dw / 2), py(2.15), dw * S, 1.95 * S);
+      g.fillStyle = '#e8c68a';
+      for (let r = 0; r < 3; r++) for (let c2 = 0; c2 < 3; c2++) g.fillRect(px(du - dw / 2 + 0.1 + c2 * 0.22), py(2.05 - r * 0.28), 0.18 * S, 0.24 * S);
+      const bu = du + dw / 2 + 0.45;
+      g.fillStyle = '#4a3a2a';
+      g.fillRect(px(bu - 0.28), py(2.3), 0.56 * S, 0.96 * S);
+      g.fillStyle = '#17171a';
+      g.fillRect(px(bu - 0.25), py(2.27), 0.5 * S, 0.9 * S);
+      g.fillStyle = '#e8e4da';
+      g.font = `${Math.round(0.09 * S)}px Georgia, serif`;
+      g.fillText('Delicious', px(bu), py(2.1));
+      g.fillText('BURGERS', px(bu), py(1.95));
+      g.fillStyle = '#c9a878';
+      g.fillRect(px(bu - 0.14), py(1.75), 0.28 * S, 0.22 * S);
+      const gx0 = bu + 0.5, gx1 = W / 2 - 0.1;
+      if (gx1 - gx0 > 0.6) {
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(px(gx0), py(2.4), (gx1 - gx0) * S, 1.95 * S);
+        const glass = g.createLinearGradient(0, py(2.32), 0, py(0.5));
+        glass.addColorStop(0, '#5a2a8a');
+        glass.addColorStop(0.6, '#7a3fb0');
+        glass.addColorStop(1, '#43275f');
+        g.fillStyle = glass;
+        g.fillRect(px(gx0 + 0.07), py(2.33), (gx1 - gx0 - 0.14) * S, 1.81 * S);
+        // a poster in the right half ("TO GO") and the white frame bars
+        g.fillStyle = '#2a1d34';
+        g.fillRect(px((gx0 + gx1) / 2 + 0.05), py(2.2), ((gx1 - gx0) / 2 - 0.15) * S, 1.5 * S);
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(px((gx0 + gx1) / 2 - 0.03), py(2.33), 0.06 * S, 1.81 * S);
+        g.textAlign = 'center';
+        g.font = `bold ${Math.round(0.13 * S)}px Arial, sans-serif`;
+        g.fillText('TO GO', px((gx0 + gx1) / 2 + ((gx1 - gx0) / 4)), py(0.7));
+      }
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -1176,11 +1206,31 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       m.position.set(fx, E / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
-      // the pink glow of the lounge behind the glass, and the little red blade sign on its iron arm
-      if (gx1 - gx0 > 0.6) onFace(s, mid + (gx0 + gx1) / 2, 0.06, 1.3, gx1 - gx0 - 0.3, 1.4, 0.03, 0xff4fb8, true);
-      const bx = mid - W / 2 + 0.12;
-      onFace(s, bx, 0.28, 3.3, 0.04, 0.04, 0.5, 0x2a2d33);
-      onFace(s, bx, 0.5, 3.0, 0.05, 0.4, 0.4, 0xb8322a);
+      // the violet glow of the lounge behind the glass
+      if (gx1 - gx0 > 0.6) onFace(s, mid + (gx0 + gx1) / 2, 0.06, 1.3, gx1 - gx0 - 0.3, 1.4, 0.03, 0x9a5af0, true);
+      // the canopy sticks out a little over the front
+      onFace(s, mid, 0.2, 2.62, W - 0.1, 0.1, 0.4, 0x5a5d62);
+      // three grey stone steps up to the door
+      for (let k = 0; k < 3; k++) onFace(s, mid - W / 2 + 0.95, 0.12 + (2 - k) * 0.17, 0.09 + k * 0.09, 1.1, 0.18 + k * 0.18, 0.17, 0x8c8e90);
+      // the black blade sign on its iron arm, upper left
+      const bx = mid - W / 2 + 1.3;
+      onFace(s, bx, 0.3, 3.9, 0.04, 0.04, 0.55, 0x1a1a1c);
+      onFace(s, bx, 0.58, 3.5, 0.05, 0.62, 0.36, 0xf4f1ea);
+      onFace(s, bx, 0.6, 3.55, 0.06, 0.34, 0.2, 0xb8322a);
+      onFace(s, bx, 0.3, 3.25, 0.05, 0.4, 0.05, 0x1a1a1c);
+      // the olive tree with fairy lights left of the steps, and a few bistro tables
+      onFace(s, mid - W / 2 + 0.2, 0.8, 0.3, 0.45, 0.6, 0.45, 0x3a3a3e);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.0, 0.1, 0.8, 0.1, 0x5a4a3a);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.7, 0.7, 0.8, 0.7, 0x5f7a4a);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.7, 0.74, 0.5, 0.74, 0xffe9a8, true);
+      for (const u of [0.1, 1.1]) {
+        onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5, 0.9, 0.55, 0.5, 0.05, 0.5, 0x2a2a2e);
+        onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5, 0.9, 0.28, 0.06, 0.55, 0.06, 0x2a2a2e);
+        for (const sd of [-1, 1]) {
+          onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5 + sd * 0.4, 0.9, 0.3, 0.3, 0.6, 0.3, 0x3a3a3e);
+          onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5 + sd * 0.4, 0.9, 0.38, 0.32, 0.06, 0.32, 0xb8322a);
+        }
+      }
       continue;
     }
     if (s.kind === 'eis') {
