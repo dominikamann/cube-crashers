@@ -44,7 +44,7 @@ const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   const lake = WALDSEE_BARRIERS.find(x => x.lake);
   return !(lake && cx > lake.at[0] && cz < lake.at[1] + 6);
 };
-type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number };
+type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number; eave: number };
 // (worked out on first use: shown() needs waldseeGround, which comes further down)
 let FEET: Foot[] | null = null;
 const wallFeet = (): Foot[] => (FEET ??= (() => {
@@ -55,6 +55,9 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
     for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
     cx /= n;
     cz /= n;
+    let eave = Infinity;
+    for (const [k, q] of b) if (k === 'r') for (let i = 1; i < q.length; i += 3) eave = Math.min(eave, q[i]);
+    if (!isFinite(eave)) eave = 3;
     for (const [k, q] of b) {
       if (k !== 'w') continue;
       const low: [number, number][] = [];
@@ -65,25 +68,33 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
       if (len < 0.3) continue;
       let nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
       if (nx * ((x0 + x1) / 2 - cx) + nz * ((z0 + z1) / 2 - cz) < 0) ((nx = -nx), (nz = -nz));
-      out.push({ x0, z0, x1, z1, nx, nz, id });
+      out.push({ x0, z0, x1, z1, nx, nz, id, eave });
     }
   }
   return out;
 })());
-/** a front put onto the real wall nearest to it that looks about the same way */
-const onWall = <F extends WaldseeFace>(f: F): F => {
-  let best: { d: number; x: number; z: number; nx: number; nz: number; len: number } | null = null;
+/**
+ * A front put onto the real wall nearest to it that looks about the same way. `wall` tells how the real wall is:
+ * `width` along the front, `along` where the front's point lies on it (from the wall's middle, in the front's own
+ * `along` direction), and `eave`, the height up to the roof
+ */
+export type OnWall = { wall?: { width: number; along: number; eave: number } };
+const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
+  let best: { d: number; x: number; z: number; nx: number; nz: number; len: number; u: number; eave: number; ex: number; ez: number } | null = null;
   for (const w of wallFeet()) {
     if (w.nx * f.dx + w.nz * f.dz < 0.5) continue;
     const ex = w.x1 - w.x0, ez = w.z1 - w.z0, L2 = ex * ex + ez * ez;
     const u = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / L2));
     const x = w.x0 + ex * u, z = w.z0 + ez * u, d = Math.hypot(f.x - x, f.z - z);
-    if (!best || d < best.d) best = { d, x, z, nx: w.nx, nz: w.nz, len: Math.sqrt(L2) };
+    if (!best || d < best.d) best = { d, x, z, nx: w.nx, nz: w.nz, len: Math.sqrt(L2), u, eave: w.eave, ex, ez };
   }
   if (!best || best.d > 4) return f;
-  return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))) };
+  // (the front's `along` runs (-dz, dx): the sign of the wall's direction in it)
+  const sgn = Math.sign(-best.nz * best.ex + best.nx * best.ez) || 1;
+  const wall = { width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave };
+  return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))), wall };
 };
-const onBlock = <F extends WaldseeFace>(f: F): F => {
+const onBlock = <F extends WaldseeFace>(f: F): F & OnWall => {
   if (WALDSEE_LOD2.length) return onWall(f);
   const b = BUILT.get(codeAt(Math.floor(f.x - f.dx * 0.5 - (f.dx ? 0 : 0.0001)), Math.floor(f.z - f.dz * 0.5 - (f.dz ? 0 : 0.0001))) - 6);
   if (!b) return f;
