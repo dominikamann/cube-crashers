@@ -61,8 +61,23 @@ export interface ServerStatus {
   rule?: string;
 }
 
+/** what a LAN host is about to start, as it shows in its lobby: the game, and where and by which rule if that is set */
+export interface GameInfo {
+  mode: ServerMode;
+  /** a floor's id, or 'random' */
+  map?: string;
+  /** versus: red against blue */
+  teams?: boolean;
+  view?: ViewMode;
+}
+
 /** the answer to a server-list probe */
 export interface ServerInfo {
+  /** what the list shows as badges beside the mode (newer servers send them; see ServerStatus for map and rule) */
+  map?: string;
+  rule?: string;
+  difficulty?: string;
+  view?: ViewMode;
   name: string;
   mode: ServerMode | 'lan';
   /** everyone in the lobby or match, bots included */
@@ -126,7 +141,7 @@ export type ClientMessage =
 export type HostMessage =
   | { type: 'welcome'; playerId: number }
   | { type: 'reject'; reason: 'version' | 'full' | 'started' }
-  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote; server?: ServerStatus }
+  | { type: 'lobby'; players: LobbyPlayer[]; difficulty: Difficulty; vote?: LobbyVote; server?: ServerStatus; game?: GameInfo }
   | ({ type: 'info' } & ServerInfo)
   | { type: 'start'; seed: number; difficulty: Difficulty; players: LobbyPlayer[]; mode?: RunMode; maps?: string[]; unlocked?: string[]; versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1> }; mapId?: string; view?: ViewMode }
   | { type: 'snap'; state: SnapState; events: SimEvent[] }
@@ -146,6 +161,9 @@ const validOption = (o: unknown) =>
 const validVote = (v: unknown) =>
   v === undefined || (isObj(v) && Array.isArray(v.options) && v.options.length === 2 && v.options.every(validOption) && isObj(v.votes) && isNum(v.endsIn));
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
+const optText = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 32);
+const optView = (v: unknown) => v === undefined || VIEW_MODES.includes(v as ViewMode);
+const validGame = (v: unknown) => v === undefined || (isObj(v) && SERVER_MODES.includes(v.mode as ServerMode) && optText(v.map) && (v.teams === undefined || typeof v.teams === 'boolean') && optView(v.view));
 const validServer = (v: unknown) =>
   v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)) && (v.map === undefined || typeof v.map === 'string') && (v.rule === undefined || typeof v.rule === 'string'));
 const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && (v.boss === undefined || typeof v.boss === 'boolean') && validTeams(v.teams));
@@ -184,8 +202,8 @@ export function parseMessage(raw: string): Message | null {
     case 'info':
       // the probe has no fields; the answer has all of them
       if (m.name === undefined) return { type: 'info' };
-      if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !(m.bots === undefined || isNum(m.bots)) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean') return null;
-      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing };
+      if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !(m.bots === undefined || isNum(m.bots)) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean' || !optText(m.map) || !optText(m.rule) || !optText(m.difficulty) || !optView(m.view)) return null;
+      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing, ...(m.map ? { map: m.map as string } : {}), ...(m.rule ? { rule: m.rule as string } : {}), ...(m.difficulty ? { difficulty: m.difficulty as string } : {}), ...(m.view ? { view: m.view as ViewMode } : {}) };
     case 'leave':
       return { type: 'leave' };
     case 'welcome':
@@ -193,7 +211,7 @@ export function parseMessage(raw: string): Message | null {
     case 'reject':
       return ['version', 'full', 'started'].includes(m.reason as string) ? (m as HostMessage) : null;
     case 'lobby':
-      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) && validServer(m.server) ? (m as unknown as HostMessage) : null;
+      return validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVote(m.vote) && validServer(m.server) && validGame(m.game) ? (m as unknown as HostMessage) : null;
     case 'start':
       return isNum(m.seed) && validPlayers(m.players) && DIFFICULTIES.includes(m.difficulty as string) && validVersus(m.versus) && (m.mapId === undefined || (typeof m.mapId === 'string' && Object.hasOwn(FLOORS, m.mapId))) && (m.view === undefined || VIEW_MODES.includes(m.view as ViewMode))
         ? (m as unknown as HostMessage)

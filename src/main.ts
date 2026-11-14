@@ -1,4 +1,4 @@
-import type { VersusOption } from './net/protocol';
+import type { GameInfo, VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
@@ -43,6 +43,7 @@ import { createMarkers } from './ui/markers';
 import { createUpdateBanner } from './ui/update-banner';
 import { createGraphicsTest, type GraphicsTest } from './graphics-test';
 import { createSmoother } from './render/smooth';
+import { createScoreboard } from './ui/scoreboard';
 import { createScreens, loadSettings, recordScore, saveSettings, withDefaults, type JoinEntry, type RunSummary } from './ui/screens';
 import { MAP_ROTATION, brawlMapFor, rushMapsFor, versusMapFor } from './maps';
 
@@ -232,7 +233,12 @@ function startGame() {
       host.start(Number(params.get('seed')) || randomSeed(), host.difficulty);
       enterPlay();
     },
-    leave: () => leaveLan(),
+    // Leave in a lobby goes back to where the lobby was entered from; Back in the list of LAN games to the LAN menu
+    leave: () => {
+      if (host || client) return leaveToOrigin();
+      leaveLan(false);
+      screens.lanMenu();
+    },
     setDifficulty: (d: SimState['difficulty']) => {
       host?.setDifficulty(d);
       settings.difficulty = d;
@@ -298,6 +304,7 @@ function startGame() {
       lastLobby = '';
     },
     viewMode: () => lanView,
+    setGame: (game: GameInfo) => host?.setGame(game),
   };
 
   /** two different versus cards for a vote: mode, rule and map at random */
@@ -403,6 +410,9 @@ function startGame() {
   const buildMenu = createBuildMenu(hudRoots[0], kind => keyboard.chooseTower(kind));
   const markers2 = createMarkers(hudRoots[1]);
   const emotes = createEmotes(hudRoots[0]);
+  // the board of who stands where, while Tab is held
+  const scoreboard = createScoreboard(app);
+  let boardHeld = false;
   // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
   const killcam = new KillCamRecorder();
   let replay: KillCamPlayback | null = null;
@@ -622,6 +632,7 @@ function startGame() {
       hud2.setPadMode(useLabel(rawPads().length >= 2 ? 1 : 0));
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
+      scoreboard.update(s, boardHeld && mode === 'playing' && s.run.stage === 'floor', localId(), s.versus ? t(`versus.${s.versus.rule}` as 'versus.score') : t(s.run.mode === 'brawl' ? 'brawl.title' : s.run.mode === 'bossrush' ? 'bossrush.title' : (`mode.${s.run.mode}` as 'mode.run')));
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
       // quick messages: bubbles over heads, pings on the ground, and the bar while C is open
@@ -880,8 +891,20 @@ function startGame() {
     return lan;
   }
 
+  /** where a lobby was entered from (the LAN menu, the list of LAN games, the online server list): leaving it,
+   *  being turned away and losing the host all lead back there, not to the title */
+  let lanOrigin: (() => void) | null = null;
+  function leaveToOrigin(notice?: string) {
+    const back = lanOrigin ?? (() => screens.lanMenu());
+    // (the title's own tidying up: the session, the HUD, the music; then the page one came from over it)
+    toTitle();
+    if (notice) screens.notice(notice, back);
+    else back();
+  }
+
   async function hostGame() {
     if (!(await ensureLan())) return;
+    lanOrigin = () => screens.lanMenu();
     try {
       const transport = await lan!.host(playerName());
       leaveLan(false);
@@ -898,6 +921,7 @@ function startGame() {
 
   async function openJoinList() {
     if (!(await ensureLan())) return;
+    lanOrigin = () => void openJoinList();
     let games: JoinEntry[] = [];
     const draw = () => screens.joinList(games, lan!.canEnterAddress, lanActions);
     draw();
@@ -915,6 +939,7 @@ function startGame() {
     lan ??= await createLan();
     // the desktop app connects for the game; on a web page the browser does it itself
     const online = lan?.online ?? webOnline();
+    lanOrigin = () => void openOnline();
     const stop = () => browser.stop();
     const view = screens.online({
       web: online.web,
@@ -961,7 +986,7 @@ function startGame() {
       mode = 'lobby';
       lastLobby = '';
     } catch {
-      screens.notice(t('net.failed'));
+      screens.notice(t('net.failed'), lanOrigin ?? undefined);
     }
   }
 
@@ -1004,16 +1029,11 @@ function startGame() {
     if (!client) return;
     if (client.status === 'rejected') {
       const reason = client.rejectReason ?? 'full';
-      leaveLan(false);
-      screens.notice(t(`net.rejected.${reason}` as 'net.rejected.full'));
-      mode = 'title';
+      leaveToOrigin(t(`net.rejected.${reason}` as 'net.rejected.full'));
       return;
     }
     if (client.status === 'hostLeft') {
-      leaveLan(false);
-      setHudVisible(false);
-      mode = 'title';
-      screens.notice(t('net.hostLeft'));
+      leaveToOrigin(t('net.hostLeft'));
       return;
     }
     const running = client.status === 'playing' && client.view?.phase === 'playing';
@@ -1030,7 +1050,7 @@ function startGame() {
       if (client.server) screens.lobbyCountdown(client.server);
       if (key === lastLobby) return;
       lastLobby = key;
-      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server);
+      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server, client.game);
     }
   }
 
@@ -1194,9 +1214,17 @@ function startGame() {
     if (mode === 'playing' && e.code === settings.bindings.view && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
-    if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
+    // Tab, held: the board of who stands where (and Tab does not walk through the page's buttons meanwhile)
+    if (e.code === 'Tab' && (mode === 'playing' || mode === 'paused')) {
+      e.preventDefault();
+      boardHeld = mode === 'playing';
+    }
+    if (mode === 'playing') keyboard.keyDown(e.code, performance.now(), e.repeat);
   });
-  addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));
+  addEventListener('keyup', e => {
+    if (e.code === 'Tab') boardHeld = false;
+    keyboard.keyUp(e.code, performance.now());
+  });
   addEventListener('mousemove', e => {
     if (Math.abs(e.movementX) + Math.abs(e.movementY) > 3) padActive = false;
     mouse.x = e.clientX;
@@ -1237,7 +1265,11 @@ function startGame() {
     if (!releasing && mode === 'playing' && keyboard.firstPerson && !padActive) pause();
     releasing = false;
   });
-  addEventListener('blur', () => (role === 'solo' ? pause() : keyboard.releaseAll()));
+  addEventListener('blur', () => {
+    boardHeld = false;
+    if (role === 'solo') pause();
+    else keyboard.releaseAll();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && role === 'solo') pause();
   });

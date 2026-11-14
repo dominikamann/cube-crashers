@@ -79,9 +79,12 @@ export class Keyboard {
     return (this.keys.get(action) ?? []).some(c => this.down.has(c));
   }
 
-  keyDown(code: string, now: number): void {
+  /** `repeat`: the key is held and the keyboard sends it again (false for a press of its own) */
+  keyDown(code: string, now: number, repeat = true): void {
     const action = actionOf(this.bindings, code);
-    const first = !this.down.has(code);
+    // (a press of its own counts even if the key seems down still: its release can get lost, with Cmd held on a
+    // Mac or when the window loses the keyboard for a moment, and the key would be dead until the next pause)
+    const first = !this.down.has(code) || !repeat;
     const slot = slotOf(action);
     if (action === 'dance' && first) {
       // the figure's own dance, for everyone to see
