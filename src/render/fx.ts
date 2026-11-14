@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { TICK_RATE, type BossKind, type PowerupKind, type SimEvent, type SimState, type Vec2 } from '../sim/types';
 import { BOSS, laserReach } from '../sim/systems/boss';
 import { createDisco } from './disco';
+import { createShots } from './shots';
 import { ENEMY_LOOK } from './entities';
 import { playerColor } from './palette';
 import { glowMat, InstancedPool } from './pool';
@@ -85,6 +86,8 @@ export interface Fx {
   update(s: SimState, events: SimEvent[], theme: Theme, frameDt: number, time: number): void;
   /** camera offset for screen shake */
   shake(): THREE.Vector3;
+  /** the players whose eyes a view looks through: what flashes right in front of them is left to the weapon in their hand */
+  setEyes(ids: number[]): void;
   /** fewer particles on low graphics settings */
   setParticleScale(k: number): void;
   /** the coloured light a Disco Ball throws on what is around it right now (`k` 0: none) */
@@ -357,6 +360,18 @@ export function createFx(scene: THREE.Scene): Fx {
     flash: (x, y, z, size, color, life, ring) => pops.push({ x, y, z, age: 0, life, size, color, ring }),
   });
 
+  // the weapons' shots (see shots.ts): they borrow the bits, the flashes and the stains from here
+  const shots = createShots(scene, {
+    burst,
+    chunks,
+    flash: (x, y, z, size, color, life, ring) => pops.push({ x, y, z, age: 0, life, size, color, ring }),
+    stain(x, z, size, color, life) {
+      if (splats.length >= MAX_SPLATS) splats.shift();
+      splats.push({ x, z, age: 0, life, size, color, turn: rand() * Math.PI * 2 });
+    },
+    shake: addShake,
+  });
+
   return {
     update(s, events, theme, dt, time) {
       readFloor(theme);
@@ -404,6 +419,8 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'explosion': {
             // a ball of fire that flashes and is gone, a shockwave as wide as the blast, sparks, a little
             // rubble and smoke, and a scorch mark on the floor
+            // (a hot dog bursts into ketchup, not into fire; what else was thrown or laid adds its own to the fire)
+            if (shots.explode(e.pos, e.radius)) break;
             const r = e.radius;
             pops.push({ x: e.pos.x, y: 0.5 + r * 0.15, z: e.pos.z, age: 0, life: 0.2, size: r * 1.7, color: 0xffd27a, ring: false });
             pops.push({ x: e.pos.x, y: 0.4 + r * 0.1, z: e.pos.z, age: -0.03, life: 0.26, size: r * 1.1, color: 0xff7a2e, ring: false });
@@ -572,13 +589,6 @@ export function createFx(scene: THREE.Scene): Fx {
             if (e.kind === 'frost') burst(e.pos, 1.8, 12, [0xc8f4ff, 0x7fdcff], 5, 0.1);
             if (e.kind === 'bumper') ring(e.pos, 2.4, [0xff2bd6, 0xffe14a]);
             break;
-          case 'rareFired': {
-            const p = s.players.find(x => x.id === e.playerId);
-            if (!p) break;
-            if (e.kind === 'slushMachine') spray(p.pos, p.aim, 5, [0x9fe8ff, 0xffffff, 0x4fc8ff], 18);
-            if (e.kind === 'leafBlower') spray(p.pos, p.aim, 6, [0xb8e986, 0x7cc56a, 0xffffff], 12);
-            break;
-          }
           case 'bubblePop':
             burst(e.pos, 0.9, 50, [0xff7fc8, 0xffb3df, 0xffffff], 6, 0.14);
             break;
@@ -615,26 +625,6 @@ export function createFx(scene: THREE.Scene): Fx {
               beam(a, i === 1 ? 1.95 : 0.8, mid, 1.1, 0x9fd0ff, 0.09);
               beam(mid, 1.1, b, 0.8, 0x9fd0ff, 0.09);
               burst(b, 0.8, 4, [0x9fd0ff, 0xffffff], 2, 0.06, 0.4);
-            }
-            break;
-          case 'magnetPull':
-            // a magnetic beam and sparks drawn in where the monsters gather
-            beam(e.from, 0.8, e.to, 0.6, 0xff5e8a, 0.1);
-            burst(e.to, 0.6, 10, [0xff5e8a, 0x7fb2ff], 2, 0.08, 0.3);
-            break;
-          case 'railFired':
-            // a bright beam along the line, and sparks where it stops
-            beam(e.from, 0.9, e.to, 0.9, 0x9ff8ff, 0.16);
-            burst(e.to, 0.9, 8, [0x9ff8ff, 0xffffff], 3, 0.08, 0.6);
-            break;
-          case 'shot':
-            if (e.weapon === 'flySwatter') {
-              // KLATSCH: a sweep of green bits across the front, and a jolt
-              const who = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
-              const at = who ? { x: e.pos.x + who.aim.x * 1.25, z: e.pos.z + who.aim.z * 1.25 } : e.pos;
-              const side = who ? { x: -who.aim.z, z: who.aim.x } : { x: 1, z: 0 };
-              for (const k of [-0.8, 0, 0.8]) burst({ x: at.x + side.x * k, z: at.z + side.z * k }, 0.85, 4, [0x3bd16f, 0xb8ffcf, 0xffffff], 3, 0.09, 0.3);
-              addShake(0.12);
             }
             break;
         }
@@ -769,7 +759,8 @@ export function createFx(scene: THREE.Scene): Fx {
         if (v.hp < 30 && rand() < 0.3) burst(v.pos, 0.6, 1, [0x333344, 0x666677], 0.5, 0.2);
       }
 
-      // (before the particles and the flashes are drawn: it adds some of its own)
+      // (before the particles and the flashes are drawn: they add some of their own)
+      shots.update(s, events, theme, dt, time);
       disco.update(s, events, dt);
 
       cubes.begin();
@@ -893,7 +884,9 @@ export function createFx(scene: THREE.Scene): Fx {
     setParticleScale(k) {
       particleScale = k;
       disco.setLow(k < 1);
+      shots.setLow(k < 1);
     },
+    setEyes: ids => shots.setEyes(ids),
     discoLight: () => disco.light(),
   };
 }

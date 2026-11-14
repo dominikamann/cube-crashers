@@ -297,6 +297,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       entities.update(s, theme, time, events, frameDt);
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);
+      fx.setEyes(views.filter(v => v.fp !== null).map(v => v.id));
       fx.update(s, events, theme, frameDt, time);
       healthBars.update(s);
       // a Disco Ball near one of the players on this screen colours the light of the scene, on its beat

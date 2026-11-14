@@ -61,12 +61,6 @@ function makePlayer(color: number, look: Look) {
   dizzy.visible = false;
   root.add(dizzy);
 
-  // the sword's slash: a glowing band that sweeps across the front and fades
-  const swordMat = glowMat(0xff3bd6, 2.2);
-  Object.assign(swordMat, { side: THREE.DoubleSide, transparent: true, depthWrite: false });
-  const sword = new THREE.Mesh(new THREE.RingGeometry(0.55, 1, 20, 1, -Math.PI * 0.18, Math.PI * 0.36).rotateX(-Math.PI / 2), swordMat);
-  sword.visible = false;
-  root.add(sword);
   // the fly swatter: a paddle on a handle, held upright and swung sideways across the front
   const swatter = new THREE.Group();
   const paddle = new THREE.Group();
@@ -106,8 +100,8 @@ function makePlayer(color: number, look: Look) {
     return m;
   });
   return {
-    color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, sword, swordMat, swatter, paddle, light, pack, flame, glint,
-    swordT: 1, swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN,
+    color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, swatter, paddle, light, pack, flame, glint,
+    swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN,
     // what the animation remembers from frame to frame
     step: 0, pace: 0, ahead: 0, aside: 0, idle: 0, land: 0, dash: 0, kick: 0, wasAir: false, lastCooldown: 0,
   };
@@ -594,16 +588,6 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     // (in the police car one sits inside, behind its dark windows)
     if (driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'police') v.root.visible = false;
 
-    if (v.swordT < 1) {
-      v.swordT = Math.min(1, v.swordT + frameDt / 0.2);
-      v.sword.visible = v.swordT < 1;
-      // a fast sweep from right to left across the front (eased out), fading as it goes
-      const sweep = 1 - (1 - v.swordT) ** 3;
-      v.sword.rotation.y = v.yaw + Math.PI + (0.5 - sweep) * 2.4;
-      v.sword.scale.setScalar(2.2 + 0.2 * ((p.weapons.find(w => w.kind === 'laserSword')?.level ?? 1) - 1));
-      v.sword.position.y = 0.7;
-      v.swordMat.opacity = 1 - v.swordT * v.swordT;
-    }
     if (v.swatT < 1) {
       v.swatT = Math.min(1, v.swatT + frameDt / 0.3);
       v.swatter.visible = v.swatT < 1;
@@ -801,7 +785,6 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         if (e.type === 'shot' && (e.weapon === 'laserSword' || e.weapon === 'flySwatter')) {
           const shooter = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
           const v = shooter ? players.get(shooter.id) : undefined;
-          if (v && e.weapon === 'laserSword') v.swordT = 0;
           if (v && e.weapon === 'flySwatter') v.swatT = 0;
         }
       }
