@@ -2305,7 +2305,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 8;
         const geo = new THREE.PlaneGeometry(W, H);
-        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        // (outside the wall's outline the canvas is empty: not drawn)
+        const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
         disposables.push(tex, geo, mat);
         const m = new THREE.Mesh(geo, mat);
         const [fx, fz] = on(mid, 0, 0.04);
