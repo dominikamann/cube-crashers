@@ -421,7 +421,7 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'a9553a', wall: 4.54, cx: 84.2, cz: 22.49, ang: -1.56 },
 ];
 /** trees with a bench round the trunk (tiles) */
-export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [48, 55], [55, 54]];
+export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [50, 46], [48, 55], [55, 54]];
 /** the Federle-Brunnen: its two tiles, the basin on the first and the round block on the second */
 export const WALDSEE_FOUNTAIN: [number, number][] = [[42, 48], [43, 48]];
 /** parked cars, each two tiles long from its tile southward: the police car in front of the station */

@@ -715,8 +715,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     });
   }
 
-  // ---- the Czardas on the Hochstatt, the place to sit: a blue-grey house with cream corner strips and bands, red
-  // shutters and a round-topped door; its name on a board over the door, strings of lights over the terrace and the
+  // ---- the Czardas on the Hochstatt, the place to sit: a sky-blue house with a grey plinth, white corner strips and red
+  // shutters; its name only on the plaque by the side door; strings of lights over the terrace and the
   // board with today's offer. The house front and its side are one painted plane each, exactly as wide as the real
   // walls, so nothing spills onto the neighbours
   {
@@ -739,65 +739,101 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = c;
         g.fillRect(px(u0), py(y1), (u1 - u0) * S, (y1 - y0) * S);
       };
-      // plaster, the stone plinth, a cream band between the storeys, cream strips at the corners, shadow under the eaves
-      rect(-W / 2, 0, W / 2, H, '#8398b4');
-      rect(-W / 2, 0, W / 2, 0.5, '#8d8f95');
-      rect(-W / 2, 2.38, W / 2, 2.5, '#e6dfcb');
-      rect(-W / 2, 0, -W / 2 + 0.3, H, '#e6dfcb');
-      rect(W / 2 - 0.3, 0, W / 2, H, '#e6dfcb');
+      // bright sky-blue plaster, a grey plinth with a darker edge, a white strip at the east corner, shadow under the eaves
+      rect(-W / 2, 0, W / 2, H, '#7096de');
+      rect(-W / 2, 0, W / 2, 0.9, '#8e9ec2');
+      rect(-W / 2, 0.88, W / 2, 0.95, '#6f7fa6');
+      rect(-W / 2, 0, -W / 2 + 0.8, H, '#f4f2ec');
       const sh = g.createLinearGradient(0, 0, 0, 0.5 * S);
-      sh.addColorStop(0, 'rgba(30,40,60,0.28)');
-      sh.addColorStop(1, 'rgba(30,40,60,0)');
+      sh.addColorStop(0, 'rgba(30,40,80,0.25)');
+      sh.addColorStop(1, 'rgba(30,40,80,0)');
       g.fillStyle = sh;
       g.fillRect(0, 0, cw, 0.5 * S);
-      // a window: cream frame, dark panes, a cross, a sill and red shutters either side
+      // a window: white frame, dark panes, a cross, a sill; bright red shutters either side upstairs
       const win = (u: number, yc: number, ww: number, wh: number, shutters: boolean) => {
         if (shutters) for (const e of [-1, 1]) {
-          const x0 = u + e * (ww / 2 + 0.04) - (e < 0 ? 0.27 : 0);
-          rect(x0, yc - wh / 2, x0 + 0.27, yc + wh / 2, '#b3322a');
-          for (let k = 1; k < 6; k++) rect(x0, yc - wh / 2 + (wh * k) / 6, x0 + 0.27, yc - wh / 2 + (wh * k) / 6 + 0.02, '#8a2420');
+          const x0 = u + e * (ww / 2 + 0.04) - (e < 0 ? 0.3 : 0);
+          rect(x0, yc - wh / 2 - 0.04, x0 + 0.3, yc + wh / 2 + 0.04, '#c42a35');
+          for (let k = 1; k < 7; k++) rect(x0, yc - wh / 2 + (wh * k) / 7, x0 + 0.3, yc - wh / 2 + (wh * k) / 7 + 0.02, '#9a1d2b');
         }
-        rect(u - ww / 2, yc - wh / 2, u + ww / 2, yc + wh / 2, '#ece6d3');
-        rect(u - ww / 2 + 0.05, yc - wh / 2 + 0.05, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#566a7c');
-        rect(u - ww / 2 + 0.05, yc + wh * 0.1, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#7890a2');
-        rect(u - 0.02, yc - wh / 2 + 0.05, u + 0.02, yc + wh / 2 - 0.05, '#ece6d3');
-        rect(u - ww / 2 + 0.05, yc - 0.02, u + ww / 2 - 0.05, yc + 0.02, '#ece6d3');
-        rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#d6cfba');
+        rect(u - ww / 2, yc - wh / 2, u + ww / 2, yc + wh / 2, '#f6f4ee');
+        rect(u - ww / 2 + 0.05, yc - wh / 2 + 0.05, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#4d5d6e');
+        rect(u - ww / 2 + 0.05, yc + wh * 0.1, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#7f96aa');
+        rect(u - 0.02, yc - wh / 2 + 0.05, u + 0.02, yc + wh / 2 - 0.05, '#f6f4ee');
+        rect(u - ww / 2 + 0.05, yc - 0.02, u + ww / 2 - 0.05, yc + 0.02, '#f6f4ee');
+        rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#dcd8cc');
       };
-      const d = Math.max(-W / 2 + 0.95, Math.min(W / 2 - 0.95, doorU));
-      const n = Math.max(2, Math.round((W - 0.6) / 1.8)), pitch = (W - 0.6) / n;
-      let wide = false;
+      const d = Math.max(-W / 2 + 1.4, Math.min(W / 2 - 1.4, doorU));
+      // (the plain second door at the far west end of the front)
+      const d2 = big ? W / 2 - 1.0 : 1e9;
+      const n = Math.max(2, Math.round((W - 0.8) / 1.8)), pitch = (W - 0.8) / n;
       for (let k = 0; k < n; k++) {
-        const u = -W / 2 + 0.3 + (k + 0.5) * pitch;
-        win(u, 3.55, 0.66, 0.96, true);
-        if (Math.abs(u - d) < 1.0) continue;
-        if (big && !wide && Math.abs(u - d) < 2.4) {
-          // (the big plain window next to the door)
-          win(u, 1.55, 1.25, 1.05, false);
-          wide = true;
-        } else win(u, 1.6, 0.66, 0.96, true);
+        const u = -W / 2 + 0.8 + (k + 0.5) * pitch;
+        if (big || Math.abs(u - d) > 1.0) win(u, 3.4, 0.7, 1.0, true);
+        // (the ground floor: windows on the front only; the side has just the door and the low plinth windows)
+        if (big && Math.abs(u - d) > 1.1 && Math.abs(u - d2) > 1.0) win(u, 1.75, 0.7, 0.85, false);
       }
-      // the door: a cream surround, a round-topped light over a brown wooden door, a step
-      rect(d - 0.5, 0, d + 0.5, 2.15, '#ece6d3');
-      rect(d - 0.4, 0, d + 0.4, 2.05, '#6a4630');
-      rect(d - 0.02, 0, d + 0.02, 2.05, '#4a2f20');
-      rect(d - 0.5, 2.15, d + 0.5, 2.28, '#ece6d3');
-      g.fillStyle = '#ece6d3';
-      g.beginPath();
-      g.arc(px(d), py(2.3), 0.5 * S, Math.PI, 0);
-      g.fill();
-      g.fillStyle = '#6c7f8c';
-      g.beginPath();
-      g.arc(px(d), py(2.32), 0.4 * S, Math.PI, 0);
-      g.fill();
-      rect(d - 0.02, 2.3, d + 0.02, 2.72, '#ece6d3');
-      rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
-      // the name painted on the plaster beside the door, over the band, clear of windows and shutters
-      g.fillStyle = '#f1ead6';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.font = `bold ${Math.round(0.36 * S)}px Georgia, "Times New Roman", serif`;
-      g.fillText(name, px(d + (d < 0 ? 1 : -1) * 2.0), py(2.66));
+      if (big) {
+        // the front: a dark brown wooden frame with a glass door and menu cards beside it, a plain grey door at the far end
+        rect(d - 0.62, 0, d + 0.62, 2.2, '#5a3322');
+        rect(d - 0.52, 0, d + 0.52, 2.1, '#2b2624');
+        rect(d - 0.02, 0, d + 0.02, 2.1, '#5a3322');
+        rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
+        rect(d + 0.7, 1.1, d + 0.95, 1.5, '#f4f1e6');
+        rect(d - 0.95, 1.1, d - 0.7, 1.5, '#f4f1e6');
+        rect(d2 - 0.5, 0, d2 + 0.5, 2.1, '#9a9ea6');
+        rect(d2 - 0.4, 0, d2 + 0.4, 2.0, '#34383e');
+      } else {
+        // the side: a brown wooden door in a white stone frame, an arched fanlight of small panes, a white niche with
+        // a small golden saint over it, a lamp each side and a menu box; the plaque with the name on the wall at the left
+        rect(d - 0.62, 0, d + 0.62, 2.2, '#f4f2ec');
+        rect(d - 0.5, 0, d + 0.5, 2.1, '#8a5a36');
+        rect(d - 0.5, 0, d - 0.1, 2.1, '#26211f');
+        rect(d - 0.62, 2.2, d + 0.62, 2.32, '#f4f2ec');
+        g.fillStyle = '#f4f2ec';
+        g.beginPath();
+        g.arc(px(d), py(2.3), 0.62 * S, Math.PI, 0);
+        g.fill();
+        g.fillStyle = '#6c7f8c';
+        g.beginPath();
+        g.arc(px(d), py(2.34), 0.5 * S, Math.PI, 0);
+        g.fill();
+        for (let k = -2; k <= 2; k++) rect(d + k * 0.18 - 0.01, 2.34, d + k * 0.18 + 0.01, 2.84, '#f4f2ec');
+        rect(d - 0.5, 2.56, d + 0.5, 2.58, '#f4f2ec');
+        // (the niche with the saint)
+        rect(d - 0.36, 2.9, d + 0.36, 3.5, '#f4f2ec');
+        g.fillStyle = '#f4f2ec';
+        g.beginPath();
+        g.arc(px(d), py(3.5), 0.36 * S, Math.PI, 0);
+        g.fill();
+        rect(d - 0.27, 2.98, d + 0.27, 3.5, '#a9b8d8');
+        g.fillStyle = '#a9b8d8';
+        g.beginPath();
+        g.arc(px(d), py(3.5), 0.27 * S, Math.PI, 0);
+        g.fill();
+        rect(d - 0.1, 3.05, d + 0.1, 3.55, '#d9a93a');
+        rect(d - 0.14, 2.98, d + 0.14, 3.05, '#2b2624');
+        rect(d + 0.85, 1.4, d + 1.1, 1.8, '#2b2624');
+        rect(d - 0.62, 0, d + 0.62, 0.07, '#b9b6ae');
+        // (a basement window low in the plinth at the left, a small shop window in the plinth zone right of the door)
+        const lowWin = (u0: number, u1: number, y0: number, y1: number) => {
+          rect(u0, y0, u1, y1, '#f4f2ec');
+          rect(u0 + 0.05, y0 + 0.05, u1 - 0.05, y1 - 0.05, '#26303c');
+        };
+        lowWin(d - 3.2, d - 2.4, 0.2, 0.7);
+        lowWin(d + 1.5, d + 2.6, 0.2, 0.75);
+        // the plaque: white, a thin dark frame, dark serif letters, on the wall left of the door at about door-top height
+        const pu = d - 2.0;
+        rect(pu - 0.8, 1.7, pu + 0.8, 2.3, '#4a4a52');
+        rect(pu - 0.78, 1.72, pu + 0.78, 2.28, '#f6f4ee');
+        g.fillStyle = '#34343a';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = `bold ${Math.round(0.24 * S)}px Georgia, "Times New Roman", serif`;
+        g.fillText(name, px(pu), py(2.1));
+        g.font = `${Math.round(0.12 * S)}px Georgia, "Times New Roman", serif`;
+        g.fillText('CAFÉ - BAR', px(pu), py(1.86));
+      }
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -810,13 +846,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       add(m);
       return d;
     };
-    // (the front: the door at the end of the wall near the Hochstatt, the big window beside it)
+    // (the front: the door a little east of the middle, a plain second door at the west end, no lettering)
     const alongF = f.wall?.along ?? 0;
-    const door = at(f, wallPlane(f, alongF + 0.4, true, 'CZARDAS') - alongF);
-    for (const e of [-1, 1]) {
-      const [lx, lz] = on(door, e * 0.78, 0.1);
-      lamp(lx, 2.0, lz, 0.14, 0.3, 0.14, 0xffd76a);
-    }
+    const door = at(f, wallPlane(f, -3, true, 'CZARDAS') - alongF);
     // (the terrace is centred on its tables, not on the door)
     const tab = WALDSEE_TABLES.find(p => p.name === 'Czardas')?.at ?? [];
     const mx = tab.reduce((a, [x]) => a + x + 0.5, 0) / Math.max(1, tab.length), mz = tab.reduce((a, [, z]) => a + z + 0.5, 0) / Math.max(1, tab.length);
@@ -836,18 +868,33 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const [sx, sz] = on(terrace, -w / 2 - 1.6 + (w + 3.2) * t, out);
       lamp(sx, 3 - Math.sin(Math.PI * ((t * 2) % 1)) * 0.25, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
     }
-    for (let k = 0; k < 5; k++) {
-      const [fx, fz] = on(terrace, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
-      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(terrace));
-      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(terrace));
-      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(terrace.dz), 0.58, fz + q * 0.3 * Math.abs(terrace.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
+    // the two trees of the terrace stand in square grates with a low metal guard rail round them
+    for (const [tx, tz] of [[53, 48], [50, 46]]) {
+      const x = tx + 0.5, z = tz + 0.5;
+      box(x, 0.02, z, 1.3, 0.04, 1.3, 0x55585e);
+      for (const e of [-1, 1]) {
+        box(x + e * 0.65, 0.3, z, 0.05, 0.05, 1.3, 0x3a3f4a);
+        box(x, 0.3, z + e * 0.65, 1.3, 0.05, 0.05, 0x3a3f4a);
+        for (const q of [-1, 1]) box(x + e * 0.65, 0.15, z + q * 0.65, 0.05, 0.3, 0.05, 0x3a3f4a);
+      }
+    }
+    // a lamp post with a round white globe by the east end of the front
+    {
+      const [lx, lz] = on(f, -(f.wall?.width ?? 3) / 2 + 0.5 - alongF, 1.6);
+      box(lx, 1.6, lz, 0.1, 3.2, 0.1, 0x26282e);
+      lamp(lx, 3.3, lz, 0.4, 0.4, 0.4, 0xf4f1ea);
     }
     // its second door, on the side toward the Hauptstrasse: the same house, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
       const sd = onBlock(WALDSEE_CZARDAS_SIDE), alongS = sd.wall?.along ?? 0;
-      wallPlane(sd, alongS, false, 'Czardas');
+      const door2 = at(sd, wallPlane(sd, alongS, false, 'Czardas') - alongS);
+      // (a small lamp each side of the door)
+      for (const e of [-1, 1]) {
+        const [lx, lz] = on(door2, e * 0.78, 0.1);
+        lamp(lx, 1.9, lz, 0.14, 0.26, 0.14, 0xffd76a);
+      }
     }
-    const [cx, cz] = on(terrace, w / 2 + 1.9, 2.6);
+    const [cx, cz] = on(door, 1.5, 1.0);
     box(cx, 0.45, cz, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
   }
