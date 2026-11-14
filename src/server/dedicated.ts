@@ -19,6 +19,8 @@ export const RESULT_SECONDS = 12;
 export class DedicatedServer {
   private startsAt: number | null = null;
   private overSince: number | null = null;
+  /** the game stands still for someone to come back (said once in the log) */
+  private waits = false;
   private bots: { id: number; think: (s: SimState) => Command[] }[] = [];
   private step = 0;
   private seed: number;
@@ -137,6 +139,13 @@ export class DedicatedServer {
   }
 
   private play(s: SimState): void {
+    // the last one playing lost the connection: the game waits for them as it is, for as long as their seat is kept
+    if (this.host.waiting) {
+      if (!this.waits) this.log('the last player lost the connection: the game waits for them');
+      this.waits = true;
+      return this.host.idle();
+    }
+    this.waits = false;
     if (this.humans() === 0) {
       this.log('everybody left: back to the lobby');
       return this.backToLobby();

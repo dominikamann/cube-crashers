@@ -140,7 +140,11 @@ export function addPlayer(s: SimState, id: number, name?: string): Player {
   return p;
 }
 
-export function removePlayer(s: SimState, id: number): void {
+/**
+ * `held`: their seat is kept for them (the connection broke off, see HostSession): the game is not judged
+ * without them, it waits.
+ */
+export function removePlayer(s: SimState, id: number, held = false): void {
   const p = s.players.find(x => x.id === id);
   if (!p) return;
   for (const v of s.vehicles) if (v.driverId === id) v.driverId = null;
@@ -148,6 +152,7 @@ export function removePlayer(s: SimState, id: number): void {
   s.players = s.players.filter(x => x.id !== id);
   s.flow = null;
   syncCredits(s);
+  if (held) return;
   // the one who left may have been the last who could help the others up, or the last still in the game
   checkTeamWipe(s);
   checkAllOut(s);

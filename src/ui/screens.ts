@@ -285,7 +285,8 @@ export interface LanActions {
 
 export interface Screens {
   title(): void;
-  pause(): void;
+  /** `live`: a game with others that goes on while this menu is open */
+  pause(live?: boolean): void;
   result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
   lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null, game?: GameInfo | null): void;
@@ -1060,10 +1061,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         }
       });
     },
-    pause() {
-      back = api.pause;
+    pause(live = false) {
+      back = () => api.pause(live);
       show('', s => {
-        text(s, 'h2', '', t('pause.title'));
+        text(s, 'h2', '', t(live ? 'pause.titleLive' : 'pause.title'));
+        if (live) text(s, 'p', 'pause-live', t('pause.live'));
         button(s, t('menu.resume'), actions.resume, true);
         button(s, t('menu.settings'), settingsScreen);
         button(s, t('menu.mainMenu'), actions.mainMenu);
@@ -1269,7 +1271,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           // what the host has picked (an older host does not say: then just how hard it is)
           if (game) gameBadges(s, { ...game, difficulty });
           else text(s, 'p', '', diffLabel(difficulty));
-          text(s, 'p', 'blinking', t(game ? 'lobby.waitingStart' : 'lobby.waiting'));
+          text(s, 'p', 'blinking', t(game?.running ? 'lobby.runningLan' : game ? 'lobby.waitingStart' : 'lobby.waiting'));
         }
         // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
         const foot = document.createElement('div');

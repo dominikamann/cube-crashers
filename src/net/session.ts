@@ -3,8 +3,8 @@ import { floor01 } from '../sim/config/floor01';
 import { FLOORS } from '../sim/config/floors';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
-import { balanceTeams, joinRunning } from '../sim/systems/versus';
-import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
+import { balanceTeams, joinRunning, takeSeat } from '../sim/systems/versus';
+import type { Command, Difficulty, Player, RunMode, SimEvent, SimState } from '../sim/types';
 import { APP_VERSION } from '../version';
 import { isCoop, MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type GameInfo, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
@@ -17,6 +17,8 @@ export const HOST_TIMEOUT_MS = 5000;
 
 /** bots get ids from here on, far away from the transport's peer ids */
 export const BOT_IDS = 1000;
+/** how long a seat in a running game is kept for someone whose connection broke off */
+export const SEAT_HOLD_MS = 60_000;
 /** how long a versus vote stays open */
 export const VOTE_SECONDS = 30;
 /** names for bots that fill a match up */
@@ -75,17 +77,50 @@ export class HostSession {
     this.lobby = opts.dedicated ? [] : [{ id: 0, name: opts.name.slice(0, MAX_NAME) || 'Host', color: opts.color ?? 0, character: opts.character }];
     net.onMessage((from, data) => this.receive(from, data));
     net.onPeer((peer, joined) => {
-      if (joined) return;
-      const was = this.lobby.findIndex(p => p.id === peer);
-      if (was < 0) return;
-      this.lobby.splice(was, 1);
-      this.unlockedBy.delete(peer);
-      this.pending.delete(peer);
-      this.lastInput.delete(peer);
-      if (this.sim) this.leftDuringRun.push(peer);
-      this.syncBots();
-      this.broadcastLobby();
+      if (!joined) this.drop(peer);
     });
+  }
+
+  /** who each client is across connections (the key of its hello) */
+  private keys = new Map<number, string>();
+  /** seats kept for those whose connection broke off during a game: what they had, until when it is kept */
+  private held = new Map<string, { was: Player; score?: number; until: number }>();
+
+  /**
+   * A client's connection is gone. In a running game their seat is kept for a while (see SEAT_HOLD_MS): back in
+   * time, they get what they had (see admit). The last one playing takes the game with them: it waits as it is
+   * (see waiting), and is not judged without them.
+   */
+  private drop(peer: number): void {
+    const key = this.keys.get(peer);
+    this.keys.delete(peer);
+    const was = this.lobby.findIndex(p => p.id === peer);
+    if (was < 0) return;
+    this.lobby.splice(was, 1);
+    this.unlockedBy.delete(peer);
+    this.pending.delete(peer);
+    this.lastInput.delete(peer);
+    const s = this.sim, body = s?.players.find(p => p.id === peer);
+    if (s && body && key && s.phase === 'playing') {
+      this.held.set(key, { was: JSON.parse(JSON.stringify(body)) as Player, score: s.versus?.scores[peer], until: this.now() + SEAT_HOLD_MS });
+      if (s.players.some(p => p.id !== peer && !p.bot)) this.leftDuringRun.push(peer);
+      else removePlayer(s, peer, true);
+    } else if (s) this.leftDuringRun.push(peer);
+    this.syncBots();
+    this.broadcastLobby();
+  }
+
+  /** the game stands still: the last one playing lost the connection, and their seat is still kept */
+  get waiting(): boolean {
+    const s = this.sim;
+    if (!s || s.phase !== 'playing') return false;
+    for (const [key, seat] of this.held) if (this.now() >= seat.until) this.held.delete(key);
+    return this.held.size > 0 && !s.players.some(p => !p.bot);
+  }
+
+  /** while the game waits (see waiting) nothing moves in it; whoever comes is let in, and with them it goes on */
+  idle(): void {
+    if (this.sim) this.admit(this.sim);
   }
 
   private send(to: number | 'all', msg: HostMessage): void {
@@ -99,11 +134,15 @@ export class HostSession {
   }
 
   private broadcastLobby(): void {
-    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined, game: this.game ?? undefined });
+    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined, game: this.gameNow() ?? undefined });
   }
 
   /** a LAN host: the game picked in its lobby, so everyone in it sees what Start will begin */
   private game: GameInfo | null = null;
+  /** (and whether it runs already: whoever comes now is told they come in as soon as it can take them) */
+  private gameNow(): GameInfo | null {
+    return this.game && this.sim && !this.server ? { ...this.game, running: true } : this.game;
+  }
   setGame(game: GameInfo | null): void {
     if (JSON.stringify(game) === JSON.stringify(this.game)) return;
     this.game = game;
@@ -294,9 +333,17 @@ export class HostSession {
         this.net.kick(from);
       };
       if (m.v !== PROTOCOL_VERSION) return reject('version');
-      // a dedicated server takes newcomers into its lobby for the next match; a LAN host has started without them
-      if (this.sim && !this.server) return reject('started');
+      // (whoever comes while a game runs waits in the lobby until it can take them, see admit)
       if (this.lobby.some(p => p.id === from)) return;
+      if (m.key) {
+        // the same player on a connection that is still open here (it died on their side): the new one counts
+        for (const [peer, key] of [...this.keys]) {
+          if (key !== m.key || peer === from) continue;
+          this.drop(peer);
+          this.net.kick(peer);
+        }
+        this.keys.set(from, m.key);
+      }
       // a full lobby with bots: a bot makes room for the human
       if (this.lobby.length >= MAX_PLAYERS && this.lobby.some(p => p.bot)) this.lobby.splice(this.lobby.map(p => !!p.bot).lastIndexOf(true), 1);
       if (this.lobby.length >= MAX_PLAYERS) return reject('full');
@@ -326,6 +373,8 @@ export class HostSession {
       this.broadcastLobby();
     } else if (m.type === 'leave') {
       const i = this.lobby.findIndex(p => p.id === from);
+      // (whoever says goodbye is gone for good: no seat is kept)
+      this.keys.delete(from);
       if (i >= 0) {
         this.lobby.splice(i, 1);
         this.unlockedBy.delete(from);
@@ -368,17 +417,22 @@ export class HostSession {
   private started: Extract<HostMessage, { type: 'start' }> | null = null;
 
   /**
-   * A dedicated server takes whoever waits in its lobby into the running game, as soon as the game can take them
-   * (see joinRunning): in versus a bot makes room for them when the match is as big as it is meant to be.
+   * Whoever waits in the lobby comes into the running game, as soon as the game can take them (see joinRunning):
+   * on a dedicated server and with a LAN host alike, a newcomer as well as someone who lost the connection and
+   * is back. In versus a bot makes room for them when the match is as big as it is meant to be.
    */
   private admit(s: SimState): void {
-    if (!this.server || !this.started || s.phase !== 'playing') return;
+    if (!this.started || s.phase !== 'playing') return;
     for (const p of this.lobby) {
       if (p.bot || s.players.some(q => q.id === p.id)) continue;
       const bots = s.versus ? s.players.filter(q => q.bot) : [];
       const leaves = bots.length > 0 && s.players.length >= Math.max(this.autoFill, 1) ? bots[bots.length - 1].id : undefined;
       const joined = joinRunning(s, { id: p.id, name: p.name, color: p.color, character: p.character }, leaves);
       if (!joined) continue;
+      // back after the connection broke off: with what they had
+      const key = this.keys.get(p.id), seat = key ? this.held.get(key) : undefined;
+      if (seat && this.now() < seat.until) takeSeat(s, joined, seat.was, seat.score);
+      if (key) this.held.delete(key);
       if (leaves !== undefined) {
         const i = this.lobby.findIndex(q => q.id === leaves);
         if (i >= 0) this.lobby.splice(i, 1);
@@ -430,6 +484,7 @@ export class HostSession {
   endRun(): void {
     this.sim = null;
     this.started = null;
+    this.held.clear();
     this.running(false);
     for (const p of this.lobby) delete p.ready;
     // players who came during the match push bots out again
@@ -473,12 +528,19 @@ export class ClientSession {
   private clock = 0;
   private now = () => this.clock;
 
-  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null; character?: string; unlocked?: string[] }) {
+  /** the host said goodbye (it is gone for good, not just out of reach) */
+  private bye = false;
+  /** the connection broke off though the host did not say goodbye: worth trying to come back */
+  get lost(): boolean {
+    return this.status === 'hostLeft' && !this.bye;
+  }
+
+  constructor(private net: Transport, opts: { name: string; version?: number; color?: number | null; character?: string; unlocked?: string[]; key?: string }) {
     net.onMessage((_from, data) => this.receive(data));
     net.onClose(() => {
       if (this.status !== 'rejected') this.status = 'hostLeft';
     });
-    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined, character: opts.character, unlocked: opts.unlocked ?? [] }));
+    net.send('all', JSON.stringify({ type: 'hello', v: opts.version ?? PROTOCOL_VERSION, name: opts.name.slice(0, MAX_NAME), color: opts.color ?? undefined, character: opts.character, unlocked: opts.unlocked ?? [], key: opts.key }));
   }
 
   private receive(data: string): void {
@@ -529,6 +591,7 @@ export class ClientSession {
         if (this.view && applySnapshot(this.view, m.state)) this.events.push(...m.events);
         break;
       case 'bye':
+        this.bye = true;
         this.status = 'hostLeft';
         break;
     }
@@ -572,7 +635,14 @@ export class ClientSession {
   }
 
   leave(): void {
-    this.net.send('all', JSON.stringify({ type: 'leave' }));
+    if (!this.hungUp) this.net.send('all', JSON.stringify({ type: 'leave' }));
+    this.net.close();
+  }
+
+  private hungUp = false;
+  /** drops a line that went dead without saying goodbye: the host keeps this player's seat (see HostSession.drop) */
+  hangUp(): void {
+    this.hungUp = true;
     this.net.close();
   }
 }

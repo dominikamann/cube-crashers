@@ -950,6 +950,7 @@ docs/         gameplay GIF and screenshots
 - [x] The Town: Bad Waldsee's old town from real building data, walked in first person, with the Schrättele as its boss
 - [x] Little Schrättele in the Town's streets (the elevator waits for them), finer houses and roofs, an end screen in the middle: version 1.2
 - [ ] Smaller snapshots for online play: send of each monster only what changed since the last one, instead of the whole game 30 times a second (a full co-op floor is about 590 KB/s per player today). Less upload and less work for the server; needs a new network format
+- [ ] A guided first round for new players: towers, nests, rare weapons and the shop, one after the other
 - [ ] More in [IDEAS.md](IDEAS.md): a full Lane Defense mode, new floors and bosses, plugins. Add your own!
 
 ## Contributing

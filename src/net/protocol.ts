@@ -69,6 +69,8 @@ export interface GameInfo {
   /** versus: red against blue */
   teams?: boolean;
   view?: ViewMode;
+  /** the game runs already (a newcomer waits until it can take them) */
+  running?: boolean;
 }
 
 /** the answer to a server-list probe */
@@ -128,7 +130,7 @@ export interface LobbyVote {
 
 /** client → host */
 export type ClientMessage =
-  | { type: 'hello'; v: number; name: string; color?: number; character?: string; unlocked?: string[] }
+  | { type: 'hello'; v: number; name: string; color?: number; character?: string; unlocked?: string[]; /** who this is across connections: the host keeps their seat when the line breaks */ key?: string }
   | { type: 'input'; seq: number; cmds: Command[] }
   | { type: 'vote'; choice: 0 | 1 }
   | { type: 'team'; team: 0 | 1 | null }
@@ -163,7 +165,7 @@ const validVote = (v: unknown) =>
 const validTeams = (t: unknown) => t === undefined || (isObj(t) && Object.values(t).every(x => x === 0 || x === 1));
 const optText = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 32);
 const optView = (v: unknown) => v === undefined || VIEW_MODES.includes(v as ViewMode);
-const validGame = (v: unknown) => v === undefined || (isObj(v) && SERVER_MODES.includes(v.mode as ServerMode) && optText(v.map) && (v.teams === undefined || typeof v.teams === 'boolean') && optView(v.view));
+const validGame = (v: unknown) => v === undefined || (isObj(v) && SERVER_MODES.includes(v.mode as ServerMode) && optText(v.map) && (v.teams === undefined || typeof v.teams === 'boolean') && optView(v.view) && (v.running === undefined || typeof v.running === 'boolean'));
 const validServer = (v: unknown) =>
   v === undefined || (isObj(v) && typeof v.name === 'string' && SERVER_MODES.includes(v.mode as ServerMode) && typeof v.teams === 'boolean' && typeof v.running === 'boolean' && (v.startsIn === null || isNum(v.startsIn)) && (v.map === undefined || typeof v.map === 'string') && (v.rule === undefined || typeof v.rule === 'string'));
 const validVersus = (v: unknown) => v === undefined || (isObj(v) && (v.mode === 'ffa' || v.mode === 'team') && VERSUS_RULES.includes(v.rule as string) && (v.chaos === undefined || typeof v.chaos === 'boolean') && (v.boss === undefined || typeof v.boss === 'boolean') && validTeams(v.teams));
@@ -189,6 +191,7 @@ export function parseMessage(raw: string): Message | null {
         // (a character this version does not know is dropped: the game picks one)
         character: isCharacter(m.character) ? m.character : undefined,
         unlocked: Array.isArray(m.unlocked) ? m.unlocked.filter((x): x is string => typeof x === 'string' && x.length < 24).slice(0, 16) : [],
+        ...(typeof m.key === 'string' && m.key.length >= 8 && m.key.length <= 40 ? { key: m.key } : {}),
       };
     case 'input':
       if (!isNum(m.seq) || !Array.isArray(m.cmds) || m.cmds.length > 32) return null;

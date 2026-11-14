@@ -13,7 +13,7 @@ import { createRaceView, lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
-import { normalizePad, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
+import { normalizePad, padBoard, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
 import { uiZoom } from './ui/scale';
 import { createLoop } from './loop';
@@ -413,6 +413,8 @@ function startGame() {
   // the board of who stands where, while Tab is held
   const scoreboard = createScoreboard(app);
   let boardHeld = false;
+  /** the same from a controller: its left trigger is held */
+  let padBoardHeld = false;
   // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
   const killcam = new KillCamRecorder();
   let replay: KillCamPlayback | null = null;
@@ -477,6 +479,7 @@ function startGame() {
       const pad = split ? (pads.length >= 2 ? pads[0] : undefined) : pads[0];
       const pad2 = split ? (pads.length >= 2 ? pads[1] : pads[0]) : undefined;
       if (pad && padTouched(pad)) padActive = true;
+      padBoardHeld = padBoard(pad) || padBoard(pad2);
       let cmds = mode !== 'playing' ? [] : bot && role === 'solo' ? bot(s) : keyboard.commands(s, localId(), now);
       // the controller's commands come last, so its move and aim win while it is in use
       if (mode === 'playing' && pad && padActive && !bot) cmds = [...cmds, ...padCtl.commands(pad, s, localId(), now)];
@@ -632,7 +635,7 @@ function startGame() {
       hud2.setPadMode(useLabel(rawPads().length >= 2 ? 1 : 0));
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
-      scoreboard.update(s, boardHeld && mode === 'playing' && s.run.stage === 'floor', localId(), s.versus ? t(`versus.${s.versus.rule}` as 'versus.score') : t(s.run.mode === 'brawl' ? 'brawl.title' : s.run.mode === 'bossrush' ? 'bossrush.title' : (`mode.${s.run.mode}` as 'mode.run')));
+      scoreboard.update(s, (boardHeld || padBoardHeld) && mode === 'playing' && s.run.stage === 'floor', localId(), s.versus ? t(`versus.${s.versus.rule}` as 'versus.score') : t(s.run.mode === 'brawl' ? 'brawl.title' : s.run.mode === 'bossrush' ? 'bossrush.title' : (`mode.${s.run.mode}` as 'mode.run')));
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);
       // quick messages: bubbles over heads, pings on the ground, and the bar while C is open
@@ -974,20 +977,64 @@ function startGame() {
     browser.start();
   }
 
+  /** the game joined last and how: where to come back to when the connection breaks off */
+  let lastJoin: { target: string; join: (target: string) => Promise<Transport> } | null = null;
+  /** counts the tries to come back: a newer one, or the player giving up, ends the older */
+  let reconnects = 0;
+  const RECONNECT = { tries: 14, everyMs: 2500 };
+  /** who this player is to a host across connections: it keeps their seat when the line breaks */
+  const rejoinKey = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+
+  function enterAsClient(transport: Transport) {
+    leaveLan(false);
+    role = 'client';
+    setSplit(false);
+    client = new ClientSession(transport, { name: playerName(), color: settings.color, character: ownedCharacter(profile, settings.character), unlocked: profile.unlocked, key: rejoinKey });
+    mode = 'lobby';
+    lastLobby = '';
+  }
+
   async function joinGame(target: string, join: (target: string) => Promise<Transport> = t => lan!.join(t)) {
     stopDiscovery?.();
     stopDiscovery = null;
+    reconnects++;
     try {
       const transport = await join(target);
-      leaveLan(false);
-      role = 'client';
-      setSplit(false);
-      client = new ClientSession(transport, { name: playerName(), color: settings.color, character: ownedCharacter(profile, settings.character), unlocked: profile.unlocked });
-      mode = 'lobby';
-      lastLobby = '';
+      lastJoin = { target, join };
+      enterAsClient(transport);
     } catch {
       screens.notice(t('net.failed'), lanOrigin ?? undefined);
     }
+  }
+
+  /**
+   * The connection to the host broke off: knock again for a while. Whoever gets through comes into the lobby
+   * and from there into the game that runs, like a newcomer (see HostSession.admit).
+   */
+  async function reconnect() {
+    const to = lastJoin;
+    const back = lanOrigin ?? (() => screens.lanMenu());
+    // (no goodbye on the old line: the host keeps the seat for whoever comes back)
+    client?.hangUp();
+    toTitle();
+    if (!to) return screens.notice(t('net.hostLeft'), back);
+    const mine = ++reconnects;
+    screens.notice(t('net.reconnecting'), () => {
+      reconnects++;
+      back();
+    });
+    for (let i = 0; i < RECONNECT.tries; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, RECONNECT.everyMs));
+      if (mine !== reconnects) return;
+      try {
+        const transport = await to.join(to.target);
+        if (mine !== reconnects) return transport.close();
+        return enterAsClient(transport);
+      } catch {
+        // (not there yet: once more)
+      }
+    }
+    if (mine === reconnects) screens.notice(t('net.hostLeft'), back);
   }
 
   function showLobby() {
@@ -1001,7 +1048,8 @@ function startGame() {
   let lastAnnounce = '';
   function announce() {
     if (!host || !window.cubeCrashers?.lan) return;
-    const next = { players: host.lobby.length, open: !host.sim && host.lobby.length < MAX_PLAYERS };
+    // (a game that runs takes newcomers too; a bot makes room for a person)
+    const next = { players: host.lobby.length, open: host.lobby.filter(p => !p.bot).length < MAX_PLAYERS };
     const key = JSON.stringify(next);
     if (key === lastAnnounce) return;
     lastAnnounce = key;
@@ -1033,7 +1081,9 @@ function startGame() {
       return;
     }
     if (client.status === 'hostLeft') {
-      leaveToOrigin(t('net.hostLeft'));
+      // the line broke off (the host did not say goodbye): try to come back before giving up
+      if (client.lost && lastJoin) void reconnect();
+      else leaveToOrigin(t('net.hostLeft'));
       return;
     }
     const running = client.status === 'playing' && client.view?.phase === 'playing';
@@ -1095,7 +1145,7 @@ function startGame() {
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
     audio?.mixer.setPaused(true);
-    screens.pause();
+    screens.pause(role !== 'solo');
   }
 
   function toTitle() {

@@ -90,13 +90,34 @@ describe('a dedicated server session', () => {
     expect(host.sim!.players).toHaveLength(4);
   });
 
-  it('a LAN host still turns away players once the game started', () => {
+  it('a LAN host takes whoever comes once the game started into it too', () => {
     const hub = createMemoryHub();
     const host = new HostSession(hub.host(), { name: 'Host' });
-    host.start(1);
+    host.setGame({ mode: 'quick' });
+    host.start(1, 'medium', 'quick', 'floor01');
     const late = new ClientSession(hub.client(), { name: 'Late' });
     hub.flush();
-    expect(late.status).toBe('rejected');
+    // (in the lobby first, told that the game runs)
+    expect(late.status).toBe('lobby');
+    expect(late.game?.running).toBe(true);
+    for (let i = 0; i < 400 && late.status !== 'playing'; i++) {
+      host.step([]);
+      hub.flush();
+    }
+    expect(late.status).toBe('playing');
+    expect(host.sim!.players.map(p => p.name)).toEqual(['Host', 'Late']);
+    expect(late.view!.players.some(p => p.id === late.playerId)).toBe(true);
+  });
+
+  it('a client knows a line that broke off from a host that said goodbye', () => {
+    const hub = createMemoryHub();
+    const host = new HostSession(hub.host(), { name: 'Host' });
+    const c = new ClientSession(hub.client(), { name: 'C' });
+    hub.flush();
+    host.close();
+    hub.flush();
+    expect(c.status).toBe('hostLeft');
+    expect(c.lost).toBe(false);
   });
 
   it('lobby messages go to people, never to bot ids', () => {

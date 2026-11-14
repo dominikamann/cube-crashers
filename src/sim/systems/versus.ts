@@ -4,7 +4,7 @@ import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
-import { addPlayer, removePlayer } from './coop';
+import { addPlayer, removePlayer, syncCredits } from './coop';
 import { cardPositions, placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
@@ -306,6 +306,47 @@ export function joinRunning(s: SimState, who: { id: number; name: string; color?
   }
   s.events.push({ type: 'playerRespawn', playerId: p.id });
   return p;
+}
+
+/**
+ * Someone who lost the connection is back (see joinRunning, which let them in as `p`): they get what they had
+ * when they went (`was`, and their `score` in a versus match): weapons, perks, coins, lives, their team. On a
+ * floor they stand where they stood; in a versus match they come in like after a fall.
+ */
+export function takeSeat(s: SimState, p: Player, was: Player, score?: number): void {
+  Object.assign(p, { weapons: was.weapons, selected: was.selected, perks: was.perks, coins: was.coins, maxHp: was.maxHp, jetpack: was.jetpack, jetFuel: was.jetFuel, rare: was.rare, rareSelected: was.rareSelected, stats: was.stats });
+  if (was.bought !== undefined) p.bought = was.bought;
+  if (was.jetExtra !== undefined) p.jetExtra = was.jetExtra;
+  if (was.lives !== undefined) p.lives = was.lives;
+  // (whoever lay on the ground when the line broke gets up fresh)
+  const up = was.downUntil === null && !was.out && was.hp > 0;
+  p.hp = up ? Math.min(was.hp, p.maxHp) : p.maxHp;
+  const v = s.versus;
+  if (!v) {
+    if (up) {
+      p.pos = { ...was.pos };
+      p.safePoint = { ...was.safePoint };
+      p.facing = { ...was.facing };
+      p.aim = { ...was.aim };
+    }
+    syncCredits(s);
+    return;
+  }
+  if (v.mode === 'team' && was.team !== undefined && was.team !== p.team) {
+    p.team = was.team;
+    p.color = p.team === 0 ? 1 : 0;
+    const base = v.flags?.[p.team]?.base;
+    p.pos = base && v.rule === 'capture' ? nearBase(s, base, []) : safeSpawn(s, p, []);
+    p.safePoint = { ...p.pos };
+  }
+  v.scores[p.id] = score ?? 0;
+  if (was.id !== p.id) {
+    delete v.scores[was.id];
+    if (v.roundWins[was.id] !== undefined) {
+      v.roundWins[p.id] = v.roundWins[was.id];
+      delete v.roundWins[was.id];
+    }
+  }
 }
 
 /** A player went down in a versus match: score, drop the gear, come back (or sit out the round). */
