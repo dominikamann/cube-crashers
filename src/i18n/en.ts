@@ -37,7 +37,7 @@ export const en = {
   'lobby.server': '{name} · {mode}',
   'lobby.startsIn': 'Next match in {s} s',
   'lobby.waitingPlayers': 'Waiting for players…',
-  'lobby.running': 'A match is running: you play in the next one.',
+  'lobby.running': 'A match is running: you come in as soon as there is room, at the latest in the next one.',
   'lobby.mapNext': 'Next: {map}',
   'lobby.mapNow': 'Now playing: {map}',
   'lobby.ready': 'I am ready',

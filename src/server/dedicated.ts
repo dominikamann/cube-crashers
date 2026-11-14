@@ -19,7 +19,7 @@ export const RESULT_SECONDS = 12;
 export class DedicatedServer {
   private startsAt: number | null = null;
   private overSince: number | null = null;
-  private bots: ((s: SimState) => Command[])[] = [];
+  private bots: { id: number; think: (s: SimState) => Command[] }[] = [];
   private step = 0;
   private seed: number;
   /** the map of the match before: a rotation never plays it twice in a row */
@@ -123,7 +123,7 @@ export class DedicatedServer {
       const option = plan.versus;
       this.host.startVersus(option, this.seed);
       // --difficulty: how hard the co-op floors are, and how well the bots play in versus
-      this.bots = this.host.lobby.filter(p => p.bot).map(p => createVersusBot(p.id, this.cfg.difficulty));
+      this.bots = this.host.lobby.filter(p => p.bot).map(p => ({ id: p.id, think: createVersusBot(p.id, this.cfg.difficulty) }));
       this.log(`${option.rule} on ${option.map} started with ${this.humans()} player(s) and ${this.bots.length} bot(s)`);
     } else {
       const { map, rush } = plan;
@@ -153,7 +153,9 @@ export class DedicatedServer {
       return;
     }
     const cmds: Command[] = [];
-    for (const b of this.bots) cmds.push(...b(s));
+    // (a bot that made room for someone who came in during the match plays no more)
+    this.bots = this.bots.filter(b => s.players.some(p => p.id === b.id));
+    for (const b of this.bots) cmds.push(...b.think(s));
     this.host.step(cmds);
     // nobody watches on the server: drop what a screen would show
     this.host.takeEvents();

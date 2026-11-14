@@ -1,9 +1,10 @@
 import { spawnWild, WILD } from './wild-boss';
 import { clearSpot, spotClear } from './ground';
-import { JUMP_TICKS, PLAYER_RADIUS } from '../config/balance';
+import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
+import { addPlayer, removePlayer } from './coop';
 import { cardPositions, placeStartCrates } from './offers';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
@@ -266,6 +267,45 @@ function startRound(s: SimState): void {
     placed.push(p);
   }
   for (const v of s.vehicles) v.driverId = null;
+}
+
+/**
+ * Someone comes into the game while it runs (a dedicated server takes newcomers at once). In a versus match they
+ * come in like after a fall: at a safe place, with the weapons of the rule, on the smaller team; `insteadOf` is the
+ * bot that makes room for them, whose team they take. On a floor they join the team at the start. Null where nobody
+ * can come in right now (a minigame, the shop, a game that is over): they wait for the next floor or match.
+ */
+export function joinRunning(s: SimState, who: { id: number; name: string; color?: number; character?: string }, insteadOf?: number): Player | null {
+  if (s.phase !== 'playing' || s.players.some(p => p.id === who.id)) return null;
+  if (!s.versus && s.run.stage !== 'floor') return null;
+  const bot = insteadOf === undefined ? undefined : s.players.find(p => p.id === insteadOf && p.bot);
+  if (!bot && s.players.length >= MAX_PLAYERS) return null;
+  const team = bot?.team;
+  if (bot) {
+    // (a cube it carried stays where it stood)
+    if (carryingCube(s, bot)) dropCube(s, bot);
+    removePlayer(s, bot.id);
+    if (s.versus) delete s.versus.scores[bot.id];
+  }
+  const p = addPlayer(s, who.id, who.name);
+  if (who.color !== undefined && !s.players.some(o => o !== p && o.color === who.color)) p.color = who.color;
+  if (who.character) p.character = who.character;
+  const v = s.versus;
+  if (v) {
+    if (v.mode === 'team') {
+      const count = (t: 0 | 1) => s.players.filter(o => o !== p && o.team === t).length;
+      p.team = team ?? (count(0) <= count(1) ? 0 : 1);
+      p.color = p.team === 0 ? 1 : 0;
+    }
+    v.scores[p.id] = 0;
+    equip(p, s);
+    const base = v.flags?.[p.team ?? 0]?.base;
+    p.pos = base && v.rule === 'capture' ? nearBase(s, base, []) : safeSpawn(s, p, []);
+    p.safePoint = { ...p.pos };
+    p.invulnUntil = s.tick + VERSUS.spawnInvulnTicks;
+  }
+  s.events.push({ type: 'playerRespawn', playerId: p.id });
+  return p;
 }
 
 /** A player went down in a versus match: score, drop the gear, come back (or sit out the round). */

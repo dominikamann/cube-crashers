@@ -422,7 +422,7 @@ browser; in the browser the list only has the servers that [take browser players
 On a server you land in its lobby. The next match starts after a countdown, or right away once everyone
 clicked **I am ready**. After a match the results show for a few seconds, then everyone is back in the lobby
 for the next one (Gun Game and the other rules move on to a new arena each time, a Single floor to a new
-floor). Who joins while a match is running waits in the lobby for the next one.
+floor). Who joins while a match is running comes straight into it: in versus a bot makes room when the match is as big as it is meant to be, on a floor they join the team at the start. Only during a game between two floors, in the shop or when a match is full of people do they wait in the lobby, and come in as soon as there is room.
 
 ### Run your own server
 

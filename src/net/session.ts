@@ -3,7 +3,7 @@ import { floor01 } from '../sim/config/floor01';
 import { FLOORS } from '../sim/config/floors';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
-import { balanceTeams } from '../sim/systems/versus';
+import { balanceTeams, joinRunning } from '../sim/systems/versus';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
 import { APP_VERSION } from '../version';
 import { MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
@@ -249,7 +249,8 @@ export class HostSession {
       characters: this.lobby.map(p => p.character),
       bots: this.lobby.map(p => !!p.bot),
     });
-    this.send('all', { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map, view: this.viewMode });
+    this.started = { type: 'start', seed, difficulty: this.difficulty, players: this.lobby, mode: 'versus', versus, mapId: option.map, view: this.viewMode };
+    this.send('all', this.started);
   }
 
   setDifficulty(d: Difficulty): void {
@@ -346,7 +347,37 @@ export class HostSession {
       colors: humans.map(p => p.color),
       characters: humans.map(p => p.character),
     });
-    this.send('all', { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode, mapId, maps: rushMaps });
+    this.started = { type: 'start', seed, difficulty, players: humans, mode, unlocked, view: this.viewMode, mapId, maps: rushMaps };
+    this.send('all', this.started);
+  }
+
+  /** how the running game was started: whoever comes in later is told the same */
+  private started: Extract<HostMessage, { type: 'start' }> | null = null;
+
+  /**
+   * A dedicated server takes whoever waits in its lobby into the running game, as soon as the game can take them
+   * (see joinRunning): in versus a bot makes room for them when the match is as big as it is meant to be.
+   */
+  private admit(s: SimState): void {
+    if (!this.server || !this.started || s.phase !== 'playing') return;
+    for (const p of this.lobby) {
+      if (p.bot || s.players.some(q => q.id === p.id)) continue;
+      const bots = s.versus ? s.players.filter(q => q.bot) : [];
+      const leaves = bots.length > 0 && s.players.length >= Math.max(this.autoFill, 1) ? bots[bots.length - 1].id : undefined;
+      const joined = joinRunning(s, { id: p.id, name: p.name, color: p.color, character: p.character }, leaves);
+      if (!joined) continue;
+      if (leaves !== undefined) {
+        const i = this.lobby.findIndex(q => q.id === leaves);
+        if (i >= 0) this.lobby.splice(i, 1);
+      }
+      p.color = joined.color;
+      delete p.ready;
+      this.lastInputAt.set(p.id, s.tick);
+      // the newcomer's game starts like everyone's did, with those who are in it now; the snapshots do the rest
+      const inGame = this.lobby.filter(q => s.players.some(x => x.id === q.id));
+      this.send(p.id, { ...this.started, players: inGame });
+      this.broadcastLobby();
+    }
   }
 
   /** One host tick: the host's own commands plus everything the clients sent. */
@@ -355,6 +386,7 @@ export class HostSession {
     if (!s) return;
     for (const id of this.leftDuringRun) removePlayer(s, id);
     this.leftDuringRun = [];
+    this.admit(s);
     const cmds = [...localCommands];
     for (const p of s.players) {
       if (p.id === 0) continue;
@@ -384,6 +416,7 @@ export class HostSession {
   /** Back to the lobby after a run (the same players stay). */
   endRun(): void {
     this.sim = null;
+    this.started = null;
     this.running(false);
     for (const p of this.lobby) delete p.ready;
     // players who came during the match push bots out again

@@ -343,31 +343,84 @@ describe('the dedicated server', () => {
     expect(b.view!.unlocks).toEqual(host.sim!.unlocks);
   });
 
-  it('who joins during a match waits for the next; when the last one playing leaves, the match ends for those who wait', () => {
-    for (const mode of ['coop', 'quick', 'score'] as const) {
-      const { hub, host, cs, run } = setup({ mode, countdown: 10 });
+  it('who joins during a match comes straight into it, on a floor and in versus, and plays on when the others leave', () => {
+    for (const mode of ['coop', 'quick', 'brawl', 'score', 'gungame', 'capture'] as const) {
+      const { hub, host, cs, run } = setup({ mode, countdown: 10, bots: 4 });
       cs[0].setReady(true);
       run(1);
-      const first = host.sim;
+      const first = host.sim!;
       expect(first, mode).not.toBeNull();
+      const before = first.players.length;
       const late = new ClientSession(hub.client(), { name: 'Late' });
       hub.flush();
       run(1);
-      expect(late.status, mode).toBe('lobby');
-      expect(late.server?.running, mode).toBe(true);
       expect(host.sim, mode).toBe(first);
+      expect(late.status, mode).toBe('playing');
+      const me = first.players.find(p => p.id === late.playerId)!;
+      expect(me, mode).toMatchObject({ name: 'Late' });
+      expect(me.bot, mode).toBeFalsy();
+      // (the newcomer sees the game as it is: the same players, themselves among them)
+      expect(late.view!.players.map(p => p.id).sort(), mode).toEqual(first.players.map(p => p.id).sort());
+      expect(late.view!.map.id, mode).toBe(first.map.id);
+      if (first.versus) {
+        // a bot made room: the match is as big as before, and the lobby lost that bot too
+        expect(first.players, mode).toHaveLength(before);
+        expect(first.players.filter(p => p.bot), mode).toHaveLength(before - 2);
+        expect(host.lobby.filter(p => p.bot), mode).toHaveLength(before - 2);
+        expect(first.versus.scores[late.playerId!], mode).toBe(0);
+        if (first.versus.mode === 'team') expect(first.players.filter(p => p.team === 0).length, mode).toBe(first.players.filter(p => p.team === 1).length);
+      } else expect(first.players, mode).toHaveLength(before + 1);
+      // what the newcomer does counts
+      const from = { ...me.pos };
+      // (through the opening countdown, in which nobody moves)
+      let moved = 0;
+      for (let i = 0; i < 8; i++) {
+        // (now this way, now that: a wall may stand in one of them)
+        late.sendInput([{ type: 'move', playerId: late.playerId!, dir: [{ x: 1, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }, { x: 0, z: -1 }][i % 4] }]);
+        hub.flush();
+        run(1);
+        for (const p of first.players) p.hp = p.maxHp;
+        moved = Math.max(moved, Math.hypot(me.pos.x - from.x, me.pos.z - from.z));
+      }
+      expect(moved, mode).toBeGreaterThan(0.5);
       cs[0].leave();
       hub.flush();
       run(0.5);
-      expect(host.sim, mode).toBeNull();
-      expect(late.server?.running, mode).toBe(false);
-      late.setReady(true);
-      hub.flush();
-      run(0.5);
-      expect(host.sim, mode).not.toBeNull();
-      expect(host.sim!.players.some(p => p.id === late.playerId), mode).toBe(true);
-      expect(late.status, mode).toBe('playing');
+      expect(host.sim, mode).toBe(first);
+      expect(first.players.some(p => p.id === late.playerId), mode).toBe(true);
     }
+  });
+
+  it('nobody comes in during a game between two floors or its shop: they are in from the next floor on', () => {
+    const { hub, host, cs, run } = setup({ mode: 'coop', countdown: 10 });
+    cs[0].setReady(true);
+    run(1);
+    const s = host.sim!;
+    s.run.stage = 'shop';
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    host.step([]);
+    hub.flush();
+    expect(late.status).toBe('lobby');
+    expect(late.server?.running).toBe(true);
+    expect(s.players.some(p => p.id === late.playerId)).toBe(false);
+    s.run.stage = 'floor';
+    host.step([]);
+    hub.flush();
+    expect(late.status).toBe('playing');
+    expect(s.players.some(p => p.id === late.playerId)).toBe(true);
+  });
+
+  it('a full match without bots takes nobody: they wait in the lobby', () => {
+    const { hub, host, cs, run } = setup({ mode: 'score', countdown: 10, bots: 0 }, 10);
+    for (const c of cs) c.setReady(true);
+    run(1);
+    expect(host.sim!.players).toHaveLength(10);
+    const late = new ClientSession(hub.client(), { name: 'Late' });
+    hub.flush();
+    run(1);
+    expect(late.status).not.toBe('playing');
+    expect(host.sim!.players).toHaveLength(10);
   });
 
   it('co-op runs the tower with the humans only, at the set difficulty', () => {
