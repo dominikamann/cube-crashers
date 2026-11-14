@@ -1,4 +1,4 @@
-import type { VersusOption } from './net/protocol';
+import type { GameInfo, VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
@@ -298,6 +298,7 @@ function startGame() {
       lastLobby = '';
     },
     viewMode: () => lanView,
+    setGame: (game: GameInfo) => host?.setGame(game),
   };
 
   /** two different versus cards for a vote: mode, rule and map at random */
@@ -1030,7 +1031,7 @@ function startGame() {
       if (client.server) screens.lobbyCountdown(client.server);
       if (key === lastLobby) return;
       lastLobby = key;
-      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server);
+      screens.lobby(client.lobby as LobbyPlayer[], client.difficulty, false, client.playerId, lanActions, client.vote, client.server, client.game);
     }
   }
 
@@ -1194,7 +1195,7 @@ function startGame() {
     if (mode === 'playing' && e.code === settings.bindings.view && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
     if (mode === 'lobby' && (e.code === 'Digit1' || e.code === 'Digit2') && (host?.voteInfo() || client?.vote)) lanActions.vote(e.code === 'Digit1' ? 0 : 1);
-    if (mode === 'playing') keyboard.keyDown(e.code, performance.now());
+    if (mode === 'playing') keyboard.keyDown(e.code, performance.now(), e.repeat);
   });
   addEventListener('keyup', e => keyboard.keyUp(e.code, performance.now()));
   addEventListener('mousemove', e => {

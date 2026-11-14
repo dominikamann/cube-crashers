@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClientSession, HostSession } from '../../src/net/session';
+import { parseMessage, type ServerInfo } from '../../src/net/protocol';
 import { createMemoryHub } from '../../src/net/transport';
 import { DedicatedServer, RESULT_SECONDS } from '../../src/server/dedicated';
 import { defaultConfig, serverIdentity, type ServerConfig } from '../../src/server/config';
@@ -490,5 +491,42 @@ describe('the dedicated server', () => {
     expect(next({ mode: 'bossrush', map: 'jungle' })).toBe('jungle');
     expect(next({ mode: 'bossrush' })).toBeUndefined();
     expect(next({ mode: 'coop' })).toBeUndefined();
+  });
+
+  it('answers the server list with what its badges show: the map, the rule, how hard it is, a fixed view', () => {
+    const ask = (cfg: Partial<ServerConfig>) => {
+      const { hub, run } = setup({ countdown: 10, ...cfg }, 0);
+      run(1);
+      const answers: string[] = [];
+      const t = hub.client();
+      t.onMessage((_from, data) => answers.push(data));
+      t.send('all', JSON.stringify({ type: 'info' }));
+      hub.flush();
+      return parseMessage(answers[0]) as unknown as ServerInfo;
+    };
+    // (nobody is on it: the next match is drawn all the same, so the list can say where it will be)
+    expect(ask({ mode: 'quick', map: 'waldsee', difficulty: 'low' })).toMatchObject({ mode: 'quick', map: 'waldsee', difficulty: 'low' });
+    const turns = ask({ mode: 'discovery' });
+    expect(VERSUS_MAPS).toContain(turns.map);
+    expect(turns.rule).toBeTruthy();
+    expect(turns.difficulty).toBeUndefined();
+    expect(ask({ mode: 'capture', map: 'jungle', view: 'fp' })).toMatchObject({ map: 'jungle', view: 'fp' });
+    const run = ask({ mode: 'coop', difficulty: 'ultraLow' });
+    expect(run.map).toBeUndefined();
+    expect(run.difficulty).toBe('ultraLow');
+  });
+
+  it('a LAN host tells its lobby what it is about to start', () => {
+    const hub = createMemoryHub();
+    const host = new HostSession(hub.host(), { name: 'Host' });
+    const c = new ClientSession(hub.client(), { name: 'C' });
+    hub.flush();
+    expect(c.game).toBeNull();
+    host.setGame({ mode: 'brawl', map: 'neon' });
+    hub.flush();
+    expect(c.game).toEqual({ mode: 'brawl', map: 'neon' });
+    host.setGame({ mode: 'capture', map: 'random', teams: true, view: 'fp' });
+    hub.flush();
+    expect(c.game).toEqual({ mode: 'capture', map: 'random', teams: true, view: 'fp' });
   });
 });

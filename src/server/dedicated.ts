@@ -62,12 +62,13 @@ export class DedicatedServer {
   tick(): void {
     const s = this.host.sim;
     if (s) return this.play(s);
+    // (the next match is drawn even while nobody is here: the server list shows where it will be)
+    this.announce();
     if (this.humans() === 0) {
       this.startsAt = null;
       this.host.setStartsIn(null);
       return;
     }
-    this.announce();
     this.startsAt ??= this.now() + this.cfg.countdown * 1000;
     const left = Math.max(0, Math.ceil((this.startsAt - this.now()) / 1000));
     this.host.setStartsIn(left);

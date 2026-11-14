@@ -1,7 +1,7 @@
 import { APP_VERSION } from '../version';
 import { dailyBest, dailyDate } from '../daily';
 import { t } from '../i18n';
-import type { LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
+import type { GameInfo, LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { isCoop } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
 import { cssColor, playerColor } from '../render/palette';
@@ -279,6 +279,8 @@ export interface LanActions {
   /** how everyone may watch: first person only, from above only, or either */
   setViewMode(v: 'both' | 'fp' | 'top'): void;
   viewMode(): 'both' | 'fp' | 'top';
+  /** host: what Start will begin, for the badges in everyone's lobby */
+  setGame(game: GameInfo): void;
 }
 
 export interface Screens {
@@ -286,7 +288,7 @@ export interface Screens {
   pause(): void;
   result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
-  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null): void;
+  lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null, game?: GameInfo | null): void;
   /** the online server list; update() fills it in as servers answer */
   online(h: OnlineHandlers): { update(rows: ServerRow[]): void };
   /** a dedicated server's countdown, changed in place (redrawing the lobby every second would take the controller's focus) */
@@ -348,6 +350,26 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   };
   let countdown: HTMLElement | null = null;
   const countdownText = (server: ServerStatus) => (server.running ? t('lobby.running') : server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
+  /**
+   * What is played, as a row of small badges: the game, the rule (a server that takes turns), the map, how hard it
+   * is (co-op), teams, a fixed view, and whether a match is running. The same row in the server list, in a
+   * server's lobby and in a LAN lobby.
+   */
+  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean }) => {
+    const row = document.createElement('div');
+    row.className = 'badges';
+    const add = (kind: string, label_: string) => text(row, 'span', `badge ${kind}`, label_);
+    add('mode', modeName(g.mode));
+    if (g.rule && g.rule !== g.mode) add('rule', t(`versus.${g.rule}` as 'versus.score'));
+    if (g.map) add('map', g.map === MAP_ROTATION ? t('setup.random') : FLOORS[g.map] ? t(FLOORS[g.map].name as 'floor.plaza') : g.map);
+    if (g.difficulty && (g.mode === 'lan' || isCoop(g.mode))) add('diff', t(`difficulty.${g.difficulty}` as 'difficulty.medium'));
+    // (not on a server that takes turns between the rules: there teams come and go)
+    if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
+    if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
+    if (g.running) add('live', t('online.running'));
+    parent.append(row);
+    return row;
+  };
   const modeName = (m: ServerMode | 'lan') => (m === 'lan' || isCoop(m) ? t(`server.mode.${m}` as 'server.mode.coop') : t(`versus.${m}` as 'versus.score'));
   const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   /** a kill source as players know it: weapon, rare weapon, tower or move */
@@ -1091,11 +1113,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         button(row, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    lobby(players, difficulty, isHost, me, lan, vote, server) {
+    lobby(players, difficulty, isHost, me, lan, vote, server, game) {
       countdown = null;
       show('lobby-screen', s => {
         text(s, 'h2', '', t('lobby.title', { n: players.length }));
-        if (server) text(s, 'p', 'lobby-server', t('lobby.server', { name: server.name, mode: modeName(server.mode) }));
+        if (server) {
+          text(s, 'p', 'lobby-server', server.name);
+          gameBadges(s, { ...server, difficulty });
+        }
         const list = document.createElement('div');
         list.className = 'lobby txt';
         for (const p of players) {
@@ -1173,6 +1198,26 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             api.lobby(players, difficulty, isHost, me, lan, vote, server);
           };
           if (settings.lanGame === 'endless' && !profile.unlocked.includes('endless')) settings.lanGame = 'run';
+          // everyone in the lobby sees what Start will begin
+          {
+            const g = settings.lanGame, o = versusOption(lan), view = lan.viewMode();
+            lan.setGame({
+              ...(g === 'versus'
+                ? settings.versusDiscovery
+                  ? { mode: 'discovery' as const }
+                  : { mode: o.rule, map: settings.versusMap, teams: o.mode === 'team' }
+                : g === 'run'
+                  ? { mode: 'coop' as const }
+                  : g === 'quick'
+                    ? { mode: 'quick' as const, map: settings.quickMap }
+                    : g === 'brawl'
+                      ? { mode: 'brawl' as const, map: settings.brawlMap }
+                      : g === 'bossrush'
+                        ? { mode: 'bossrush' as const, ...(settings.rushMap === RUSH_OWN ? {} : { map: settings.rushMap }) }
+                        : { mode: 'endless' as const }),
+              ...(view === 'both' ? {} : { view }),
+            });
+          }
           // one row for every game: the co-op ones and versus
           const games = rowOf(t('lobby.gameRow'));
           chip(games, t('mode.run'), settings.lanGame === 'run', () => pick('run'));
@@ -1209,13 +1254,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           for (const v of ['both', 'fp', 'top'] as const) chip(viewRow, t(`lobby.view.${v}` as 'lobby.view.both'), lan.viewMode() === v, () => lan.setViewMode(v));
         } else if (server) {
           // a dedicated server starts by itself: the countdown, and a button to say you are ready
-          if (isCoop(server.mode)) text(s, 'p', '', diffLabel(difficulty));
-          // where the next match is played (or the one that runs), and by which rule on a server that takes turns
-          if (server.map) {
-            const where = server.map === MAP_ROTATION ? t('setup.random') : FLOORS[server.map] ? t(FLOORS[server.map].name as 'floor.plaza') : server.map;
-            const what = server.rule ? `${t(`versus.${server.rule}` as 'versus.score')} · ${where}` : where;
-            text(s, 'p', 'lobby-map', t(server.running ? 'lobby.mapNow' : 'lobby.mapNext', { map: what }));
-          }
           countdown = text(s, 'p', 'lobby-countdown', countdownText(server));
           // ready only counts between matches
           if (!server.running) {
@@ -1225,7 +1263,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             text(s, 'p', 'credits-small', t('lobby.readyHint'));
           }
         } else {
-          text(s, 'p', '', diffLabel(difficulty));
+          // what the host has picked (an older host does not say: then just how hard it is)
+          if (game) gameBadges(s, { ...game, difficulty });
+          else text(s, 'p', '', diffLabel(difficulty));
           text(s, 'p', 'blinking', t('lobby.waiting'));
         }
         // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
@@ -1308,11 +1348,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
               r.status === 'checking' ? [t('online.checking')]
               : r.status === 'offline' ? [t('online.offline'), r.address]
               : r.status === 'incompatible' ? [t('online.otherVersion', { v: r.info!.version }), r.address]
-              : [modeName(r.info!.mode), seats(r), t('online.ping', { ms: r.ping ?? 0 }), ...(r.info!.playing ? [t('online.running')] : [])];
+              : [seats(r), t('online.ping', { ms: r.ping ?? 0 })];
             sub.textContent = bits.join(' · ');
             const info = document.createElement('div');
             info.className = 'server-info';
-            info.append(name, sub);
+            info.append(name);
+            if (r.status === 'online') gameBadges(info, { ...r.info!, running: r.info!.playing });
+            info.append(sub);
             el.append(info);
             if (r.status === 'online') {
               const b = button(el, t('online.join'), () => h.join(r.address), true);

@@ -6,7 +6,7 @@ import { removePlayer } from '../sim/systems/coop';
 import { balanceTeams, joinRunning } from '../sim/systems/versus';
 import type { Command, Difficulty, RunMode, SimEvent, SimState } from '../sim/types';
 import { APP_VERSION } from '../version';
-import { MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
+import { isCoop, MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type GameInfo, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
 import type { Transport } from './transport';
 
@@ -99,7 +99,15 @@ export class HostSession {
   }
 
   private broadcastLobby(): void {
-    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined });
+    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined, game: this.game ?? undefined });
+  }
+
+  /** a LAN host: the game picked in its lobby, so everyone in it sees what Start will begin */
+  private game: GameInfo | null = null;
+  setGame(game: GameInfo | null): void {
+    if (JSON.stringify(game) === JSON.stringify(this.game)) return;
+    this.game = game;
+    this.broadcastLobby();
   }
 
   /** dedicated server: seconds until the next match, or null while it waits for players */
@@ -273,6 +281,11 @@ export class HostSession {
         version: APP_VERSION,
         protocol: PROTOCOL_VERSION,
         playing: this.sim !== null,
+        // (for the list's badges: where and by which rule the next match is, how hard a co-op server is, a fixed view)
+        ...(this.server?.map ? { map: this.server.map } : {}),
+        ...(this.server?.rule ? { rule: this.server.rule } : {}),
+        ...(this.server && isCoop(this.server.mode) ? { difficulty: this.difficulty } : {}),
+        ...(this.server && this.viewMode !== 'both' ? { view: this.viewMode } : {}),
       });
       this.net.kick(from);
     } else if (m.type === 'hello') {
@@ -451,6 +464,8 @@ export class ClientSession {
   viewMode: ViewMode = 'both';
   /** set when the host is a dedicated server */
   server: ServerStatus | null = null;
+  /** what a LAN host is about to start */
+  game: GameInfo | null = null;
   view: SimState | null = null;
   private events: SimEvent[] = [];
   private seq = 0;
@@ -483,6 +498,7 @@ export class ClientSession {
         this.difficulty = m.difficulty;
         this.vote = m.vote ?? null;
         this.server = m.server ?? null;
+        this.game = m.game ?? null;
         // the host only sends the lobby while nobody plays: a finished run goes back to it
         if (this.status === 'playing' && this.view?.phase !== 'playing') this.status = 'lobby';
         break;

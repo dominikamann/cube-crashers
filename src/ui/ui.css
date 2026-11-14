@@ -554,5 +554,12 @@ body.no-map .mapbox { display: none; }
 .foot .btn:focus-visible, .foot .btn.pad-focus { outline-width: 2px; }
 @keyframes focus-breathe { 50% { outline-offset: 6px; outline-color: var(--gold); } }
 @media (prefers-reduced-motion: reduce) { .btn:focus-visible, .btn.pad-focus, .chip:focus-visible, .chip.pad-focus { animation: none; } }
-/* a server's lobby: where the next match is played */
-.screen p.lobby-map { font-size: 12px; color: var(--gold); }
+/* what is played, as small badges: in the server list and in a lobby */
+.badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; justify-content: flex-start; }
+.screen > .badges { justify-content: center; margin-top: 0; }
+.badge { padding: 4px 7px 3px; border: 1.5px solid currentColor; border-radius: 4px; background: rgba(0, 0, 0, 0.35); font-size: 8px; line-height: 1.2; letter-spacing: 0.5px; text-shadow: none; white-space: nowrap; color: rgba(255, 255, 255, 0.8); }
+.badge.mode { color: var(--cyan); }
+.badge.rule { color: #ff8be6; }
+.badge.map { color: var(--gold); }
+.badge.live { color: var(--green); }
+.screen > .badges .badge { font-size: 10px; padding: 6px 10px 5px; }
