@@ -1,4 +1,5 @@
 import { Tile } from '../sim/map/tilemap';
+import { crowned } from '../sim/systems/bounty';
 import { cssColor, palette, playerColor } from '../render/palette';
 import type { SimState } from '../sim/types';
 
@@ -79,7 +80,10 @@ export function createMinimap(parent: HTMLElement): Minimap {
       if (!s.elevatorOpen || blink) dot(s.map.elevator.x, s.map.elevator.z, 7, s.elevatorOpen ? '#2bf0ff' : '#5a7a88');
       // colour-blind mode in a team game: team 0 is a triangle, team 1 a round dot, as over their heads
       const shapes = palette().teamMarks && s.versus?.mode === 'team';
+      // whoever leads a versus match carries the crown: a golden frame round their dot, for everyone to find them
+      const leader = crowned(s);
       for (const p of s.players) {
+        if (p.id === leader && p.downUntil === null) dot(p.pos.x, p.pos.z, 12 + 2 * Math.sin(time * 6), '#ffd23d');
         const me = p.id === localId;
         const color = me ? '#ffffff' : cssColor(playerColor(p.color));
         if (shapes && p.team !== undefined) {

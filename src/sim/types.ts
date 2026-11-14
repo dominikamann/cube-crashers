@@ -57,7 +57,7 @@ export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | '
 export type CoinOpRule = 'turbo' | 'moon' | 'rapid' | 'swords' | 'boom' | 'double';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
 export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter' | 'thunderHammer' | 'missileLauncher';
-export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
+export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart' | 'quad';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
 /** quick messages: help, a ping at the crosshair, nest here, need coins, nice, good game */
 /** (`dance` is no message: the player's figure does its dance, on a key of its own) */
@@ -172,6 +172,8 @@ export interface Player {
   vehicleId: number | null;
   boostUntil: number;
   rapidUntil: number;
+  /** Quad Damage: until when this player's hits count four times */
+  quadUntil?: number;
   magnetUntil: number;
   /** where the player gets back up after going down */
   safePoint: Vec2;
@@ -572,6 +574,12 @@ export interface VersusState {
   coinop?: { rule: CoinOpRule; nextAt: number } | null;
   /** capture the cube: each team's cube, its base, and who carries it */
   flags?: { base: Vec2; pos: Vec2; carrier: number | null }[] | null;
+  /** kills in a row without falling, per player; who took whom out last (victim: killer); when each last scored a kill */
+  streaks?: Record<number, number>;
+  lastKiller?: Record<number, number>;
+  lastKillAt?: Record<number, number>;
+  /** when Quad Damage shows up next */
+  nextQuadAt?: number;
 }
 
 export interface MazeState {
@@ -635,6 +643,10 @@ export type SimEvent =
   /** the opening countdown: 5 4 3 2 1, then 0 for GO! */
   | { type: 'countdown'; n: number }
   | { type: 'pvpKill'; killerId: number | null; victimId: number }
+  /** a run of kills without falling that everyone hears about */
+  | { type: 'killStreak'; playerId: number; n: number }
+  /** a kill that counted for more: the crown taken, a run ended, revenge, the second in a row */
+  | { type: 'killBonus'; kind: 'bounty' | 'streakEnded' | 'revenge' | 'double'; killerId: number; victimId: number }
   | { type: 'gunLevel'; playerId: number; level: number; weapon: WeaponKind }
   | { type: 'versusRound'; winner: number | null; round: number }
   | { type: 'versusEnd'; winners: number[] }

@@ -28,6 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy, solidEdge, wormShare } from './combat';
 import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
+import { quadOf } from './bounty';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
@@ -40,6 +41,7 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
   if (!s.versus) amount *= DIFFICULTY[s.difficulty].enemyDamage;
   // coin-op chaos: hits between players count double
   else if (attackerId !== undefined && coinOpRule(s) === 'double') amount *= 2;
+  amount *= quadOf(s, attackerId);
   if (p.vehicleId !== null) {
     damageVehicle(s, p.vehicleId, amount);
     return;

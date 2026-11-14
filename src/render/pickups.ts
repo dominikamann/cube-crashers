@@ -54,6 +54,7 @@ export const POWERUP_GLYPH: Record<PowerupKind, string> = {
   bomb: '💥',
   frost: '❄',
   heart: '❤',
+  quad: '4×',
 };
 
 const WEAPON_LABEL: Record<WeaponKind, string> = {

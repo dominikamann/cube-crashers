@@ -552,11 +552,22 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             if (e.credits > 0 && (e.playerId === undefined || e.playerId === p.id)) toast(t('toast.creditLost', { credits: e.credits }), 'warn');
             break;
           case 'powerupSpawned':
-            toast(t('toast.powerup', { name: t(`powerup.${e.kind}`) }));
+            if (e.kind === 'quad') toast(t('quad.up'), 'final');
+            else toast(t('toast.powerup', { name: t(`powerup.${e.kind}`) }));
             break;
           case 'powerupPicked':
-            toast(t(`powerup.${e.kind}`), 'good');
+            // (Quad Damage is everyone's business: who has it now)
+            if (e.kind === 'quad') toast(t('quad.taken', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), e.playerId === p.id ? 'good' : 'warn');
+            else toast(t(`powerup.${e.kind}`), 'good');
             break;
+          case 'killStreak':
+            toast(t(`streak.${e.n}` as 'streak.3', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), e.playerId === p.id ? 'good' : 'warn');
+            break;
+          case 'killBonus': {
+            const name = (id: number) => s.players.find(x => x.id === id)?.name ?? '';
+            toast(t(`bonus.${e.kind}` as 'bonus.bounty', { killer: name(e.killerId), victim: name(e.victimId) }), e.killerId === p.id ? 'good' : e.victimId === p.id ? 'warn' : '');
+            break;
+          }
           case 'crateCoins':
             toast(t('toast.crateCoins', { coins: e.coins }), 'good');
             break;

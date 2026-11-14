@@ -81,6 +81,7 @@ export type SoundId =
   | 'gameWon'
   | 'gameLost'
   | 'uiClick'
+  | 'announce'
   | 'lockOn'
   | 'lockWarn';
 
@@ -440,6 +441,8 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   ],
   gameWon: notes('square', [523, 659, 784, 1047, 784, 1047, 1319], 0.12, 0.11, 0.25, 0.06),
   gameLost: notes('sawtooth', [523, 466, 415, 392], 0.25, 0.1, 0.3, 0.12).map(n => ({ ...n, lowpass: 1800 })),
+  // a run of kills, said to everyone
+  announce: notes('square', [523, 659, 784, 1047, 1319], 0.07, 0.09, 0.14, 0.05),
   // the Lock-On Launcher has its target; and for whoever a missile is after
   lockOn: notes('square', [1320, 1760], 0.05, 0.07, 0.05, 0.02),
   lockWarn: notes('sawtooth', [880, 660, 880, 660], 0.07, 0.08, 0.05, 0.03),
@@ -603,6 +606,10 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('cardPicked', 1.2);
     case 'pvpKill':
       return one('enemyKilled', 0.7);
+    case 'killStreak':
+      return one('announce', 1 + 0.12 * Math.max(0, e.n - 3));
+    case 'killBonus':
+      return one('powerupPicked', 1.25);
     case 'versusRound':
     case 'kingMoved':
       return one('elevatorOpen');

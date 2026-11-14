@@ -7,6 +7,7 @@ import { dist } from '../util';
 import { addPlayer, removePlayer, syncCredits } from './coop';
 import { cardPositions, hiddenPrize, placeStartCrates } from './offers';
 import { RARE } from '../config/rare';
+import { crowned, endStreak, killBonus, updateQuad } from './bounty';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { spawnHorde } from './hordes';
@@ -380,9 +381,12 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   const v = s.versus!;
   const killer = attackerId !== undefined && attackerId !== p.id ? s.players.find(x => x.id === attackerId) : undefined;
   if (killer && (v.rule === 'score' || v.rule === 'coinop')) {
-    v.scores[killer.id] = (v.scores[killer.id] ?? 0) + 1;
-    if (v.mode === 'team' && killer.team !== undefined) v.teamScores[killer.team]++;
+    // (a kill can count for more: the crown, a run ended, revenge, the second in a row; see bounty.ts)
+    const points = 1 + killBonus(s, killer, p, crowned(s));
+    v.scores[killer.id] = (v.scores[killer.id] ?? 0) + points;
+    if (v.mode === 'team' && killer.team !== undefined) v.teamScores[killer.team] += points;
   }
+  endStreak(s, p);
   if (killer && v.rule === 'gungame') {
     // swatted: the victim drops a step (before the killer moves up, so the swatter kill still wins)
     if (killer.weapons[0]?.kind === 'flySwatter') v.scores[p.id] = Math.max(0, (v.scores[p.id] ?? 0) - 1);
@@ -517,6 +521,7 @@ const side = (s: SimState, p: Player) => (s.versus!.mode === 'team' ? (p.team ??
 export function updateVersus(s: SimState): void {
   const v = s.versus;
   if (!v || s.phase !== 'playing') return;
+  updateQuad(s);
 
   if (s.tick >= v.nextCrateAt && v.rule !== 'gungame') {
     v.nextCrateAt = s.tick + VERSUS.crateEveryTicks;

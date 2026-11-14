@@ -13,6 +13,7 @@ import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
 import { stepMissile } from './missile';
+import { quadOf } from './bounty';
 import { aimShot, atHeightOf, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
 import { witchHit } from './witch';
@@ -61,6 +62,7 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  */
 export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
   if (e.hp <= 0) return;
+  amount *= quadOf(s, byPlayerId);
   // (a shark in mid-leap out of the Town's lake is out of reach: it is over the water and the barrier)
   if (e.leap) return;
   // maze ghosts are only crashed by touching them while powered up

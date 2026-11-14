@@ -79,6 +79,7 @@ export const POWERUP_COLOR: Record<PowerupKind, number> = {
   bomb: 0xff8c42,
   frost: 0x7fdcff,
   heart: 0xff6fae,
+  quad: 0xc04dff,
 };
 
 export interface Fx {

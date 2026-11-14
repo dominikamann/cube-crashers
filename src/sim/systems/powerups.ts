@@ -2,6 +2,7 @@ import { spotClear } from './ground';
 import type { PowerupKind, Player, SimState } from '../types';
 import { dist } from '../util';
 import { explode } from './combat';
+import { BOUNTY } from './bounty';
 
 export const POWERUP = {
   firstTicks: 600,
@@ -34,6 +35,9 @@ function apply(s: SimState, p: Player, kind: PowerupKind): void {
       break;
     case 'heart':
       p.hp = Math.min(p.maxHp, p.hp + POWERUP.heart);
+      break;
+    case 'quad':
+      p.quadUntil = s.tick + BOUNTY.quadTicks;
       break;
   }
 }
