@@ -122,6 +122,8 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
     flasche: [0xdfe6d6], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
+  // (the big rounded corner house between the inn and the ice-cream parlour: pale cream on the whole building)
+  put({ x: 68, z: 74.6, dx: 0, dz: -1, len: 1 }, 0xeee3bd);
   return m;
 })());
 /** grass patches out in the water that are not joined to the town: drowned, so no island is left */
@@ -925,6 +927,177 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const [cx, cz] = on(door, 1.5, 1.0);
     box(cx, 0.45, cz, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
+  }
+
+  // ---- the big rounded corner house between the inn and the ice-cream parlour: cream plaster, a grey plinth and
+  // cornice, white-framed windows in grey surrounds in even rows on every street-facing wall segment of the real
+  // building (each segment one textured plane flush on it, clipped to the wall's outline), a flat entrance with a
+  // stone frame, a bench, bollards and a bicycle rack at the wall. Nothing of it is solid.
+  {
+    const id = (onBlock({ x: 68, z: 74.6, dx: 0, dz: -1, len: 1 }) as OnWall).wall?.id;
+    const S = 64;
+    const feet = id === undefined ? [] : wallFeet().filter(w => {
+      if (w.id !== id) return false;
+      const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), mx = (w.x0 + w.x1) / 2 + w.nx * 0.7, mz = (w.z0 + w.z1) / 2 + w.nz * 0.7;
+      const gd = waldseeGround(Math.floor(mx), Math.floor(mz));
+      return len > 0.45 && gd !== 'house' && gd !== 'water';
+    });
+    // (the entrance: on the longest north-facing segment, its middle `DOOR` tiles from the segment's east end)
+    const DOOR = 1.9, RACK = [0.12, 1.32];
+    let main: Foot | undefined;
+    for (const w of feet) if (w.nz < -0.9 && (!main || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) > Math.hypot(main.x1 - main.x0, main.z1 - main.z0)) && Math.max(w.x0, w.x1) > 71) main = w;
+    for (const w of feet) {
+      const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), ex = (w.x1 - w.x0) / L, ez = (w.z1 - w.z0) / L;
+      // (the canvas runs along the plane's own x axis: (nz, -nx); `flip` when the wall's first foot lies at its far end)
+      const flip = ex * w.nz - ez * w.nx < 0;
+      const cu = (t: number) => (flip ? L - t : t);
+      const ymax = Math.max(...w.prof.map(p => p[1]));
+      const H = Math.ceil(ymax * S) / S, E = w.eave;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(8, Math.round(L * S));
+      canvas.height = Math.round(H * S);
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => u * S, py = (y: number) => (H - y) * S;
+      const rect = (u: number, y0: number, y1: number, ww: number, c: string | CanvasGradient) => {
+        g.fillStyle = c;
+        g.fillRect(px(u), py(y1), ww * S, (y1 - y0) * S);
+      };
+      // only inside the wall's outline (the gable and mansard stand higher than the eaves)
+      g.beginPath();
+      w.prof.forEach(([t, y], i) => (i ? g.lineTo(px(cu(t)), py(y)) : g.moveTo(px(cu(t)), py(y))));
+      g.closePath();
+      g.clip();
+      rect(0, 0, H, L, '#eee3bd');
+      rect(0, 0, 0.55, L, '#a3a4a6');
+      rect(0, 0.55, 0.6, L, '#8f9094');
+      // the slim grey cornice over the ground floor, a darker band at the eaves
+      rect(0, 2.0, 2.12, L, '#b5b3ad');
+      if (E < H - 0.3) rect(0, E - 0.02, E + 0.1, L, '#b5b3ad');
+      // the windows: as many as fit 1.3 tiles apart, spread along the segment so the rows run on round the curve
+      const n = Math.max(L > 0.8 ? 1 : 0, Math.round(L / 1.3));
+      const doorU = w === main ? cu(w.x1 > w.x0 ? L - DOOR : DOOR) : -9;
+      const win = (u: number, y0: number, y1: number, ww: number) => {
+        rect(u - ww / 2 - 0.07, y0 - 0.07, y1 + 0.07, ww + 0.14, '#9a9ca0');
+        rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
+        const glass = g.createLinearGradient(0, py(y1), 0, py(y0));
+        glass.addColorStop(0, '#7f97a4');
+        glass.addColorStop(1, '#566a76');
+        rect(u - ww / 2 + 0.05, y0 + 0.05, y1 - 0.05, ww - 0.1, glass);
+        rect(u - 0.02, y0 + 0.05, y1 - 0.05, 0.04, '#fbf8f0');
+        rect(u - ww / 2 + 0.05, y1 - 0.28, y1 - 0.25, ww - 0.1, '#fbf8f0');
+        rect(u - ww / 2 - 0.09, y0 - 0.1, y0 - 0.03, ww + 0.18, '#a7a8ab');
+      };
+      for (let k = 0; k < n; k++) {
+        const u = (k + 0.5) * (L / n);
+        for (let fl = 0; fl * 2 < ymax - 0.6; fl++) {
+          const f0 = fl * 2, top = Math.min(ymax, f0 + 2);
+          if (fl === 0) {
+            if (Math.abs(u - doorU) > 0.85) win(u, 0.75, 1.75, 0.6);
+          } else if (top - f0 >= 1.8 || f0 + 2 <= E + 0.1) win(u, f0 + 0.55, f0 + 1.55, 0.6);
+          else if (top - f0 >= 1.1) win(u, f0 + 0.3, f0 + 0.95, 0.5);
+        }
+      }
+      // the entrance: a flat door in a grey stone frame with pilasters and a lintel
+      if (w === main && doorU > 0) {
+        rect(doorU - 0.55, 0, 1.95, 0.14, '#a3a4a6');
+        rect(doorU + 0.41, 0, 1.95, 0.14, '#a3a4a6');
+        rect(doorU - 0.58, 1.78, 1.95, 1.16, '#a3a4a6');
+        rect(doorU - 0.41, 0, 1.78, 0.82, '#ddd2b0');
+        rect(doorU - 0.41, 0, 1.78, 0.82, 'rgba(120,100,60,0.12)');
+        rect(doorU - 0.02, 0, 1.78, 0.03, '#b8ad8c');
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(L, H), mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
+      m.rotation.y = Math.atan2(w.nx, w.nz);
+      add(m);
+      // the bollards: low grey stones along the wall's left part, and nothing else solid
+      if (w.nz < -0.9 && w !== main) {
+        const k = Math.floor(L / 0.9);
+        for (let i = 0; i < k; i++) {
+          const t = (i + 0.5) * (L / k);
+          box(w.x0 + ex * t + w.nx * 0.35, 0.22, w.z0 + ez * t + w.nz * 0.35, 0.12, 0.44, 0.12, 0xa9aaad);
+        }
+      }
+      if (w === main) {
+        // (distances from the segment's east end: `at(d)` is that spot, `out` off the wall)
+        const east = w.x1 > w.x0 ? 1 : 0;
+        const at = (d: number, out: number): [number, number] => {
+          const t = east ? L - d : d;
+          return [w.x0 + ex * t + w.nx * out, w.z0 + ez * t + w.nz * out];
+        };
+        // the bench by the entrance: a wooden seat on two grey ends
+        {
+          const [bx, bz] = at(DOOR + 1.15, 0.3), yaw = Math.atan2(w.nx, w.nz);
+          box(bx, 0.27, bz, 0.9, 0.05, 0.28, 0x8b5a34, yaw);
+          for (const e of [-0.38, 0.38]) box(bx + ex * e, 0.12, bz + ez * e, 0.06, 0.24, 0.26, 0x8f9094, yaw);
+        }
+        // the bicycle rack: six little metal hoops in a row, two bikes standing in them
+        const mat2 = new THREE.MeshLambertMaterial({ color: 0x6f747a });
+        disposables.push(mat2);
+        const bar = (len: number) => {
+          const geo2 = new THREE.BoxGeometry(len, 0.025, 0.025);
+          disposables.push(geo2);
+          return geo2;
+        };
+        const hoopTop = bar(0.18), hoopLeg = new THREE.BoxGeometry(0.025, 0.4, 0.025);
+        disposables.push(hoopLeg);
+        const tx = ex * (east ? -1 : 1), tz = ez * (east ? -1 : 1);
+        const tangentYaw = Math.atan2(-tz, tx);
+        for (let i = 0; i < 6; i++) {
+          const d = RACK[0] + 0.1 + i * ((RACK[1] - RACK[0] - 0.2) / 5);
+          const [hx, hz] = at(d, 0.26);
+          const grp = new THREE.Group();
+          const top = new THREE.Mesh(hoopTop, mat2);
+          top.position.set(0, 0.4, 0);
+          top.rotation.y = Math.PI / 2;
+          grp.add(top);
+          for (const s of [-1, 1]) {
+            const leg = new THREE.Mesh(hoopLeg, mat2);
+            leg.position.set(0, 0.2, s * 0.09);
+            leg.rotation.y = Math.PI / 2;
+            grp.add(leg);
+          }
+          grp.position.set(hx, 0, hz);
+          grp.rotation.y = tangentYaw;
+          add(grp);
+        }
+        // two bikes: two wheels, a frame, a saddle and bars, standing against the wall's rack, one red, one blue
+        const wheelGeo = new THREE.TorusGeometry(0.17, 0.014, 5, 16), wheelMat = new THREE.MeshLambertMaterial({ color: 0x23262a });
+        disposables.push(wheelGeo, wheelMat);
+        for (const [d, col] of [[RACK[0] + 0.3, 0xb8322a], [RACK[0] + 0.75, 0x2f5aa8]] as [number, number][]) {
+          const [bx, bz] = at(d, 0.4);
+          const grp = new THREE.Group();
+          const fm = new THREE.MeshLambertMaterial({ color: col });
+          disposables.push(fm);
+          for (const s of [-1, 1]) {
+            const wh = new THREE.Mesh(wheelGeo, wheelMat);
+            wh.position.set(s * 0.27, 0.18, 0);
+            grp.add(wh);
+          }
+          const part = (sx: number, sy: number, x: number, y: number, rz: number) => {
+            const gp = new THREE.BoxGeometry(sx, sy, 0.02);
+            disposables.push(gp);
+            const mm = new THREE.Mesh(gp, fm);
+            mm.position.set(x, y, 0);
+            mm.rotation.z = rz;
+            grp.add(mm);
+          };
+          part(0.5, 0.025, 0, 0.3, 0.12);
+          part(0.3, 0.025, -0.1, 0.22, -0.9);
+          part(0.18, 0.025, -0.2, 0.42, 0);
+          part(0.14, 0.025, 0.26, 0.42, 0);
+          part(0.2, 0.025, 0.22, 0.3, 1.2);
+          grp.position.set(bx, 0, bz);
+          grp.rotation.y = tangentYaw;
+          add(grp);
+        }
+      }
+    }
   }
 
   // ---- names over doors, each with what belongs to the place

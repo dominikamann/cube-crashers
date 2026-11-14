@@ -228,7 +228,8 @@ the first floor, more often the higher you are. It is never a boss your run has 
 suits the world (the **Rhino** where there is room to charge, **King Rex** in the city, the jungle and the
 Server Farm). The doors are open: lure it away and slip past, or beat it for a crate.
 
-Between the floors the elevator takes you to a short game of its own, then to the shop:
+Between the floors the elevator takes you to a short game of its own, then to the shop. There are five of them
+and a run has four gaps, so every run draws its own order by its seed, and no game comes twice:
 
 - **Kart Rally:** everyone sits in their own kart (no getting out, and it cannot be wrecked) on a race track with a
   jump, boost pads, an S-bend and a narrow canyon. **The first to drive three laps wins**, and the race ends right
@@ -248,6 +249,12 @@ Between the floors the elevator takes you to a short game of its own, then to th
   pays its collector, and clearing the maze pays everyone a bonus.
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
+- **The Town:** the old town of Bad Waldsee, the Hochstatt with the Federle fountain, the café terrace, the
+  ice-cream parlour, the inn, the police station and the lane down to the Stadtsee, built from the real
+  buildings. You walk it in first person. **Die Hex** waits there by her bonfire: beat her and the elevator opens.
+  Streets that lead out of the town are closed by barriers, with the street going on behind them. When the LAN
+  host fixes the view from above, the Town is left out (it is made for first person only). It is also under
+  **Single floor**.
 - **Elevator shop:** then the elevator stops. Everyone gets four offers: a weapon level-up, a perk, a full heal,
   or +1 life for everyone (the dearest offer, once per shop). Buy with **1–4** or a click, press **Enter** when
   you are ready. The shop closes after 25 seconds or when everyone is ready. Coins are meant to be a decision:
@@ -279,7 +286,8 @@ Between the floors the elevator takes you to a short game of its own, then to th
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
 map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
-under everyone, and at the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
+under everyone, and at the very end, on the roof at night, **Die Hex** (in the Town, by her bonfire), and at the very end, on the roof at night,
+**Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
 
@@ -514,7 +522,7 @@ Press **V** (controller: **View**) to switch between the view from above and fir
 first person. The mouse turns and tilts the view (it is captured; **Esc** pauses and frees it), on a controller
 the right stick. **W** walks where you look. You see your weapon in hand; hotdogs and bombs land where the
 crosshair meets the ground, with a marker. In a kart you sit behind the wheel, on a hoverboard you see its nose.
-Health bars over monsters and other players show at a glance whether you hit. If the mouse was outside the
+Health bars over monsters and other players show at a glance whether you hit. The Town is always walked in first person. If the mouse was outside the
 window when you pressed V, the game cannot capture it: *Click to aim* appears, and one click fixes it.
 
 ---
@@ -710,6 +718,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush; in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
+| **Die Hex** | Boss of the Town, and like every boss in the Boss Rush, the Boss Brawl, versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little witches and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. | Her crouch and her cackle; a fan of strikes before the sweep |
 | **Mega Block** | Boss of floor 3 (in some runs the Rhino or the Kraken takes its place). | Red rings, marked lines |
 | **Segment Worm** | One of the three final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
@@ -872,6 +881,7 @@ docs/         gameplay GIF and screenshots
 - [x] Shots with a height (aim up at a jetpack, down from one), bosses that climb and keep apart, a lighter picture on Medium to Ultra: version 1.0
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
+- [x] The Town: Bad Waldsee's old town from real building data, walked in first person, with Die Hex as its boss
 - [ ] More in [IDEAS.md](IDEAS.md): a full Lane Defense mode, new floors and bosses, plugins. Add your own!
 
 ## Contributing
@@ -891,6 +901,11 @@ report it. (There is no bug bounty.)
 ## Credits
 
 A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help from hard-working AI bots.
+
+The Town is built from open data: the 3D building models (LoD2) and house coordinates of Baden-Württemberg,
+© LGL, [www.lgl-bw.de](https://www.lgl-bw.de), [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0); streets and the
+lake from © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Shop names in the game
+are made up.
 
 ## License
 
