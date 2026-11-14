@@ -124,7 +124,24 @@ for z in range(1, N - 1):
         if rows[z][x] == '#': continue
         hits = sum(1 for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8) if any(inside(x + a, z + b, r) for f in footprints for r in f))
         if hits >= 5: rows[z][x] = '#'; covered += 1
-for o, r in zip(orig, rows): src = src.replace("  '" + o + "',", "  '" + ''.join(r) + "',", 1)
+# and the other way: a wall tile right at the street where no real building stands (a ledge before a front that
+# lies further back) becomes floor, one tile deep, so the walls one bumps into are the walls one sees. (Not behind
+# a barrier, not the lake, the meadow or the gravel: those are kept by their codes in waldsee-town.ts)
+TOWN = os.path.join(os.path.dirname(OUT), '..', 'sim', 'config', 'waldsee-town.ts')
+codes = re.findall(r"^  '([0-9a-z]{%d})',$" % (2 * N), open(TOWN).read(), re.M)[:N]
+code = lambda x, z: int(codes[z][2 * x:2 * x + 2], 36)
+opened = []
+for z in range(2, N - 2):
+    for x in range(2, N - 2):
+        if rows[z][x] != '#' or code(x, z) in (0, 3, 4, 5): continue
+        if not any(rows[z + b][x + a] == '.' for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1))): continue
+        hits = sum(1 for a in (0.2, 0.5, 0.8) for b in (0.2, 0.5, 0.8) if any(inside(x + a, z + b, r) for f in footprints for r in f))
+        if hits == 0: opened.append((x, z))
+for x, z in opened: rows[z][x] = '.'
+print(len(opened), 'wall tiles before fronts that stand further back made floor')
+# (the rows written back by their place: two rows may be alike)
+start = src.index("const BASE = [\n") + len("const BASE = [\n"); end = src.index("];", start)
+src = src[:start] + ''.join("  '" + ''.join(r) + "',\n" for r in rows) + src[end:]
 open(FLOOR, 'w').write(src)
 print(covered, 'floor tiles under real buildings made wall')
 # markers that now stand on a wall

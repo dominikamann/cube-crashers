@@ -311,9 +311,17 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       let cx = 0, cz = 0, n = 0;
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n), c = codeAt(tx, tz);
-      if (c >= 6 && (takenAway(c) || WALDSEE_REPLACED.includes(c - 6))) return;
-      const g = waldseeGround(tx, tz);
-      if (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz)) return;
+      if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return;
+      // (whole buildings or none: one that stands anywhere on the lake side of the police lane, on its meadow or
+      // gravel, or out beyond its shore, is left out, so the view down the lane is open water as far as one sees)
+      const lake = WALDSEE_BARRIERS.find(b => b.lake);
+      for (const [k, q] of b)
+        for (let i = 0; i < q.length; i += 3) {
+          if (k !== 'w' || q[i + 1] > 0.3) continue;
+          const x = Math.floor(q[i]), z = Math.floor(q[i + 2]), g = waldseeGround(x, z);
+          if (x >= 0 && z >= 0 && x < MAP_W && z < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || takenAway(codeAt(x, z)) || drowned(x, z))) return;
+          if (lake && q[i] > lake.at[0] && q[i + 2] < lake.at[1] + 14) return;
+        }
       const h = houseAt(tx, tz);
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
       for (const [k, q] of b) {
