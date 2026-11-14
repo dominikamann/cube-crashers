@@ -310,9 +310,13 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
   };
   const build = () => {
     const stadtsee = WALDSEE_LAKES.reduce<number[]>((a, r) => (r.length > a.length ? r : a), []);
+    // (behind the barrier at the end of the police lane: a strip of meadow two tiles deep, then the lake, no tongue
+    // of land reaching out into it)
+    const shore = WALDSEE_BARRIERS.find(b => b.lake);
+    const beyond = (tx: number, tz: number) => !!shore && tz <= 61 && tx >= 84 && (tx + 0.5 - shore.at[0]) * shore.dir[0] + (tz + 0.5 - shore.at[1]) * shore.dir[1] > 2;
     const water0 = new Uint8Array(W * H);
     for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
-      const plan = tx >= 78 && tx < MAP_W && tz >= 0 && tz <= 61 && waldseeGround(tx, tz) === 'water';
+      const plan = tx >= 78 && tx < MAP_W && tz >= 0 && tz <= 61 && (waldseeGround(tx, tz) === 'water' || beyond(tx, tz));
       if (plan || (stadtsee.length > 0 && inRing(stadtsee, tx + 0.5, tz + 0.5))) water0[at(tx, tz)] = 1;
     }
     // a house that stands mostly in the water does not stand there at all
@@ -3129,7 +3133,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const x = tx + 0.5, z = tz + 0.5, d = near(tx, tz), k = (tx * 7 + tz * 3) % 3;
       // (the green of the plan by the lake: laid flat, ground that was water as well)
       const g = tx < MAP_W && tz >= 0 ? waldseeGround(tx, tz) : 'street';
-      const planGreen = tx >= 84 && tz >= 0 && tz < 62 && (g === 'meadow' || g === 'gravel');
+      // (and what the plan has as water by the lake where the lake as drawn keeps back: meadow, not bare blocks)
+      const planGreen = tx >= 78 && tz >= 0 && tz < 62 && (g === 'meadow' || g === 'gravel' || g === 'water');
       if (d > 3 && !planGreen) continue;
       if (d <= 1.5) {
         slab(x, z, 1.02, 1.02, PATH_TOP, PATH[k]);
