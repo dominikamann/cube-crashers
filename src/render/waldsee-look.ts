@@ -1121,21 +1121,96 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           box(x, 1.6, z, 0.6, 0.6, 0.6, 0x4f9a4a, 0.6);
         }
       } else if (s.kind === 'nkd') {
-        // the clothes shop: a grey band over wide windows, its three red letters, a red awning, and racks of
-        // clothes and red parasols out on the street
-        onFace(s, 0, 0.04, 2.55, span, 0.7, 0.06, 0xd9dbe0);
-        pane(-span * 0.22, span * 0.4, 1.15, 1.7);
-        pane(span * 0.26, span * 0.36, 1.15, 1.7);
-        for (let k = 0; k < span * 4; k++) onFace(s, -span / 2 + (k + 0.5) / 4, 0.45, 2.1, 0.26, 0.07, 0.9, 0xd0202a);
-        sign(s, s.text, 2.6, 1.5, { back: '#d9dbe0', ink: '#d0202a', rim: '#d9dbe0' }, 'bold 96px "Helvetica Neue", Arial, sans-serif');
-        for (const a of [-1.3, 0.4]) {
-          const [x, z] = on(s, a, 1.5);
-          box(x, 1.25, z, 1.3, 0.05, 0.05, 0xb9bcc2, faceYaw(s));
-          for (const e of [-0.6, 0.6]) box(x - s.dz * e, 0.62, z + s.dx * e, 0.05, 1.25, 0.05, 0xb9bcc2);
-          [0xd0202a, 0x2f5fbf, 0xf2c94c, 0x4f9a4a, 0xe9b9c6].forEach((col, k) => box(x - s.dz * (k * 0.24 - 0.48), 0.85, z + s.dx * (k * 0.24 - 0.48), 0.2, 0.7, 0.3, col, faceYaw(s)));
-          box(x, 1.3, z + 0.0, 0.06, 2.6, 0.06, 0xe6e8ef);
-          box(x, 2.55, z, 1.9, 0.1, 1.9, 0xd0202a, 0.3);
+        // the clothes shop: the whole real wall painted flush, pale plaster with plain windows above, below a long
+        // glass shopfront with a door at one end and a grey fascia carrying the red NKD
+        const wall = (s as OnWall).wall;
+        const wB = wall?.width ?? span, H = wall?.eave ?? 3.6, mid = -(wall?.along ?? 0);
+        const S = 64, cw = Math.max(64, Math.round(wB * S)), ch = Math.round(H * S);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const g = canvas.getContext('2d')!;
+        const px = (u: number) => (u + wB / 2) * S;
+        const py = (y: number) => (H - y) * S;
+        g.fillStyle = '#e4dfd2';
+        g.fillRect(0, 0, cw, ch);
+        g.fillStyle = '#b9b5ab';
+        g.fillRect(0, py(0.18), cw, 0.18 * S);
+        const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
+        shadow.addColorStop(0, 'rgba(60,54,44,0.28)');
+        shadow.addColorStop(1, 'rgba(60,54,44,0)');
+        g.fillStyle = shadow;
+        g.fillRect(0, 0, cw, 0.5 * S);
+        // the shopfront: the fascia sits at 2.55-3.15, glass below it, the door at the right-hand end
+        const fasciaTop = 3.15, fasciaBot = 2.5;
+        const doorW = Math.min(1.3, wB * 0.25), glassL = -wB / 2 + 0.2, glassR = wB / 2 - doorW - 0.5;
+        g.fillStyle = '#d9dbe0';
+        g.fillRect(0, py(fasciaTop), cw, (fasciaTop - fasciaBot) * S);
+        g.fillStyle = '#8f949c';
+        g.fillRect(0, py(fasciaBot), cw, 0.05 * S);
+        const bays = Math.max(1, Math.round((glassR - glassL) / 1.5)), bw = (glassR - glassL) / bays;
+        for (let k = 0; k < bays; k++) {
+          const x0 = glassL + k * bw + 0.04, ww = bw - 0.08;
+          g.fillStyle = '#f4f1ea';
+          g.fillRect(px(x0), py(2.4), ww * S, 2.0 * S);
+          const glass = g.createLinearGradient(0, py(2.3), 0, py(0.45));
+          glass.addColorStop(0, '#41505f');
+          glass.addColorStop(1, '#6a7480');
+          g.fillStyle = glass;
+          g.fillRect(px(x0 + 0.06), py(2.34), (ww - 0.12) * S, 1.88 * S);
+          // clothes on hangers behind the glass
+          const cols = ['#d0202a', '#2f5fbf', '#f2c94c', '#e9b9c6', '#4f9a4a'];
+          for (let c = 0; c < 4; c++) {
+            g.fillStyle = cols[(k + c) % 5];
+            g.fillRect(px(x0 + 0.14 + c * ((ww - 0.4) / 4)), py(1.9), 0.2 * S, 0.7 * S);
+          }
+          g.fillStyle = 'rgba(255,255,255,0.14)';
+          g.beginPath();
+          g.moveTo(px(x0 + 0.1), py(2.3));
+          g.lineTo(px(x0 + 0.5), py(2.3));
+          g.lineTo(px(x0 + 0.2), py(0.5));
+          g.lineTo(px(x0 + 0.1), py(0.5));
+          g.closePath();
+          g.fill();
         }
+        // the glass door with a handle
+        const dx0 = wB / 2 - doorW - 0.25;
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(px(dx0), py(2.4), doorW * S, 2.22 * S);
+        g.fillStyle = '#41505f';
+        g.fillRect(px(dx0 + 0.07), py(2.33), (doorW - 0.14) * S, 2.08 * S);
+        g.fillStyle = '#c9ccd2';
+        g.fillRect(px(dx0 + doorW - 0.22), py(1.3), 0.05 * S, 0.5 * S);
+        // the name: red letters on the fascia, near the left like on the real one
+        g.fillStyle = '#d0202a';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
+        g.fillText(s.text, px((glassL + glassR) / 2), py((fasciaTop + fasciaBot) / 2) + 2);
+        // upper storeys, two tiles apart: pale-framed windows over the shopfront bays
+        const nUp = Math.max(1, Math.round(wB / 1.7));
+        for (let y = 4.55; y + 0.55 < H - 0.15; y += 2) {
+          for (let k = 0; k < nUp; k++) {
+            const u = -wB / 2 + (k + 0.5) * (wB / nUp), ww = 0.7, wh = 1.0;
+            g.fillStyle = '#fbf8f0';
+            g.fillRect(px(u - ww / 2), py(y + wh / 2), ww * S, wh * S);
+            g.fillStyle = '#4d626d';
+            g.fillRect(px(u - ww / 2 + 0.06), py(y + wh / 2 - 0.06), (ww - 0.12) * S, (wh - 0.12) * S);
+            g.fillStyle = '#fbf8f0';
+            g.fillRect(px(u - 0.025), py(y + wh / 2 - 0.06), 0.05 * S, (wh - 0.12) * S);
+          }
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(wB, H);
+        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        const [fx, fz] = on(s, mid, 0.04);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(s);
+        add(m);
       } else if (s.kind === 'brille') {
         // the optician: a white house with dark red shutters, two great windows hung with red cloth either
         // side of a glass door up four steps, grey planters with little firs, its name on a pale board
