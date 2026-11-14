@@ -25,11 +25,13 @@ describe('AmannLabs logos', () => {
       // spread out: the wall logo is far from the floor one
       for (const s of onWall) expect(Math.hypot(s.tx - onFloor[0].tx, s.tz - onFloor[0].tz), 'apart').toBeGreaterThan(Math.min(map.w, map.h) / 3);
       for (const s of onWall) {
-        // a straight run of wall blocks, each with open floor in front of the side the logo is on
+        // a straight run of wall blocks, each with open floor in front of the side the logo is on (on the Rooftop
+        // the glitchy edge: no wall there has plain floor in front)
+        const front = id === 'rooftop' ? [Tile.Floor, Tile.Hazard] : [Tile.Floor];
         for (let i = 0; i < s.w; i++) {
           const x = s.tx + (s.along === 'x' ? i : 0), z = s.tz + (s.along === 'z' ? i : 0);
           expect(at(x, z)).toBe(Tile.Wall);
-          expect(at(x + s.facing.x, z + s.facing.z)).toBe(Tile.Floor);
+          expect(front).toContain(at(x + s.facing.x, z + s.facing.z));
         }
         expect(Math.hypot(s.tx - onFloor[0].tx, s.tz - onFloor[0].tz)).toBeGreaterThan(8);
         // one flat face: the wall goes on straight for a block more at each end (no corner at the logo's edge),
@@ -37,7 +39,7 @@ describe('AmannLabs logos', () => {
         for (const i of [-1, s.w]) {
           const x = s.tx + (s.along === 'x' ? i : 0), z = s.tz + (s.along === 'z' ? i : 0);
           expect(at(x, z), 'wall goes on').toBe(Tile.Wall);
-          expect(at(x + s.facing.x, z + s.facing.z), 'flat face goes on').toBe(Tile.Floor);
+          expect(front, 'flat face goes on').toContain(at(x + s.facing.x, z + s.facing.z));
         }
         expect((s.along === 'x' ? s.tx : s.tz) % 4, 'one height').toBe(0);
         walls++;
@@ -54,4 +56,10 @@ describe('AmannLabs logos', () => {
     expect(logoSpots(copy)).toEqual(logoSpots(map));
   });
   it('most maps also get one on a wall', () => expect(walls).toBeGreaterThanOrEqual(maps - 2));
+  it('the Rooftop too: on its outer wall, seen across the glitchy edge', () => {
+    const wall = logoSpots(FLOORS.rooftop.map).find(s => s.kind === 'wall');
+    expect(wall).toBeDefined();
+    // (every other map has a wall with plain floor in front, and keeps the logo it had)
+    expect(logoSpots(FLOORS.floor01.map).find(s => s.kind === 'wall')).toEqual({ kind: 'wall', tx: 28, tz: 58, w: 4, along: 'x', facing: { x: 0, z: 1 } });
+  });
 });

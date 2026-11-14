@@ -68,28 +68,36 @@ function findLogoSpots(map: FloorMap): LogoSpot[] {
 
   // (a wall logo wants one flat face: the wall goes on straight for a block more at each end, so no corner is
   // at the logo's edge, and its blocks are of one height; block heights change every HEIGHT_PATCH tiles)
-  const walls: LogoSpot[] = [], flat: LogoSpot[] = [], level: LogoSpot[] = [], best: LogoSpot[] = [];
-  for (let tz = 0; tz < map.h; tz++)
-    for (let tx = 0; tx < map.w; tx++)
-      for (const facing of FACINGS) {
-        const along = facing.x === 0 ? 'x' : 'z';
-        let ok = true;
-        for (let i = 0; i < SIZE.w && ok; i++) {
-          const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
-          ok = at(x, z) === Tile.Wall && at(x + facing.x, z + facing.z) === Tile.Floor;
+  // In front of it open floor; only where no wall has that (the Rooftop: its glitchy edge runs along the whole
+  // outer wall, and its vents are too short) the glitch in front will do: the logo is seen across it
+  const wallsWith = (front: (t: Tile) => boolean) => {
+    const walls: LogoSpot[] = [], flat: LogoSpot[] = [], level: LogoSpot[] = [], best: LogoSpot[] = [];
+    for (let tz = 0; tz < map.h; tz++)
+      for (let tx = 0; tx < map.w; tx++)
+        for (const facing of FACINGS) {
+          const along = facing.x === 0 ? 'x' : 'z';
+          let ok = true;
+          for (let i = 0; i < SIZE.w && ok; i++) {
+            const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
+            ok = at(x, z) === Tile.Wall && front(at(x + facing.x, z + facing.z));
+          }
+          if (!ok) continue;
+          const spot: LogoSpot = { kind: 'wall', tx, tz, w: SIZE.w, along, facing };
+          walls.push(spot);
+          const goesOn = [-1, SIZE.w].every(i => {
+            const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
+            return at(x, z) === Tile.Wall && front(at(x + facing.x, z + facing.z));
+          });
+          const oneHeight = (along === 'x' ? tx : tz) % HEIGHT_PATCH === 0;
+          if (goesOn) flat.push(spot);
+          if (oneHeight) level.push(spot);
+          if (goesOn && oneHeight) best.push(spot);
         }
-        if (!ok) continue;
-        const spot: LogoSpot = { kind: 'wall', tx, tz, w: SIZE.w, along, facing };
-        walls.push(spot);
-        const goesOn = [-1, SIZE.w].every(i => {
-          const x = tx + (along === 'x' ? i : 0), z = tz + (along === 'z' ? i : 0);
-          return at(x, z) === Tile.Wall && at(x + facing.x, z + facing.z) === Tile.Floor;
-        });
-        const oneHeight = (along === 'x' ? tx : tz) % HEIGHT_PATCH === 0;
-        if (goesOn) flat.push(spot);
-        if (oneHeight) level.push(spot);
-        if (goesOn && oneHeight) best.push(spot);
-      }
+    return { walls, flat, level, best };
+  };
+  let found = wallsWith(t => t === Tile.Floor);
+  if (!found.walls.length) found = wallsWith(t => t === Tile.Floor || t === Tile.Hazard);
+  const { walls, flat, level, best } = found;
   // the two are spread over the map: the wall logo at least a third of the map's diagonal from the floor one
   // (where no wall is that far, the furthest there is)
   const apart = (w: LogoSpot) => Math.hypot(w.tx - floor.tx, w.tz - floor.tz);
