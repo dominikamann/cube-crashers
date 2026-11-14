@@ -462,7 +462,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [7.68, 48.46], dir: [-0.426, -0.905], half: 6.88, lake: false },
   { at: [32.16, 90.56], dir: [0.714, 0.7], half: 6.88, lake: false },
   { at: [12.9, 71.32], dir: [-0.899, 0.437], half: 6.88, lake: false },
-  { at: [87.69, 72.98], dir: [0.969, 0.247], half: 4.69, lake: false },
+  // (the Wurzacher Strasse: the barrier a metre further forward)
+  { at: [87.06, 72.82], dir: [0.969, 0.247], half: 4.69, lake: false },
   { at: [10.36, 60.26], dir: [-0.946, 0.325], half: 6.88, lake: false },
   { at: [54.72, 75.4], dir: [-0.845, 0.535], half: 4.69, lake: false },
   { at: [85.42, 47.53], dir: [0.978, -0.21], half: 4.69, lake: true },
