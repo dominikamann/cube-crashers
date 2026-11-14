@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
+import { floorWaldsee } from '../../src/sim/config/floor-waldsee';
 import { logoSpots } from '../../src/sim/map/logo-spots';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { LOGO_EGG } from '../../src/sim/systems/logo-egg';
@@ -74,4 +75,14 @@ describe('the AmannLabs easter egg', () => {
     expect(again.filter(e => e.type === 'logoHit')).toHaveLength(LOGO_EGG.hits);
     expect(s.logoEgg!.given).toBe(2);
   }, 60_000);
+
+  it('the AmannLabs shop sign in the Town is an egg too', () => {
+    const s = createSim(floorWaldsee, 5, { mode: 'quick' });
+    expect(s.map.id).toBe('waldsee');
+    s.enemies = [];
+    s.players[0].invulnUntil = 1e9;
+    const events = shootLogo(s, LOGO_EGG.hits);
+    expect(events.filter(e => e.type === 'logoHit')).toHaveLength(LOGO_EGG.hits);
+    expect(events.filter(e => e.type === 'logoEgg')).toHaveLength(1);
+  });
 });
