@@ -70,3 +70,18 @@ describe('the Town as the game between two floors', () => {
     expect(logoSpots(m)).toHaveLength(0);
   });
 });
+
+describe('the barriers of the Town', () => {
+  it('have no walkable tile on or behind their line', async () => {
+    const { WALDSEE_BARRIERS } = await import('../../src/sim/config/waldsee-town');
+    const { floorWaldseeRows } = await import('../../src/sim/config/floor-waldsee');
+    for (const b of WALDSEE_BARRIERS)
+      for (let z = 0; z < floorWaldseeRows.length; z++)
+        for (let x = 0; x < floorWaldseeRows[z].length; x++) {
+          if (floorWaldseeRows[z][x] === '#') continue;
+          const px = x + 0.5 - b.at[0], pz = z + 0.5 - b.at[1];
+          const d = px * b.dir[0] + pz * b.dir[1], l = Math.abs(-px * b.dir[1] + pz * b.dir[0]);
+          expect(d > -0.3 && d < 6 && l < b.half, `tile ${x},${z} behind the barrier at ${b.at}`).toBe(false);
+        }
+  });
+});
