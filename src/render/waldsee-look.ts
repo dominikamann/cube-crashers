@@ -31,7 +31,7 @@ const BUILT = new Map(WALDSEE_BUILT.map(b => [b.house, b]));
  * on the lake side of the police lane (its meadow, gravel or water) north of the Wurzacher Strasse, nor out beyond
  * the shore there: the view down the lane is open water. The houses of the Wurzacher Strasse stand.
  */
-const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
+const shownBase = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   let cx = 0, cz = 0, n = 0;
   for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
   cx /= n;
@@ -148,6 +148,94 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   // a little past a front one sees cobbles, not a block)
   return c === 0 ? 'water' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : 'street';
 };
+/** the tiles a real building stands on, by its outline (the feet of its walls, sampled) */
+const footTiles = (b: (typeof WALDSEE_LOD2)[number]): [number, number][] => {
+  const seen = new Set<number>(), out: [number, number][] = [];
+  const add = (x: number, z: number) => {
+    const tx = Math.floor(x), tz = Math.floor(z), k = (tz + 400) * 1000 + tx + 400;
+    if (!seen.has(k)) (seen.add(k), out.push([tx, tz]));
+  };
+  for (const [kind, q] of b) {
+    if (kind !== 'w') continue;
+    const low: [number, number][] = [];
+    for (let i = 0; i < q.length; i += 3) if (q[i + 1] < 0.3) low.push([q[i], q[i + 2]]);
+    if (low.length < 2) continue;
+    const [[x0, z0], [x1, z1]] = [low[0], low[low.length - 1]];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) * 2));
+    for (let i = 0; i <= n; i++) add(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n);
+  }
+  return out;
+};
+/** the part of the Town and its surroundings where the Stadtsee and its shore are drawn (tiles) */
+export const LAKE_WIN = { x0: 70, x1: 190, z0: -20, z1: 70 };
+/** the lake as drawn: the water of the plan (north of the Wurzacher Strasse) and the Stadtsee of OpenStreetMap, less a
+ *  margin round every house that stands (its shore path and a strip of meadow lie there), and the houses hidden for it */
+const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number> }; isWater(tx: number, tz: number): boolean; isIslet(tx: number, tz: number): boolean } = (() => {
+  let data: { water: Uint8Array; islet: Uint8Array; hidden: Set<number> } | null = null;
+  const W = LAKE_WIN.x1 - LAKE_WIN.x0, H = LAKE_WIN.z1 - LAKE_WIN.z0;
+  const at = (tx: number, tz: number) => (tz - LAKE_WIN.z0) * W + (tx - LAKE_WIN.x0);
+  const inside = (tx: number, tz: number) => tx >= LAKE_WIN.x0 && tx < LAKE_WIN.x1 && tz >= LAKE_WIN.z0 && tz < LAKE_WIN.z1;
+  const inRing = (r: number[], x: number, z: number) => {
+    let c = false;
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2)
+      if (r[i + 1] > z !== r[j + 1] > z && x < ((r[j] - r[i]) * (z - r[i + 1])) / (r[j + 1] - r[i + 1]) + r[i]) c = !c;
+    return c;
+  };
+  const build = () => {
+    const stadtsee = WALDSEE_LAKES.reduce<number[]>((a, r) => (r.length > a.length ? r : a), []);
+    const water0 = new Uint8Array(W * H);
+    for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
+      const plan = tx >= 78 && tx < MAP_W && tz >= 0 && tz <= 61 && waldseeGround(tx, tz) === 'water';
+      if (plan || (stadtsee.length > 0 && inRing(stadtsee, tx + 0.5, tz + 0.5))) water0[at(tx, tz)] = 1;
+    }
+    // a house that stands mostly in the water does not stand there at all
+    const hidden = new Set<number>(), kept: [number, number][] = [];
+    WALDSEE_LOD2.forEach((b, id) => {
+      if (!shownBase(b)) return;
+      const feet = footTiles(b);
+      const wet = feet.filter(([x, z]) => inside(x, z) && water0[at(x, z)]).length;
+      if (wet >= 3 && wet / feet.length >= 0.4) hidden.add(id);
+      else kept.push(...feet);
+    });
+    // the water keeps back from every house that stands: room for the path, the rim and a strip of meadow
+    const water = water0.slice();
+    for (const [x, z] of kept) for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) {
+      if (dx * dx + dz * dz <= 12.25 && inside(x + dx, z + dz)) water[at(x + dx, z + dz)] = 0;
+    }
+    // little patches of land out in the water (not joined to the shore, no house on them) are islets: just green
+    const islet = new Uint8Array(W * H), mark = new Uint8Array(W * H), keep = new Set<number>();
+    for (const [x, z] of kept) if (inside(x, z)) keep.add(at(x, z));
+    for (let i = 0; i < W * H; i++) {
+      if (water[i] || mark[i]) continue;
+      const comp = [i];
+      mark[i] = 1;
+      let edge = false, house = false;
+      for (let k = 0; k < comp.length; k++) {
+        const cx = comp[k] % W, cz = Math.floor(comp[k] / W);
+        if (keep.has(comp[k])) house = true;
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx, nz = cz + dz;
+          if (nx < 0 || nz < 0 || nx >= W || nz >= H) { edge = true; continue; }
+          const n = nz * W + nx;
+          if (!water[n] && !mark[n]) ((mark[n] = 1), comp.push(n));
+        }
+      }
+      if (!edge && !house && comp.length < 40) for (const c of comp) islet[c] = 1;
+    }
+    return { water, islet, hidden };
+  };
+  return {
+    get: () => (data ??= build()),
+    isWater: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().water[at(tx, tz)] === 1,
+    isIslet: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().islet[at(tx, tz)] === 1,
+  };
+})();
+/** whether the lake drawn there (see LAKE) covers a tile */
+export const waldseeLake = (tx: number, tz: number): boolean => LAKE.isWater(tx, tz);
+/** whether a tile is a little islet of green out in the lake (no path round it) */
+export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx, tz);
+/** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
+export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
 /** the plan's house at a tile, for its colours (the real building there takes them) */
 const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
@@ -761,15 +849,45 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const s = s0.kind === 'amannlabs' ? s0 : onBlock(s0);
     const w = Math.max(2, Math.min(4, s.len));
     if (s.kind === 'amannlabs') {
-      // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
-      // cyan roofline; the lit ground floor holds the shop window with the robots, the name glowing above
+      // the house is a modern tech building with a glass front under a red-tiled gable roof; the lit ground floor
+      // holds the shop window with the robots, the name glowing above
       {
-        // a modern glass tower, taller than its neighbours, with a hipped roof and PV, in the middle between the house
-        // to its left (x 22.6) and the one to its right (x 28.3); the gaps either side are closed by a wall a step
-        // back, so they are niches, not ways through
-        for (const [g0, g1] of [[22.55, 23.2], [27.7, 28.35]]) box((g0 + g1) / 2, 1.6, 50 - 1.2, g1 - g0, 4, 0.3, 0xe9e4d6);
-        const X0 = 23.2, X1 = 27.7, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
-        const curtain = (wB: number, hB: number, front: boolean) => {
+        // the house fills the gap between the real house to its left and the one to its right (their walls are
+        // measured from the LoD2 feet: the left one at x 22.3 to 21.7, the right one at x 29.3 to 30.5), flush with
+        // them. The front stands on z 50 between the two side-alleys (x 22-23 and x 29-30, which stay walkable); behind
+        // the alleys two wings of the house close them as dead ends, up to the neighbours' walls. A gable roof of red
+        // tiles, the eaves as high as the neighbours', plaster sides with windows
+        const X0 = 23, X1 = 29, Z0 = 44, Z1 = 50, W = X1 - X0, cx = (X0 + X1) / 2, E = 6.2, RISE = 3.6, S = 80;
+        const leftX = (z: number) => 21.65 + Math.max(0, z - 46.55) * 0.193;
+        const rightX = (z: number) => 28.31 + (z - 40.09) * 0.245;
+        const PLASTER = '#efe4cc';
+        // plaster with white-framed windows, one storey of about two tiles each; a ground-floor window unless a door is there
+        const plaster = (wB: number, hB: number, groundWindows: boolean): HTMLCanvasElement => {
+          const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
+          c.width = cw;
+          c.height = ch;
+          const g = c.getContext('2d')!;
+          g.fillStyle = PLASTER;
+          g.fillRect(0, 0, cw, ch);
+          g.fillStyle = '#d3c6aa';
+          g.fillRect(0, ch - 0.15 * S, cw, 0.15 * S);
+          const n = Math.max(1, Math.round(wB / 1.4));
+          for (let yc = groundWindows ? 1.5 : 3.5; yc + 0.6 < hB; yc += 2)
+            for (let k = 0; k < n; k++) {
+              const u = (k + 0.5) * (wB / n), ww = 0.62, wh = 0.9, x = (u - ww / 2) * S, y = (hB - yc - wh / 2) * S;
+              g.fillStyle = '#fbf8f0';
+              g.fillRect(x, y, ww * S, wh * S);
+              g.fillStyle = '#566a76';
+              g.fillRect(x + 0.05 * S, y + 0.05 * S, (ww - 0.1) * S, (wh - 0.1) * S);
+              g.fillStyle = '#fbf8f0';
+              g.fillRect(x + (ww / 2 - 0.025) * S, y + 0.05 * S, 0.05 * S, (wh - 0.1) * S);
+              g.fillStyle = '#d3c6aa';
+              g.fillRect(x - 0.05 * S, y + wh * S, (ww + 0.1) * S, 0.06 * S);
+            }
+          return c;
+        };
+        // the glass front of the house: dark glass, light mullions, a glowing cyan line under the eaves, four lit windows
+        const curtain = (wB: number, hB: number): HTMLCanvasElement => {
           const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
           c.width = cw;
           c.height = ch;
@@ -807,125 +925,116 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fillRect(0, 0, cw, 0.1 * S);
           g.fillStyle = 'rgba(43,240,255,0.22)';
           g.fillRect(0, 0.1 * S, cw, 0.2 * S);
-          if (front) {
-            const py = (yy: number) => (hB - yy) * S;
-          const accent = (ci: number, rj: number, rspan = 1) => {
-            const x = ci * colW * S, y = (hB - (rj + rspan) * rowH) * S, w = 2 * colW * S, h = rspan * rowH * S;
-            g.fillStyle = 'rgba(43,240,255,0.35)';
-            g.fillRect(x, y, w, h);
-            g.fillStyle = '#1de6ff';
-            g.fillRect(x + 3, y + 3, w - 6, h - 6);
-          };
-          accent(1, 6, 2);
-          accent(6, 6, 2);
-          accent(1, 4);
-          accent(6, 4);
-            g.fillStyle = '#0a1017';
-            g.fillRect(0, py(2.5), cw, ch - py(2.5));
-            g.fillStyle = '#2bf0ff';
-            g.fillRect(0, py(2.5) - 2, cw, 3);
-          }
+          // (four lit windows over the shop: two storeys, left and right of the middle)
+          for (const ci of [1, 5])
+            for (const y0 of [3.85, 4.95]) {
+              const x = ci * colW * S, y = (hB - y0 - 0.95) * S, w = 2 * colW * S, h = 0.95 * S;
+              g.fillStyle = 'rgba(43,240,255,0.35)';
+              g.fillRect(x, y, w, h);
+              g.fillStyle = '#1de6ff';
+              g.fillRect(x + 3, y + 3, w - 6, h - 6);
+            }
+          g.fillStyle = '#0a1017';
+          g.fillRect(0, (hB - 2.5) * S, cw, ch - (hB - 2.5) * S);
+          g.fillStyle = '#2bf0ff';
+          g.fillRect(0, (hB - 2.5) * S - 2, cw, 3);
           return c;
         };
-        const glassWall = (wB: number, x: number, y: number, z: number, ry: number, front: boolean) => {
-          const tex = new THREE.CanvasTexture(curtain(wB, Ht, front));
+        // a wall from a to b (its outward side is on the left of a to b, looking down), h high
+        const wallQ = (ax: number, az: number, bx: number, bz: number, h: number, canvas: HTMLCanvasElement, off = 0.02) => {
+          const tex = new THREE.CanvasTexture(canvas);
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.anisotropy = 8;
-          const geo = new THREE.PlaneGeometry(wB, Ht), mat = new THREE.MeshLambertMaterial({ map: tex });
+          const len = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / len, nz = (bx - ax) / len;
+          const geo = new THREE.PlaneGeometry(len, h), mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
           disposables.push(tex, geo, mat);
           const m = new THREE.Mesh(geo, mat);
-          m.position.set(x, y, z);
-          m.rotation.y = ry;
+          m.position.set((ax + bx) / 2 + nx * off, h / 2, (az + bz) / 2 + nz * off);
+          m.rotation.y = Math.atan2(nx, nz);
           add(m);
         };
-        glassWall(W, cx, Ht / 2, Z1 + 0.02, 0, true);
-        glassWall(D, X0 - 0.02, Ht / 2, cz, -Math.PI / 2, false);
-        glassWall(D, X1 + 0.02, Ht / 2, cz, Math.PI / 2, false);
-        for (const ex of [X0, X1]) for (const ez of [Z0, Z1]) box(ex, Ht / 2, ez, 0.16, Ht, 0.16, 0x141c28);
-        // a modern glass door on the east side, opening onto the right alley
+        const flat = (pts: [number, number][], y: number, color: number) => {
+          const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z))));
+          geo.rotateX(-Math.PI / 2);
+          const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+          disposables.push(geo, mat);
+          const m = new THREE.Mesh(geo, mat);
+          m.position.y = y;
+          add(m);
+        };
+        // walls: the glass front, the plaster sides and wings, the back
+        wallQ(X0, Z1, X1, Z1, E, curtain(W, E), 0.02);
+        wallQ(X0, 47, X0, Z1, E, plaster(Z1 - 47, E, false));
+        wallQ(X1, Z1, X1, 49, E, plaster(Z1 - 49, E, true));
+        const wl = 21.7, wr = rightX(49), hw = E - 0.2;
+        wallQ(leftX(47), 47, X0, 47, hw, plaster(X0 - leftX(47), hw, true));
+        wallQ(X1, 49, wr, 49, hw, plaster(wr - X1, hw, true));
+        wallQ(rightX(Z0), Z0, wl, Z0, hw, plaster(rightX(Z0) - wl, hw, true));
+        for (const ex of [X0, X1]) box(ex, E / 2, Z1, 0.16, E, 0.16, 0x141c28);
+        // the wings: flat tiled tops under the eaves of the main roof
+        flat([[wl, Z0], [X0, Z0], [X0, 47], [leftX(47), 47]], hw, 0xa9553a);
+        flat([[X1, Z0], [rightX(Z0), Z0], [wr, 49], [X1, 49]], hw, 0xa9553a);
+        // a glass door on the west side, opening onto the left alley
         {
-          const dz = cz, dx = X1 + 0.16;
-          box(dx, 1.22, dz, 0.14, 2.44, 1.6, 0x11192a);
-          box(dx + 0.16, 2.62, dz, 0.66, 0.12, 1.8, 0x11192a);
-          const gd = new THREE.PlaneGeometry(1.05, 2.1);
+          const dz = 48.5, dx = X0 - 0.16;
+          box(dx, 1.22, dz, 0.14, 2.44, 1.1, 0x11192a);
+          box(dx - 0.16, 2.62, dz, 0.66, 0.12, 1.3, 0x11192a);
+          const gd = new THREE.PlaneGeometry(0.85, 2.1);
           const gm = new THREE.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.5, toneMapped: false, side: THREE.DoubleSide, depthWrite: false });
           disposables.push(gd, gm);
           const dm = new THREE.Mesh(gd, gm);
-          dm.position.set(dx + 0.09, 1.15, dz);
+          dm.position.set(dx - 0.09, 1.15, dz);
           dm.rotation.y = Math.PI / 2;
           add(dm);
-          lamp(dx + 0.14, 1.15, dz + 0.45, 0.06, 0.5, 0.06, 0x2bf0ff);
+          lamp(dx - 0.14, 1.15, dz + 0.45, 0.06, 0.5, 0.06, 0x2bf0ff);
         }
-        // the two side-alleys are dead ends: a wall closes each one at its far end
-        box(22.5, 1.9, 47.05, 1.15, 3.8, 0.3, 0xd6cfc0);
-        box(30.5, 1.9, 44.05, 1.25, 3.8, 0.3, 0xd6cfc0);
-        // a hipped roof (Walmdach) with a PV array on the sunny south slope
+        // the roof: a gable roof of red tiles, the ridge running back from the street, a little overhang; the gables in plaster
         {
-          const yR = Ht + 3.2, rx1 = X0 + D / 2, rx2 = X1 - D / 2;
-          const SW: [number, number, number] = [X0, Ht, Z1], SE: [number, number, number] = [X1, Ht, Z1], NE: [number, number, number] = [X1, Ht, Z0], NW: [number, number, number] = [X0, Ht, Z0];
-          const R1: [number, number, number] = [rx1, yR, cz], R2: [number, number, number] = [rx2, yR, cz];
-          const tris: [number, number, number][][] = [[SW, SE, R2], [SW, R2, R1], [NE, NW, R1], [NE, R1, R2], [NW, SW, R1], [SE, NE, R2]];
-          const pos: number[] = [];
-          for (const t of tris) for (const v of t) pos.push(v[0], v[1], v[2]);
-          const roofGeo = new THREE.BufferGeometry();
-          roofGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-          roofGeo.computeVertexNormals();
-          const roofMat = new THREE.MeshLambertMaterial({ color: 0xb1503a, side: THREE.DoubleSide });
-          disposables.push(roofGeo, roofMat);
-          add(new THREE.Mesh(roofGeo, roofMat));
-          const pvc = document.createElement('canvas');
-          pvc.width = 128;
-          pvc.height = 96;
-          const pg = pvc.getContext('2d')!;
-          pg.fillStyle = '#0f1826';
-          pg.fillRect(0, 0, 128, 96);
-          pg.strokeStyle = '#2f4a70';
-          pg.lineWidth = 2;
-          for (let i = 0; i <= 8; i++) {
-            pg.beginPath();
-            pg.moveTo(i * 16, 0);
-            pg.lineTo(i * 16, 96);
-            pg.stroke();
+          const ov = 0.3, drop = (ov * RISE) / (W / 2), yE = E - drop, yR = E + RISE;
+          const tc = document.createElement('canvas');
+          tc.width = 64;
+          tc.height = 64;
+          const tg = tc.getContext('2d')!;
+          tg.fillStyle = '#b25a3e';
+          tg.fillRect(0, 0, 64, 64);
+          tg.fillStyle = '#8f432c';
+          for (let r = 0; r < 4; r++) {
+            tg.fillRect(0, r * 16, 64, 2);
+            for (let k = 0; k < 4; k++) tg.fillRect(k * 16 + (r & 1) * 8, r * 16, 2, 16);
           }
-          for (let j = 0; j <= 6; j++) {
-            pg.beginPath();
-            pg.moveTo(0, j * 16);
-            pg.lineTo(128, j * 16);
-            pg.stroke();
-          }
-          const pvTex = new THREE.CanvasTexture(pvc);
-          pvTex.colorSpace = THREE.SRGBColorSpace;
-          const pvMat = new THREE.MeshLambertMaterial({ map: pvTex, side: THREE.DoubleSide });
-          disposables.push(pvTex, pvMat);
-          const pvFace = (corners: [number, number, number][]) => {
-            const mx = corners.reduce((s, p) => s + p[0], 0) / corners.length;
-            const my = corners.reduce((s, p) => s + p[1], 0) / corners.length;
-            const mz = corners.reduce((s, p) => s + p[2], 0) / corners.length;
-            const k = 0.12;
-            const q = corners.map(p => [p[0] + (mx - p[0]) * k, p[1] + (my - p[1]) * k + 0.06, p[2] + (mz - p[2]) * k] as [number, number, number]);
-            const pos: number[] = [], uv: number[] = [];
-            if (q.length === 4) {
-              pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
-              uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
-            } else {
-              pos.push(...q[0], ...q[1], ...q[2]);
-              uv.push(0, 0, 1, 0, 0.5, 1);
-            }
+          const tt = new THREE.CanvasTexture(tc);
+          tt.colorSpace = THREE.SRGBColorSpace;
+          tt.wrapS = tt.wrapT = THREE.RepeatWrapping;
+          const tm = new THREE.MeshLambertMaterial({ map: tt, side: THREE.DoubleSide });
+          const pm = new THREE.MeshLambertMaterial({ color: parseInt(PLASTER.slice(1), 16), side: THREE.DoubleSide });
+          disposables.push(tt, tm, pm);
+          const zA = Z1 + ov, zB = Z0 - ov, len = Math.hypot(W / 2 + ov, yR - yE);
+          const slope = (xe: number) => {
+            const pos = [xe, yE, zA, xe, yE, zB, cx, yR, zB, xe, yE, zA, cx, yR, zB, cx, yR, zA];
+            const u = zA - zB, v = len / 0.9;
+            const uv = [u, 0, 0, 0, 0, v, u, 0, 0, v, u, v];
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
             geo.computeVertexNormals();
             disposables.push(geo);
-            add(new THREE.Mesh(geo, pvMat));
+            add(new THREE.Mesh(geo, tm));
           };
-          pvFace([SW, SE, R2, R1]);
-          pvFace([NE, NW, R1, R2]);
-          pvFace([NW, SW, R1]);
-          pvFace([SE, NE, R2]);
+          slope(X0 - ov);
+          slope(X1 + ov);
+          for (const z of [Z1, Z0]) {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute([X0, E, z, X1, E, z, cx, yR, z], 3));
+            geo.computeVertexNormals();
+            disposables.push(geo);
+            add(new THREE.Mesh(geo, pm));
+          }
+          // (the ridge)
+          box(cx, yR + 0.04, (zA + zB) / 2, 0.22, 0.12, zA - zB, 0x8f432c);
         }
       }
       const ww = Math.max(3, Math.min(5, s.len)) - 0.4;
-      const dep = 0.7, gy = 1.3, gh = 2.2, topY = gy + gh / 2, botY = gy - gh / 2, bx = 26.5;
+      const dep = 0.7, gy = 1.3, gh = 2.2, topY = gy + gh / 2, botY = gy - gh / 2, bx = 26;
       // the lit backdrop just in front of the wall
       onFace(s, 0, 0.04, gy, ww, gh, 0.04, 0xcfefff, true);
       // the robots stand inside the case
@@ -1182,11 +1291,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         }
         if (o.door !== undefined) onFace(f, alongOf(o.door + 0.68), 0.1, 1.2, 0.1, 0.22, 0.08, 0xffcf7a, true);
       };
-      // (the west wall: the door at its south end, the shopfronts next to it; the south wall: shopfronts at the corner)
+      // (the west wall: the door at its south end, the shopfronts next to it; the south wall: plain windows only, no
+      // shopfront and no awning)
       const south = onBlock({ x: 73, z: 69.7, dx: 0, dz: 1, len: 1 });
       const wW = (s as OnWall).wall?.width ?? 5;
       facade(s, { shop: [0.25, wW - 1.7], door: wW - 0.85 });
-      facade(south, { shop: [0.25, 5.4] });
+      facade(south, { shop: [0, 0] });
       continue;
     }
     if (s.kind === 'bank') {
@@ -1826,9 +1936,11 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = '#d6d3ca';
         g.fillRect(px(u - ww / 2 - 0.1), py(y0 - 0.01), (ww + 0.2) * S, 0.07 * S);
       };
-      // upper storeys from 3.0 up (clear of the door, its arch and the board), about 1.5 apart
-      const storeys = Math.max(1, Math.floor((H - 3.0 + 0.3) / 1.5));
-      for (let st = 0; st < storeys; st++) for (let k = 0; k < bays; k++) win(-wB / 2 + (k + 0.5) * bw, 3.0 + st * 1.5, 0.95);
+      // upper storeys from 3.0 up to just under the eave (clear of the door, its arch and the board), spread evenly
+      // over the whole height so no band of bare wall is left at the top
+      const top = H - 0.3, storeys = Math.max(1, Math.round((top - 3.0) / 1.6)), step = (top - 3.0) / storeys;
+      const wh = Math.max(0.5, Math.min(1.0, step - 0.4));
+      for (let st = 0; st < storeys; st++) for (let k = 0; k < bays; k++) win(-wB / 2 + (k + 0.5) * bw, 3.0 + st * step + (step - wh) / 2, wh);
       for (let k = 0; k < bays; k++) if (k !== doorBay) win(-wB / 2 + (k + 0.5) * bw, 0.95, 1.2);
       // the door: a grey stone frame with a round top, a brown leaf, a glass fanlight
       const du = -wB / 2 + (doorBay + 0.5) * bw, dw = 1.0;
@@ -1905,16 +2017,19 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   for (const b of WALDSEE_BARRIERS) {
     const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax);
     // (from wall to wall: as far as the real fronts on either side, measured along the barrier)
-    const reach = (sx: number): number => {
+    const reachFrom = (ox: number, oz: number, sx: number): number => {
       let best = b.half + 2;
       for (const w of wallFeet()) {
         const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
         if (Math.abs(den) < 1e-6) continue;
-        const t = ((w.x0 - b.at[0]) * ez - (w.z0 - b.at[1]) * ex) / den, u = ((w.x0 - b.at[0]) * az * sx - (w.z0 - b.at[1]) * ax * sx) / den;
+        const t = ((w.x0 - ox) * ez - (w.z0 - oz) * ex) / den, u = ((w.x0 - ox) * az * sx - (w.z0 - oz) * ax * sx) / den;
         if (t > 0.2 && u >= -0.02 && u <= 1.02 && t < best) best = t;
       }
       return best;
     };
+    // (no wider than the lane just behind it either: where a house front stands back, the barrier does not run on
+    // in front of the house beside the lane)
+    const reach = (sx: number) => Math.min(reachFrom(b.at[0], b.at[1], sx), reachFrom(b.at[0] + b.dir[0] * 0.8, b.at[1] + b.dir[1] * 0.8, sx), reachFrom(b.at[0] + b.dir[0] * 1.6, b.at[1] + b.dir[1] * 1.6, sx));
     const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
     const at = [b.at[0] + ax * mid, b.at[1] + az * mid];
     const n = Math.max(2, Math.round(width / 0.6));
@@ -2001,68 +2116,70 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     lamp(x, 0.03, z - 0.5, 0.42, 0.02, 0.24, 0xdff1ff);
   }
 
-  // ---- a clean lakeside promenade: the green is filled out to a straight shore line, with a path,
-  // a stone rim at the water and a few lanterns
+  // ---- the lakeside promenade: a footpath all round the lake as drawn (see LAKE), about 2.4 m wide, with a low
+  // stone rim at the water and a lantern every ten metres or so; behind it a strip of meadow and a few trees, then
+  // the houses. The meadow of the plan is laid flat too, so no dark seams show between its blocks.
   {
-    const edgeAt = (tz: number): number => {
-      let e = -1;
-      for (let tx = 78; tx <= 112; tx++) {
-        const g = waldseeGround(tx, tz);
-        if ((g === 'meadow' || g === 'gravel') && waldseeGround(tx + 1, tz) === 'water') e = tx;
-      }
-      if (e < 0) return -1;
-      let connected = false;
-      for (let tx = e - 1; tx >= 74; tx--) {
-        const g = waldseeGround(tx, tz);
-        if (g === 'water') break;
-        if (g === 'house' || g === 'yard') { connected = true; break; }
-      }
-      return connected ? e : -1;
+    const water = (tx: number, tz: number) => waldseeLake(tx, tz);
+    const PATH = [0xd0c8b4, 0xc9c1ac, 0xd5ceba];
+    const FLOOR = -0.42, MEADOW_TOP = 0.02, PATH_TOP = 0.035, RIM_TOP = 0.13;
+    // (a slab from the ground up to a level: it stands on the ground beyond the map and in the water blocks alike)
+    const slab = (x: number, z: number, sx: number, sz: number, top: number, color: number) => box(x, (top + FLOOR) / 2, z, sx, top - FLOOR, sz, color);
+    // how far (tiles, to the middle of the nearest water tile) a land tile lies from the lake, up to 3
+    const near = (tx: number, tz: number): number => {
+      let d = 9;
+      for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) if (water(tx + dx, tz + dz)) d = Math.min(d, Math.hypot(dx, dz));
+      return d;
     };
-    const edge: Record<number, number> = {};
-    const pts: [number, number][] = [];
-    for (let tz = 33; tz <= 58; tz++) {
-      edge[tz] = edgeAt(tz);
-      if (edge[tz] >= 0) pts.push([tz, edge[tz]]);
-    }
-    // a straight shore line through the measured edge (least squares)
-    let m = 0, c = 0;
-    if (pts.length > 1) {
-      const n = pts.length;
-      const sx = pts.reduce((a, p) => a + p[0], 0), sy = pts.reduce((a, p) => a + p[1], 0);
-      const sxx = pts.reduce((a, p) => a + p[0] * p[0], 0), sxy = pts.reduce((a, p) => a + p[0] * p[1], 0);
-      m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-      c = (sy - m * sx) / n;
-    }
-    const MEADOW = [0x7fb866, 0x76ae5e, 0x88c06e];
-    const Y = -0.01; // one flat level for the whole promenade
-    // the shore is that line, moved out so that no land lies beyond it; the path runs along it in one piece, two
-    // tiles wide, from the first row of the shore to the last, the meadow filled out up to it
-    if (pts.length > 1) {
-      const out = Math.max(...pts.map(([tz, e]) => e - (m * tz + c)));
-      const shore = (tz: number) => Math.round(m * tz + c + out);
-      const z0 = pts[0][0], z1 = pts[pts.length - 1][0];
-      let lastLantern = -99;
-      for (let tz = z0; tz <= z1; tz++) {
-        const x1 = shore(tz);
-        // (from where this row's own land ends, or from the last land of a row beside it)
-        let from = x1 - 1;
-        for (let tx = x1; tx >= 76; tx--) {
-          const g = waldseeGround(tx, tz);
-          if (g !== 'water') break;
-          from = tx;
+    const isPath = (tx: number, tz: number) => !water(tx, tz) && near(tx, tz) <= 1.5;
+    const lanterns: [number, number][] = [], trees: [number, number][] = [];
+    const lantern = (lx: number, lz: number) => {
+      box(lx, 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
+      box(lx, 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
+      lamp(lx, 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
+      box(lx, 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+    };
+    for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
+      if (water(tx, tz)) continue;
+      if (waldseeIslet(tx, tz)) {
+        slab(tx + 0.5, tz + 0.5, 1.02, 1.02, MEADOW_TOP, MEADOW[(tx * 7 + tz * 3) % 3]);
+        continue;
+      }
+      const x = tx + 0.5, z = tz + 0.5, d = near(tx, tz), k = (tx * 7 + tz * 3) % 3;
+      // (the green of the plan by the lake: laid flat, ground that was water as well)
+      const g = tx < MAP_W && tz >= 0 ? waldseeGround(tx, tz) : 'street';
+      const planGreen = tx >= 84 && tz >= 0 && tz < 62 && (g === 'meadow' || g === 'gravel');
+      if (d > 3 && !planGreen) continue;
+      if (d <= 1.5) {
+        slab(x, z, 1.02, 1.02, PATH_TOP, PATH[k]);
+        // the rim: a low stone kerb along each edge that meets the water
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (!water(tx + dx, tz + dz)) continue;
+          box(x + dx * 0.46, (RIM_TOP + FLOOR) / 2, z + dz * 0.46, dx ? 0.16 : 1.04, RIM_TOP - FLOOR, dz ? 0.16 : 1.04, 0xb9b2a2);
         }
-        for (let tx = from; tx <= x1 - 2; tx++) box(tx + 0.5, Y, tz + 0.5, 1.02, 0.05, 1.02, MEADOW[(tx + tz) % 3]);
-        for (const tx of [x1 - 1, x1]) box(tx + 0.5, Y + 0.02, tz + 0.5, 1.02, 0.06, 1.02, (tx + tz) % 2 ? 0xd0c8b4 : 0xc9c1ac);
-        box(x1 + 1.06, Y - 0.04, tz + 0.5, 0.14, 0.2, 1.02, 0xb9b2a2);
-        if (tz - lastLantern >= 8) {
-          lastLantern = tz;
-          const lx = x1 + 0.7, lz = tz + 0.5;
-          box(lx, Y + 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
-          box(lx, Y + 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
-          lamp(lx, Y + 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
-          box(lx, Y + 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+        if (near(tx, tz) === 1 && !lanterns.some(([lx, lz]) => Math.hypot(lx - x, lz - z) < 6.2)) {
+          lanterns.push([x, z]);
+          // (on the land side of the path)
+          let ax = 0, az = 0;
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (water(tx + dx, tz + dz)) ((ax -= dx), (az -= dz));
+          const len = Math.hypot(ax, az) || 1;
+          lantern(x + (ax / len) * 0.36, z + (az / len) * 0.36);
         }
+        continue;
+      }
+      slab(x, z, 1.02, 1.02, MEADOW_TOP, g === 'gravel' && !(d <= 3) ? 0xcfc4ae : MEADOW[k]);
+      // (the path is 1.5 tiles wide: this tile lends it a half where it lies behind the path)
+      if (d <= 2.2) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!isPath(tx + dx, tz + dz)) continue;
+        slab(x + dx * 0.25, z + dz * 0.25, dx ? 0.52 : 1.02, dz ? 0.52 : 1.02, PATH_TOP, PATH[k]);
+      }
+      // a tree here and there on the outer strip, none in the view from the police lane
+      const viewed = tx < 112 && tz > 34 && tz < 60;
+      if (d >= 3 && !viewed && hash(tx, tz) < 0.35 && !trees.some(([qx, qz]) => Math.hypot(qx - x, qz - z) < 7)) {
+        trees.push([x, z]);
+        const q = 0.7 + hash(tz, tx) * 0.5, turn = hash(tz, tx) * 1.5;
+        box(x, 1.0 * q, z, 0.26 * q, 2.0 * q, 0.26 * q, bark, turn);
+        [[1.7, 2.1], [2.2, 2.6], [1.8, 3.1], [1.0, 3.55]].forEach(([w, y], j) => box(x, y * q, z, w * q, 0.6 * q, w * q, leaf[(tx + tz + j) % 3], turn + j * 0.4));
       }
     }
   }
