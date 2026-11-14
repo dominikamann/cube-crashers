@@ -50,6 +50,11 @@ export class DedicatedServer {
     return (this.dice - 1) / 2147483646;
   };
 
+  /** nobody is here and nothing runs: the server may doze between looks at the door */
+  get idle(): boolean {
+    return !this.host.sim && this.humans() === 0;
+  }
+
   private humans(): number {
     return this.host.lobby.filter(p => !p.bot).length;
   }

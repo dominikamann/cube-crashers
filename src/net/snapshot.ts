@@ -134,9 +134,28 @@ export function encodeSnapshot(s: SimState): SnapState {
   return snap;
 }
 
+/** a number as `round` and JSON.stringify would write it */
+const num = (v: number): string => (Number.isInteger(v) ? String(v) : Number.isFinite(v) ? String(Math.round(v * 100) / 100) : '0');
+/** rows of numbers as JSON, written by hand: the enemies and coins are most of a snapshot, and a replacer that
+ *  is called for every one of their numbers costs as much as the simulation step itself */
+const rows = (list: number[][]): string => {
+  let out = '[';
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    out += i ? ',[' : '[';
+    for (let j = 0; j < a.length; j++) out += j ? ',' + num(a[j]) : num(a[j]);
+    out += ']';
+  }
+  return out + ']';
+};
+/** stands where the hand-written rows go (a text no name or message can hold: they carry no control characters) */
+const ENEMY_ROWS = '\u0001enemies', COIN_ROWS = '\u0001coins';
+
 /** The whole snap message as one string, numbers rounded on the way (one pass, sent to every client). */
 export function serializeSnapshot(s: SimState, events: unknown[]): string {
-  return JSON.stringify({ type: 'snap', state: encodeSnapshot(s), events }, round);
+  const state = encodeSnapshot(s);
+  const json = JSON.stringify({ type: 'snap', state: { ...state, enemies: ENEMY_ROWS, coins: COIN_ROWS }, events }, round);
+  return json.replace(JSON.stringify(ENEMY_ROWS), () => rows(state.enemies)).replace(JSON.stringify(COIN_ROWS), () => rows(state.coins));
 }
 
 /** Puts a snapshot into the client's view of the game. Older snapshots than the one shown are ignored. */

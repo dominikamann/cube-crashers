@@ -67,10 +67,14 @@ async function main() {
   log(`players join with this computer's address and port ${net.port} (open it in your router to play over the internet)`);
   if (cfg.web) log('players in the browser are welcome too: they need wss://, so put a TLS proxy in front (see the README)');
 
-  // a fixed step like the game's own loop; catches up after a hiccup, but never more than a few steps
+  // a fixed step like the game's own loop; catches up after a hiccup, but never more than a few steps.
+  // An empty server only looks twice a second whether someone came (joining itself needs no tick): it costs
+  // next to nothing while it waits
+  const IDLE_MS = 500;
   let last = performance.now();
   let acc = 0;
-  const timer = setInterval(() => {
+  let timer: ReturnType<typeof setTimeout>;
+  const loop = () => {
     const now = performance.now();
     acc = Math.min(acc + (now - last) / 1000, DT * 5);
     last = now;
@@ -78,11 +82,13 @@ async function main() {
       server.tick();
       acc -= DT;
     }
-  }, 1000 * DT / 2);
+    timer = setTimeout(loop, server.idle ? IDLE_MS : (1000 * DT) / 2);
+  };
+  timer = setTimeout(loop, 0);
 
   const stop = () => {
     log('shutting down');
-    clearInterval(timer);
+    clearTimeout(timer);
     host.close();
     setTimeout(() => process.exit(0), 200);
   };
