@@ -54,6 +54,8 @@ function packEnemy(e: Enemy): PackedEnemy {
   return [
     e.id, KINDS.indexOf(e.kind), e.pos.x, e.pos.z, e.hp, e.maxHp, e.radius, e.elite ? 1 : 0, STATES.indexOf(e.state),
     e.stateUntil, e.dir.x, e.dir.z, e.slowUntil, e.frozenUntil, e.stuckUntil, e.chargeLeft, e.hordeId ?? -1,
+    // (only a shark in mid-leap: where it comes from and goes to, and from when to when)
+    ...(e.leap ? [e.leap.from.x, e.leap.from.z, e.leap.to.x, e.leap.to.z, e.leap.at, e.leap.until] : []),
   ];
 }
 
@@ -80,6 +82,7 @@ function unpackEnemy(a: PackedEnemy): Enemy {
     ramHitUntil: 0,
     chill: 0,
     slamUntil: 0,
+    ...(a.length > 17 ? { leap: { from: { x: a[17], z: a[18] }, to: { x: a[19], z: a[20] }, at: a[21], until: a[22] } } : {}),
   };
 }
 

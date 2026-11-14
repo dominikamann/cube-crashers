@@ -21,6 +21,19 @@ describe('snapshots', () => {
     expect(view.alarm.level).toBe(host.alarm.level);
   });
 
+  it('carry a shark in mid-leap out of the Town\'s lake, so the clients see its arc too', async () => {
+    const { leapAt } = await import('../../src/sim/systems/lake-shark');
+    const host = createSim(FLOORS.waldsee.map, 3, { mode: 'quick' });
+    leapAt(host, host.players[0]);
+    stepSim(host, []);
+    const view = createSim(FLOORS.waldsee.map, 3, { mode: 'quick' });
+    expect(applySnapshot(view, JSON.parse(JSON.stringify(encodeSnapshot(host))))).toBe(true);
+    const there = host.enemies.find(e => e.leap)!, here = view.enemies.find(e => e.id === there.id)!;
+    expect(here.leap).toEqual(there.leap);
+    // (and nothing of the kind on the others)
+    expect(view.enemies.filter(e => e.leap)).toHaveLength(host.enemies.filter(e => e.leap).length);
+  });
+
   it('are ignored when they are older than what the client already shows', () => {
     const host = createSim(floor01, 3);
     stepSim(host, []);

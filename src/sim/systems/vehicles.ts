@@ -3,7 +3,7 @@ import { damagePlayer } from './player';
 import { airborne } from './rare';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { DT, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
+import { DT, TICK_RATE, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
 import { allBosses, dist } from '../util';
 import { damageEnemy, damageInRadius, isBossBody, solidEdge } from './combat';
 
@@ -43,8 +43,9 @@ export const VEHICLES: Record<VehicleKind, { speed: number; accel: number; hp: n
   police: { speed: KART.speed, accel: KART.accel, hp: 150, ramDamage: KART.ramDamage, radius: KART.radius, jumps: false, hovers: false },
 };
 
-/** the police car's siren: it sounds again every so many ticks while someone drives the car */
-export const SIREN_TICKS = 96;
+/** the police car's siren: it sounds again every so many ticks while someone drives the car (as long as the
+ *  sound is: four tones of 0.4 seconds, see `siren` in audio/sfx.ts) */
+export const SIREN_TICKS = Math.round(4 * 0.4 * TICK_RATE);
 
 /** a unicorn turns up on its own now and then: every `checkTicks` the game rolls `chance` */
 export const UNICORN = { checkTicks: 60 * 60, chance: 0.2 };
@@ -149,8 +150,8 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   if (driver && speed > 1 && !v.locked && v.kind !== 'unicorn') v.fuel--;
   // (the police car's siren, from the moment someone gets in)
   if (v.kind === 'police') {
-    if (!driver) v.sirenAt = undefined;
-    else if (s.tick >= (v.sirenAt ?? 0)) {
+    // (getting out and in again does not start a second one over the one still sounding)
+    if (driver && s.tick >= (v.sirenAt ?? 0)) {
       v.sirenAt = s.tick + SIREN_TICKS;
       s.events.push({ type: 'siren', pos: { ...v.pos } });
     }

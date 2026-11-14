@@ -307,20 +307,17 @@ describe('mouse steering', () => {
     expect(k.firstPerson).toBe(false);
   });
 
-  it('without a rare weapon Q goes on to the next weapon, once per press', () => {
+  it('Q counts once per press, however long it is held (what it picks is the rules\' business)', () => {
     const s = createSim(floor01, 1);
-    s.players[0].weapons.push({ kind: 'bomb', level: 1, cooldown: 0 }, { kind: 'laserSword', level: 1, cooldown: 0 });
     const k = new Keyboard();
     k.keyDown('KeyQ', 0);
-    expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: 1 });
-    s.players[0].selected = 1;
+    expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
     // (held down, the key repeats: that is still one press)
     k.keyDown('KeyQ', 0);
     expect(k.commands(s, 0, 20).some(c => c.type === 'select')).toBe(false);
     k.keyUp('KeyQ');
-    s.players[0].selected = 2;
     k.keyDown('KeyQ', 0);
-    expect(k.commands(s, 0, 30)).toContainEqual({ type: 'select', playerId: 0, slot: 0 });
+    expect(k.commands(s, 0, 30)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
   });
 });
 

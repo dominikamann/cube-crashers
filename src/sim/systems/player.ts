@@ -217,6 +217,10 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     if (p.rare && !p.rareSelected) {
       p.rareSelected = true;
       s.events.push({ type: 'weaponSelected', playerId: p.id, slot: -1 });
+    } else if (!p.rare && p.weapons.length > 1) {
+      // (no rare weapon to pick: the key goes on to the next weapon)
+      p.selected = (p.selected + 1) % p.weapons.length;
+      s.events.push({ type: 'weaponSelected', playerId: p.id, slot: p.selected });
     }
   } else if (it.select !== null && it.select >= 0 && it.select < p.weapons.length && (it.select !== p.selected || p.rareSelected)) {
     p.selected = it.select;

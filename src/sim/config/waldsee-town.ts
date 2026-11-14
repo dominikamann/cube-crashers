@@ -518,7 +518,8 @@ export const WALDSEE_BOAT: [number, number] | null = [102, 45];
 export const WALDSEE_BOAT2: [number, number] | null = [106, 48];
 /** sharks' fins out in the lake, spread over it: where (tiles) and which way each swims (radians, 0 = north) */
 export const WALDSEE_SHARKS: { at: [number, number]; heading: number }[] = [
-  { at: [103, 52], heading: 0 },
+  // (clear of the pedal boats, which drift, and of their lines)
+  { at: [101, 53], heading: 0 },
   { at: [118, 38], heading: 2.2 },
   { at: [96, 26], heading: -1.9 },
 ];

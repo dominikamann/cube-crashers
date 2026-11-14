@@ -546,7 +546,7 @@ function startGame() {
         townView.update(inTown, controls);
         if (inTown) for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
         // (where the view is fixed the view key does nothing: it would only make the view jump back to where one aims)
-        for (const c of controls) c.control.viewLocked = inTown || forced !== 'both';
+        for (const c of controls) c.control.viewLocked = inTown || ((forced === 'fp' || forced === 'top') && c.control !== padCtl2);
         if (keyboard.firstPerson && !wasFp && mode === 'playing' && !padActive) lockPointer(true);
       }
       const fp0 = mode === 'playing' || mode === 'paused' ? (padActive ? padCtl : keyboard) : null;

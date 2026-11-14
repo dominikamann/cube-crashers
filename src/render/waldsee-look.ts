@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
@@ -618,7 +619,25 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
     return m;
   };
-  /** a box of a moving thing, in the thing's own space */
+  const fusedPaint = new THREE.MeshLambertMaterial({ vertexColors: true });
+  disposables.push(fusedPaint);
+  /** the boxes of a moving thing that keep their place in it ([x, y, z, sx, sy, sz, colour] each), as one mesh */
+  const fused = (into: THREE.Object3D, parts: number[][]): void => {
+    const geos = parts.map(([x, y, z, sx, sy, sz, color]) => {
+      const g = new THREE.BoxGeometry(sx, sy, sz).translate(x, y, z), c = new THREE.Color(color), n = g.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return g;
+    });
+    const geo = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    disposables.push(geo);
+    const m = new THREE.Mesh(geo, fusedPaint);
+    m.castShadow = true;
+    into.add(m);
+  };
+  /** a box of a moving thing that moves in it, in the thing's own space */
   const cube = (into: THREE.Object3D, x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number, glowing = false, lean = 0): THREE.Mesh => {
     const m = new THREE.Mesh(unit, paint(color, glowing));
     m.position.set(x, y, z);
@@ -3196,7 +3215,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     g.position.set(x, 0, z);
     g.rotation.y = turn;
     add(g);
-    const part = (lx: number, y: number, lz: number, sx: number, sy: number, sz: number, color: number) => cube(g, lx, y, lz, sx, sy, sz, color);
+    const still: number[][] = [];
+    const part = (lx: number, y: number, lz: number, sx: number, sy: number, sz: number, color: number) => still.push([lx, y, lz, sx, sy, sz, color]);
     for (const side of [-1, 1]) part(side * 0.55, 0.02, 0, 0.4, 0.3, 2.6, 0xf4f1ea);
     part(0, 0.2, 0, 1.5, 0.1, 2.0, 0xffd23f);
     part(0, 0.42, -0.5, 1.2, 0.36, 0.12, 0xd8322a);
@@ -3210,6 +3230,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     part(0.1, 1.6, 0.2, 0.24, 0.12, 0.24, cap);
     part(0.225, 1.6, 0.2, 0.02, 0.08, 0.08, 0xffffff);
     part(0.34, 1.05, 0.34, 0.1, 0.1, 0.4, shirt);
+    fused(g, still);
     // the rod turns about the hand that holds it; the line runs from its tip to the float
     const HAND = { x: 0.32, y: 1.07 }, ROD = 2, OUT = 2.05, REST = 0.5;
     const rod = new THREE.Group();
@@ -3267,12 +3288,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const g = new THREE.Group();
     add(g);
     // (the shark looks along -z, its tail toward +z) its back just under the surface
-    cube(g, 0, 0.05, 0.05, 0.32, 0.1, 0.9, dark);
+    const still: number[][] = [[0, 0.05, 0.05, 0.32, 0.1, 0.9, dark]];
     // the fin: thin slices that narrow and sweep back toward the tip
     for (let k = 0; k < 6; k++) {
       const t = k / 5;
-      cube(g, 0, 0.08 + t * 0.72, t * 0.22, 0.1, 0.16, 0.68 - t * 0.58, k < 2 ? grey : dark);
+      still.push([0, 0.08 + t * 0.72, t * 0.22, 0.1, 0.16, 0.68 - t * 0.58, k < 2 ? grey : dark]);
     }
+    fused(g, still);
     // a little white wake ahead of it
     cube(g, 0, 0.03, -0.5, 0.42, 0.02, 0.24, 0xdff1ff, true);
     const r = 2.6 + i * 0.7, turns = (i % 2 ? -1 : 1) * (0.2 + i * 0.03);
