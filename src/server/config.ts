@@ -28,6 +28,8 @@ export interface ServerConfig {
   monsters: boolean;
   /** players from the browser version may join (they reach the server through a TLS proxy) */
   web: boolean;
+  /** squeeze what the server sends: a fraction of the upload, for more work per player */
+  compress: boolean;
 }
 
 /** how the lobby introduces the server; teams = red against blue can happen, so team wishes matter */
@@ -63,7 +65,7 @@ export function mapChoices(mode: ServerMode, view: ViewMode = 'both'): string[] 
 const DIFFICULTIES: Difficulty[] = ['ultraLow', 'low', 'medium', 'high', 'ultraHigh'];
 
 export function defaultConfig(): ServerConfig {
-  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, web: false };
+  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, web: false, compress: false };
 }
 
 /** name of the setting, its flag and environment variable, and how to read it */
@@ -79,6 +81,7 @@ const FIELDS: { key: keyof ServerConfig; flag: boolean }[] = [
   { key: 'countdown', flag: false },
   { key: 'monsters', flag: true },
   { key: 'web', flag: true },
+  { key: 'compress', flag: true },
 ];
 
 const envName = (key: string) => `CC_${key.toUpperCase()}`;
@@ -128,6 +131,7 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
   if (raw.countdown !== undefined) c.countdown = int('countdown', raw.countdown, 3, 600);
   if (raw.monsters !== undefined) c.monsters = bool(raw.monsters);
   if (raw.web !== undefined) c.web = bool(raw.web);
+  if (raw.compress !== undefined) c.compress = bool(raw.compress);
   if (raw.map !== undefined && raw.map !== null && raw.map !== '') {
     const allowed = mapChoices(c.mode, c.view);
     // (the Tower Run and Endless bring their own floors: a map left in the settings is not an error, the server says it is unused)
@@ -163,6 +167,7 @@ export const HELP = `Cube Crashers dedicated server
   --countdown <secs>   wait this long for players before a match (default 30)
   --monsters           versus: monster hordes join in
   --web                let players from the browser version join (needs a TLS proxy, see the README)
+  --compress           squeeze what the server sends: far less upload, more work for the processor
   --config <file>      read settings from a JSON file (default ./server.json if it exists)
 
 Every option also works as an environment variable: CC_MODE=gungame, CC_BOTS=6, ...

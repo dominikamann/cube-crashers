@@ -13,6 +13,8 @@ export function startHost(opts: {
   maxPeers?: number;
   /** also take connections from web pages (the browser version of the game) */
   web?: boolean;
+  /** squeeze what is sent (permessage-deflate): far less to send, more work for the processor */
+  compress?: boolean;
 }): Promise<HostServer>;
 export function connect(address: string, opts: { onMessage: (from: number, data: string) => void; onClose: () => void }): Promise<{ send(data: string): void; close(): void }>;
 export function probe(address: string, timeoutMs?: number): Promise<{ data: string; ms: number } | null>;

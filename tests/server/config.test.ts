@@ -89,4 +89,11 @@ describe('dedicated server settings', () => {
     for (const mode of SERVER_MODES) expect(HELP).toContain(mode);
     for (const map of [...VERSUS_MAPS, ...QUICK_MAPS, ...BRAWL_MAPS, 'own', 'random']) expect(HELP).toContain(map);
   });
+
+  it('--compress squeezes what the server sends, and is off unless asked for', () => {
+    expect(parseConfig([], {}, null).compress).toBe(false);
+    expect(parseConfig(['--compress'], {}, null).compress).toBe(true);
+    expect(parseConfig([], { CC_COMPRESS: '1' }, null).compress).toBe(true);
+    expect(parseConfig([], {}, { compress: true }).compress).toBe(true);
+  });
 });

@@ -41,6 +41,24 @@ describe('desktop LAN server', () => {
     expect(await lan.probe(`127.0.0.1:${port}`, 500)).toBeNull();
   });
 
+  it('a host that squeezes what it sends delivers the same messages, a long one and a short one', async () => {
+    const got: string[] = [];
+    const host = await lan.startHost({ port: 0, compress: true, onMessage: (_from: number, data: string) => got.push(`host<${data}`), onPeer: () => {} });
+    cleanup.push(() => host.stop());
+    const a = await lan.connect(`127.0.0.1:${host.port}`, { onMessage: (_f: number, d: string) => got.push(d), onClose: () => {} });
+    await wait(100);
+    const long = JSON.stringify({ type: 'snap', rows: Array.from({ length: 400 }, (_, i) => [i, i * 1.25, 7, 0, 12.5]) });
+    host.send('all', long);
+    host.send('all', 'short');
+    host.send('all', long);
+    a.send('ping');
+    await wait(200);
+    expect(got.filter(m => m === long)).toHaveLength(2);
+    expect(got).toContain('short');
+    expect(got).toContain('host<ping');
+    a.close();
+  });
+
   it('relays messages between a host and two clients', async () => {
     const got: string[] = [];
     const host = await lan.startHost({ port: 0, onMessage: (from: number, data: string) => got.push(`host<${from}:${data}`), onPeer: (peer: number, joined: boolean) => got.push(`peer ${peer} ${joined}`) });

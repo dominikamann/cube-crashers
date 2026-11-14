@@ -27,12 +27,17 @@ function startHost({
   heartbeatMs = HEARTBEAT_MS,
   maxPerSecond = MAX_MESSAGES_PER_SECOND,
   web = false,
+  compress = false,
 }) {
   return new Promise((resolve, reject) => {
     const peers = new Map();
     const wss = new WebSocketServer({
       port,
       maxPayload: MAX_CLIENT_BYTES,
+      // a server on the internet may squeeze what it sends (the game and the browser both take it): a snapshot is
+      // text that repeats itself, so it shrinks to a fraction, for some more work per message. The fastest level,
+      // and each connection remembers what it sent before, which is what makes the next snapshot small
+      perMessageDeflate: compress ? { threshold: 512, zlibDeflateOptions: { level: 1 } } : false,
       // the game's own client sends no Origin header; browsers always do, so web pages are kept out
       // (a LAN game must not be reachable from any page the host has open). A dedicated server
       // started with --web takes players from the browser version too.
