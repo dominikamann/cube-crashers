@@ -1066,145 +1066,127 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'eis') {
-      // the ice-cream parlour "Eis-Café Italia": a cream front with big glass shopfronts, the name painted over
-      // them, a red-brown door at the corner, a striped awning and yellow parasols over the tables — and a plain,
-      // windowed side, for the house is only as deep as its front is wide
-      const S = 80, H = 6.76;
-      const panel = (face: WaldseeFace, wB: number, opts: { shop?: boolean; name?: boolean }) => {
-        const cw = Math.round(wB * S), ch = Math.round(H * S);
+      // the ice-cream parlour "Eis-Café Italia": the real corner house, plastered cream. Its west wall (toward the
+      // tables) and its south wall (along the street) each get one textured plane, as wide as the wall and as high
+      // as its eave: big glass shopfronts with the counter and the tubs, the name over them, windows above, the
+      // red-brown door at the corner, a striped awning over the shopfronts
+      const S = 64;
+      const facade = (f: WaldseeFace & OnWall, o: { shop: [number, number]; door?: number }) => {
+        const wl = f.wall ?? { width: 5, along: 0, eave: 3 };
+        const W = wl.width, H = wl.eave, G = Math.min(2.0, H * 0.64);
+        const [u0, u1] = [Math.max(0.2, o.shop[0]), Math.min(W - 0.2, o.shop[1])];
+        // (the canvas runs against `along`: the wall's middle lies `wl.along` behind the snapped point)
+        const alongOf = (u: number) => -wl.along - (u - W / 2);
         const canvas = document.createElement('canvas');
-        canvas.width = cw;
-        canvas.height = ch;
+        canvas.width = Math.round(W * S);
+        canvas.height = Math.round(H * S);
         const g = canvas.getContext('2d')!;
-        const px = (u: number) => (u + wB / 2) * S;
-        const py = (y: number) => (H - y) * S;
-        // cream plaster, a darker plinth and the shadow under the eaves
-        g.fillStyle = '#efe3cd';
-        g.fillRect(0, 0, cw, ch);
-        g.fillStyle = '#d7cbb4';
-        g.fillRect(0, py(0.2), cw, 0.2 * S);
-        const eave = g.createLinearGradient(0, 0, 0, 0.6 * S);
-        eave.addColorStop(0, 'rgba(66,58,44,0.30)');
-        eave.addColorStop(1, 'rgba(66,58,44,0)');
-        g.fillStyle = eave;
-        g.fillRect(0, 0, cw, 0.6 * S);
+        const px = (u: number) => u * S, py = (y: number) => (H - y) * S;
+        const rect = (u: number, y0: number, y1: number, w: number, c: string | CanvasGradient) => {
+          g.fillStyle = c;
+          g.fillRect(px(u), py(y1), w * S, (y1 - y0) * S);
+        };
+        // cream plaster, a darker plinth, a band between the storeys and the shadow under the eaves
+        rect(0, 0, H, W, '#efe3cd');
+        rect(0, 0, 0.15, W, '#d7cbb4');
+        rect(0, G - 0.04, G + 0.04, W, '#ddd0b6');
+        const shade = g.createLinearGradient(0, 0, 0, 0.5 * S);
+        shade.addColorStop(0, 'rgba(66,58,44,0.30)');
+        shade.addColorStop(1, 'rgba(66,58,44,0)');
+        g.fillStyle = shade;
+        g.fillRect(0, 0, W * S, 0.5 * S);
         // windows: white frames, dark panes, a cross and a sill
-        const upWin = (u: number, yc: number) => {
-          const ww = 0.62, wh = 0.88;
-          g.fillStyle = '#fbf8f0';
-          g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
-          const glass = g.createLinearGradient(0, py(yc + wh / 2), 0, py(yc - wh / 2));
+        const win = (u: number, y0: number, y1: number, ww: number) => {
+          rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
+          const glass = g.createLinearGradient(0, py(y1), 0, py(y0));
           glass.addColorStop(0, '#6d8490');
           glass.addColorStop(1, '#4d626d');
-          g.fillStyle = glass;
-          g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S, (wh - 0.1) * S);
-          g.fillStyle = 'rgba(255,255,255,0.30)';
-          g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S * 0.3, (wh - 0.1) * S);
-          g.fillStyle = '#fbf8f0';
-          g.fillRect(px(u - 0.025), py(yc + wh / 2 - 0.05), 0.05 * S, (wh - 0.1) * S);
-          g.fillRect(px(u - ww / 2 + 0.05), py(yc + 0.04), (ww - 0.1) * S, 0.04 * S);
-          g.fillStyle = '#d9cfba';
-          g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.04), (ww + 0.1) * S, 0.06 * S);
+          rect(u - ww / 2 + 0.05, y0 + 0.05, y1 - 0.05, ww - 0.1, glass);
+          rect(u - ww / 2 + 0.05, y0 + 0.05, y1 - 0.05, (ww - 0.1) * 0.3, 'rgba(255,255,255,0.28)');
+          rect(u - 0.02, y0 + 0.05, y1 - 0.05, 0.04, '#fbf8f0');
+          rect(u - ww / 2 + 0.05, (y0 + y1) / 2, (y0 + y1) / 2 + 0.04, ww - 0.1, '#fbf8f0');
+          rect(u - ww / 2 - 0.05, y0 - 0.05, y0 + 0.01, ww + 0.1, '#d9cfba');
         };
-        const nUp = Math.max(1, Math.round(wB / 1.3));
-        for (const yc of [3.7, 4.76, 5.82]) for (let k = 0; k < nUp; k++) upWin(-wB / 2 + (k + 0.5) * (wB / nUp), yc);
-        if (opts.shop === false) {
-          // the side: just windows at the foot, as on the plaster wall behind the shopfront
-          const nLow = Math.max(1, Math.round(wB / 1.6));
-          for (let k = 0; k < nLow; k++) upWin(-wB / 2 + (k + 0.5) * (wB / nLow), 1.55);
-        } else {
-          // downstairs: big shop windows, dark glass with the warm counter and the tubs behind it
-          const bays = Math.max(1, Math.round(wB / 1.7)), bw = wB / bays;
+        const n = Math.max(1, Math.floor((W - 0.8) / 1.5));
+        const doorU = o.door ?? -9;
+        for (let k = 0; k < n; k++) {
+          const u = 0.4 + (k + 0.5) * ((W - 0.8) / n);
+          const wh = Math.max(0.4, Math.min(0.85, H - G - 0.45));
+          win(u, G + (H - G) / 2 - wh / 2 - 0.03, G + (H - G) / 2 + wh / 2 - 0.03, 0.55);
+          // (downstairs beyond the shopfronts: plain windows under the upper ones, clear of the door)
+          if ((u < u0 - 0.3 || u > u1 + 0.3) && Math.abs(u - doorU) > 0.9) win(u, 0.5, 1.5, 0.62);
+        }
+        // the shopfronts: dark glass with the warm counter and the tubs of ice cream behind it
+        if (u1 - u0 > 1) {
+          const bays = Math.max(1, Math.round((u1 - u0) / 1.8)), bw = (u1 - u0) / bays;
+          const colours = ['#f2a6c0', '#f6e08a', '#a6d8c0', '#c9a6e8'];
           for (let k = 0; k < bays; k++) {
-            const u = -wB / 2 + (k + 0.5) * bw;
-            const x0 = u - bw / 2 + 0.16, wx = (bw - 0.32) * S;
-            g.fillStyle = '#d8c7a2';
-            g.fillRect(px(x0), py(2.42), wx, 2.08 * S);
-            const glass = g.createLinearGradient(0, py(2.3), 0, py(0.35));
+            const x0 = u0 + k * bw + 0.1, ww = bw - 0.2;
+            rect(x0, 0.2, 1.6, ww, '#d8c7a2');
+            const glass = g.createLinearGradient(0, py(1.55), 0, py(0.25));
             glass.addColorStop(0, '#39474f');
             glass.addColorStop(0.6, '#2b363c');
             glass.addColorStop(1, '#5b4a34');
-            g.fillStyle = glass;
-            g.fillRect(px(x0 + 0.1), py(2.32), wx - 0.2 * S, 1.88 * S);
-            // the lit counter, the tubs of ice cream and a little lamp
-            g.fillStyle = '#b98546';
-            g.fillRect(px(x0 + 0.1), py(1.1), wx - 0.2 * S, 0.62 * S);
-            g.fillStyle = '#f6d38a';
-            g.fillRect(px(x0 + 0.12), py(1.04), wx - 0.24 * S, 0.08 * S);
-            const colours = ['#f2a6c0', '#f6e08a', '#a6d8c0', '#c9a6e8'];
-            const tubs = Math.max(2, Math.round(bw / 0.45));
-            for (let t = 0; t < tubs; t++) {
-              const tu = x0 + 0.24 + (t + 0.5) * ((wx / S - 0.48) / tubs);
-              g.fillStyle = colours[t % 4];
-              g.fillRect(px(tu - 0.11), py(1.46), 0.22 * S, 0.2 * S);
-            }
-            // the transom, a vertical bar, and a pale reflection
-            g.fillStyle = '#d8c7a2';
-            g.fillRect(px(x0 + 0.1), py(2.05), wx - 0.2 * S, 0.06 * S);
-            g.fillRect(px(u - 0.03), py(2.32), 0.06 * S, 1.88 * S);
+            rect(x0 + 0.07, 0.27, 1.53, ww - 0.14, glass);
+            rect(x0 + 0.07, 0.3, 0.64, ww - 0.14, '#b98546');
+            rect(x0 + 0.07, 0.64, 0.69, ww - 0.14, '#f6d38a');
+            const tubs = Math.max(2, Math.round(ww / 0.4));
+            for (let t = 0; t < tubs; t++) rect(x0 + 0.16 + t * ((ww - 0.32) / tubs) + 0.03, 0.69, 0.87, (ww - 0.32) / tubs - 0.06, colours[(t + k) % 4]);
+            rect(x0 + 0.07, 1.2, 1.25, ww - 0.14, '#d8c7a2');
+            rect(x0 + ww / 2 - 0.025, 0.27, 1.53, 0.05, '#d8c7a2');
             g.fillStyle = 'rgba(255,255,255,0.14)';
             g.beginPath();
-            g.moveTo(px(x0 + 0.26), py(2.28));
-            g.lineTo(px(x0 + 0.82), py(2.28));
-            g.lineTo(px(x0 + 0.42), py(0.4));
-            g.lineTo(px(x0 + 0.2), py(0.4));
+            g.moveTo(px(x0 + 0.15), py(1.5));
+            g.lineTo(px(x0 + 0.55), py(1.5));
+            g.lineTo(px(x0 + 0.3), py(0.35));
+            g.lineTo(px(x0 + 0.12), py(0.35));
             g.closePath();
             g.fill();
           }
-        }
-        // the name painted on the plaster over the shopfronts
-        if (opts.name) {
-          g.fillStyle = '#949ca4';
+          // the name painted on the plaster over them
+          g.fillStyle = '#6f7780';
           g.textAlign = 'center';
           g.textBaseline = 'middle';
-          g.font = `600 ${Math.round(0.38 * S)}px Georgia, "Times New Roman", serif`;
+          g.font = `600 ${Math.round(0.26 * S)}px Georgia, "Times New Roman", serif`;
           const wide = g.measureText('Eis-Café Italia').width;
           g.save();
-          g.translate(cw / 2, py(2.86));
-          g.scale(Math.min(1, (0.74 * cw) / wide), 1);
+          g.translate(px((u0 + u1) / 2), py((1.6 + G) / 2 + 0.03));
+          g.scale(Math.min(1, (0.9 * (u1 - u0) * S) / wide), 1);
           g.fillText('Eis-Café Italia', 0, 0);
           g.restore();
+        }
+        // the door: red-brown, glass above the middle, a lintel
+        if (o.door !== undefined) {
+          rect(o.door - 0.5, 0, 1.7, 1, '#d8c7a2');
+          rect(o.door - 0.4, 0, 1.6, 0.8, '#7a3b2c');
+          rect(o.door - 0.3, 0.55, 1.5, 0.6, '#56707c');
+          rect(o.door - 0.02, 0.55, 1.5, 0.04, '#d8c7a2');
+          rect(o.door + 0.22, 0.7, 0.78, 0.1, '#d8c7a2');
         }
         const tex = new THREE.CanvasTexture(canvas);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 8;
-        const geo = new THREE.PlaneGeometry(wB, H);
+        const geo = new THREE.PlaneGeometry(W, H);
         const mat = new THREE.MeshLambertMaterial({ map: tex });
         disposables.push(tex, geo, mat);
         const m = new THREE.Mesh(geo, mat);
-        const [fx, fz] = on(face, 0, 0.05);
+        const [fx, fz] = on(f, -wl.along, 0.04);
         m.position.set(fx, H / 2, fz);
-        m.rotation.y = faceYaw(face);
+        m.rotation.y = faceYaw(f);
         add(m);
+        // a striped awning over the shopfronts, a little lamp by the door
+        for (let k = 0; k < Math.floor((u1 - u0) / 0.25); k++) {
+          const c = k % 2 ? 0xf4ecd8 : 0xb8322a;
+          onFace(f, alongOf(u0 + (k + 0.5) * 0.25), 0.32, 1.62, 0.25, 0.06, 0.56, c);
+          onFace(f, alongOf(u0 + (k + 0.5) * 0.25), 0.6, 1.54, 0.25, 0.12, 0.03, c);
+        }
+        if (o.door !== undefined) onFace(f, alongOf(o.door + 0.68), 0.1, 1.2, 0.1, 0.22, 0.08, 0xffcf7a, true);
       };
-      // the front to the square with the shopfront and the name, the plain side toward the street, and the
-      // little back wall of the recessed entrance
-      panel({ x: 66, z: 65.5, dx: -1, dz: 0, len: 5 }, 5, { name: true });
-      panel({ x: 71.5, z: 69, dx: 0, dz: 1, len: 7 }, 7, { shop: false });
-      panel({ x: 67, z: 68, dx: 0, dz: 1, len: 2 }, 2, { shop: false });
-      // the recessed entrance: a glass door
-      onFace(s, 0, 0.03, 3.28, 1.0, H, 0.03, 0xefe3cd);
-      onFace(s, 0, 0.08, 1.35, 0.94, 2.7, 0.05, 0xd8c7a2);
-      onFace(s, 0, 0.11, 1.3, 0.78, 2.5, 0.04, 0x56707c);
-      onFace(s, 0, 0.14, 1.3, 0.05, 2.5, 0.03, 0xd8c7a2);
-      onFace(s, 0, 0.14, 1.92, 0.78, 0.05, 0.03, 0xd8c7a2);
-      lamp(...on(s, 0, 0.16), 0.55, 0.64, 0.4, 0.03, 0xffcf7a);
-      // a striped awning along the square side only
-      const squareFace: WaldseeFace = { x: 66, z: 65.5, dx: -1, dz: 0, len: 5 };
-      for (let k = 0; k < 14; k++) onFace(squareFace, 1.75 - (k + 0.5) * 0.25, 0.5, 2.46, 0.25, 0.07, 0.9, k % 2 ? 0xf4ecd8 : 0xb8322a);
-      // yellow parasols over the tables in front of the shop (the recessed ones stay under the wall)
-      const parasol = (x: number, z: number, colour: number) => {
-        box(x, 1.05, z, 0.07, 2.1, 0.07, 0x6b5a3a);
-        const pgeo = new THREE.ConeGeometry(1.0, 0.52, 8);
-        const pmat = new THREE.MeshLambertMaterial({ color: colour });
-        disposables.push(pgeo, pmat);
-        const pm = new THREE.Mesh(pgeo, pmat);
-        pm.position.set(x, 2.14, z);
-        add(pm);
-        box(x, 2.42, z, 0.1, 0.1, 0.1, 0x8a6a2a);
-      };
-      const eisTables = WALDSEE_TABLES.find(p => p.name === 'Eisdiele');
-      for (const [tx, tz] of eisTables?.at ?? []) if (tz !== 68) parasol(tx + 0.5, tz + 0.5, (tx + tz) % 2 ? 0xe8bb4a : 0xf0d386);
+      // (the west wall: the door at its south end, the shopfronts next to it; the south wall: shopfronts at the corner)
+      const south = onBlock({ x: 73, z: 69.7, dx: 0, dz: 1, len: 1 });
+      const wW = (s as OnWall).wall?.width ?? 5;
+      facade(s, { shop: [0.25, wW - 1.7], door: wW - 0.85 });
+      facade(south, { shop: [0.25, 5.4] });
       continue;
     }
     if (s.kind === 'bank') {
