@@ -181,6 +181,8 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))
         .slice(0, Math.max(0, n - hits.length));
       for (const r of near) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
+      // (who was hit, for the show: a beam from the ball to each of them)
+      s.events.push({ type: 'discoZap', playerId: p.id, pos: { ...p.pos }, enemies: hits.map(e => e.id), rivals: near.map(r => r.id), at: [...hits, ...near].map(o => ({ ...o.pos })) });
       return true;
     }
     case 'bananaMine': {

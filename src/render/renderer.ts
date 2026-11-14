@@ -247,6 +247,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   let night = 0;
   let time = 0;
   let showroom: { x: number; z: number; height: number; radius: number; angle?: number; look?: number } | null = null;
+  const discoTint = new THREE.Color();
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
@@ -298,6 +299,14 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       pickups.update(s, theme, time);
       fx.update(s, events, theme, frameDt, time);
       healthBars.update(s);
+      // a Disco Ball near one of the players on this screen colours the light of the scene, on its beat
+      const glow = fx.discoLight();
+      if (glow.k > 0) {
+        let near = 0;
+        for (const p of s.players) if (views.some(v => v.id === p.id)) near = Math.max(near, 1 - Math.hypot(p.pos.x - glow.x, p.pos.z - glow.z) / 18);
+        hemi.color.lerp(discoTint.setHex(glow.color), 0.3 * glow.k * near);
+        hemi.intensity *= 1 + 0.12 * glow.k * near;
+      }
 
       const shake = fx.shake();
       const w = canvas.clientWidth, h = canvas.clientHeight;

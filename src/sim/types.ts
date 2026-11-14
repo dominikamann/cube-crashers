@@ -617,6 +617,8 @@ export interface RunStats {
 
 export type SimEvent =
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
+  /** a Disco Ball went off: who threw it, and whom its beams hit (monsters, then rivals; `at`: where each stood) */
+  | { type: 'discoZap'; playerId: number; pos: Vec2; enemies: number[]; rivals: number[]; at: Vec2[] }
   | { type: 'weaponSelected'; playerId: number; slot: number }
   | { type: 'enemyHit'; id: number; pos: Vec2; amount: number }
   | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }

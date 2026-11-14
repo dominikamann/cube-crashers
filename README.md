@@ -622,7 +622,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | **Candy Cannon** | Spread of candy pellets. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
-| **Disco Ball** | A mirror ball flies up, spins and zaps the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. |
+| **Disco Ball** | A mirror ball flies up and shoots a beam of light at each of the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. It hangs there for a few seconds, turning, its coloured lights sweeping the floor, and its own house track plays while it does. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
 | **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |

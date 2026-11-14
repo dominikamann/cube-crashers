@@ -3,6 +3,7 @@ import type { SynthParams } from './synth';
 
 export type SoundId =
   | `shot_${WeaponKind}`
+  | 'discoZap'
   | 'select'
   | 'enemyHit'
   | 'enemyKilled'
@@ -111,6 +112,12 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 500, freqEnd: 900, attack: 0.01, sustain: 0.12, decay: 0.1, volume: 0.07, vibrato: { rate: 20, depth: 40 } },
   ],
   shot_discoBall: notes('triangle', [1047, 1319, 1568, 2093], 0.035, 0.08, 0.08, 0.01),
+  // its beams leave the ball: three quick zaps, each a little higher
+  discoZap: [
+    { wave: 'square', freq: 1700, freqEnd: 520, attack: 0.002, sustain: 0.015, decay: 0.09, volume: 0.045, lowpass: 5000, at: 0.02 },
+    { wave: 'square', freq: 2100, freqEnd: 640, attack: 0.002, sustain: 0.015, decay: 0.09, volume: 0.04, lowpass: 5000, at: 0.07 },
+    { wave: 'triangle', freq: 2600, freqEnd: 800, attack: 0.002, sustain: 0.015, decay: 0.11, volume: 0.06, at: 0.12 },
+  ],
   shot_bananaMine: [
     { wave: 'triangle', freq: 500, freqEnd: 250, attack: 0.003, sustain: 0.04, decay: 0.08, volume: 0.14 },
     { wave: 'noise', freq: 500, attack: 0.002, sustain: 0.01, decay: 0.05, volume: 0.1, lowpass: 900 },
@@ -457,6 +464,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   switch (e.type) {
     case 'shot':
       return one(`shot_${e.weapon}`);
+    case 'discoZap':
+      return one('discoZap');
     case 'weaponSelected':
       return one('select', 1 + e.slot * 0.06);
     case 'enemyHit':

@@ -43,7 +43,8 @@ export const CANDY = { speed: 14, range: 5, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */
 export const HOTDOG = { range: 8, flightTicks: 24, radius: 1.6, impact: 14, durationTicks: 150, intervalTicks: 15, slowTicks: 20 };
 export const BOOMERANG = { speed: 14, distance: 7 };
-export const DISCO = { range: 7, targets: 4 };
+/** (`show`: how long the ball hangs there with its lights and its music, in seconds; the hit itself is at once) */
+export const DISCO = { range: 7, targets: 4, show: 3.8 };
 export const MINE = { armTicks: 30, trigger: 1.0, radius: 2.5, lifetimeTicks: 1800, max: 5 };
 export const BOMB = { range: 7, flightTicks: 42, radius: 3 };
 /** a slow soap bubble: the monster it hits floats stuck in it for a while */
