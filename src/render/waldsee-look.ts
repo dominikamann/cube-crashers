@@ -363,6 +363,8 @@ export const waldseeLake = (tx: number, tz: number): boolean => LAKE.isWater(tx,
 export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx, tz);
 /** how far a roof reaches out over its walls, at the eaves and over the gables (tiles) */
 const OVERHANG = 0.35;
+/** how thick a roof is: it lies this much over the walls' tops, with a band as deep along its edges (tiles) */
+const ROOF_THICK = 0.15;
 /** the roofs of the buildings that stand, flat on the ground, to tell whether a spot lies under another house */
 let ROOF_PLAN: { id: number; ring: number[]; x0: number; x1: number; z0: number; z1: number }[] | null = null;
 const underRoof = (x: number, z: number, not: number): boolean => {
@@ -389,10 +391,10 @@ const underRoof = (x: number, z: number, not: number): boolean => {
  * The roofs of a building reaching out over its walls: every edge of a sloped roof that meets no other roof of the
  * house (the eaves, and the verge over a gable) is moved `OVERHANG` outward in the roof's own plane; the ridges and
  * hips stay. Not where another house stands against it (the roof would reach into that house's wall). The roofs as
- * new point lists, by the old ones
+ * new point lists, by the old ones, and the edges that reach out ([x0, y0, z0, x1, y1, z1], where they are now)
  */
-export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): Map<number[], number[]> => {
-  const out = new Map<number[], number[]>();
+export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): { roofs: Map<number[], number[]>; edges: number[][] } => {
+  const out = new Map<number[], number[]>(), freeEdges: [number[], number][] = [];
   const roofs = b.filter(([k]) => k === 'r').map(([, q]) => q);
   const key = (q: number[], i: number) => `${Math.round(q[3 * i] * 20)},${Math.round(q[3 * i + 1] * 20)},${Math.round(q[3 * i + 2] * 20)}`;
   const edges = new Map<string, number>();
@@ -450,6 +452,7 @@ export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): Map<num
       return to.distanceTo(p) > 2 * OVERHANG ? p : to;
     });
     for (let i = 0; i < m; i++) if (!Q[i].equals(P[i])) (goes.get(key(q, i)) ?? goes.set(key(q, i), []).get(key(q, i))!).push(Q[i]);
+    E.forEach((e, i) => e.free && freeEdges.push([q, i]));
   }
   for (const q of roofs) {
     let moved = false;
@@ -462,7 +465,11 @@ export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): Map<num
     }
     if (moved) out.set(q, nq);
   }
-  return out;
+  const reaching = freeEdges.map(([q, i]) => {
+    const nq = out.get(q) ?? q, j = (i + 1) % (q.length / 3);
+    return [nq[3 * i], nq[3 * i + 1], nq[3 * i + 2], nq[3 * j], nq[3 * j + 1], nq[3 * j + 2]];
+  });
+  return { roofs: out, edges: reaching };
 };
 /** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
 export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
@@ -711,8 +718,11 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
       // (the roofs reach out a little over the walls and gables)
       const over = roofsOver(b, bi);
+      // (the roofs have some thickness: they lie ROOF_THICK higher, the walls reach up to them, and a band in the
+      // roof's colour hangs down along every edge that reaches out, so a roof is a slab, not a sheet, and a front
+      // painted on a wall up to its eaves stays under the roof)
       for (const [k, q0] of b) {
-        const q = k === 'r' ? (over.get(q0) ?? q0) : q0;
+        const q = (k === 'r' ? (over.roofs.get(q0) ?? q0) : q0).map((v, i) => (i % 3 === 1 && v > 0.3 ? v + ROOF_THICK : v));
         const pts: THREE.Vector3[] = [];
         for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
         if (pts.length < 3) continue;
@@ -766,6 +776,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
             for (const p of [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]) put(p, low);
           }
         }
+      }
+      // the band along the edges that reach out: from the roof's edge down by its thickness, a little darker
+      col.setHex(tiles).multiplyScalar(0.72);
+      for (const [x0, y0, z0, x1, y1, z1] of over.edges) {
+        const a = [x0, y0 + ROOF_THICK, z0], b2 = [x1, y1 + ROOF_THICK, z1], c = [x1, y1, z1], d = [x0, y0, z0];
+        for (const p of [a, b2, c, a, c, d]) (roofPos.push(p[0], p[1], p[2]), roofCol.push(col.r, col.g, col.b));
       }
     });
     const mesh = (pos: number[], colours: number[], mat: THREE.Material, uv?: number[]) => {

@@ -10,7 +10,7 @@ const corners = () => {
     const over = roofsOver(b, id), at = new Map<string, { was: number[]; before: number[][]; now: number[][] }>();
     for (const [k, q] of b) {
       if (k !== 'r') continue;
-      const nq = over.get(q) ?? q;
+      const nq = over.roofs.get(q) ?? q;
       for (let i = 0; i < q.length; i += 3) {
         const key = [q[i], q[i + 1], q[i + 2]].map(v => Math.round(v * 20)).join();
         if (!at.has(key)) at.set(key, { was: [q[i], q[i + 1], q[i + 2]], before: [], now: [] });
