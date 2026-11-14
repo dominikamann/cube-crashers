@@ -1996,16 +1996,19 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   for (const b of WALDSEE_BARRIERS) {
     const ax = -b.dir[1], az = b.dir[0], yaw = -Math.atan2(az, ax);
     // (from wall to wall: as far as the real fronts on either side, measured along the barrier)
-    const reach = (sx: number): number => {
+    const reachFrom = (ox: number, oz: number, sx: number): number => {
       let best = b.half + 2;
       for (const w of wallFeet()) {
         const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
         if (Math.abs(den) < 1e-6) continue;
-        const t = ((w.x0 - b.at[0]) * ez - (w.z0 - b.at[1]) * ex) / den, u = ((w.x0 - b.at[0]) * az * sx - (w.z0 - b.at[1]) * ax * sx) / den;
+        const t = ((w.x0 - ox) * ez - (w.z0 - oz) * ex) / den, u = ((w.x0 - ox) * az * sx - (w.z0 - oz) * ax * sx) / den;
         if (t > 0.2 && u >= -0.02 && u <= 1.02 && t < best) best = t;
       }
       return best;
     };
+    // (no wider than the lane just behind it either: where a house front stands back, the barrier does not run on
+    // in front of the house beside the lane)
+    const reach = (sx: number) => Math.min(reachFrom(b.at[0], b.at[1], sx), reachFrom(b.at[0] + b.dir[0] * 0.8, b.at[1] + b.dir[1] * 0.8, sx), reachFrom(b.at[0] + b.dir[0] * 1.6, b.at[1] + b.dir[1] * 1.6, sx));
     const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
     const at = [b.at[0] + ax * mid, b.at[1] + az * mid];
     const n = Math.max(2, Math.round(width / 0.6));
