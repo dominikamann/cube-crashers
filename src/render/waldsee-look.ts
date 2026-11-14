@@ -1418,10 +1418,44 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'bank') {
-      // the bank, seen over the hedge behind the barrier: a hedge before it, its name on the wall
-      for (let k = -2; k <= 2; k++) onFace(s, k * 0.9, 1.2, 0.6, 0.86, 1.2, 0.6, k % 2 ? 0x3f7a3a : 0x478544);
+      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate fills the lane's
+      // mouth from wall to wall, the house (light blue-grey) stands behind it with its name up high
+      const lane = WALDSEE_BARRIERS.find(b => Math.abs(b.at[0] - 10.36) < 0.1 && Math.abs(b.at[1] - 60.26) < 0.1);
+      if (lane) {
+        const ax = -lane.dir[1], az = lane.dir[0], yaw = Math.atan2(-az, ax);
+        const hx = lane.at[0] + lane.dir[0] * 1.0, hz = lane.at[1] + lane.dir[1] * 1.0;
+        // (how far one can go along the barrier's line from the hedge's spot to the real wall, to each side)
+        const reach = (sx: number): number => {
+          let best = 6;
+          for (const w of wallFeet()) {
+            const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
+            if (Math.abs(den) < 1e-6) continue;
+            const t = ((w.x0 - hx) * ez - (w.z0 - hz) * ex) / den, u = ((w.x0 - hx) * az * sx - (w.z0 - hz) * ax * sx) / den;
+            if (t > 0.2 && u >= -0.02 && u <= 1.02 && t < best) best = t;
+          }
+          return best;
+        };
+        const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
+        const gateAt = width * 0.25, gateW = 0.9;
+        const hedgePart = (t0: number, t1: number, colour: number) => {
+          const t = (t0 + t1) / 2;
+          box(hx + ax * (mid + t), 0.8, hz + az * (mid + t), t1 - t0, 1.6, 0.55, colour, yaw);
+        };
+        const n = Math.max(2, Math.round(width / 0.9));
+        for (let k = 0; k < n; k++) {
+          const t0 = -width / 2 + (k * width) / n, t1 = t0 + width / n;
+          if (t1 > gateAt - gateW / 2 && t0 < gateAt + gateW / 2) {
+            if (t0 < gateAt - gateW / 2 - 0.05) hedgePart(t0, gateAt - gateW / 2, 0x3f7a3a);
+            if (t1 > gateAt + gateW / 2 + 0.05) hedgePart(gateAt + gateW / 2, t1, 0x478544);
+          } else hedgePart(t0, t1, k % 2 ? 0x3f7a3a : 0x478544);
+        }
+        // (the gate: two posts, a top rail, thin bars)
+        for (const side of [-1, 1]) box(hx + ax * (mid + gateAt + side * gateW / 2), 0.5, hz + az * (mid + gateAt + side * gateW / 2), 0.07, 1.0, 0.07, 0x3a3d42, yaw);
+        box(hx + ax * (mid + gateAt), 0.95, hz + az * (mid + gateAt), gateW, 0.06, 0.06, 0x3a3d42, yaw);
+        for (let k = 0; k < 6; k++) box(hx + ax * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.45, hz + az * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.03, 0.9, 0.03, 0x3a3d42, yaw);
+      }
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
-      // a row of windows per storey, and the blue-and-orange Volksbank board over the doors
+      // a row of windows per storey, and the blue-and-orange board "Bank" up high (no brand name)
       const wl = (s as OnWall).wall, wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
@@ -1430,9 +1464,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const g = canvas.getContext('2d')!;
       const px = (u: number) => (u + wB / 2) * S;
       const py = (y: number) => (H - y) * S;
-      g.fillStyle = '#e4dfd3';
+      g.fillStyle = '#c3ccd3';
       g.fillRect(0, 0, cw, ch);
-      g.fillStyle = '#b9b4a8';
+      g.fillStyle = '#9aa3a9';
       g.fillRect(0, py(0.2), cw, 0.2 * S);
       const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
       shadow.addColorStop(0, 'rgba(60,56,48,0.28)');
@@ -1474,17 +1508,17 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(px(u - 0.02), py(2.12), 0.04 * S, 1.8 * S);
         if (door) g.fillRect(px(u - bw / 2 + 0.18), py(1.9), (bw - 0.36) * S, 0.05 * S);
       }
-      // the Volksbank board: blue with the orange rim, the name in white
-      const bwid = Math.min(wB - 0.4, 2.6), bh = 0.5, by = 2.7;
+      // the board: blue with the orange rim, the name in white
+      const bwid = Math.min(wB - 0.4, 2.4), bh = 0.7, by = Math.min(3.4, H - 0.9);
       g.fillStyle = '#1f4fa8';
       g.fillRect(px(-bwid / 2), py(by + bh / 2), bwid * S, bh * S);
       g.fillStyle = '#f28c1e';
       g.fillRect(px(-bwid / 2), py(by - bh / 2 + 0.06), bwid * S, 0.06 * S);
       g.fillStyle = '#ffffff';
-      g.font = `bold ${Math.round(0.3 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText('Volksbank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
+      g.fillText('Bank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
