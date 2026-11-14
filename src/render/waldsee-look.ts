@@ -31,7 +31,7 @@ const BUILT = new Map(WALDSEE_BUILT.map(b => [b.house, b]));
  * on the lake side of the police lane (its meadow, gravel or water) north of the Wurzacher Strasse, nor out beyond
  * the shore there: the view down the lane is open water. The houses of the Wurzacher Strasse stand.
  */
-const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
+const shownBase = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   let cx = 0, cz = 0, n = 0;
   for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
   cx /= n;
@@ -148,6 +148,94 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   // a little past a front one sees cobbles, not a block)
   return c === 0 ? 'water' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : 'street';
 };
+/** the tiles a real building stands on, by its outline (the feet of its walls, sampled) */
+const footTiles = (b: (typeof WALDSEE_LOD2)[number]): [number, number][] => {
+  const seen = new Set<number>(), out: [number, number][] = [];
+  const add = (x: number, z: number) => {
+    const tx = Math.floor(x), tz = Math.floor(z), k = (tz + 400) * 1000 + tx + 400;
+    if (!seen.has(k)) (seen.add(k), out.push([tx, tz]));
+  };
+  for (const [kind, q] of b) {
+    if (kind !== 'w') continue;
+    const low: [number, number][] = [];
+    for (let i = 0; i < q.length; i += 3) if (q[i + 1] < 0.3) low.push([q[i], q[i + 2]]);
+    if (low.length < 2) continue;
+    const [[x0, z0], [x1, z1]] = [low[0], low[low.length - 1]];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, z1 - z0) * 2));
+    for (let i = 0; i <= n; i++) add(x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n);
+  }
+  return out;
+};
+/** the part of the Town and its surroundings where the Stadtsee and its shore are drawn (tiles) */
+export const LAKE_WIN = { x0: 70, x1: 190, z0: -20, z1: 70 };
+/** the lake as drawn: the water of the plan (north of the Wurzacher Strasse) and the Stadtsee of OpenStreetMap, less a
+ *  margin round every house that stands (its shore path and a strip of meadow lie there), and the houses hidden for it */
+const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number> }; isWater(tx: number, tz: number): boolean; isIslet(tx: number, tz: number): boolean } = (() => {
+  let data: { water: Uint8Array; islet: Uint8Array; hidden: Set<number> } | null = null;
+  const W = LAKE_WIN.x1 - LAKE_WIN.x0, H = LAKE_WIN.z1 - LAKE_WIN.z0;
+  const at = (tx: number, tz: number) => (tz - LAKE_WIN.z0) * W + (tx - LAKE_WIN.x0);
+  const inside = (tx: number, tz: number) => tx >= LAKE_WIN.x0 && tx < LAKE_WIN.x1 && tz >= LAKE_WIN.z0 && tz < LAKE_WIN.z1;
+  const inRing = (r: number[], x: number, z: number) => {
+    let c = false;
+    for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2)
+      if (r[i + 1] > z !== r[j + 1] > z && x < ((r[j] - r[i]) * (z - r[i + 1])) / (r[j + 1] - r[i + 1]) + r[i]) c = !c;
+    return c;
+  };
+  const build = () => {
+    const stadtsee = WALDSEE_LAKES.reduce<number[]>((a, r) => (r.length > a.length ? r : a), []);
+    const water0 = new Uint8Array(W * H);
+    for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
+      const plan = tx >= 78 && tx < MAP_W && tz >= 0 && tz <= 61 && waldseeGround(tx, tz) === 'water';
+      if (plan || (stadtsee.length > 0 && inRing(stadtsee, tx + 0.5, tz + 0.5))) water0[at(tx, tz)] = 1;
+    }
+    // a house that stands mostly in the water does not stand there at all
+    const hidden = new Set<number>(), kept: [number, number][] = [];
+    WALDSEE_LOD2.forEach((b, id) => {
+      if (!shownBase(b)) return;
+      const feet = footTiles(b);
+      const wet = feet.filter(([x, z]) => inside(x, z) && water0[at(x, z)]).length;
+      if (wet >= 3 && wet / feet.length >= 0.4) hidden.add(id);
+      else kept.push(...feet);
+    });
+    // the water keeps back from every house that stands: room for the path, the rim and a strip of meadow
+    const water = water0.slice();
+    for (const [x, z] of kept) for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) {
+      if (dx * dx + dz * dz <= 12.25 && inside(x + dx, z + dz)) water[at(x + dx, z + dz)] = 0;
+    }
+    // little patches of land out in the water (not joined to the shore, no house on them) are islets: just green
+    const islet = new Uint8Array(W * H), mark = new Uint8Array(W * H), keep = new Set<number>();
+    for (const [x, z] of kept) if (inside(x, z)) keep.add(at(x, z));
+    for (let i = 0; i < W * H; i++) {
+      if (water[i] || mark[i]) continue;
+      const comp = [i];
+      mark[i] = 1;
+      let edge = false, house = false;
+      for (let k = 0; k < comp.length; k++) {
+        const cx = comp[k] % W, cz = Math.floor(comp[k] / W);
+        if (keep.has(comp[k])) house = true;
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cx + dx, nz = cz + dz;
+          if (nx < 0 || nz < 0 || nx >= W || nz >= H) { edge = true; continue; }
+          const n = nz * W + nx;
+          if (!water[n] && !mark[n]) ((mark[n] = 1), comp.push(n));
+        }
+      }
+      if (!edge && !house && comp.length < 40) for (const c of comp) islet[c] = 1;
+    }
+    return { water, islet, hidden };
+  };
+  return {
+    get: () => (data ??= build()),
+    isWater: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().water[at(tx, tz)] === 1,
+    isIslet: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().islet[at(tx, tz)] === 1,
+  };
+})();
+/** whether the lake drawn there (see LAKE) covers a tile */
+export const waldseeLake = (tx: number, tz: number): boolean => LAKE.isWater(tx, tz);
+/** whether a tile is a little islet of green out in the lake (no path round it) */
+export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx, tz);
+/** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
+export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
 /** the plan's house at a tile, for its colours (the real building there takes them) */
 const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
@@ -2004,68 +2092,70 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     lamp(x, 0.03, z - 0.5, 0.42, 0.02, 0.24, 0xdff1ff);
   }
 
-  // ---- a clean lakeside promenade: the green is filled out to a straight shore line, with a path,
-  // a stone rim at the water and a few lanterns
+  // ---- the lakeside promenade: a footpath all round the lake as drawn (see LAKE), about 2.4 m wide, with a low
+  // stone rim at the water and a lantern every ten metres or so; behind it a strip of meadow and a few trees, then
+  // the houses. The meadow of the plan is laid flat too, so no dark seams show between its blocks.
   {
-    const edgeAt = (tz: number): number => {
-      let e = -1;
-      for (let tx = 78; tx <= 112; tx++) {
-        const g = waldseeGround(tx, tz);
-        if ((g === 'meadow' || g === 'gravel') && waldseeGround(tx + 1, tz) === 'water') e = tx;
-      }
-      if (e < 0) return -1;
-      let connected = false;
-      for (let tx = e - 1; tx >= 74; tx--) {
-        const g = waldseeGround(tx, tz);
-        if (g === 'water') break;
-        if (g === 'house' || g === 'yard') { connected = true; break; }
-      }
-      return connected ? e : -1;
+    const water = (tx: number, tz: number) => waldseeLake(tx, tz);
+    const PATH = [0xd0c8b4, 0xc9c1ac, 0xd5ceba];
+    const FLOOR = -0.42, MEADOW_TOP = 0.02, PATH_TOP = 0.035, RIM_TOP = 0.13;
+    // (a slab from the ground up to a level: it stands on the ground beyond the map and in the water blocks alike)
+    const slab = (x: number, z: number, sx: number, sz: number, top: number, color: number) => box(x, (top + FLOOR) / 2, z, sx, top - FLOOR, sz, color);
+    // how far (tiles, to the middle of the nearest water tile) a land tile lies from the lake, up to 3
+    const near = (tx: number, tz: number): number => {
+      let d = 9;
+      for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) if (water(tx + dx, tz + dz)) d = Math.min(d, Math.hypot(dx, dz));
+      return d;
     };
-    const edge: Record<number, number> = {};
-    const pts: [number, number][] = [];
-    for (let tz = 33; tz <= 58; tz++) {
-      edge[tz] = edgeAt(tz);
-      if (edge[tz] >= 0) pts.push([tz, edge[tz]]);
-    }
-    // a straight shore line through the measured edge (least squares)
-    let m = 0, c = 0;
-    if (pts.length > 1) {
-      const n = pts.length;
-      const sx = pts.reduce((a, p) => a + p[0], 0), sy = pts.reduce((a, p) => a + p[1], 0);
-      const sxx = pts.reduce((a, p) => a + p[0] * p[0], 0), sxy = pts.reduce((a, p) => a + p[0] * p[1], 0);
-      m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-      c = (sy - m * sx) / n;
-    }
-    const MEADOW = [0x7fb866, 0x76ae5e, 0x88c06e];
-    const Y = -0.01; // one flat level for the whole promenade
-    // the shore is that line, moved out so that no land lies beyond it; the path runs along it in one piece, two
-    // tiles wide, from the first row of the shore to the last, the meadow filled out up to it
-    if (pts.length > 1) {
-      const out = Math.max(...pts.map(([tz, e]) => e - (m * tz + c)));
-      const shore = (tz: number) => Math.round(m * tz + c + out);
-      const z0 = pts[0][0], z1 = pts[pts.length - 1][0];
-      let lastLantern = -99;
-      for (let tz = z0; tz <= z1; tz++) {
-        const x1 = shore(tz);
-        // (from where this row's own land ends, or from the last land of a row beside it)
-        let from = x1 - 1;
-        for (let tx = x1; tx >= 76; tx--) {
-          const g = waldseeGround(tx, tz);
-          if (g !== 'water') break;
-          from = tx;
+    const isPath = (tx: number, tz: number) => !water(tx, tz) && near(tx, tz) <= 1.5;
+    const lanterns: [number, number][] = [], trees: [number, number][] = [];
+    const lantern = (lx: number, lz: number) => {
+      box(lx, 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
+      box(lx, 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
+      lamp(lx, 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
+      box(lx, 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+    };
+    for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
+      if (water(tx, tz)) continue;
+      if (waldseeIslet(tx, tz)) {
+        slab(tx + 0.5, tz + 0.5, 1.02, 1.02, MEADOW_TOP, MEADOW[(tx * 7 + tz * 3) % 3]);
+        continue;
+      }
+      const x = tx + 0.5, z = tz + 0.5, d = near(tx, tz), k = (tx * 7 + tz * 3) % 3;
+      // (the green of the plan by the lake: laid flat, ground that was water as well)
+      const g = tx < MAP_W && tz >= 0 ? waldseeGround(tx, tz) : 'street';
+      const planGreen = tx >= 84 && tz >= 0 && tz < 62 && (g === 'meadow' || g === 'gravel');
+      if (d > 3 && !planGreen) continue;
+      if (d <= 1.5) {
+        slab(x, z, 1.02, 1.02, PATH_TOP, PATH[k]);
+        // the rim: a low stone kerb along each edge that meets the water
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (!water(tx + dx, tz + dz)) continue;
+          box(x + dx * 0.46, (RIM_TOP + FLOOR) / 2, z + dz * 0.46, dx ? 0.16 : 1.04, RIM_TOP - FLOOR, dz ? 0.16 : 1.04, 0xb9b2a2);
         }
-        for (let tx = from; tx <= x1 - 2; tx++) box(tx + 0.5, Y, tz + 0.5, 1.02, 0.05, 1.02, MEADOW[(tx + tz) % 3]);
-        for (const tx of [x1 - 1, x1]) box(tx + 0.5, Y + 0.02, tz + 0.5, 1.02, 0.06, 1.02, (tx + tz) % 2 ? 0xd0c8b4 : 0xc9c1ac);
-        box(x1 + 1.06, Y - 0.04, tz + 0.5, 0.14, 0.2, 1.02, 0xb9b2a2);
-        if (tz - lastLantern >= 8) {
-          lastLantern = tz;
-          const lx = x1 + 0.7, lz = tz + 0.5;
-          box(lx, Y + 0.9, lz, 0.09, 1.8, 0.09, 0x2a2d33);
-          box(lx, Y + 1.86, lz, 0.32, 0.08, 0.32, 0x2a2d33);
-          lamp(lx, Y + 1.74, lz, 0.2, 0.2, 0.2, 0xffd76a);
-          box(lx, Y + 1.99, lz, 0.16, 0.08, 0.16, 0x2a2d33);
+        if (near(tx, tz) === 1 && !lanterns.some(([lx, lz]) => Math.hypot(lx - x, lz - z) < 6.2)) {
+          lanterns.push([x, z]);
+          // (on the land side of the path)
+          let ax = 0, az = 0;
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (water(tx + dx, tz + dz)) ((ax -= dx), (az -= dz));
+          const len = Math.hypot(ax, az) || 1;
+          lantern(x + (ax / len) * 0.36, z + (az / len) * 0.36);
         }
+        continue;
+      }
+      slab(x, z, 1.02, 1.02, MEADOW_TOP, g === 'gravel' && !(d <= 3) ? 0xcfc4ae : MEADOW[k]);
+      // (the path is 1.5 tiles wide: this tile lends it a half where it lies behind the path)
+      if (d <= 2.2) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!isPath(tx + dx, tz + dz)) continue;
+        slab(x + dx * 0.25, z + dz * 0.25, dx ? 0.52 : 1.02, dz ? 0.52 : 1.02, PATH_TOP, PATH[k]);
+      }
+      // a tree here and there on the outer strip, none in the view from the police lane
+      const viewed = tx < 112 && tz > 34 && tz < 60;
+      if (d >= 3 && !viewed && hash(tx, tz) < 0.35 && !trees.some(([qx, qz]) => Math.hypot(qx - x, qz - z) < 7)) {
+        trees.push([x, z]);
+        const q = 0.7 + hash(tz, tx) * 0.5, turn = hash(tz, tx) * 1.5;
+        box(x, 1.0 * q, z, 0.26 * q, 2.0 * q, 0.26 * q, bark, turn);
+        [[1.7, 2.1], [2.2, 2.6], [1.8, 3.1], [1.0, 3.55]].forEach(([w, y], j) => box(x, y * q, z, w * q, 0.6 * q, w * q, leaf[(tx + tz + j) % 3], turn + j * 0.4));
       }
     }
   }
