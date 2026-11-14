@@ -29,8 +29,9 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
 const spotCache = new WeakMap<FloorMap, LogoSpot[]>();
 
 function findLogoSpots(map: FloorMap): LogoSpot[] {
-  // (the Town: one on the floor of the yard by the police, as on every map; none on its walls, which are real houses)
-  if (map.id === 'waldsee') return [{ kind: 'floor', tx: 64, tz: 38, ...SIZE }];
+  // (the Town: one on the floor of the yard by the police, as on every map; on its walls only the AmannLabs shop's own
+  // sign, on the front of the house at z 50: shoot it for the easter egg. Its picture is the shop sign, not drawn again)
+  if (map.id === 'waldsee') return [{ kind: 'floor', tx: 64, tz: 38, ...SIZE }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }];
   const at = (x: number, z: number) => (x < 0 || z < 0 || x >= map.w || z >= map.h ? Tile.Wall : map.tiles[z * map.w + x]);
   const points = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.map(n => n.pos), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
   let seed = 0;

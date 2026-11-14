@@ -118,7 +118,7 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
   };
   put(WALDSEE_CZARDAS, 0x7096de, 'b3262b');
   const BY_KIND: Record<string, [number, string?]> = {
-    eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc],
+    eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc], frauen: [0xd9d8d3],
     flasche: [0xdfe6d6], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
@@ -1417,13 +1417,170 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       facade(south, { shop: [0, 0] });
       continue;
     }
+    if (s.kind === 'frauen') {
+      // the clothes shop "FRAUENZIMMER" (from photos), the corner house east of the lane: light grey rough plaster, a
+      // glazed corner shop with a white pillar at the corner (the number 5), the entrance recessed on the street side
+      // with steps and a mauve mat, a slim ledge over the ground floor, the name painted above it, deep-set windows
+      // upstairs. The street wall and the lane wall each get one plane, as wide as the wall and as high as its eave
+      const S = 64;
+      const facade = (f: WaldseeFace & OnWall, street: boolean) => {
+        const wl = f.wall ?? { width: 6, along: 0, eave: 4.5 };
+        const W = wl.width, H = wl.eave, G = Math.min(1.9, H * 0.42);
+        // (the canvas runs against `along`: the wall's middle lies `wl.along` behind the snapped point; the pillar
+        // stands at the corner: at the west end of the street wall, at the south end of the lane wall)
+        const alongOf = (u: number) => -wl.along - (u - W / 2);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(W * S);
+        canvas.height = Math.round(H * S);
+        const g = canvas.getContext('2d')!;
+        const px = (u: number) => u * S, py = (y: number) => (H - y) * S;
+        const rect = (u: number, y0: number, y1: number, w: number, c: string | CanvasGradient) => {
+          g.fillStyle = c;
+          g.fillRect(px(u), py(y1), w * S, (y1 - y0) * S);
+        };
+        const pu0 = street ? 0 : W - 0.6;
+        // rough light grey plaster with a speckle, a grey plinth, the shadow under the eaves
+        rect(0, 0, H, W, '#d9d8d3');
+        for (let k = 0; k < W * H * 40; k++) {
+          g.fillStyle = k & 1 ? 'rgba(255,255,255,0.18)' : 'rgba(90,88,80,0.12)';
+          g.fillRect(((k * 7919) % 9973) / 9973 * W * S, ((k * 104729) % 10007) / 10007 * H * S, 2, 2);
+        }
+        rect(0, 0, 0.3, W, '#aeaca6');
+        const shade = g.createLinearGradient(0, 0, 0, 0.5 * S);
+        shade.addColorStop(0, 'rgba(66,62,54,0.30)');
+        shade.addColorStop(1, 'rgba(66,62,54,0)');
+        g.fillStyle = shade;
+        g.fillRect(0, 0, W * S, 0.5 * S);
+        // upstairs: deep-set white-framed windows with white sills, a plaster reveal round each
+        const win = (u: number, y0: number, y1: number, ww: number) => {
+          rect(u - ww / 2 - 0.08, y0 - 0.02, y1 + 0.1, ww + 0.16, '#e9e8e3');
+          rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
+          const glass = g.createLinearGradient(0, py(y1), 0, py(y0));
+          glass.addColorStop(0, '#47525b');
+          glass.addColorStop(1, '#2f3a43');
+          rect(u - ww / 2 + 0.06, y0 + 0.06, y1 - 0.06, ww - 0.12, glass);
+          rect(u - ww / 2 + 0.06, y0 + 0.06, y1 - 0.06, (ww - 0.12) * 0.3, 'rgba(255,255,255,0.2)');
+          rect(u - 0.025, y0 + 0.06, y1 - 0.06, 0.05, '#fbf8f0');
+          rect(u - ww / 2 - 0.12, y0 - 0.07, y0 - 0.01, ww + 0.24, '#fbf8f0');
+        };
+        const top = H - 0.35, wy1 = Math.min(4.35, top), wy0 = wy1 - 0.95;
+        const nWin = Math.max(1, Math.floor((W - 1.0) / 1.9));
+        for (let k = 0; k < nWin; k++) {
+          const u = 0.5 + (k + 0.5) * ((W - 1.0) / nWin);
+          win(u, wy0, wy1, 0.7);
+          if (!street && nWin > 1) win(u, G + 0.45, G + 1.25, 0.5);
+        }
+        // the shop's glass: dark metal frames, a pale interior with racks of clothes, mannequins
+        const glassBay = (u0: number, u1: number, y0: number, y1: number) => {
+          rect(u0, y0, y1, u1 - u0, '#34363a');
+          const back = g.createLinearGradient(0, py(y1), 0, py(y0));
+          back.addColorStop(0, '#9b9690');
+          back.addColorStop(1, '#6a6560');
+          rect(u0 + 0.06, y0 + 0.06, y1 - 0.06, u1 - u0 - 0.12, back);
+          const cols = ['#c93a3a', '#2d4f9b', '#e8d9c0', '#d96a8a', '#e0a23c', '#2f6f6a', '#f2f0ea'];
+          for (let u = u0 + 0.15; u < u1 - 0.3; u += 0.17) rect(u, y1 - 0.85, y1 - 0.3, 0.13, cols[Math.floor(u * 7.3) % cols.length]);
+          rect(u0 + 0.1, y1 - 0.31, y1 - 0.27, u1 - u0 - 0.2, '#2c2c2e');
+          // (a mannequin or two: a coloured dress on a thin stand)
+          for (let u = u0 + 0.5; u < u1 - 0.4; u += 1.7) {
+            rect(u - 0.12, y0 + 0.5, y0 + 1.05, 0.24, cols[Math.floor(u * 3.1) % cols.length]);
+            rect(u - 0.08, y0 + 1.05, y0 + 1.2, 0.16, '#d8c9bd');
+            rect(u - 0.03, y0 + 0.06, y0 + 0.5, 0.06, '#2c2c2e');
+          }
+          g.fillStyle = 'rgba(255,255,255,0.12)';
+          g.beginPath();
+          g.moveTo(px(u0 + 0.3), py(y1 - 0.06));
+          g.lineTo(px(u0 + 0.9), py(y1 - 0.06));
+          g.lineTo(px(u0 + 0.5), py(y0 + 0.06));
+          g.lineTo(px(u0 + 0.12), py(y0 + 0.06));
+          g.closePath();
+          g.fill();
+          for (let u = u0 + 1.5; u < u1 - 0.3; u += 1.5) rect(u, y0, y1, 0.07, '#34363a');
+        };
+        const gy1 = G - 0.2;
+        if (street) {
+          // (the dark fascia under the ledge, the glass either side of the recessed entrance, a pier at the far end)
+          rect(0.6, gy1, G, W - 0.6, '#4a4946');
+          glassBay(0.7, 2.0, 0.35, gy1);
+          // the entrance: a dark recess, a mauve mat on its floor
+          rect(2.0, 0, gy1, 1.6, '#3b3835');
+          rect(2.05, 0.35, gy1 - 0.05, 1.5, '#7b746d');
+          rect(2.05, 0.05, 0.3, 1.5, '#b9aea0');
+          for (let u = 2.2; u < 3.5; u += 0.2) rect(u, 0.5, 1.4, 0.1, ['#c93a3a', '#2d4f9b', '#e8d9c0'][Math.floor(u * 5) % 3]);
+          rect(2.05, 0.05, 0.12, 1.5, '#7c4a6c');
+          glassBay(3.6, W - 0.5, 0.35, gy1);
+          rect(W - 0.5, 0, G, 0.5, '#d9d8d3');
+        } else {
+          // (round the corner: one long window along the lane, the plinth as its sill)
+          rect(0, gy1, G, W - 0.6, '#4a4946');
+          glassBay(0.35, W - 0.7, 0.4, gy1);
+        }
+        // the white square pillar at the corner, the house number 5 on it
+        rect(pu0, 0, G, 0.6, '#e8e7e2');
+        if (street) {
+          g.fillStyle = '#26327a';
+          g.font = `bold ${Math.round(0.26 * S)}px Arial, sans-serif`;
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('5', px(0.3), py(1.45));
+        }
+        // the name painted over the ledge: dark grey capitals, a thin line, the small line under it
+        if (street) {
+          g.fillStyle = '#4b4e53';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          const mid = Math.min(W - 1.7, 3.7), maxW = (W - 1.8) * S;
+          g.font = `bold ${Math.round(0.4 * S)}px Arial, Helvetica, sans-serif`;
+          const wide = g.measureText('FRAUENZIMMER').width;
+          const sc = Math.min(1, maxW / wide);
+          g.save();
+          g.translate(px(mid), py(G + 0.95));
+          g.scale(sc, 1);
+          g.fillText('FRAUENZIMMER', 0, 0);
+          g.restore();
+          rect(mid - (wide * sc) / S / 2 - 0.1, G + 0.64, G + 0.67, (wide * sc) / S + 0.2, '#4b4e53');
+          g.font = `${Math.round(0.23 * S)}px Arial, Helvetica, sans-serif`;
+          const wide2 = g.measureText('FRAUENMODE - KINDERMODE').width;
+          g.save();
+          g.translate(px(mid), py(G + 0.4));
+          g.scale(Math.min(1, maxW / wide2), 1);
+          g.fillText('FRAUENMODE - KINDERMODE', 0, 0);
+          g.restore();
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(W, H);
+        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        const [fx, fz] = on(f, -wl.along, 0.04);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(f);
+        add(m);
+        // the slim ledge over the ground floor
+        onFace(f, alongOf(W / 2), 0.09, G + 0.04, W, 0.08, 0.18, 0xe6e5e0);
+        if (street) {
+          // steps up to the recessed entrance, two tall pots with blue-grey grasses
+          onFace(f, alongOf(2.8), 0.34, 0.07, 1.6, 0.14, 0.5, 0xd9cfba);
+          onFace(f, alongOf(2.8), 0.66, 0.035, 1.8, 0.07, 0.16, 0xcfc4ae);
+          for (const u of [2.15, W - 0.75]) {
+            onFace(f, alongOf(u), 0.62, 0.25, 0.3, 0.5, 0.3, 0x3a3c40);
+            onFace(f, alongOf(u), 0.62, 0.6, 0.34, 0.24, 0.34, 0x8fa59d);
+          }
+        }
+      };
+      // (the street wall: the snapped sign; the lane wall: west of the corner)
+      facade(s, true);
+      facade(onBlock({ x: 84, z: 67, dx: -1, dz: 0, len: 1 }), false);
+      continue;
+    }
     if (s.kind === 'bank') {
-      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate fills the lane's
-      // mouth from wall to wall, the house (light blue-grey) stands behind it with its name up high
+      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate, a few tiles in,
+      // fills the lane from wall to wall, the house (light blue-grey) stands behind it with its name up high
       const lane = WALDSEE_BARRIERS.find(b => Math.abs(b.at[0] - 10.36) < 0.1 && Math.abs(b.at[1] - 60.26) < 0.1);
       if (lane) {
         const ax = -lane.dir[1], az = lane.dir[0], yaw = Math.atan2(-az, ax);
-        const hx = lane.at[0] + lane.dir[0] * 1.0, hz = lane.at[1] + lane.dir[1] * 1.0;
+        const hx = lane.at[0] + lane.dir[0] * 3.0, hz = lane.at[1] + lane.dir[1] * 3.0;
         // (how far one can go along the barrier's line from the hedge's spot to the real wall, to each side)
         const reach = (sx: number): number => {
           let best = 6;
@@ -1456,7 +1613,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
       // a row of windows per storey, and the blue-and-orange board "Bank" up high (no brand name)
-      const wl = (s as OnWall).wall, wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
+      // (the whole house front: every wall of the building that looks the same way, side by side)
+      let wl = (s as OnWall).wall, mid = -(wl?.along ?? 0);
+      let near: ReturnType<typeof wallFeet>[number] | undefined;
+      for (const w of wallFeet()) {
+        if (w.nx * s.dx + w.nz * s.dz < 0.9) continue;
+        const d = Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z);
+        if (!near || d < Math.hypot((near.x0 + near.x1) / 2 - s.x, (near.z0 + near.z1) / 2 - s.z)) near = w;
+      }
+      if (near) {
+        let lo = Infinity, hi = -Infinity, eave = Infinity;
+        for (const w of wallFeet()) {
+          if (w.id !== near.id || w.nx * near.nx + w.nz * near.nz < 0.95) continue;
+          for (const [x, z] of [[w.x0, w.z0], [w.x1, w.z1]]) {
+            const a = -(x - s.x) * s.dz + (z - s.z) * s.dx;
+            lo = Math.min(lo, a);
+            hi = Math.max(hi, a);
+          }
+          eave = Math.min(eave, w.eave);
+        }
+        wl = { width: hi - lo, along: 0, eave };
+        mid = (lo + hi) / 2;
+      }
+      const wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
       canvas.width = cw;
@@ -1525,7 +1704,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
       disposables.push(tex, geo, mat);
       const m = new THREE.Mesh(geo, mat);
-      const [fx, fz] = on(s, -(wl?.along ?? 0), 0.04);
+      const [fx, fz] = on(s, mid, 0.04);
       m.position.set(fx, H / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
@@ -1879,8 +2058,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       } else if (s.kind === 'nkd') {
         // the clothes shop: the whole real wall painted flush, pale plaster with plain windows above, below a long
         // glass shopfront with the door in the middle and a dark grey fascia carrying the red name
+        // (the street front may be several wall pieces with slight kinks: each gets its part of the shopfront, the
+        // door and the name on the piece the shop snapped to)
         const wall = (s as OnWall).wall;
-        const wB = wall?.width ?? span, H = wall?.eave ?? 3.6, mid = -(wall?.along ?? 0);
+        const front = (face: WaldseeFace, wB: number, H: number, main: boolean) => {
         const S = 64, cw = Math.max(64, Math.round(wB * S)), ch = Math.round(H * S);
         const canvas = document.createElement('canvas');
         canvas.width = cw;
@@ -1899,7 +2080,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(0, 0, cw, 0.5 * S);
         // the shopfront: the fascia sits at 2.55-3.15, glass below it, a window either side of the door in the middle
         const fasciaTop = 3.15, fasciaBot = 2.5;
-        const doorW = Math.min(1.3, wB * 0.25), gap = 0.15;
+        const doorW = main ? Math.min(1.3, wB * 0.25) : 0, gap = main ? 0.15 : 0.05;
         g.fillStyle = '#3d4046';
         g.fillRect(0, py(fasciaTop), cw, (fasciaTop - fasciaBot) * S);
         g.fillStyle = '#8f949c';
@@ -1930,6 +2111,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fill();
         }
         // the glass door with a handle
+        if (main) {
         const dx0 = -doorW / 2;
         g.fillStyle = '#f4f1ea';
         g.fillRect(px(dx0), py(2.4), doorW * S, 2.22 * S);
@@ -1937,12 +2119,15 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(px(dx0 + 0.07), py(2.33), (doorW - 0.14) * S, 2.08 * S);
         g.fillStyle = '#c9ccd2';
         g.fillRect(px(dx0 + doorW - 0.22), py(1.3), 0.05 * S, 0.5 * S);
+        }
         // the name: red letters on the fascia, left of centre, as on the real one
+        if (main) {
         g.fillStyle = '#d0202a';
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
         g.fillText(s.text, px(-wB * 0.14), py((fasciaTop + fasciaBot) / 2) + 2);
+        }
         // upper storeys, two tiles apart: pale-framed windows over the shopfront bays
         const nUp = Math.max(1, Math.round(wB / 1.7));
         for (let y = 4.55; y + 0.55 < H - 0.15; y += 2) {
@@ -1963,10 +2148,16 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const mat = new THREE.MeshLambertMaterial({ map: tex });
         disposables.push(tex, geo, mat);
         const m = new THREE.Mesh(geo, mat);
-        const [fx, fz] = on(s, mid, 0.04);
+        const [fx, fz] = on(face, 0, 0.04);
         m.position.set(fx, H / 2, fz);
-        m.rotation.y = faceYaw(s);
+        m.rotation.y = faceYaw(face);
         add(m);
+        };
+        const pieces = wall?.id === undefined ? [] : wallFeet().filter(w => w.id === wall.id && w.nx * s.dx + w.nz * s.dz >= 0.5);
+        if (!pieces.length) front(s, wall?.width ?? span, wall?.eave ?? 3.6, true);
+        // (the piece the shop snapped to is the one whose middle is nearest the snapped point)
+        const near = pieces.reduce((best, w) => (Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z) < Math.hypot((best.x0 + best.x1) / 2 - s.x, (best.z0 + best.z1) / 2 - s.z) ? w : best), pieces[0]);
+        for (const w of pieces) front({ x: (w.x0 + w.x1) / 2, z: (w.z0 + w.z1) / 2, dx: w.nx, dz: w.nz, len: 1 }, Math.hypot(w.x1 - w.x0, w.z1 - w.z0), w.eave, w === near);
       } else if (s.kind === 'brille') {
         // the optician: the real white house painted flush on its wall, dark red shutters upstairs, two great
         // windows hung with red cloth either side of a glass door up four steps, grey planters with little
