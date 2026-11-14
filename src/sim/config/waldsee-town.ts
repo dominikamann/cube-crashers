@@ -421,14 +421,16 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'a9553a', wall: 4.54, cx: 84.2, cz: 22.49, ang: -1.56 },
 ];
 /** trees with a bench round the trunk (tiles) */
-export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [48, 55], [55, 54]];
+export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [48, 55], [55, 54]];
 /** the Federle-Brunnen: its two tiles, the basin on the first and the round block on the second */
 export const WALDSEE_FOUNTAIN: [number, number][] = [[42, 48], [43, 48]];
 /** parked cars, each two tiles long from its tile southward: the police car in front of the station */
 export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind: 'police', at: [64, 46] }];
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
-  { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
+  // (the Czardas: along its whole front toward the fountain, but not up to it; none round the corner on the side
+  // toward the police)
+  { name: "Czardas", at: [[45.5, 46], [47.8, 46], [50.1, 46], [52.4, 46], [47, 48], [49.5, 48], [51.8, 48]] },
   // (the ice-cream parlour: centred before its west front)
   { name: "Eisdiele", at: [[64, 63], [64, 66], [62, 64.5]] },
 ];
@@ -442,7 +444,7 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
-  { text: "AmannLabs", kind: 'amannlabs', x: 25.4, z: 50.0, dx: 0, dz: 1, len: 5 },
+  { text: "AmannLabs", kind: 'amannlabs', x: 26.0, z: 50.0, dx: 0, dz: 1, len: 6 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
   // (on their real houses: the little shop in Ravensburger Strasse 24, beside the optician in number 20)
   { text: "Lädele", kind: 'shop', x: 13.4, z: 65.6, dx: 0.91, dz: -0.41, len: 2 },

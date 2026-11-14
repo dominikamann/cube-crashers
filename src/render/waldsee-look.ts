@@ -237,7 +237,7 @@ export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx
 /** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
 export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
 /** the plan's house at a tile, for its colours (the real building there takes them) */
-const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
+export const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
   return c >= 6 && !takenAway(c) && !WALDSEE_REPLACED.includes(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
 };
@@ -442,7 +442,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n);
       if (!shown(b)) return;
-      const h = houseAt(tx, tz);
+      // (the Czardas's colours belong to the Czardas only: a neighbour whose middle lands on its tile stays neutral)
+      const h0 = houseAt(tx, tz), h = h0 && h0.col === '6f93c9' && bi !== 280 ? null : h0;
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
       const shutters = h?.shut ?? '';
       // (its eaves: the lowest point of its roofs; as many storeys of about two tiles as fit under them)
@@ -714,8 +715,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     });
   }
 
-  // ---- the Czardas on the Hochstatt, the place to sit: a blue-grey house with cream corner strips and bands, red
-  // shutters and a round-topped door; its name on a board over the door, strings of lights over the terrace and the
+  // ---- the Czardas on the Hochstatt, the place to sit: a sky-blue house with a grey plinth, white corner strips and red
+  // shutters; its name only on the plaque by the side door; strings of lights over the terrace and the
   // board with today's offer. The house front and its side are one painted plane each, exactly as wide as the real
   // walls, so nothing spills onto the neighbours
   {
@@ -726,7 +727,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       return { ...face, x, z };
     };
     /** one wall of the house on a plane; `doorU` is where its door should be, from the wall's middle. Returns the door's place */
-    const wallPlane = (face: WaldseeFace & OnWall, doorU: number, big: boolean): number => {
+    const wallPlane = (face: WaldseeFace & OnWall, doorU: number, big: boolean, name: string): number => {
       const W = face.wall?.width ?? Math.max(3, face.len), H = face.wall?.eave ?? 4.64;
       const cw = Math.round(W * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
@@ -738,59 +739,99 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = c;
         g.fillRect(px(u0), py(y1), (u1 - u0) * S, (y1 - y0) * S);
       };
-      // plaster, the stone plinth, a cream band between the storeys, cream strips at the corners, shadow under the eaves
-      rect(-W / 2, 0, W / 2, H, '#8398b4');
-      rect(-W / 2, 0, W / 2, 0.5, '#8d8f95');
-      rect(-W / 2, 2.38, W / 2, 2.5, '#e6dfcb');
-      rect(-W / 2, 0, -W / 2 + 0.3, H, '#e6dfcb');
-      rect(W / 2 - 0.3, 0, W / 2, H, '#e6dfcb');
+      // bright sky-blue plaster, a grey plinth with a darker edge, a white strip at the east corner, shadow under the eaves
+      rect(-W / 2, 0, W / 2, H, '#7096de');
+      rect(-W / 2, 0, W / 2, 0.9, '#8e9ec2');
+      rect(-W / 2, 0.88, W / 2, 0.95, '#6f7fa6');
+      rect(-W / 2, 0, -W / 2 + 0.8, H, '#f4f2ec');
       const sh = g.createLinearGradient(0, 0, 0, 0.5 * S);
-      sh.addColorStop(0, 'rgba(30,40,60,0.28)');
-      sh.addColorStop(1, 'rgba(30,40,60,0)');
+      sh.addColorStop(0, 'rgba(30,40,80,0.25)');
+      sh.addColorStop(1, 'rgba(30,40,80,0)');
       g.fillStyle = sh;
       g.fillRect(0, 0, cw, 0.5 * S);
-      // a window: cream frame, dark panes, a cross, a sill and red shutters either side
+      // a window: white frame, dark panes, a cross, a sill; bright red shutters either side upstairs
       const win = (u: number, yc: number, ww: number, wh: number, shutters: boolean) => {
         if (shutters) for (const e of [-1, 1]) {
-          const x0 = u + e * (ww / 2 + 0.04) - (e < 0 ? 0.27 : 0);
-          rect(x0, yc - wh / 2, x0 + 0.27, yc + wh / 2, '#b3322a');
-          for (let k = 1; k < 6; k++) rect(x0, yc - wh / 2 + (wh * k) / 6, x0 + 0.27, yc - wh / 2 + (wh * k) / 6 + 0.02, '#8a2420');
+          const x0 = u + e * (ww / 2 + 0.04) - (e < 0 ? 0.3 : 0);
+          rect(x0, yc - wh / 2 - 0.04, x0 + 0.3, yc + wh / 2 + 0.04, '#c42a35');
+          for (let k = 1; k < 7; k++) rect(x0, yc - wh / 2 + (wh * k) / 7, x0 + 0.3, yc - wh / 2 + (wh * k) / 7 + 0.02, '#9a1d2b');
         }
-        rect(u - ww / 2, yc - wh / 2, u + ww / 2, yc + wh / 2, '#ece6d3');
-        rect(u - ww / 2 + 0.05, yc - wh / 2 + 0.05, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#566a7c');
-        rect(u - ww / 2 + 0.05, yc + wh * 0.1, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#7890a2');
-        rect(u - 0.02, yc - wh / 2 + 0.05, u + 0.02, yc + wh / 2 - 0.05, '#ece6d3');
-        rect(u - ww / 2 + 0.05, yc - 0.02, u + ww / 2 - 0.05, yc + 0.02, '#ece6d3');
-        rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#d6cfba');
+        rect(u - ww / 2, yc - wh / 2, u + ww / 2, yc + wh / 2, '#f6f4ee');
+        rect(u - ww / 2 + 0.05, yc - wh / 2 + 0.05, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#4d5d6e');
+        rect(u - ww / 2 + 0.05, yc + wh * 0.1, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#7f96aa');
+        rect(u - 0.02, yc - wh / 2 + 0.05, u + 0.02, yc + wh / 2 - 0.05, '#f6f4ee');
+        rect(u - ww / 2 + 0.05, yc - 0.02, u + ww / 2 - 0.05, yc + 0.02, '#f6f4ee');
+        rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#dcd8cc');
       };
-      const d = Math.max(-W / 2 + 0.95, Math.min(W / 2 - 0.95, doorU));
-      const n = Math.max(2, Math.round((W - 0.6) / 1.8)), pitch = (W - 0.6) / n;
-      let wide = false;
+      const d = Math.max(-W / 2 + 1.4, Math.min(W / 2 - 1.4, doorU));
+      // (one entrance only on the front)
+      const d2 = 1e9;
+      const n = Math.max(2, Math.round((W - 0.8) / 1.8)), pitch = (W - 0.8) / n;
       for (let k = 0; k < n; k++) {
-        const u = -W / 2 + 0.3 + (k + 0.5) * pitch;
-        win(u, 3.55, 0.66, 0.96, true);
-        if (Math.abs(u - d) < 1.0) continue;
-        if (big && !wide && Math.abs(u - d) < 2.4) {
-          // (the big plain window next to the door)
-          win(u, 1.55, 1.25, 1.05, false);
-          wide = true;
-        } else win(u, 1.6, 0.66, 0.96, true);
+        const u = -W / 2 + 0.8 + (k + 0.5) * pitch;
+        if (big || Math.abs(u - d) > 1.0) win(u, 3.4, 0.7, 1.0, true);
+        // (the ground floor: windows on the front only; the side has just the door and the low plinth windows)
+        if (big && Math.abs(u - d) > 1.1 && Math.abs(u - d2) > 1.0) win(u, 1.75, 0.7, 0.85, false);
       }
-      // the door: a cream surround, a round-topped light over a brown wooden door, a step
-      rect(d - 0.5, 0, d + 0.5, 2.15, '#ece6d3');
-      rect(d - 0.4, 0, d + 0.4, 2.05, '#6a4630');
-      rect(d - 0.02, 0, d + 0.02, 2.05, '#4a2f20');
-      rect(d - 0.5, 2.15, d + 0.5, 2.28, '#ece6d3');
-      g.fillStyle = '#ece6d3';
-      g.beginPath();
-      g.arc(px(d), py(2.3), 0.5 * S, Math.PI, 0);
-      g.fill();
-      g.fillStyle = '#6c7f8c';
-      g.beginPath();
-      g.arc(px(d), py(2.32), 0.4 * S, Math.PI, 0);
-      g.fill();
-      rect(d - 0.02, 2.3, d + 0.02, 2.72, '#ece6d3');
-      rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
+      if (big) {
+        // the front: a dark brown wooden frame with a glass door and menu cards beside it
+        rect(d - 0.62, 0, d + 0.62, 2.2, '#5a3322');
+        rect(d - 0.52, 0, d + 0.52, 2.1, '#2b2624');
+        rect(d - 0.02, 0, d + 0.02, 2.1, '#5a3322');
+        rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
+        rect(d + 0.7, 1.1, d + 0.95, 1.5, '#f4f1e6');
+        rect(d - 0.95, 1.1, d - 0.7, 1.5, '#f4f1e6');
+      } else {
+        // the side: a brown wooden door in a white stone frame, an arched fanlight of small panes, a white niche with
+        // a small golden saint over it, a lamp each side and a menu box; the plaque with the name on the wall at the left
+        rect(d - 0.62, 0, d + 0.62, 2.2, '#f4f2ec');
+        rect(d - 0.5, 0, d + 0.5, 2.1, '#8a5a36');
+        rect(d - 0.5, 0, d - 0.1, 2.1, '#26211f');
+        rect(d - 0.62, 2.2, d + 0.62, 2.32, '#f4f2ec');
+        g.fillStyle = '#f4f2ec';
+        g.beginPath();
+        g.arc(px(d), py(2.3), 0.62 * S, Math.PI, 0);
+        g.fill();
+        g.fillStyle = '#6c7f8c';
+        g.beginPath();
+        g.arc(px(d), py(2.34), 0.5 * S, Math.PI, 0);
+        g.fill();
+        for (let k = -2; k <= 2; k++) rect(d + k * 0.18 - 0.01, 2.34, d + k * 0.18 + 0.01, 2.84, '#f4f2ec');
+        rect(d - 0.5, 2.56, d + 0.5, 2.58, '#f4f2ec');
+        // (the niche with the saint)
+        rect(d - 0.36, 2.9, d + 0.36, 3.5, '#f4f2ec');
+        g.fillStyle = '#f4f2ec';
+        g.beginPath();
+        g.arc(px(d), py(3.5), 0.36 * S, Math.PI, 0);
+        g.fill();
+        rect(d - 0.27, 2.98, d + 0.27, 3.5, '#a9b8d8');
+        g.fillStyle = '#a9b8d8';
+        g.beginPath();
+        g.arc(px(d), py(3.5), 0.27 * S, Math.PI, 0);
+        g.fill();
+        rect(d - 0.1, 3.05, d + 0.1, 3.55, '#d9a93a');
+        rect(d - 0.14, 2.98, d + 0.14, 3.05, '#2b2624');
+        rect(d + 0.85, 1.4, d + 1.1, 1.8, '#2b2624');
+        rect(d - 0.62, 0, d + 0.62, 0.07, '#b9b6ae');
+        // (a basement window low in the plinth at the left, a small shop window in the plinth zone right of the door)
+        const lowWin = (u0: number, u1: number, y0: number, y1: number) => {
+          rect(u0, y0, u1, y1, '#f4f2ec');
+          rect(u0 + 0.05, y0 + 0.05, u1 - 0.05, y1 - 0.05, '#26303c');
+        };
+        lowWin(d - 3.2, d - 2.4, 0.2, 0.7);
+        lowWin(d + 1.5, d + 2.6, 0.2, 0.75);
+        // the plaque: white, a thin dark frame, dark serif letters, on the wall left of the door at about door-top height
+        const pu = d - 2.0;
+        rect(pu - 0.8, 1.7, pu + 0.8, 2.3, '#4a4a52');
+        rect(pu - 0.78, 1.72, pu + 0.78, 2.28, '#f6f4ee');
+        g.fillStyle = '#34343a';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = `bold ${Math.round(0.24 * S)}px Georgia, "Times New Roman", serif`;
+        g.fillText(name, px(pu), py(2.1));
+        g.font = `${Math.round(0.12 * S)}px Georgia, "Times New Roman", serif`;
+        g.fillText('CAFÉ - BAR', px(pu), py(1.86));
+      }
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -803,42 +844,55 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       add(m);
       return d;
     };
-    // (the front: the door at the end of the wall near the Hochstatt, the big window beside it)
+    // (the front: the one door in the middle, no lettering)
     const alongF = f.wall?.along ?? 0;
-    const door = at(f, wallPlane(f, alongF + 0.4, true) - alongF);
-    sign(door, 'CZARDAS', 3.05, 2.4, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' }, 'bold 80px Georgia, "Times New Roman", serif');
-    for (const e of [-1, 1]) {
-      const [lx, lz] = on(door, e * 0.78, 0.1);
-      lamp(lx, 2.0, lz, 0.14, 0.3, 0.14, 0xffd76a);
-    }
+    const door = at(f, wallPlane(f, 0, true, 'CZARDAS') - alongF);
+    // (the terrace is centred on its tables, not on the door)
+    const tab = WALDSEE_TABLES.find(p => p.name === 'Czardas')?.at ?? [];
+    const mx = tab.reduce((a, [x]) => a + x + 0.5, 0) / Math.max(1, tab.length), mz = tab.reduce((a, [, z]) => a + z + 0.5, 0) / Math.max(1, tab.length);
+    const terrace = tab.length ? at(f, (mx - f.x) * -f.dz + (mz - f.z) * f.dx) : door;
     const out = 5.4, bulbs = [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0], w = 3;
     for (const side of [-1, 0, 1]) {
-      const [px, pz] = on(door, side * (w / 2 + 1.6), out);
+      const [px, pz] = on(terrace, side * (w / 2 + 1.6), out);
       box(px, 1.5, pz, 0.07, 3, 0.07, 0x3a3f52);
       for (let k = 0; k <= 12; k++) {
         const t = k / 12, sag = Math.sin(Math.PI * t) * 0.4;
-        const [sx, sz] = on(door, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
+        const [sx, sz] = on(terrace, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
         lamp(sx, 2.9 + 0.1 * t - sag, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
       }
     }
     for (let k = 0; k <= 16; k++) {
       const t = k / 16;
-      const [sx, sz] = on(door, -w / 2 - 1.6 + (w + 3.2) * t, out);
+      const [sx, sz] = on(terrace, -w / 2 - 1.6 + (w + 3.2) * t, out);
       lamp(sx, 3 - Math.sin(Math.PI * ((t * 2) % 1)) * 0.25, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
     }
-    for (let k = 0; k < 5; k++) {
-      const [fx, fz] = on(door, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
-      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(door));
-      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(door));
-      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(door.dz), 0.58, fz + q * 0.3 * Math.abs(door.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
+    // the two trees of the terrace stand in square grates with a low metal guard rail round them
+    for (const [tx, tz] of [[53, 48], [50, 46]]) {
+      const x = tx + 0.5, z = tz + 0.5;
+      box(x, 0.02, z, 1.3, 0.04, 1.3, 0x55585e);
+      for (const e of [-1, 1]) {
+        box(x + e * 0.65, 0.3, z, 0.05, 0.05, 1.3, 0x3a3f4a);
+        box(x, 0.3, z + e * 0.65, 1.3, 0.05, 0.05, 0x3a3f4a);
+        for (const q of [-1, 1]) box(x + e * 0.65, 0.15, z + q * 0.65, 0.05, 0.3, 0.05, 0x3a3f4a);
+      }
+    }
+    // a lamp post with a round white globe by the east end of the front
+    {
+      const [lx, lz] = on(f, -(f.wall?.width ?? 3) / 2 + 0.5 - alongF, 1.6);
+      box(lx, 1.6, lz, 0.1, 3.2, 0.1, 0x26282e);
+      lamp(lx, 3.3, lz, 0.4, 0.4, 0.4, 0xf4f1ea);
     }
     // its second door, on the side toward the Hauptstrasse: the same house, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
       const sd = onBlock(WALDSEE_CZARDAS_SIDE), alongS = sd.wall?.along ?? 0;
-      const door2 = at(sd, wallPlane(sd, alongS, false) - alongS);
-      sign(door2, 'Czardas', 2.95, 1.5, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' });
+      const door2 = at(sd, wallPlane(sd, 0, false, 'Czardas') - alongS);
+      // (a small lamp each side of the door)
+      for (const e of [-1, 1]) {
+        const [lx, lz] = on(door2, e * 0.78, 0.1);
+        lamp(lx, 1.9, lz, 0.14, 0.26, 0.14, 0xffd76a);
+      }
     }
-    const [cx, cz] = on(door, w / 2 + 1.9, 2.6);
+    const [cx, cz] = on(door, 1.5, 1.0);
     box(cx, 0.45, cz, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
   }
@@ -849,15 +903,45 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     const s = s0.kind === 'amannlabs' ? s0 : onBlock(s0);
     const w = Math.max(2, Math.min(4, s.len));
     if (s.kind === 'amannlabs') {
-      // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
-      // cyan roofline; the lit ground floor holds the shop window with the robots, the name glowing above
+      // the house is a modern tech building with a glass front under a red-tiled gable roof; the lit ground floor
+      // holds the shop window with the robots, the name glowing above
       {
-        // a modern glass tower, taller than its neighbours, with a hipped roof and PV, in the middle between the house
-        // to its left (x 22.6) and the one to its right (x 28.3); the gaps either side are closed by a wall a step
-        // back, so they are niches, not ways through
-        for (const [g0, g1] of [[22.55, 23.2], [27.7, 28.35]]) box((g0 + g1) / 2, 1.6, 50 - 1.2, g1 - g0, 4, 0.3, 0xe9e4d6);
-        const X0 = 23.2, X1 = 27.7, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
-        const curtain = (wB: number, hB: number, front: boolean) => {
+        // the house fills the gap between the real house to its left and the one to its right (their walls are
+        // measured from the LoD2 feet: the left one at x 22.3 to 21.7, the right one at x 29.3 to 30.5), flush with
+        // them. The front stands on z 50 between the two side-alleys (x 22-23 and x 29-30, which stay walkable); behind
+        // the alleys two wings of the house close them as dead ends, up to the neighbours' walls. A gable roof of red
+        // tiles, the eaves as high as the neighbours', plaster sides with windows
+        const X0 = 23, X1 = 29, Z0 = 44, Z1 = 50, W = X1 - X0, cx = (X0 + X1) / 2, E = 6.2, RISE = 3.6, S = 80;
+        const leftX = (z: number) => 21.65 + Math.max(0, z - 46.55) * 0.193;
+        const rightX = (z: number) => 28.31 + (z - 40.09) * 0.245;
+        const PLASTER = '#efe4cc';
+        // plaster with white-framed windows, one storey of about two tiles each; a ground-floor window unless a door is there
+        const plaster = (wB: number, hB: number, groundWindows: boolean): HTMLCanvasElement => {
+          const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
+          c.width = cw;
+          c.height = ch;
+          const g = c.getContext('2d')!;
+          g.fillStyle = PLASTER;
+          g.fillRect(0, 0, cw, ch);
+          g.fillStyle = '#d3c6aa';
+          g.fillRect(0, ch - 0.15 * S, cw, 0.15 * S);
+          const n = Math.max(1, Math.round(wB / 1.4));
+          for (let yc = groundWindows ? 1.5 : 3.5; yc + 0.6 < hB; yc += 2)
+            for (let k = 0; k < n; k++) {
+              const u = (k + 0.5) * (wB / n), ww = 0.62, wh = 0.9, x = (u - ww / 2) * S, y = (hB - yc - wh / 2) * S;
+              g.fillStyle = '#fbf8f0';
+              g.fillRect(x, y, ww * S, wh * S);
+              g.fillStyle = '#566a76';
+              g.fillRect(x + 0.05 * S, y + 0.05 * S, (ww - 0.1) * S, (wh - 0.1) * S);
+              g.fillStyle = '#fbf8f0';
+              g.fillRect(x + (ww / 2 - 0.025) * S, y + 0.05 * S, 0.05 * S, (wh - 0.1) * S);
+              g.fillStyle = '#d3c6aa';
+              g.fillRect(x - 0.05 * S, y + wh * S, (ww + 0.1) * S, 0.06 * S);
+            }
+          return c;
+        };
+        // the glass front of the house: dark glass, light mullions, a glowing cyan line under the eaves, four lit windows
+        const curtain = (wB: number, hB: number): HTMLCanvasElement => {
           const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
           c.width = cw;
           c.height = ch;
@@ -895,125 +979,116 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fillRect(0, 0, cw, 0.1 * S);
           g.fillStyle = 'rgba(43,240,255,0.22)';
           g.fillRect(0, 0.1 * S, cw, 0.2 * S);
-          if (front) {
-            const py = (yy: number) => (hB - yy) * S;
-          const accent = (ci: number, rj: number, rspan = 1) => {
-            const x = ci * colW * S, y = (hB - (rj + rspan) * rowH) * S, w = 2 * colW * S, h = rspan * rowH * S;
-            g.fillStyle = 'rgba(43,240,255,0.35)';
-            g.fillRect(x, y, w, h);
-            g.fillStyle = '#1de6ff';
-            g.fillRect(x + 3, y + 3, w - 6, h - 6);
-          };
-          accent(1, 6, 2);
-          accent(6, 6, 2);
-          accent(1, 4);
-          accent(6, 4);
-            g.fillStyle = '#0a1017';
-            g.fillRect(0, py(2.5), cw, ch - py(2.5));
-            g.fillStyle = '#2bf0ff';
-            g.fillRect(0, py(2.5) - 2, cw, 3);
-          }
+          // (four lit windows over the shop: two storeys, left and right of the middle)
+          for (const ci of [1, 5])
+            for (const y0 of [3.85, 4.95]) {
+              const x = ci * colW * S, y = (hB - y0 - 0.95) * S, w = 2 * colW * S, h = 0.95 * S;
+              g.fillStyle = 'rgba(43,240,255,0.35)';
+              g.fillRect(x, y, w, h);
+              g.fillStyle = '#1de6ff';
+              g.fillRect(x + 3, y + 3, w - 6, h - 6);
+            }
+          g.fillStyle = '#0a1017';
+          g.fillRect(0, (hB - 2.5) * S, cw, ch - (hB - 2.5) * S);
+          g.fillStyle = '#2bf0ff';
+          g.fillRect(0, (hB - 2.5) * S - 2, cw, 3);
           return c;
         };
-        const glassWall = (wB: number, x: number, y: number, z: number, ry: number, front: boolean) => {
-          const tex = new THREE.CanvasTexture(curtain(wB, Ht, front));
+        // a wall from a to b (its outward side is on the left of a to b, looking down), h high
+        const wallQ = (ax: number, az: number, bx: number, bz: number, h: number, canvas: HTMLCanvasElement, off = 0.02) => {
+          const tex = new THREE.CanvasTexture(canvas);
           tex.colorSpace = THREE.SRGBColorSpace;
           tex.anisotropy = 8;
-          const geo = new THREE.PlaneGeometry(wB, Ht), mat = new THREE.MeshLambertMaterial({ map: tex });
+          const len = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / len, nz = (bx - ax) / len;
+          const geo = new THREE.PlaneGeometry(len, h), mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
           disposables.push(tex, geo, mat);
           const m = new THREE.Mesh(geo, mat);
-          m.position.set(x, y, z);
-          m.rotation.y = ry;
+          m.position.set((ax + bx) / 2 + nx * off, h / 2, (az + bz) / 2 + nz * off);
+          m.rotation.y = Math.atan2(nx, nz);
           add(m);
         };
-        glassWall(W, cx, Ht / 2, Z1 + 0.02, 0, true);
-        glassWall(D, X0 - 0.02, Ht / 2, cz, -Math.PI / 2, false);
-        glassWall(D, X1 + 0.02, Ht / 2, cz, Math.PI / 2, false);
-        for (const ex of [X0, X1]) for (const ez of [Z0, Z1]) box(ex, Ht / 2, ez, 0.16, Ht, 0.16, 0x141c28);
-        // a modern glass door on the east side, opening onto the right alley
+        const flat = (pts: [number, number][], y: number, color: number) => {
+          const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z))));
+          geo.rotateX(-Math.PI / 2);
+          const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+          disposables.push(geo, mat);
+          const m = new THREE.Mesh(geo, mat);
+          m.position.y = y;
+          add(m);
+        };
+        // walls: the glass front, the plaster sides and wings, the back
+        wallQ(X0, Z1, X1, Z1, E, curtain(W, E), 0.02);
+        wallQ(X0, 47, X0, Z1, E, plaster(Z1 - 47, E, false));
+        wallQ(X1, Z1, X1, 49, E, plaster(Z1 - 49, E, true));
+        const wl = 21.7, wr = rightX(49), hw = E - 0.2;
+        wallQ(leftX(47), 47, X0, 47, hw, plaster(X0 - leftX(47), hw, true));
+        wallQ(X1, 49, wr, 49, hw, plaster(wr - X1, hw, true));
+        wallQ(rightX(Z0), Z0, wl, Z0, hw, plaster(rightX(Z0) - wl, hw, true));
+        for (const ex of [X0, X1]) box(ex, E / 2, Z1, 0.16, E, 0.16, 0x141c28);
+        // the wings: flat tiled tops under the eaves of the main roof
+        flat([[wl, Z0], [X0, Z0], [X0, 47], [leftX(47), 47]], hw, 0xa9553a);
+        flat([[X1, Z0], [rightX(Z0), Z0], [wr, 49], [X1, 49]], hw, 0xa9553a);
+        // a glass door on the west side, opening onto the left alley
         {
-          const dz = cz, dx = X1 + 0.16;
-          box(dx, 1.22, dz, 0.14, 2.44, 1.6, 0x11192a);
-          box(dx + 0.16, 2.62, dz, 0.66, 0.12, 1.8, 0x11192a);
-          const gd = new THREE.PlaneGeometry(1.05, 2.1);
+          const dz = 48.5, dx = X0 - 0.16;
+          box(dx, 1.22, dz, 0.14, 2.44, 1.1, 0x11192a);
+          box(dx - 0.16, 2.62, dz, 0.66, 0.12, 1.3, 0x11192a);
+          const gd = new THREE.PlaneGeometry(0.85, 2.1);
           const gm = new THREE.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.5, toneMapped: false, side: THREE.DoubleSide, depthWrite: false });
           disposables.push(gd, gm);
           const dm = new THREE.Mesh(gd, gm);
-          dm.position.set(dx + 0.09, 1.15, dz);
+          dm.position.set(dx - 0.09, 1.15, dz);
           dm.rotation.y = Math.PI / 2;
           add(dm);
-          lamp(dx + 0.14, 1.15, dz + 0.45, 0.06, 0.5, 0.06, 0x2bf0ff);
+          lamp(dx - 0.14, 1.15, dz + 0.45, 0.06, 0.5, 0.06, 0x2bf0ff);
         }
-        // the two side-alleys are dead ends: a wall closes each one at its far end
-        box(22.5, 1.9, 47.05, 1.15, 3.8, 0.3, 0xd6cfc0);
-        box(30.5, 1.9, 44.05, 1.25, 3.8, 0.3, 0xd6cfc0);
-        // a hipped roof (Walmdach) with a PV array on the sunny south slope
+        // the roof: a gable roof of red tiles, the ridge running back from the street, a little overhang; the gables in plaster
         {
-          const yR = Ht + 3.2, rx1 = X0 + D / 2, rx2 = X1 - D / 2;
-          const SW: [number, number, number] = [X0, Ht, Z1], SE: [number, number, number] = [X1, Ht, Z1], NE: [number, number, number] = [X1, Ht, Z0], NW: [number, number, number] = [X0, Ht, Z0];
-          const R1: [number, number, number] = [rx1, yR, cz], R2: [number, number, number] = [rx2, yR, cz];
-          const tris: [number, number, number][][] = [[SW, SE, R2], [SW, R2, R1], [NE, NW, R1], [NE, R1, R2], [NW, SW, R1], [SE, NE, R2]];
-          const pos: number[] = [];
-          for (const t of tris) for (const v of t) pos.push(v[0], v[1], v[2]);
-          const roofGeo = new THREE.BufferGeometry();
-          roofGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-          roofGeo.computeVertexNormals();
-          const roofMat = new THREE.MeshLambertMaterial({ color: 0xb1503a, side: THREE.DoubleSide });
-          disposables.push(roofGeo, roofMat);
-          add(new THREE.Mesh(roofGeo, roofMat));
-          const pvc = document.createElement('canvas');
-          pvc.width = 128;
-          pvc.height = 96;
-          const pg = pvc.getContext('2d')!;
-          pg.fillStyle = '#0f1826';
-          pg.fillRect(0, 0, 128, 96);
-          pg.strokeStyle = '#2f4a70';
-          pg.lineWidth = 2;
-          for (let i = 0; i <= 8; i++) {
-            pg.beginPath();
-            pg.moveTo(i * 16, 0);
-            pg.lineTo(i * 16, 96);
-            pg.stroke();
+          const ov = 0.3, drop = (ov * RISE) / (W / 2), yE = E - drop, yR = E + RISE;
+          const tc = document.createElement('canvas');
+          tc.width = 64;
+          tc.height = 64;
+          const tg = tc.getContext('2d')!;
+          tg.fillStyle = '#b25a3e';
+          tg.fillRect(0, 0, 64, 64);
+          tg.fillStyle = '#8f432c';
+          for (let r = 0; r < 4; r++) {
+            tg.fillRect(0, r * 16, 64, 2);
+            for (let k = 0; k < 4; k++) tg.fillRect(k * 16 + (r & 1) * 8, r * 16, 2, 16);
           }
-          for (let j = 0; j <= 6; j++) {
-            pg.beginPath();
-            pg.moveTo(0, j * 16);
-            pg.lineTo(128, j * 16);
-            pg.stroke();
-          }
-          const pvTex = new THREE.CanvasTexture(pvc);
-          pvTex.colorSpace = THREE.SRGBColorSpace;
-          const pvMat = new THREE.MeshLambertMaterial({ map: pvTex, side: THREE.DoubleSide });
-          disposables.push(pvTex, pvMat);
-          const pvFace = (corners: [number, number, number][]) => {
-            const mx = corners.reduce((s, p) => s + p[0], 0) / corners.length;
-            const my = corners.reduce((s, p) => s + p[1], 0) / corners.length;
-            const mz = corners.reduce((s, p) => s + p[2], 0) / corners.length;
-            const k = 0.12;
-            const q = corners.map(p => [p[0] + (mx - p[0]) * k, p[1] + (my - p[1]) * k + 0.06, p[2] + (mz - p[2]) * k] as [number, number, number]);
-            const pos: number[] = [], uv: number[] = [];
-            if (q.length === 4) {
-              pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
-              uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
-            } else {
-              pos.push(...q[0], ...q[1], ...q[2]);
-              uv.push(0, 0, 1, 0, 0.5, 1);
-            }
+          const tt = new THREE.CanvasTexture(tc);
+          tt.colorSpace = THREE.SRGBColorSpace;
+          tt.wrapS = tt.wrapT = THREE.RepeatWrapping;
+          const tm = new THREE.MeshLambertMaterial({ map: tt, side: THREE.DoubleSide });
+          const pm = new THREE.MeshLambertMaterial({ color: parseInt(PLASTER.slice(1), 16), side: THREE.DoubleSide });
+          disposables.push(tt, tm, pm);
+          const zA = Z1 + ov, zB = Z0 - ov, len = Math.hypot(W / 2 + ov, yR - yE);
+          const slope = (xe: number) => {
+            const pos = [xe, yE, zA, xe, yE, zB, cx, yR, zB, xe, yE, zA, cx, yR, zB, cx, yR, zA];
+            const u = zA - zB, v = len / 0.9;
+            const uv = [u, 0, 0, 0, 0, v, u, 0, 0, v, u, v];
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
             geo.computeVertexNormals();
             disposables.push(geo);
-            add(new THREE.Mesh(geo, pvMat));
+            add(new THREE.Mesh(geo, tm));
           };
-          pvFace([SW, SE, R2, R1]);
-          pvFace([NE, NW, R1, R2]);
-          pvFace([NW, SW, R1]);
-          pvFace([SE, NE, R2]);
+          slope(X0 - ov);
+          slope(X1 + ov);
+          for (const z of [Z1, Z0]) {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute([X0, E, z, X1, E, z, cx, yR, z], 3));
+            geo.computeVertexNormals();
+            disposables.push(geo);
+            add(new THREE.Mesh(geo, pm));
+          }
+          // (the ridge)
+          box(cx, yR + 0.04, (zA + zB) / 2, 0.22, 0.12, zA - zB, 0x8f432c);
         }
       }
       const ww = Math.max(3, Math.min(5, s.len)) - 0.4;
-      const dep = 0.7, gy = 1.3, gh = 2.2, topY = gy + gh / 2, botY = gy - gh / 2, bx = 26.5;
+      const dep = 0.7, gy = 1.3, gh = 2.2, topY = gy + gh / 2, botY = gy - gh / 2, bx = 26;
       // the lit backdrop just in front of the wall
       onFace(s, 0, 0.04, gy, ww, gh, 0.04, 0xcfefff, true);
       // the robots stand inside the case
@@ -1060,8 +1135,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'amadeus') {
-      // the Amadeus: one cream plaster facade painted flush on its real wall: a door at the left, a wide glass front
-      // with a pink glow, the name in dark red on the plaster, white-framed windows above; and a small red blade sign
+      // the Amadeus: one rough grey-white plaster facade painted flush on its real wall: grey-framed lit windows
+      // upstairs with a tinsel garland, the name over a grey canopy band, below it the recessed cream ground floor
+      // (a wooden door up three steps, a "Burgers" chalkboard, a wide white-framed glass front lit violet); a black
+      // blade sign on an iron arm, an olive tree with fairy lights and a few bistro tables stand before it
       const wl = (s as OnWall).wall, W = wl?.width ?? 4, E = wl?.eave ?? 4.5, S = 80, mid = -(wl?.along ?? 0);
       const cw = Math.round(W * S), ch = Math.round(E * S);
       const canvas = document.createElement('canvas');
@@ -1070,71 +1147,99 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const g = canvas.getContext('2d')!;
       const px = (u: number) => (u + W / 2) * S;
       const py = (y: number) => (E - y) * S;
-      g.fillStyle = '#ece0c6';
+      g.fillStyle = '#ece6d4';
       g.fillRect(0, 0, cw, ch);
-      g.fillStyle = '#cdbf9f';
-      g.fillRect(0, py(0.15), cw, 0.15 * S);
       const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
-      shadow.addColorStop(0, 'rgba(66,58,44,0.28)');
-      shadow.addColorStop(1, 'rgba(66,58,44,0)');
+      shadow.addColorStop(0, 'rgba(60,56,50,0.28)');
+      shadow.addColorStop(1, 'rgba(60,56,50,0)');
       g.fillStyle = shadow;
       g.fillRect(0, 0, cw, 0.5 * S);
-      // windows upstairs, one storey of about two tiles each above the shopfront
+      // windows upstairs: grey frames, warm lit rooms, a tinsel garland along the sills
       const win = (u: number, yc: number) => {
-        const ww = 0.62, wh = 0.9;
-        g.fillStyle = '#fbf8f0';
+        const ww = 0.7, wh = 0.9;
+        g.fillStyle = '#8a8d92';
         g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
-        g.fillStyle = '#566a76';
-        g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S, (wh - 0.1) * S);
-        g.fillStyle = '#fbf8f0';
-        g.fillRect(px(u - 0.025), py(yc + wh / 2 - 0.05), 0.05 * S, (wh - 0.1) * S);
-        g.fillStyle = '#cdbf9f';
-        g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.04), (ww + 0.1) * S, 0.06 * S);
+        g.fillStyle = '#f0c98a';
+        g.fillRect(px(u - ww / 2 + 0.07), py(yc + wh / 2 - 0.07), (ww - 0.14) * S, (wh - 0.14) * S);
+        g.fillStyle = '#f7f1e4';
+        g.fillRect(px(u - 0.02), py(yc + wh / 2 - 0.07), 0.04 * S, (wh - 0.14) * S);
+        g.fillStyle = '#7a7d82';
+        g.fillRect(px(u - ww / 2 - 0.06), py(yc - wh / 2 - 0.04), (ww + 0.12) * S, 0.07 * S);
       };
-      const nUp = Math.max(1, Math.round(W / 1.3));
-      for (let yc = 3.9; yc + 0.6 < E; yc += 2) for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), yc);
-      // downstairs: a dark door with a glass pane at the left, then the glass front, warm pink inside
-      const dw = 0.95, du = -W / 2 + 0.3 + dw / 2;
-      g.fillStyle = '#3a2a26';
-      g.fillRect(px(du - dw / 2), py(2.35), dw * S, 2.2 * S);
-      g.fillStyle = '#7a3a5a';
-      g.fillRect(px(du - dw / 2 + 0.15), py(2.1), (dw - 0.3) * S, 1.1 * S);
-      const gx0 = du + dw / 2 + 0.3, gx1 = W / 2 - 0.2;
-      if (gx1 - gx0 > 0.6) {
-        g.fillStyle = '#d8ccb0';
-        g.fillRect(px(gx0), py(2.45), (gx1 - gx0) * S, 2.3 * S);
-        const glass = g.createLinearGradient(0, py(2.35), 0, py(0.3));
-        glass.addColorStop(0, '#34242f');
-        glass.addColorStop(0.55, '#a8407f');
-        glass.addColorStop(1, '#4a2a3c');
-        g.fillStyle = glass;
-        g.fillRect(px(gx0 + 0.08), py(2.37), (gx1 - gx0 - 0.16) * S, 2.14 * S);
-        g.fillStyle = '#d8ccb0';
-        g.fillRect(px((gx0 + gx1) / 2 - 0.03), py(2.37), 0.06 * S, 2.14 * S);
+      const nUp = Math.max(1, Math.round(W / 1.5));
+      for (let yc = 4.55; yc + 0.6 < E; yc += 2) {
+        for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), yc);
+        g.fillStyle = '#9aa0a8';
+        g.fillRect(0, py(yc - 0.5), cw, 0.03 * S);
       }
-      // a dark canopy over the shopfront, then the name on the plaster: a big red A, the rest smaller, and the trade below
-      g.fillStyle = '#3a3238';
-      g.fillRect(px(-W / 2 + 0.2), py(2.62), (W - 0.4) * S, 0.14 * S);
+      // the grey canopy band along the whole front, then the cream recessed ground floor under it
+      g.fillStyle = '#e9e3d2';
+      g.fillRect(0, py(2.5), cw, 2.5 * S);
+      g.fillStyle = '#c9c1ac';
+      g.fillRect(0, py(2.5), cw, 0.12 * S);
+      g.fillStyle = '#f2efe8';
+      g.fillRect(0, py(3.1), cw, 0.06 * S);
+      g.fillStyle = '#5a5d62';
+      g.fillRect(0, py(3.04), cw, 0.3 * S);
+      // the name: a big red A, the rest smaller, and the trade below it
       g.fillStyle = '#8c1f2a';
       g.textBaseline = 'alphabetic';
       g.textAlign = 'left';
-      const big = `${Math.round(0.5 * S)}px Georgia, "Times New Roman", serif`, small = `${Math.round(0.3 * S)}px Georgia, "Times New Roman", serif`;
+      const big = `${Math.round(0.62 * S)}px Georgia, "Times New Roman", serif`, small = `${Math.round(0.36 * S)}px Georgia, "Times New Roman", serif`;
       g.font = big;
       const wa = g.measureText('A').width;
       g.font = small;
-      const wr = g.measureText('MADEUS').width, tot = wa + wr + 4, sc = Math.min(1, (0.8 * cw) / tot);
+      const wr = g.measureText('MADEUS').width, tot = wa + wr + 2, sc = Math.min(1, (0.7 * cw) / tot);
+      const nx = cw * 0.5 + 0.15 * S - (tot * sc) / 2;
       g.save();
-      g.translate(cw / 2 - (tot * sc) / 2, py(2.97));
+      g.translate(nx, py(3.65));
       g.scale(sc, 1);
       g.font = big;
       g.fillText('A', 0, 0);
+      g.fillStyle = '#2a2428';
       g.font = small;
-      g.fillText('MADEUS', wa + 4, 0);
+      g.fillText('MADEUS', wa + 2, 0);
       g.restore();
-      g.fillStyle = '#6a5a52';
-      g.font = `${Math.round(0.13 * S)}px Georgia, "Times New Roman", serif`;
+      g.fillStyle = '#2a2428';
+      g.font = `${Math.round(0.15 * S)}px Georgia, "Times New Roman", serif`;
       g.textAlign = 'center';
-      g.fillText('Bar · Lounge · Restaurant', cw / 2 + 0.2 * S, py(2.97 - 0.22));
+      g.fillText('Bar · Lounge · Restaurant', nx + (tot * sc) / 2 + 0.2 * S, py(3.65 - 0.3));
+      // downstairs: a wooden glazed door at the left, a black chalkboard, then the glass front lit violet
+      const du = -W / 2 + 0.95, dw = 0.85;
+      g.fillStyle = '#b97a3e';
+      g.fillRect(px(du - dw / 2), py(2.15), dw * S, 1.95 * S);
+      g.fillStyle = '#e8c68a';
+      for (let r = 0; r < 3; r++) for (let c2 = 0; c2 < 3; c2++) g.fillRect(px(du - dw / 2 + 0.1 + c2 * 0.22), py(2.05 - r * 0.28), 0.18 * S, 0.24 * S);
+      const bu = du + dw / 2 + 0.45;
+      g.fillStyle = '#4a3a2a';
+      g.fillRect(px(bu - 0.28), py(2.3), 0.56 * S, 0.96 * S);
+      g.fillStyle = '#17171a';
+      g.fillRect(px(bu - 0.25), py(2.27), 0.5 * S, 0.9 * S);
+      g.fillStyle = '#e8e4da';
+      g.font = `${Math.round(0.09 * S)}px Georgia, serif`;
+      g.fillText('Delicious', px(bu), py(2.1));
+      g.fillText('BURGERS', px(bu), py(1.95));
+      g.fillStyle = '#c9a878';
+      g.fillRect(px(bu - 0.14), py(1.75), 0.28 * S, 0.22 * S);
+      const gx0 = bu + 0.5, gx1 = W / 2 - 0.1;
+      if (gx1 - gx0 > 0.6) {
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(px(gx0), py(2.4), (gx1 - gx0) * S, 1.95 * S);
+        const glass = g.createLinearGradient(0, py(2.32), 0, py(0.5));
+        glass.addColorStop(0, '#5a2a8a');
+        glass.addColorStop(0.6, '#7a3fb0');
+        glass.addColorStop(1, '#43275f');
+        g.fillStyle = glass;
+        g.fillRect(px(gx0 + 0.07), py(2.33), (gx1 - gx0 - 0.14) * S, 1.81 * S);
+        // a poster in the right half ("TO GO") and the white frame bars
+        g.fillStyle = '#2a1d34';
+        g.fillRect(px((gx0 + gx1) / 2 + 0.05), py(2.2), ((gx1 - gx0) / 2 - 0.15) * S, 1.5 * S);
+        g.fillStyle = '#f4f1ea';
+        g.fillRect(px((gx0 + gx1) / 2 - 0.03), py(2.33), 0.06 * S, 1.81 * S);
+        g.textAlign = 'center';
+        g.font = `bold ${Math.round(0.13 * S)}px Arial, sans-serif`;
+        g.fillText('TO GO', px((gx0 + gx1) / 2 + ((gx1 - gx0) / 4)), py(0.7));
+      }
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -1146,11 +1251,31 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       m.position.set(fx, E / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
-      // the pink glow of the lounge behind the glass, and the little red blade sign on its iron arm
-      if (gx1 - gx0 > 0.6) onFace(s, mid + (gx0 + gx1) / 2, 0.06, 1.3, gx1 - gx0 - 0.3, 1.4, 0.03, 0xff4fb8, true);
-      const bx = mid - W / 2 + 0.12;
-      onFace(s, bx, 0.28, 3.3, 0.04, 0.04, 0.5, 0x2a2d33);
-      onFace(s, bx, 0.5, 3.0, 0.05, 0.4, 0.4, 0xb8322a);
+      // the violet glow of the lounge behind the glass
+      if (gx1 - gx0 > 0.6) onFace(s, mid + (gx0 + gx1) / 2, 0.06, 1.3, gx1 - gx0 - 0.3, 1.4, 0.03, 0x9a5af0, true);
+      // the canopy sticks out a little over the front
+      onFace(s, mid, 0.2, 2.62, W - 0.1, 0.1, 0.4, 0x5a5d62);
+      // three grey stone steps up to the door
+      for (let k = 0; k < 3; k++) onFace(s, mid - W / 2 + 0.95, 0.12 + (2 - k) * 0.17, 0.09 + k * 0.09, 1.1, 0.18 + k * 0.18, 0.17, 0x8c8e90);
+      // the black blade sign on its iron arm, upper left
+      const bx = mid - W / 2 + 1.3;
+      onFace(s, bx, 0.3, 3.9, 0.04, 0.04, 0.55, 0x1a1a1c);
+      onFace(s, bx, 0.58, 3.5, 0.05, 0.62, 0.36, 0xf4f1ea);
+      onFace(s, bx, 0.6, 3.55, 0.06, 0.34, 0.2, 0xb8322a);
+      onFace(s, bx, 0.3, 3.25, 0.05, 0.4, 0.05, 0x1a1a1c);
+      // the olive tree with fairy lights left of the steps, and a few bistro tables
+      onFace(s, mid - W / 2 + 0.2, 0.8, 0.3, 0.45, 0.6, 0.45, 0x3a3a3e);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.0, 0.1, 0.8, 0.1, 0x5a4a3a);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.7, 0.7, 0.8, 0.7, 0x5f7a4a);
+      onFace(s, mid - W / 2 + 0.2, 0.8, 1.7, 0.74, 0.5, 0.74, 0xffe9a8, true);
+      for (const u of [0.1, 1.1]) {
+        onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5, 0.9, 0.55, 0.5, 0.05, 0.5, 0x2a2a2e);
+        onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5, 0.9, 0.28, 0.06, 0.55, 0.06, 0x2a2a2e);
+        for (const sd of [-1, 1]) {
+          onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5 + sd * 0.4, 0.9, 0.3, 0.3, 0.6, 0.3, 0x3a3a3e);
+          onFace(s, mid + (gx0 + gx1) / 2 + u - 0.5 + sd * 0.4, 0.9, 0.38, 0.32, 0.06, 0.32, 0xb8322a);
+        }
+      }
       continue;
     }
     if (s.kind === 'eis') {
