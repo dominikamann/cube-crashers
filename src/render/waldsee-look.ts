@@ -119,7 +119,7 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
   put(WALDSEE_CZARDAS, 0x7096de, 'b3262b');
   const BY_KIND: Record<string, [number, string?]> = {
     eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc],
-    flasche: [0xf4f1ea], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
+    flasche: [0xdfe6d6], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
   return m;
@@ -1681,11 +1681,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // glass in pale frames, a door, and what one knows it by
       const span = Math.max(3, Math.min(5, s.len));
       if (s.kind === 'flasche') {
-        // the inn: its real wall, painted whole on one plane flush on it: a cream ground floor with small-paned
-        // windows and the door, white storeys above with red timber, its name in old letters over the door;
-        // tables and big pots with little trees before it
-        const real = (s as OnWall).wall;
-        const W = real?.width ?? span, H = real?.eave ?? 5.3, S = 64;
+        // the inn: its real wall with the gable end to the street, painted whole on one plane flush on it and
+        // clipped to the wall's outline: pale mint plaster, a grey plinth and cornice, grey-framed windows; the
+        // raspberry timber only in the gable; the name in old letters on the plaster; on the ground floor three
+        // small-paned windows and the door in a stone frame. Before it: bistro tables and box trees in pots
+        const real = (s as OnWall).wall, W = real?.width ?? span, E = real?.eave ?? 5.3, S = 64;
+        const prof: [number, number][] = real?.prof ?? [[-W / 2, 0], [W / 2, 0], [W / 2, E], [-W / 2, E]];
+        const H = Math.max(E, ...prof.map(p => p[1]));
         const [mx, mz] = on(s, -(real?.along ?? 0), 0);
         const mid: WaldseeFace = { ...s, x: mx, z: mz };
         const cw = Math.round(W * S), ch = Math.round(H * S);
@@ -1695,46 +1697,93 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const g = canvas.getContext('2d')!;
         const px = (u: number) => (u + W / 2) * S;
         const py = (y: number) => (H - y) * S;
-        const GF = Math.min(2.6, H * 0.5);
-        g.fillStyle = '#f4f1ea';
+        const GF = Math.min(2.5, E * 0.45), TIM = '#c0476a', FR = '#5a2a28', GREY = '#9a9da0';
+        g.beginPath();
+        prof.forEach(([u, y], i) => (i ? g.lineTo(px(u), py(y)) : g.moveTo(px(u), py(y))));
+        g.closePath();
+        g.clip();
+        g.fillStyle = '#dfe6d6';
         g.fillRect(0, 0, cw, ch);
-        g.fillStyle = '#efe6cf';
-        g.fillRect(0, py(GF), cw, GF * S);
-        // the timber of the storeys above: a band at each floor, uprights between the windows
-        const storeys = Math.max(1, Math.round((H - GF) / 1.5));
-        const sh = (H - GF) / storeys;
-        g.fillStyle = '#a33a2c';
-        for (let k = 0; k <= storeys; k++) g.fillRect(0, py(GF + k * sh) - 0.05 * S, cw, 0.1 * S);
-        const nUp = Math.max(1, Math.round(W / 1.5));
-        for (let k = 0; k <= nUp; k++) g.fillRect(px(-W / 2 + (k * W) / nUp) - 0.05 * S, py(H), 0.1 * S, (H - GF) * S);
-        const win = (u: number, y0: number, wd: number, h: number, frame: string) => {
-          g.fillStyle = frame;
-          g.fillRect(px(u - wd / 2 - 0.06), py(y0 + h + 0.06), (wd + 0.12) * S, (h + 0.12) * S);
-          g.fillStyle = '#33404f';
+        g.fillStyle = GREY;
+        g.fillRect(0, py(0.3), cw, 0.3 * S);
+        // the cornice over the ground floor
+        g.fillRect(0, py(GF + 0.12), cw, 0.12 * S);
+        const win = (u: number, y0: number, wd: number, h: number, panes: boolean) => {
+          g.fillStyle = GREY;
+          g.fillRect(px(u - wd / 2 - 0.08), py(y0 + h + 0.08), (wd + 0.16) * S, (h + 0.16) * S);
+          g.fillStyle = FR;
           g.fillRect(px(u - wd / 2), py(y0 + h), wd * S, h * S);
-          g.fillStyle = frame;
-          g.fillRect(px(u) - 0.02 * S, py(y0 + h), 0.04 * S, h * S);
-          g.fillRect(px(u - wd / 2), py(y0 + h / 2) - 0.02 * S, wd * S, 0.04 * S);
+          g.fillStyle = '#3a4654';
+          const nx = panes ? 3 : 2, ny = panes ? 4 : 2, gap = 0.04;
+          for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) g.fillRect(px(u - wd / 2) + (i * wd * S) / nx + gap * S, py(y0 + h) + (j * h * S) / ny + gap * S, (wd * S) / nx - 2 * gap * S, (h * S) / ny - 2 * gap * S);
         };
-        // the door at the right, the windows spread over the rest
-        const doorU = W / 2 - Math.min(1.1, W * 0.18);
-        const slots = Math.max(1, Math.round((W - 1.8) / 1.5));
-        for (let k = 0; k < slots; k++) win(-W / 2 + 0.7 + ((k + 0.5) * (doorU - 0.9 - (-W / 2 + 0.7))) / slots, 0.7, 0.8, 1.0, '#7a4a36');
-        g.fillStyle = '#7a4a36';
-        g.fillRect(px(doorU - 0.43), py(2.1), 0.86 * S, 2.1 * S);
-        g.fillStyle = '#5a3a26';
-        g.fillRect(px(doorU - 0.35), py(2.02), 0.7 * S, 2.02 * S);
+        // the door on the right
+        const doorU = W / 2 - Math.min(1.1, W * 0.17);
+        const left = -W / 2 + 0.25, right = doorU - 1.2;
+        const n3 = 3, slot = (right - left) / n3;
+        for (let k = 0; k < n3; k++) win(left + (k + 0.5) * slot, 0.6, Math.min(1.0, slot - 0.3), 1.2, true);
+        g.fillStyle = GREY;
+        g.fillRect(px(doorU - 0.55), py(2.15), 1.1 * S, 2.15 * S);
+        g.fillStyle = '#6b4a2e';
+        g.fillRect(px(doorU - 0.4), py(2.0), 0.8 * S, 2.0 * S);
         g.fillStyle = '#c9a06a';
-        g.fillRect(px(doorU + 0.2), py(1.05), 0.06 * S, 0.12 * S);
-        for (let st = 0; st < storeys; st++) {
-          const y0 = GF + st * sh + (sh - 0.9) / 2;
-          for (let k = 0; k < nUp; k++) win(-W / 2 + (k + 0.5) * (W / nUp), y0, Math.min(0.7, W / nUp - 0.3), 0.9, '#7a4a36');
+        g.fillRect(px(doorU + 0.22), py(1.0), 0.06 * S, 0.12 * S);
+        g.fillStyle = '#2a2420';
+        g.font = `bold ${Math.round(0.26 * S)}px Georgia, serif`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('5', px(doorU), py(GF - 0.12));
+        // a round hanging sign between windows and door, a menu box, the chalkboard right of the door
+        g.fillStyle = '#7a4a36';
+        g.beginPath();
+        g.arc(px(doorU - 0.9), py(1.5), 0.2 * S, 0, 7);
+        g.fill();
+        g.fillStyle = '#2a2d30';
+        g.fillRect(px(doorU + 0.68), py(1.3), 0.5 * S, 0.7 * S);
+        g.fillStyle = '#6b6f74';
+        g.fillRect(px(doorU + 0.68), py(1.9), 0.3 * S, 0.3 * S);
+        // the first floor: four windows with grey surrounds, no timber; the name on the plaster under them
+        const f1 = GF + 0.7;
+        for (let k = 0; k < 4; k++) win(-W / 2 + (k + 0.5) * (W / 4), f1, Math.min(0.8, W / 4 - 0.35), 1.1, false);
+        g.fillStyle = '#7a1f28';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.font = `italic bold ${Math.round(0.36 * S)}px "Old English Text MT", UnifrakturCook, Georgia, "Times New Roman", serif`;
+        const wide = g.measureText(s.text).width;
+        g.save();
+        g.translate(px((left + right) / 2 - 0.2), py(GF + 0.38));
+        g.scale(Math.min(1, ((right - left) + 0.6) * S / wide), 1);
+        g.fillText(s.text, 0, 0);
+        g.restore();
+        // the gable: raspberry timber, three small windows and the inscription panel
+        const gb = f1 + 1.1 + 0.35;
+        if (H > gb + 0.4) {
+          const gh = H - gb;
+          g.fillStyle = GREY;
+          g.fillRect(0, py(gb), cw, 0.1 * S);
+          const bar = (x0: number, y0: number, x1: number, y1: number) => {
+            g.strokeStyle = TIM;
+            g.lineWidth = 0.1 * S;
+            g.beginPath();
+            g.moveTo(px(x0), py(y0));
+            g.lineTo(px(x1), py(y1));
+            g.stroke();
+          };
+          for (const u of [-W / 4, 0, W / 4]) bar(u, gb, u, H);
+          bar(-W / 2, gb, -W / 4, gb + gh * 0.5);
+          bar(W / 2, gb, W / 4, gb + gh * 0.5);
+          bar(-W / 4, gb + gh * 0.5, 0, H);
+          bar(W / 4, gb + gh * 0.5, 0, H);
+          bar(-W / 2, gb + gh * 0.04, W / 2, gb + gh * 0.04);
+          const wy = gb + 0.2;
+          for (const u of [-W * 0.375, 0.0, W * 0.375]) if (u !== 0) win(u, wy, 0.4, 0.55, false);
+          win(0, wy, 0.4, 0.55, false);
+          g.fillStyle = '#f1e4c8';
+          g.fillRect(px(-0.3), py(wy + 1.1), 0.6 * S, 0.35 * S);
+          g.strokeStyle = TIM;
+          g.lineWidth = 3;
+          g.strokeRect(px(-0.3), py(wy + 1.1), 0.6 * S, 0.35 * S);
         }
-        const eaveShade = g.createLinearGradient(0, 0, 0, 0.5 * S);
-        eaveShade.addColorStop(0, 'rgba(66,58,44,0.28)');
-        eaveShade.addColorStop(1, 'rgba(66,58,44,0)');
-        g.fillStyle = eaveShade;
-        g.fillRect(0, 0, cw, 0.5 * S);
         const tex = new THREE.CanvasTexture(canvas);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 8;
@@ -1746,20 +1795,21 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         m.position.set(fx, H / 2, fz);
         m.rotation.y = faceYaw(mid);
         add(m);
-        // its name on a board over the windows, left of the door
-        const left = -W / 2 + 0.1, right = doorU - 0.6, bw = Math.min(3.4, right - left);
-        sign({ ...mid, x: on(mid, (left + right) / 2, 0)[0], z: on(mid, (left + right) / 2, 0)[1] }, s.text, 1.95 + bw / 8, bw, { back: '#efe6cf', ink: '#7a2a20', rim: '#efe6cf' }, 'bold 58px Georgia, "Times New Roman", serif');
-        for (const [a, o] of [[-1.2, 1.4], [0.3, 1.6], [1.5, 1.2]]) {
-          const [x, z] = on(mid, a, o);
+        // the lantern on its arm, by the door
+        const [lx, lz] = on(mid, doorU - 0.75, 0.25);
+        box(lx, GF - 0.1, lz, 0.05, 0.05, 0.4, 0x2a2d30, faceYaw(mid));
+        lamp(lx, GF - 0.3, lz, 0.18, 0.28, 0.18, 0xffcf7a);
+        // bistro tables with chairs on the left, box trees in big pots along the front
+        for (const a of [left + 0.7, left + 2.2]) {
+          const [x, z] = on(mid, a, 1.4);
           box(x, 0.36, z, 0.1, 0.72, 0.1, 0x4a4f5c);
           box(x, 0.74, z, 0.7, 0.06, 0.7, 0x8a5a36);
           for (const t of [0, 2.1, 4.2]) box(x + Math.cos(t) * 0.6, 0.25, z + Math.sin(t) * 0.6, 0.3, 0.5, 0.3, 0x6b4a32, t);
         }
-        for (const a of [-W / 2 + 0.3, W / 2 - 0.3]) {
-          const [x, z] = on(mid, a, 0.7);
+        for (const a of [left + 1.45, doorU - 1.0, doorU + 1.3]) {
+          const [x, z] = on(mid, a, 0.55);
           box(x, 0.3, z, 0.5, 0.6, 0.5, 0xb5653a, 0.4);
-          box(x, 1.0, z, 0.1, 0.9, 0.1, 0x6b4a32);
-          box(x, 1.6, z, 0.6, 0.6, 0.6, 0x4f9a4a, 0.6);
+          box(x, 0.95, z, 0.6, 0.7, 0.6, 0x3f7a3a, 0.6);
         }
       } else if (s.kind === 'nkd') {
         // the clothes shop: the whole real wall painted flush, pale plaster with plain windows above, below a long
