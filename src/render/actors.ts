@@ -175,6 +175,18 @@ function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; hea
     root.add(box(1.0, 0.5, 1.0, lambert(0xff2bd6), 0, 0.72, 0));
     head = box(0.7, 0.25, 0.7, glowMat(0xffe14a, 1.4), 0, 1.1, 0);
     lightColor = 0xff2bd6;
+  } else if (kind === 'medic') {
+    // a little white first-aid hut with a green stripe, and a glowing green cross turning above it
+    const white = lambert(0xf4f4fa);
+    root.add(box(1.2, 0.5, 1.2, white, 0, 0.45, 0));
+    root.add(box(1.22, 0.14, 1.22, lambert(0x3bd16f), 0, 0.62, 0));
+    root.add(box(0.9, 0.7, 0.9, white, 0, 1.05, 0));
+    root.add(box(0.16, 0.3, 0.16, lambert(0x9a9aa8), 0, 1.55, 0));
+    const cross = glowMat(0x5fff9a, 1.3);
+    head = new THREE.Group();
+    (head as THREE.Group).add(box(0.22, 0.7, 0.22, cross, 0, 0, 0), box(0.7, 0.22, 0.22, cross, 0, 0, 0));
+    head.position.y = 2.05;
+    lightColor = 0x5fff9a;
   } else {
     root.add(box(1.1, 0.6, 1.1, lambert(0xbfe9ff), 0, 0.5, 0));
     root.add(box(0.7, 0.7, 0.7, glowMat(0x5fc8f0, 0.5), 0, 1.1, 0));
@@ -631,6 +643,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (t.kind === 'laser') v.head.rotation.y = time * 2;
     if (t.kind === 'frost') v.head.position.y = 1.85 + Math.sin(time * 2) * 0.1;
     if (t.kind === 'tesla') v.head.rotation.y = time * 3;
+    if (t.kind === 'medic') v.head.rotation.y = time * 1.2;
     // the bumper's cap squashes after each bump
     if (t.kind === 'bumper') v.head.scale.y = 1 + 0.6 * Math.max(0, t.cooldown - 1);
     v.body.rotation.z = t.hp < t.maxHp * 0.5 ? Math.sin(time * 30) * 0.02 : 0;

@@ -7,6 +7,8 @@ export interface TowerDef {
   /** seconds between shots/pulses */
   cooldown: number;
   damage: number;
+  /** health given to each player in reach per pulse (the medic station) */
+  heal?: number;
 }
 
 export const TOWERS: Record<TowerKind, TowerDef> = {
@@ -15,10 +17,12 @@ export const TOWERS: Record<TowerKind, TowerDef> = {
   frost: { cost: 50, hp: 40, range: 5, cooldown: 1.5, damage: 0 },
   tesla: { cost: 70, hp: 40, range: 5.5, cooldown: 1.3, damage: 10 },
   bumper: { cost: 45, hp: 70, range: 2.6, cooldown: 1.4, damage: 3 },
+  // 2 health a second (3.5 and 5.5 with the upgrades): a breather between fights, far less than a horde deals
+  medic: { cost: 55, hp: 40, range: 4, cooldown: 1.5, damage: 0, heal: 3 },
 };
 
-/** the build menu's cards from left to right (keys 1–5) */
-export const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost', 'tesla', 'bumper'];
+/** the build menu's cards from left to right (keys 1–6) */
+export const TOWER_ORDER: TowerKind[] = ['laser', 'popcorn', 'frost', 'tesla', 'bumper', 'medic'];
 
 /** ticks of holding E to build a new tower (60 ticks = 1 s) */
 export const BUILD_TICKS = 150;
@@ -33,7 +37,7 @@ export function upgradeCost(kind: TowerKind, toLevel: number): number {
   return Math.round(TOWERS[kind].cost * (toLevel <= 2 ? 1 : 1.5));
 }
 
-/** each level: +50 % damage and health, +1 range, 15 % faster */
+/** each level: +50 % damage (or healing) and health, +1 range, 15 % faster */
 export function towerStats(kind: TowerKind, level: number): TowerDef {
   const d = TOWERS[kind], k = level - 1;
   return {
@@ -42,6 +46,7 @@ export function towerStats(kind: TowerKind, level: number): TowerDef {
     range: d.range + k,
     cooldown: d.cooldown * Math.pow(0.85, k),
     damage: d.damage * (1 + 0.5 * k),
+    ...(d.heal === undefined ? {} : { heal: d.heal * (1 + 0.5 * k) }),
   };
 }
 

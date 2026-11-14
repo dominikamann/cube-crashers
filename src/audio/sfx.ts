@@ -15,6 +15,7 @@ export type SoundId =
   | 'tower_frost'
   | 'tower_tesla'
   | 'tower_bumper'
+  | 'tower_medic'
   | 'playerHit'
   | 'playerDown'
   | 'playerRespawn'
@@ -170,6 +171,8 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   ],
   // a pinball BOING
   tower_bumper: [{ wave: 'square', freq: 300, freqEnd: 700, attack: 0.002, sustain: 0.04, decay: 0.12, volume: 0.1 }],
+  // a soft two-note chime, like a hospital call bell
+  tower_medic: notes('sine', [784, 1047], 0.09, 0.05, 0.25),
   playerHit: [{ wave: 'square', freq: 300, freqEnd: 150, attack: 0.001, sustain: 0.02, decay: 0.06, volume: 0.07 }],
   playerDown: [{ wave: 'square', freq: 600, freqEnd: 80, attack: 0.005, sustain: 0.3, decay: 0.2, volume: 0.14 }],
   playerRespawn: notes('triangle', [523, 659, 784, 1047], 0.06, 0.15, 0.12),
@@ -485,6 +488,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('jetpackPicked', 1.6);
     case 'teslaChain':
       return one('tower_tesla');
+    case 'towerHealed':
+      return one('tower_medic');
     case 'magnetPull':
       // the hum comes with the shot; this is the clack of things pulled together
       return one('enemyHit', 0.45);

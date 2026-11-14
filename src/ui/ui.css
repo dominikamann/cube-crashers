@@ -138,6 +138,8 @@ html, body {
 /* ---------- build menu ---------- */
 .build { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; }
 .card { width: 150px; background: var(--panel); border: 3px solid var(--cyan); box-shadow: 0 5px 0 var(--shadow); padding: 10px; font-size: 9px; line-height: 1.6; cursor: pointer; }
+/* six cards side by side */
+.build .card { width: 132px; }
 .card .key { display: inline-block; background: var(--cyan); color: var(--shadow); padding: 2px 6px; margin-bottom: 6px; }
 .card .name { font-size: 10px; margin-bottom: 4px; }
 .card .cost { color: var(--gold); margin-top: 6px; }
@@ -212,6 +214,7 @@ body.split .hud .combo { transform: scale(0.75); transform-origin: top right; }
 body.split .hold .bar, body.split .boss { width: min(300px, 80%); }
 body.split .build { bottom: 110px; gap: 6px; }
 body.split .card { width: 110px; }
+body.split .build .card { width: 96px; }
 .title-main .stepper { margin: clamp(14px, 2.5vh, 22px) 0 clamp(18px, 3.5vh, 30px); }
 .btn.play { font-size: clamp(18px, 2.6vw, 26px); padding: clamp(14px, 2.4vh, 22px) 64px; min-width: 300px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }

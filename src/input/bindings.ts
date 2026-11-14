@@ -1,4 +1,5 @@
 /** Which keyboard key does what. Pure data and helpers, so settings, input and text can share them. */
+import { TOWER_ORDER } from '../sim/config/towers';
 
 export const ACTIONS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'use', 'view', 'zoom', 'map', 'emotes', 'dance', 'team', 'weapon1', 'weapon2', 'weapon3', 'weapon4', 'weapon5', 'weapon6', 'rare'] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -138,6 +139,6 @@ export function keyHints(b: Readonly<Bindings>): Record<string, string> {
   const move = (['up', 'left', 'down', 'right'] as const).map(a => keyLabel(b[a]));
   out['key.move'] = move.every(l => /^[A-Z]$/.test(l)) ? move.join('') : move.join('/');
   out['key.weapons'] = run(b, WEAPON_ACTIONS);
-  out['key.towers'] = run(b, WEAPON_ACTIONS.slice(0, 5));
+  out['key.towers'] = run(b, WEAPON_ACTIONS.slice(0, TOWER_ORDER.length));
   return out;
 }

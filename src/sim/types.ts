@@ -45,7 +45,7 @@ export type WeaponKind =
   | 'bubbleWand'
   | 'magnetGlove'
   | 'yoyoLauncher';
-export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
+export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper' | 'medic';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn' | 'police';
@@ -658,6 +658,8 @@ export type SimEvent =
   | { type: 'enemyBlink'; from: Vec2; to: Vec2 }
   /** a tesla coil's lightning: from the coil through every monster it jumped to */
   | { type: 'teslaChain'; points: Vec2[] }
+  /** a medic station's pulse: its reach, and the players it patched up */
+  | { type: 'towerHealed'; pos: Vec2; radius: number; targets: Vec2[] }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
   | { type: 'playerHit'; playerId: number; hp: number }
   | { type: 'playerDown'; playerId: number }
