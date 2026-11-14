@@ -11,6 +11,7 @@ import { TREX } from '../sim/config/balance';
 import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
 import { allBosses } from '../sim/util';
+import { ridesBroom } from '../sim/systems/enemies';
 import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
 import { createWitchFigures, WITCH_LOOK, type WitchPose } from './witch-figure';
@@ -175,7 +176,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const witches = createWitchFigures(scene);
   const witchFires = createWitchFires(scene);
   /** her steps follow the ground she covers: where each one was, how far into the stride, and how long she counts as moving */
-  const witchWalk = new Map<number, { x: number; z: number; stride: number; moving: number }>();
+  const witchWalk = new Map<number, { x: number; z: number; stride: number; moving: number; fly: number }>();
   const eyeMat = glowMat(0xfff27a, 1.3);
   const eyes = new InstancedPool(scene, unit, eyeMat, 1024, false);
   const pupilMat = lambert(0x111111);
@@ -462,7 +463,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           const dancing = w ? !!w.dance : allBosses(s).some(b => b.witch?.dance?.helpers.includes(e.id));
           const scale = w ? WITCH_LOOK.scale : WITCH_LOOK.small * popIn(Math.min(1, (time - born) / 0.3));
           let walk = witchWalk.get(e.id);
-          if (!walk) witchWalk.set(e.id, (walk = { x: e.pos.x, z: e.pos.z, stride: e.id, moving: 0 }));
+          if (!walk) witchWalk.set(e.id, (walk = { x: e.pos.x, z: e.pos.z, stride: e.id, moving: 0, fly: 0 }));
           const stepped = Math.hypot(e.pos.x - walk.x, e.pos.z - walk.z) / scale;
           walk.x = e.pos.x;
           walk.z = e.pos.z;
@@ -483,9 +484,19 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
               ready = m.kind === 'charge' && s.tick < m.at;
             }
           }
+          // a little witch on her broom hovers, rocking; she rises as she draws back and comes down low in the swoop
+          let fly = 0;
+          if (!w && !dancing && ridesBroom(e)) {
+            act = 'ride';
+            ready = e.state === 'windup';
+            t = e.state === 'charge' ? 1 : 0;
+            // (her height follows in a glide, not in a jump)
+            walk.fly += ((e.state === 'charge' ? 0.35 : ready ? 1.05 : 0.7) - walk.fly) * Math.min(1, frameDt * 7);
+            fly = walk.fly + Math.sin(time * 2.6 + e.id) * 0.08;
+          }
           const turned = w?.face === 'glare' ? Math.max(0, Math.min(1, (s.tick - (w.turnedAt ?? 0)) / 40)) : 0;
           witches.add({
-            id: e.id, x: e.pos.x, y: air * lift, z: e.pos.z, yaw: Math.atan2(e.dir.x, e.dir.z), scale,
+            id: e.id, x: e.pos.x, y: air * lift + fly * scale, z: e.pos.z, yaw: Math.atan2(e.dir.x, e.dir.z), scale,
             act, t, ready, air, stride: walk.stride, moving: walk.moving > 0, face: turned * turned * (3 - 2 * turned),
             // (the broom's twigs burn while she dances, sweeps and throws, and for good once she glares; the small ones' always)
             burning: !w || dancing || act === 'sweep' || act === 'throw' || w.face === 'glare',

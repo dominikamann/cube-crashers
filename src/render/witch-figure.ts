@@ -27,8 +27,9 @@ export interface WitchPose {
   yaw: number;
   scale: number;
   /** walking or standing; crouched and looking about; a charge (`ready`: still crouched before the run); in mid-hop;
-   *  sitting on a player; sweeping the broom; throwing twigs; dazed; dancing round the fire */
-  act: 'walk' | 'scan' | 'charge' | 'hop' | 'press' | 'sweep' | 'throw' | 'reel' | 'dance';
+   *  sitting on a player; sweeping the broom; throwing twigs; dazed; dancing round the fire; riding her broom
+   *  through the air (`ready`: drawn back before a swoop, `t` 1: in the swoop) */
+  act: 'walk' | 'scan' | 'charge' | 'hop' | 'press' | 'sweep' | 'throw' | 'reel' | 'dance' | 'ride';
   /** how far into it (0 to 1) */
   t: number;
   ready?: boolean;
@@ -355,6 +356,30 @@ export function createWitchFigures(scene: THREE.Scene): WitchFigures {
         flare = 1.1 + 0.15 * Math.abs(Math.sin(t * 2.3 + seed));
         capeLift = 0.5 + 0.4 * hop;
         headYaw = Math.sin(beat * 0.7) * 0.5;
+        break;
+      }
+      case 'ride': {
+        // astride the broom, knees drawn up, both hands on the stick before her; it sways as it hovers, she draws
+        // back before a swoop and lies flat along it in one
+        const sway = Math.sin(t * 2.6 + seed);
+        const fast = p.t;
+        hipL = hipR = 1.1;
+        kneeL = kneeR = 1.4;
+        lean = p.ready ? -0.1 : 0.45 + 0.45 * fast;
+        twist = sway * 0.08;
+        armL = -1.0;
+        armLz = -0.25;
+        foreL = -0.5;
+        armR = -1.0;
+        armRz = 0.25;
+        foreR = -0.5;
+        // (the stick lies level under her, its twigs behind)
+        broom = 2.45 - lean * 0.5;
+        bob = 0;
+        headTilt = -0.2 - 0.3 * fast;
+        headYaw = p.ready ? 0 : headYaw * 0.5;
+        flare = 1.1 + 0.1 * fast;
+        capeLift = 0.7 + 0.8 * fast;
         break;
       }
       case 'walk':

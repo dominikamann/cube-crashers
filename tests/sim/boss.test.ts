@@ -4,7 +4,8 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { createSim } from '../../src/sim/sim';
 import { alertBoss, BOSS, bossHp, megaLeap } from '../../src/sim/systems/boss';
 import { damageEnemy } from '../../src/sim/systems/combat';
-import { BOSS_HP } from '../../src/sim/config/balance';
+import { BOSS_HP, TWIN_BOSS } from '../../src/sim/config/balance';
+import { allBosses } from '../../src/sim/util';
 import { damagePlayer } from '../../src/sim/systems/player';
 import { enterFloor } from '../../src/sim/systems/run';
 import type { Enemy, SimEvent, SimState } from '../../src/sim/types';
@@ -73,7 +74,9 @@ describe('Mega Block', () => {
   it('scales its health with the team and the difficulty', () => {
     const one = bossFloor('megaBlock', 1);
     const four = bossFloor('megaBlock', 4);
-    expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * (1 + 3 * BOSS_HP.teamStep));
+    // (four meet it twice, each with a share of that health)
+    expect(allBosses(four)).toHaveLength(2);
+    expect(four.boss!.maxHp).toBeCloseTo(one.boss!.maxHp * (1 + 3 * BOSS_HP.teamStep) * TWIN_BOSS.share);
   });
 
   it('leaps at a player: a big ring warns where it lands, and it comes down there', () => {

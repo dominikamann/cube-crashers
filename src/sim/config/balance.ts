@@ -107,6 +107,10 @@ export const TREX = { range: 3.2, windupTicks: 40, cooldownTicks: 200, radius: 3
 export const SHARK = { range: 7, windupTicks: 30, speed: 15, distance: 7, damage: 24, towerDamage: 20, stunTicks: 45, hitStunTicks: 40, cooldownTicks: 140 };
 /** a small spider's pounce: short, quick, and now and then it leaves a small web where it lands */
 export const SPIDERLING = { range: 4.5, windupTicks: 22, speed: 12, distance: 4.5, damage: 10, towerDamage: 5, stunTicks: 30, hitStunTicks: 25, cooldownTicks: 150, web: 1.2, webChance: 0.3 };
+/** a little witch on her broom: she swoops at whoever she sees from further off than a spider pounces, and knocks them back */
+export const BROOM = { range: 8, windupTicks: 34, speed: 13, distance: 10, damage: 16, towerDamage: 8, stunTicks: 50, hitStunTicks: 35, cooldownTicks: 170 };
+/** a team of `players` or more meets the boss of a floor twice: each with `share` of its health, `apart` tiles from each other */
+export const TWIN_BOSS = { players: 3, share: 0.6, apart: 6 };
 export const ENEMY_CAP = 160;
 
 export const ALARM_MAX = 5;

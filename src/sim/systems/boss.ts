@@ -144,7 +144,8 @@ export function bossHp(s: SimState): number {
 }
 
 /** Called when a boss floor is set up: the boss appears in the middle of the arena. */
-export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
+/** `share`: how much of its health it comes with (a boss that comes twice has less each) */
+export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2, share = 1): void {
   const centre = nearestFree(s.map, at ?? { x: s.map.w / 2, z: s.map.h * 0.35 }, 1.2, BLOCKS_ENEMY);
   let b: BossState;
   if (kind === 'megaBlock' || kind === 'rex' || kind === 'kraken' || kind === 'rhino') {
@@ -197,6 +198,10 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
     }
     // the bar and the phases count from what the segments really have
     b = { kind, maxHp: ids.reduce((sum, id) => sum + (byId(s, id)?.hp ?? 0), 0), phase: 1, enemyId: null, worms: [ids], nextAttackAt: 0, lastPos: { ...centre } };
+  }
+  if (share !== 1) {
+    for (const e of bodies(s, b)) e.hp = e.maxHp = e.maxHp * share;
+    b.maxHp *= share;
   }
   b.nextAttackAt = s.tick + 3 * TICK_RATE;
   // (the last boss's double health is not twice as quick to shoot off: what it takes in full a second stays the same)
@@ -791,7 +796,9 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
         s.brawl.nextAt = s.tick + BRAWL.breakTicks;
         if (s.brawl.queue.length > 0) s.powerups.push({ id: s.nextId++, kind: 'heart', pos: { ...clearSpot(s, b.lastPos) }, expiresAt: s.tick + 20 * TICK_RATE });
       }
-      return;
+      // (a floor's boss that came twice: the floor goes on as after any boss once both are down)
+      if (s.brawl || s.bosses.length > 0) return;
+      delete s.bosses;
     }
     s.boss = null;
     if (b.wild) {

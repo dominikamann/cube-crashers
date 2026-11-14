@@ -1,6 +1,6 @@
 import { clearOfBorder, insideBorder } from '../map/border';
 import { spinWeb } from './webs';
-import { ALARM_SPEED_STEP, BOMBER, CROC, SPIDERLING, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, BROOM, CROC, SPIDERLING, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
@@ -143,7 +143,10 @@ export const CHARGE_STEER = 0.4;
 /** how wide a boss is to the walls while it squeezes through a gap */
 const SQUEEZE_RADIUS = 0.45;
 /** how this monster charges: the rammer's long run or the crocodile's short lunge */
-const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : e.kind === 'spiderling' ? SPIDERLING : RAMMER);
+const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : e.kind === 'spiderling' ? SPIDERLING : ridesBroom(e) ? BROOM : RAMMER);
+/** Every third little witch rides her broom instead of carrying it: she flies at the players and rams them.
+ *  (By her id, so every screen of a LAN game agrees without a word on the wire.) */
+export const ridesBroom = (e: Enemy): boolean => e.kind === 'witchling' && e.id % 3 === 0;
 
 /** The monkey lets go of a coconut: it bursts where the player stood, after a warning ring. */
 function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
@@ -224,6 +227,14 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
   const los = d < SIGHT && hasLos(s.map, e.pos, p.pos);
   const chase = { dir: d < 1.5 && los ? unit(e.pos, p.pos) : flowDir(s.map, field, e.pos), factor: 1 };
 
+  // a little witch on her broom swoops at whoever she sees (not while she dances round the fire)
+  if (ridesBroom(e)) {
+    if (los && d < BROOM.range && s.tick >= e.cooldownUntil && !allBosses(s).some(b => b.witch?.dance?.helpers.includes(e.id))) {
+      startWindup(s, e, p.pos, BROOM.windupTicks, 'windup');
+      return still;
+    }
+    return chase;
+  }
   switch (e.kind) {
     case 'shooter':
       if (los && d <= SHOOTER.fireRange && s.tick >= e.cooldownUntil) {
@@ -374,7 +385,7 @@ export function updateEnemies(s: SimState): void {
         explode(s, e.pos, TREX.radius, { player: TREX.damage, tower: TREX.tower }, 'explosion');
       } else if (e.state === 'windup' && e.kind === 'monkey') {
         throwCoconut(s, e, players);
-      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark' || e.kind === 'spiderling')) {
+      } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark' || e.kind === 'spiderling' || ridesBroom(e))) {
         e.state = 'charge';
         e.chargeLeft = chargeOf(e).distance;
       } else {

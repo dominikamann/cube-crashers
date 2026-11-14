@@ -22,12 +22,13 @@ import {
   RUSH_SIZE_PER_ALARM,
   PLAYER_RADIUS,
   START_CLEAR_RADIUS,
+  TWIN_BOSS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
 import { BOSS_RUSH, floorDef } from '../config/floors';
 import { BLOCKS_WALKER, moveCircle, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
-import { dist } from '../util';
+import { allBosses, dist } from '../util';
 import { dropCoins, explode } from './combat';
 import { spawnBoss, startBrawl, startUnaware } from './boss';
 import { enterRace } from './race';
@@ -99,6 +100,8 @@ export function setupFloor(s: SimState): void {
   // all timers count from now: later floors start long after tick 0
   s.alarm = { level: 0, nextAt: s.tick + alarmTicks(s) };
   s.boss = null;
+  // (twins of the floor before; a brawl keeps its list)
+  if (!s.brawl) delete s.bosses;
   s.eggs = [];
   s.webs = [];
   s.mini = null;
@@ -145,9 +148,16 @@ export function setupFloor(s: SimState): void {
     s.nests = [];
     // (the Town has its own boss, whatever the run's floors have, and she appears at the fire beside the fountain)
     const town = !rushBoss && s.map.id === 'waldsee';
-    spawnBoss(s, rushBoss ?? (town ? undefined : s.run.bosses?.[s.run.floor]) ?? def!.boss!, town ? WALDSEE_FIRE : undefined);
+    const kind = rushBoss ?? (town ? undefined : s.run.bosses?.[s.run.floor]) ?? def!.boss!;
+    if (s.players.length >= TWIN_BOSS.players && !s.versus) {
+      // a big team meets it twice, each with less health: more to dodge, not just more to shoot off
+      s.bosses = [];
+      spawnBoss(s, kind, town ? WALDSEE_FIRE : undefined, TWIN_BOSS.share);
+      const first = s.bosses[0].lastPos;
+      spawnBoss(s, kind, { x: first.x + (first.x < s.map.w / 2 ? TWIN_BOSS.apart : -TWIN_BOSS.apart), z: first.z }, TWIN_BOSS.share);
+    } else spawnBoss(s, kind, town ? WALDSEE_FIRE : undefined);
     // (it has not seen anyone yet: it wanders until it does)
-    if (s.boss) startUnaware(s, s.boss);
+    for (const b of allBosses(s)) startUnaware(s, b);
     // (and little witches walk its streets, to be squashed as well before the elevator opens)
     if (town) spreadWitchlings(s, WALDSEE_FIRE);
     // (the Boss Rush has nothing but crates and the shop to arm the team; a boss floor of the run is frugal)

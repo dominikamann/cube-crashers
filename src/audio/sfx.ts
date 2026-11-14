@@ -460,7 +460,7 @@ export const MAX_COIN_STREAK_STEPS = 12;
 export const MAX_MAZE_STREAK_STEPS = 24;
 const SEMITONE = 1.059;
 
-const WINDUP: Partial<Record<EnemyKind, SoundId>> = { shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'growl_croc', monkey: 'screech_monkey', trex: 'roar_rex' };
+const WINDUP: Partial<Record<EnemyKind, SoundId>> = { witchling: 'witchShriek', shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'growl_croc', monkey: 'screech_monkey', trex: 'roar_rex' };
 
 export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];
