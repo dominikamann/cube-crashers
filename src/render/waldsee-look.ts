@@ -82,7 +82,7 @@ const wallEave = (q: number[]): number => {
 type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number; eave: number; prof: [number, number][] };
 // (worked out on first use: shown() needs waldseeGround, which comes further down)
 let FEET: Foot[] | null = null;
-const wallFeet = (): Foot[] => (FEET ??= (() => {
+export const wallFeet = (): Foot[] => (FEET ??= (() => {
   const out: Foot[] = [];
   for (const [id, b] of WALDSEE_LOD2.entries()) {
     if (!shown(b)) continue;
@@ -219,7 +219,7 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
   };
   put(WALDSEE_CZARDAS, 0x7096de, 'b3262b');
   const BY_KIND: Record<string, [number, string?]> = {
-    eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc], frauen: [0xd9d8d3],
+    eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xc3ccd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc], frauen: [0xd9d8d3],
     flasche: [0xf3ead2], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
