@@ -217,7 +217,7 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
   put(WALDSEE_CZARDAS, 0x7096de, 'b3262b');
   const BY_KIND: Record<string, [number, string?]> = {
     eis: [0xefe3cd], amadeus: [0xece6d4], bank: [0xe4dfd3], shop: [0xece3d0, 'b97a8c'], nemo: [0xe9e0cc], frauen: [0xd9d8d3],
-    flasche: [0xdfe6d6], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
+    flasche: [0xf3ead2], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
   // (the big rounded corner house across the square from the ice-cream parlour: pale cream on the whole building)
@@ -2361,9 +2361,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const span = Math.max(3, Math.min(5, s.len));
       if (s.kind === 'flasche') {
         // the inn: its real wall with the gable end to the street, painted whole on one plane flush on it and
-        // clipped to the wall's outline: pale mint plaster, a grey plinth and cornice, grey-framed windows; the
-        // raspberry timber only in the gable; the name in old letters on the plaster; on the ground floor three
-        // small-paned windows and the door in a stone frame. Before it: bistro tables and box trees in pots
+        // clipped to the wall's outline, after the real house: cream plaster, a red-brown plinth and cornice,
+        // white-framed windows; on the ground floor three wide small-paned windows and the door at the right, the
+        // name in old letters on the plaster over the windows; four windows on the first floor; the gable
+        // half-timbered in red-brown, a real frame: a sill beam at its foot, posts standing between the windows,
+        // rails round each window, crosses in the panels under them, braces out to the sloped edges, a smaller
+        // upper storey with two windows and the inscription panel between, one tiny window near the top.
+        // Before it: bistro tables and box trees in pots
         const real = (s as OnWall).wall, W = real?.width ?? span, E = real?.eave ?? 5.3, S = 64;
         const prof: [number, number][] = real?.prof ?? [[-W / 2, 0], [W / 2, 0], [W / 2, E], [-W / 2, E]];
         const H = Math.max(E, ...prof.map(p => p[1]));
@@ -2376,92 +2380,152 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const g = canvas.getContext('2d')!;
         const px = (u: number) => (u + W / 2) * S;
         const py = (y: number) => (H - y) * S;
-        const GF = Math.min(2.5, E * 0.45), TIM = '#c0476a', FR = '#5a2a28', GREY = '#9a9da0';
+        // (the gable's foot: the lower eave, where the outline leaves the wall's edge)
+        const gb = Math.min(E, ...prof.filter(p => p[1] > 0.5).map(p => p[1]));
+        const GF = Math.min(2.5, gb * 0.5), TIM = '#a4462b', PLASTER = '#f3ead2', WHITE = '#fbf7ee', GLASS = '#343a44';
+        // (how wide the outline is at a height, and where an upright at `u` meets its sloped edge going up from `y0`)
+        const widthAt = (y: number): [number, number] => {
+          let lo = Infinity, hi = -Infinity;
+          for (let i = 0; i < prof.length; i++) {
+            const [ua, ya] = prof[i], [ub, yb] = prof[(i + 1) % prof.length];
+            if (ya === yb || y < Math.min(ya, yb) || y > Math.max(ya, yb)) continue;
+            const u = ua + ((y - ya) / (yb - ya)) * (ub - ua);
+            lo = Math.min(lo, u);
+            hi = Math.max(hi, u);
+          }
+          return isFinite(lo) ? [lo, hi] : [-W / 2, W / 2];
+        };
+        const edgeAt = (u: number, y0: number) => {
+          let best = H;
+          for (let i = 0; i < prof.length; i++) {
+            const [ua, ya] = prof[i], [ub, yb] = prof[(i + 1) % prof.length];
+            if (ua === ub || u < Math.min(ua, ub) || u > Math.max(ua, ub)) continue;
+            const y = ya + ((u - ua) / (ub - ua)) * (yb - ya);
+            if (y > y0 && y < best) best = y;
+          }
+          return best;
+        };
         g.beginPath();
         prof.forEach(([u, y], i) => (i ? g.lineTo(px(u), py(y)) : g.moveTo(px(u), py(y))));
         g.closePath();
         g.clip();
-        g.fillStyle = '#dfe6d6';
+        g.fillStyle = PLASTER;
         g.fillRect(0, 0, cw, ch);
-        g.fillStyle = GREY;
+        g.fillStyle = TIM;
         g.fillRect(0, py(0.3), cw, 0.3 * S);
-        // the cornice over the ground floor
-        g.fillRect(0, py(GF + 0.12), cw, 0.12 * S);
-        const win = (u: number, y0: number, wd: number, h: number, panes: boolean) => {
-          g.fillStyle = GREY;
-          g.fillRect(px(u - wd / 2 - 0.08), py(y0 + h + 0.08), (wd + 0.16) * S, (h + 0.16) * S);
-          g.fillStyle = FR;
+        // the cornice between the ground floor and the first floor
+        g.fillRect(0, py(GF + 0.1), cw, 0.1 * S);
+        const win = (u: number, y0: number, wd: number, h: number, nx: number, ny: number, glass = GLASS) => {
+          g.fillStyle = WHITE;
+          g.fillRect(px(u - wd / 2 - 0.06), py(y0 + h + 0.06), (wd + 0.12) * S, (h + 0.12) * S);
+          g.fillStyle = glass;
           g.fillRect(px(u - wd / 2), py(y0 + h), wd * S, h * S);
-          g.fillStyle = '#3a4654';
-          const nx = panes ? 3 : 2, ny = panes ? 4 : 2, gap = 0.04;
-          for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) g.fillRect(px(u - wd / 2) + (i * wd * S) / nx + gap * S, py(y0 + h) + (j * h * S) / ny + gap * S, (wd * S) / nx - 2 * gap * S, (h * S) / ny - 2 * gap * S);
+          g.fillStyle = WHITE;
+          for (let i = 1; i < nx; i++) g.fillRect(px(u - wd / 2 + (i * wd) / nx) - 1, py(y0 + h), 2, h * S);
+          for (let j = 1; j < ny; j++) g.fillRect(px(u - wd / 2), py(y0 + h - (j * h) / ny) - 1, wd * S, 2);
         };
-        // the door on the right
+        // the ground floor: three wide windows of small panes, warm with the light inside, the door at the right
         const doorU = W / 2 - Math.min(1.1, W * 0.17);
-        const left = -W / 2 + 0.25, right = doorU - 1.2;
+        const left = -W / 2 + 0.25, right = doorU - 1.0;
         const n3 = 3, slot = (right - left) / n3;
-        for (let k = 0; k < n3; k++) win(left + (k + 0.5) * slot, 0.6, Math.min(1.0, slot - 0.3), 1.2, true);
-        g.fillStyle = GREY;
-        g.fillRect(px(doorU - 0.55), py(2.15), 1.1 * S, 2.15 * S);
-        g.fillStyle = '#6b4a2e';
-        g.fillRect(px(doorU - 0.4), py(2.0), 0.8 * S, 2.0 * S);
+        for (let k = 0; k < n3; k++) win(left + (k + 0.5) * slot, 0.5, Math.min(1.1, slot - 0.3), 0.9, 4, 2, '#b87a44');
+        g.fillStyle = TIM;
+        g.fillRect(px(doorU - 0.5), py(GF - 0.02), 1.0 * S, (GF - 0.02) * S);
+        g.fillStyle = '#5c3d26';
+        g.fillRect(px(doorU - 0.4), py(GF - 0.12), 0.8 * S, (GF - 0.12) * S);
         g.fillStyle = '#c9a06a';
         g.fillRect(px(doorU + 0.22), py(1.0), 0.06 * S, 0.12 * S);
-        g.fillStyle = '#2a2420';
-        g.font = `bold ${Math.round(0.26 * S)}px Georgia, serif`;
+        // the name in old letters on the plaster over the ground-floor windows
+        g.fillStyle = '#9c2a2c';
         g.textAlign = 'center';
         g.textBaseline = 'middle';
-        g.fillText('5', px(doorU), py(GF - 0.12));
-        // a round hanging sign between windows and door, a menu box, the chalkboard right of the door
-        g.fillStyle = '#7a4a36';
-        g.beginPath();
-        g.arc(px(doorU - 0.9), py(1.5), 0.2 * S, 0, 7);
-        g.fill();
-        g.fillStyle = '#2a2d30';
-        g.fillRect(px(doorU + 0.68), py(1.3), 0.5 * S, 0.7 * S);
-        g.fillStyle = '#6b6f74';
-        g.fillRect(px(doorU + 0.68), py(1.9), 0.3 * S, 0.3 * S);
-        // the first floor: four windows with grey surrounds, no timber; the name on the plaster under them
-        const f1 = GF + 0.7;
-        for (let k = 0; k < 4; k++) win(-W / 2 + (k + 0.5) * (W / 4), f1, Math.min(0.8, W / 4 - 0.35), 1.1, false);
-        g.fillStyle = '#7a1f28';
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.font = `italic bold ${Math.round(0.36 * S)}px "Old English Text MT", UnifrakturCook, Georgia, "Times New Roman", serif`;
+        g.font = `italic bold ${Math.round(0.3 * S)}px "Old English Text MT", UnifrakturCook, Georgia, "Times New Roman", serif`;
         const wide = g.measureText(s.text).width;
         g.save();
-        g.translate(px((left + right) / 2 - 0.2), py(GF + 0.38));
-        g.scale(Math.min(1, ((right - left) + 0.6) * S / wide), 1);
+        g.translate(px((left + right) / 2), py(GF - 0.22));
+        g.scale(Math.min(1, (right - left) * S / wide), 1);
         g.fillText(s.text, 0, 0);
         g.restore();
-        // the gable: raspberry timber, three small windows and the inscription panel
-        const gb = f1 + 1.1 + 0.35;
-        if (H > gb + 0.4) {
+        // the first floor: a row of four windows
+        const f1 = GF + 0.45, fh = Math.max(0.6, gb - 0.45 - f1);
+        for (let k = 0; k < 4; k++) win(-W / 2 + (k + 0.5) * (W / 4), f1, Math.min(0.75, W / 4 - 0.4), fh, 2, 2);
+        // the gable
+        if (H > gb + 1.2) {
           const gh = H - gb;
-          g.fillStyle = GREY;
-          g.fillRect(0, py(gb), cw, 0.1 * S);
-          const bar = (x0: number, y0: number, x1: number, y1: number) => {
+          const bar = (x0: number, y0: number, x1: number, y1: number, w = 0.1) => {
             g.strokeStyle = TIM;
-            g.lineWidth = 0.1 * S;
+            g.lineWidth = w * S;
+            g.lineCap = 'square';
             g.beginPath();
             g.moveTo(px(x0), py(y0));
             g.lineTo(px(x1), py(y1));
             g.stroke();
           };
-          for (const u of [-W / 4, 0, W / 4]) bar(u, gb, u, H);
-          bar(-W / 2, gb, -W / 4, gb + gh * 0.5);
-          bar(W / 2, gb, W / 4, gb + gh * 0.5);
-          bar(-W / 4, gb + gh * 0.5, 0, H);
-          bar(W / 4, gb + gh * 0.5, 0, H);
-          bar(-W / 2, gb + gh * 0.04, W / 2, gb + gh * 0.04);
-          const wy = gb + 0.2;
-          for (const u of [-W * 0.375, 0.0, W * 0.375]) if (u !== 0) win(u, wy, 0.4, 0.55, false);
-          win(0, wy, 0.4, 0.55, false);
-          g.fillStyle = '#f1e4c8';
-          g.fillRect(px(-0.3), py(wy + 1.1), 0.6 * S, 0.35 * S);
-          g.strokeStyle = TIM;
-          g.lineWidth = 3;
-          g.strokeRect(px(-0.3), py(wy + 1.1), 0.6 * S, 0.35 * S);
+          const beam = (y: number) => {
+            const [a, b] = widthAt(y);
+            bar(a, y, b, y);
+          };
+          // an X in a panel
+          const cross = (u0: number, y0: number, u1: number, y1: number) => {
+            bar(u0, y0, u1, y1, 0.07);
+            bar(u1, y0, u0, y1, 0.07);
+          };
+          // the timber along the sloped edges (half of it lies outside the outline and is clipped off)
+          for (let i = 0; i < prof.length; i++) {
+            const [ua, ya] = prof[i], [ub, yb] = prof[(i + 1) % prof.length];
+            if (ya >= gb - 0.01 && yb >= gb - 0.01) bar(ua, ya, ub, yb, 0.2);
+          }
+          // the sill beam at the foot, the beams between the storeys
+          const b1 = gb + gh * 0.44, b2 = gb + gh * 0.77;
+          beam(gb + 0.05);
+          beam(b1);
+          beam(b2);
+          // the lower storey: five posts, a window in each of the four bays between them, rails round the windows,
+          // a cross under each window, braces from the inner posts out to the corners and up to the middle post
+          const [l1, r1] = widthAt(gb + 0.05), c1 = (l1 + r1) / 2, bay = (r1 - l1) / 5.4;
+          const sill = gb + 0.5, head = Math.min(b1 - 0.6, sill + 0.75);
+          for (let k = -2; k <= 2; k++) bar(c1 + k * bay, gb, c1 + k * bay, Math.min(b1, edgeAt(c1 + k * bay, gb)));
+          beam(sill);
+          beam(head);
+          for (const k of [-1.5, -0.5, 0.5, 1.5]) {
+            const u = c1 + k * bay;
+            win(u, sill + 0.08, Math.min(0.5, bay - 0.5), head - sill - 0.16, 2, 2);
+            cross(u - bay / 2 + 0.08, gb + 0.12, u + bay / 2 - 0.08, sill - 0.08);
+          }
+          const [l2, r2] = widthAt(b1);
+          bar(c1 - bay, head, l2 + 0.12, b1);
+          bar(c1 + bay, head, r2 - 0.12, b1);
+          bar(c1 - bay, head, c1, b1);
+          bar(c1 + bay, head, c1, b1);
+          // the upper storey: two posts with the inscription panel between them, a window either side, braces
+          // from the posts to the corners under the next beam
+          const [l3, r3] = widthAt((b1 + b2) / 2), c2 = (l3 + r3) / 2;
+          const sill2 = b1 + 0.15, head2 = Math.min(b2 - 0.5, sill2 + 0.75);
+          for (const u of [c2 - 0.5, c2 + 0.5]) bar(u, b1, u, b2);
+          for (const sgn of [-1, 1]) {
+            const [a, b] = widthAt(sill2), [a2, b2u] = widthAt(head2), [a3, b3] = widthAt(b2);
+            bar(sgn < 0 ? a : c2 + 0.5, sill2, sgn < 0 ? c2 - 0.5 : b, sill2);
+            bar(sgn < 0 ? a2 : c2 + 0.5, head2, sgn < 0 ? c2 - 0.5 : b2u, head2);
+            win(c2 + sgn * 0.95, sill2 + 0.1, 0.4, head2 - sill2 - 0.2, 2, 2);
+            bar(c2 + sgn * 0.5, head2, sgn < 0 ? a3 + 0.12 : b3 - 0.12, b2);
+          }
+          g.fillStyle = WHITE;
+          g.fillRect(px(c2 - 0.38), py(b2 - 0.2), 0.76 * S, (b2 - 0.2 - (b1 + 0.2)) * S);
+          g.fillStyle = TIM;
+          g.beginPath();
+          g.arc(px(c2), py(b2 - 0.5), 0.14 * S, 0, 7);
+          g.fill();
+          g.fillStyle = WHITE;
+          g.fillRect(px(c2 - 0.03), py(b2 - 0.4), 0.06 * S, 0.17 * S);
+          g.fillStyle = TIM;
+          g.font = `bold ${Math.round(0.2 * S)}px Georgia, serif`;
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('1830', px(c2), py(b1 + 0.5));
+          // the top: a tiny window between two short posts that run up to the edges
+          const [l4, r4] = widthAt(b2 + 0.35), c3 = (l4 + r4) / 2;
+          for (const u of [c3 - 0.3, c3 + 0.3]) bar(u, b2, u, edgeAt(u, b2));
+          win(c3, b2 + 0.2, 0.3, 0.3, 1, 1);
         }
         const tex = new THREE.CanvasTexture(canvas);
         tex.colorSpace = THREE.SRGBColorSpace;
