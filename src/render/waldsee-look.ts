@@ -1418,12 +1418,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'bank') {
-      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate fills the lane's
-      // mouth from wall to wall, the house (light blue-grey) stands behind it with its name up high
+      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate, a few tiles in,
+      // fills the lane from wall to wall, the house (light blue-grey) stands behind it with its name up high
       const lane = WALDSEE_BARRIERS.find(b => Math.abs(b.at[0] - 10.36) < 0.1 && Math.abs(b.at[1] - 60.26) < 0.1);
       if (lane) {
         const ax = -lane.dir[1], az = lane.dir[0], yaw = Math.atan2(-az, ax);
-        const hx = lane.at[0] + lane.dir[0] * 1.0, hz = lane.at[1] + lane.dir[1] * 1.0;
+        const hx = lane.at[0] + lane.dir[0] * 3.0, hz = lane.at[1] + lane.dir[1] * 3.0;
         // (how far one can go along the barrier's line from the hedge's spot to the real wall, to each side)
         const reach = (sx: number): number => {
           let best = 6;
@@ -1456,7 +1456,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
       // a row of windows per storey, and the blue-and-orange board "Bank" up high (no brand name)
-      const wl = (s as OnWall).wall, wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
+      // (the whole house front: every wall of the building that looks the same way, side by side)
+      let wl = (s as OnWall).wall, mid = -(wl?.along ?? 0);
+      let near: ReturnType<typeof wallFeet>[number] | undefined;
+      for (const w of wallFeet()) {
+        if (w.nx * s.dx + w.nz * s.dz < 0.9) continue;
+        const d = Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z);
+        if (!near || d < Math.hypot((near.x0 + near.x1) / 2 - s.x, (near.z0 + near.z1) / 2 - s.z)) near = w;
+      }
+      if (near) {
+        let lo = Infinity, hi = -Infinity, eave = Infinity;
+        for (const w of wallFeet()) {
+          if (w.id !== near.id || w.nx * near.nx + w.nz * near.nz < 0.95) continue;
+          for (const [x, z] of [[w.x0, w.z0], [w.x1, w.z1]]) {
+            const a = -(x - s.x) * s.dz + (z - s.z) * s.dx;
+            lo = Math.min(lo, a);
+            hi = Math.max(hi, a);
+          }
+          eave = Math.min(eave, w.eave);
+        }
+        wl = { width: hi - lo, along: 0, eave };
+        mid = (lo + hi) / 2;
+      }
+      const wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
       canvas.width = cw;
@@ -1525,7 +1547,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
       disposables.push(tex, geo, mat);
       const m = new THREE.Mesh(geo, mat);
-      const [fx, fz] = on(s, -(wl?.along ?? 0), 0.04);
+      const [fx, fz] = on(s, mid, 0.04);
       m.position.set(fx, H / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
