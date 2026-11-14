@@ -237,7 +237,7 @@ export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx
 /** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
 export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
 /** the plan's house at a tile, for its colours (the real building there takes them) */
-const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
+export const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
   return c >= 6 && !takenAway(c) && !WALDSEE_REPLACED.includes(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
 };
@@ -442,7 +442,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n);
       if (!shown(b)) return;
-      const h = houseAt(tx, tz);
+      // (the Czardas's colours belong to the Czardas only: a neighbour whose middle lands on its tile stays neutral)
+      const h0 = houseAt(tx, tz), h = h0 && h0.col === '6f93c9' && bi !== 280 ? null : h0;
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
       const shutters = h?.shut ?? '';
       // (its eaves: the lowest point of its roofs; as many storeys of about two tiles as fit under them)
@@ -726,7 +727,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       return { ...face, x, z };
     };
     /** one wall of the house on a plane; `doorU` is where its door should be, from the wall's middle. Returns the door's place */
-    const wallPlane = (face: WaldseeFace & OnWall, doorU: number, big: boolean): number => {
+    const wallPlane = (face: WaldseeFace & OnWall, doorU: number, big: boolean, name: string): number => {
       const W = face.wall?.width ?? Math.max(3, face.len), H = face.wall?.eave ?? 4.64;
       const cw = Math.round(W * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
@@ -791,6 +792,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       g.fill();
       rect(d - 0.02, 2.3, d + 0.02, 2.72, '#ece6d3');
       rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
+      // the name painted on the plaster beside the door, over the band, clear of windows and shutters
+      g.fillStyle = '#f1ead6';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = `bold ${Math.round(0.36 * S)}px Georgia, "Times New Roman", serif`;
+      g.fillText(name, px(d + (d < 0 ? 1 : -1) * 2.0), py(2.66));
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -805,40 +812,42 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     };
     // (the front: the door at the end of the wall near the Hochstatt, the big window beside it)
     const alongF = f.wall?.along ?? 0;
-    const door = at(f, wallPlane(f, alongF + 0.4, true) - alongF);
-    sign(door, 'CZARDAS', 3.05, 2.4, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' }, 'bold 80px Georgia, "Times New Roman", serif');
+    const door = at(f, wallPlane(f, alongF + 0.4, true, 'CZARDAS') - alongF);
     for (const e of [-1, 1]) {
       const [lx, lz] = on(door, e * 0.78, 0.1);
       lamp(lx, 2.0, lz, 0.14, 0.3, 0.14, 0xffd76a);
     }
+    // (the terrace is centred on its tables, not on the door)
+    const tab = WALDSEE_TABLES.find(p => p.name === 'Czardas')?.at ?? [];
+    const mx = tab.reduce((a, [x]) => a + x + 0.5, 0) / Math.max(1, tab.length), mz = tab.reduce((a, [, z]) => a + z + 0.5, 0) / Math.max(1, tab.length);
+    const terrace = tab.length ? at(f, (mx - f.x) * -f.dz + (mz - f.z) * f.dx) : door;
     const out = 5.4, bulbs = [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0], w = 3;
     for (const side of [-1, 0, 1]) {
-      const [px, pz] = on(door, side * (w / 2 + 1.6), out);
+      const [px, pz] = on(terrace, side * (w / 2 + 1.6), out);
       box(px, 1.5, pz, 0.07, 3, 0.07, 0x3a3f52);
       for (let k = 0; k <= 12; k++) {
         const t = k / 12, sag = Math.sin(Math.PI * t) * 0.4;
-        const [sx, sz] = on(door, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
+        const [sx, sz] = on(terrace, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
         lamp(sx, 2.9 + 0.1 * t - sag, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
       }
     }
     for (let k = 0; k <= 16; k++) {
       const t = k / 16;
-      const [sx, sz] = on(door, -w / 2 - 1.6 + (w + 3.2) * t, out);
+      const [sx, sz] = on(terrace, -w / 2 - 1.6 + (w + 3.2) * t, out);
       lamp(sx, 3 - Math.sin(Math.PI * ((t * 2) % 1)) * 0.25, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
     }
     for (let k = 0; k < 5; k++) {
-      const [fx, fz] = on(door, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
-      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(door));
-      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(door));
-      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(door.dz), 0.58, fz + q * 0.3 * Math.abs(door.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
+      const [fx, fz] = on(terrace, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
+      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(terrace));
+      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(terrace));
+      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(terrace.dz), 0.58, fz + q * 0.3 * Math.abs(terrace.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
     }
     // its second door, on the side toward the Hauptstrasse: the same house, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
       const sd = onBlock(WALDSEE_CZARDAS_SIDE), alongS = sd.wall?.along ?? 0;
-      const door2 = at(sd, wallPlane(sd, alongS, false) - alongS);
-      sign(door2, 'Czardas', 2.95, 1.5, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' });
+      wallPlane(sd, alongS, false, 'Czardas');
     }
-    const [cx, cz] = on(door, w / 2 + 1.9, 2.6);
+    const [cx, cz] = on(terrace, w / 2 + 1.9, 2.6);
     box(cx, 0.45, cz, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
   }
