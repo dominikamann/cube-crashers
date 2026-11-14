@@ -259,6 +259,17 @@ export interface ShotFx {
   shake(amp: number): void;
 }
 
+/**
+ * Whether the ring that shows where a bomb will land is drawn on this screen: always in co-op; in a versus match
+ * only for the one who threw it and, in a team match, their team.
+ */
+export function ringFor(s: SimState, ownerId: number, viewers: ReadonlySet<number>): boolean {
+  if (!s.versus) return true;
+  if (viewers.has(ownerId)) return true;
+  const owner = s.players.find(p => p.id === ownerId);
+  return s.versus.mode === 'team' && owner?.team !== undefined && s.players.some(p => viewers.has(p.id) && p.team === owner.team);
+}
+
 export interface Shots {
   update(s: SimState, events: SimEvent[], theme: Theme, dt: number, time: number): void;
   /**
@@ -270,6 +281,8 @@ export interface Shots {
   setLow(low: boolean): void;
   /** the players whose eyes a view looks through (first person) */
   setEyes(ids: number[]): void;
+  /** the players this screen shows the game of (what only they should know is drawn for them alone) */
+  setViewers(ids: number[]): void;
   /** how many bits of light are in the air (for tests) */
   pixels(): number;
 }
@@ -359,6 +372,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
   const from = new THREE.Vector3();
   let low = false;
   let eyes = new Set<number>();
+  let viewers = new Set<number>();
   let lastTick = 0;
   let mapId = '';
   let wallColor = 0x888888;
@@ -626,9 +640,12 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
             // it tumbles, its fuse spits sparks, and a ring on the floor closes on the spot where it will come down
             bombs.add(p.pos.x, y, p.pos.z, dir, 1, Math.floor(time * 30) % 2 ? 0xffffff : 0xffb020, time * 9 + p.id);
             if (t > 0.12 && Math.floor(time * 60) % 2 === 0) emit(p.pos.x, y + 0.2, p.pos.z, (rand() - 0.5) * 2, 1 + rand() * 2, (rand() - 0.5) * 2, 0.2 + rand() * 0.15, 0.05, [0xffffff, 0xffe14a, 0xff8c42], { fall: 5 });
-            const r = p.land?.radius ?? 3;
-            hoops.add(p.target!.x, 0.06, p.target!.z, 0, r * 2, 0xff5a2b);
-            hoops.add(p.target!.x, 0.07, p.target!.z, time * 3, r * 2 * (1 - 0.85 * t), Math.floor(time * (6 + 14 * t)) % 2 ? 0xffe14a : 0xff3b3b);
+            // (in a versus match only whoever threw it and their team see where: a rival is not warned)
+            if (ringFor(s, p.ownerId, viewers)) {
+              const r = p.land?.radius ?? 3;
+              hoops.add(p.target!.x, 0.06, p.target!.z, 0, r * 2, 0xff5a2b);
+              hoops.add(p.target!.x, 0.07, p.target!.z, time * 3, r * 2 * (1 - 0.85 * t), Math.floor(time * (6 + 14 * t)) % 2 ? 0xffe14a : 0xff3b3b);
+            }
             // (it glows red, faster and faster, the closer it is to the floor)
             if (!low) auras.add(p.pos.x, y, p.pos.z, 0, 0.9, Math.sin(time * (14 + 40 * t)) > 0 ? 0x7a1a0a : 0x1a0502);
           } else {
@@ -891,6 +908,9 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
     },
     setEyes(ids) {
       eyes = new Set(ids);
+    },
+    setViewers(ids) {
+      viewers = new Set(ids);
     },
     pixels: () => pixels.length,
   };

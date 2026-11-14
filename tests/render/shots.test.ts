@@ -214,3 +214,22 @@ describe('the weapons\' shots', () => {
     expect(fp.calls.flash).toBe(0);
   });
 });
+
+describe('the ring that shows where a bomb will land', () => {
+  it('is for everyone in co-op, and in a versus match only for whoever threw it and their team', async () => {
+    const { ringFor } = await import('../../src/render/shots');
+    const { createSim } = await import('../../src/sim/sim');
+    const { FLOORS } = await import('../../src/sim/config/floors');
+    const coop = createSim(FLOORS.floor01.map, 1, { players: 2 });
+    expect(ringFor(coop, coop.players[0].id, new Set([coop.players[1].id]))).toBe(true);
+    const ffa = createSim(FLOORS.neon.map, 1, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' } });
+    const [a, b] = ffa.players;
+    expect(ringFor(ffa, a.id, new Set([a.id]))).toBe(true);
+    expect(ringFor(ffa, a.id, new Set([b.id]))).toBe(false);
+    const team = createSim(FLOORS.neon.map, 1, { mode: 'versus', players: 4, versus: { mode: 'team', rule: 'score' } });
+    const mate = team.players.find(p => p !== team.players[0] && p.team === team.players[0].team)!;
+    const rival = team.players.find(p => p.team !== team.players[0].team)!;
+    expect(ringFor(team, team.players[0].id, new Set([mate.id]))).toBe(true);
+    expect(ringFor(team, team.players[0].id, new Set([rival.id]))).toBe(false);
+  });
+});

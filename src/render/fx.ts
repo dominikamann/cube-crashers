@@ -89,6 +89,8 @@ export interface Fx {
   shake(): THREE.Vector3;
   /** the players whose eyes a view looks through: what flashes right in front of them is left to the weapon in their hand */
   setEyes(ids: number[]): void;
+  /** the players this screen shows the game of */
+  setViewers(ids: number[]): void;
   /** fewer particles on low graphics settings */
   setParticleScale(k: number): void;
   /** the coloured light a Disco Ball throws on what is around it right now (`k` 0: none) */
@@ -888,6 +890,7 @@ export function createFx(scene: THREE.Scene): Fx {
       shots.setLow(k < 1);
     },
     setEyes: ids => shots.setEyes(ids),
+    setViewers: ids => shots.setViewers(ids),
     discoLight: () => disco.light(),
   };
 }
