@@ -21,6 +21,9 @@ interface Track {
   leadVol: number;
 }
 
+// The drums keep a plain backbeat (kick on 1 and 3, snare on 2 and 4, hats between): a snare on every other
+// eighth sounds twice as fast as the tempo says. Each track has a second part and a quiet bar, so it does not
+// come round every few seconds.
 const TRACKS: Record<TrackId, Track> = {
   menu: {
     bpm: 100,
@@ -38,8 +41,14 @@ const TRACKS: Record<TrackId, Track> = {
         bass: 'A2 . . . A2 . E2 . F2 . . . G2 . G2 .',
         drums: 'k . h . s . h . k . h k s . h .',
       },
+      {
+        lead: 'A5 - F5 - C6 - A5 - B5 - G5 - D6 - - -',
+        harm: 'F4 . . . A4 . . . G4 . . . B4 . . .',
+        bass: 'F2 . . . F2 . C3 . G2 . . . G2 . D3 .',
+        drums: 'k . h . s . h . k . h . s . h .',
+      },
     ],
-    order: [0, 1, 0, 1],
+    order: [0, 1, 0, 1, 2, 1],
   },
   battle: {
     bpm: 140,
@@ -49,41 +58,75 @@ const TRACKS: Record<TrackId, Track> = {
         lead: 'A4 . C5 . E5 . A5 . G5 . E5 . D5 . E5 .',
         harm: 'E4 . . . A4 . . . G4 . . . A4 . . .',
         bass: 'A2 A2 A3 A2 A2 A2 A3 A2 G2 G2 G3 G2 G2 G2 G3 G2',
-        drums: 'k h s h k k s h k h s h k k s s',
+        drums: 'k . h . s . h k k . h . s . h h',
       },
       {
         lead: 'F5 . E5 . C5 . A4 . B4 . C5 . D5 - E5 -',
         harm: 'C5 . . . A4 . . . G4 . . . B4 . . .',
         bass: 'F2 F2 F3 F2 F2 F2 F3 F2 E2 E2 E3 E2 E2 E2 E3 E2',
-        drums: 'k h s h k k s h k h s h k s s s',
+        drums: 'k . h . s . h k k . h . s . s s',
       },
       {
         lead: 'A5 . G5 A5 . E5 . C5 D5 . E5 . G5 . A5 -',
         harm: 'E5 . . . C5 . . . B4 . . . E5 . . .',
         bass: 'A2 A2 A3 A2 C3 C3 C4 C3 D3 D3 D4 D3 E3 E3 E4 E3',
-        drums: 'k h s h k h s h k h s h k k s h',
+        drums: 'k . h h s . h k k . h h s . h .',
+      },
+      // the second part: up to F and G, and back over E
+      {
+        lead: 'C6 . A5 . F5 . A5 . B5 . G5 . D5 . G5 .',
+        harm: 'A4 . . . C5 . . . B4 . . . D5 . . .',
+        bass: 'F2 F2 F3 F2 F2 F2 F3 F2 G2 G2 G3 G2 G2 G2 G3 G2',
+        drums: 'k . h . s . h k k . h . s . h h',
+      },
+      {
+        lead: 'E5 - A5 - C6 - B5 A5 G#5 - E5 - B4 - E5 -',
+        harm: 'C5 . . . E5 . . . B4 . . . G#4 . . .',
+        bass: 'A2 A2 A3 A2 A2 A2 A3 A2 E2 E2 E3 E2 E2 E2 E3 E2',
+        drums: 'k . h . s . h k k . h . s s s s',
+      },
+      // a bar to breathe: bass and hats, a few long notes
+      {
+        lead: 'A4 - - - E5 - - - G4 - - - D5 - - -',
+        harm: 'E4 . . . . . . . D4 . . . . . . .',
+        bass: 'A2 . A2 . A3 . A2 . G2 . G2 . G3 . G2 .',
+        drums: 'k . h . . . h . k . h . . . h .',
       },
     ],
-    order: [0, 1, 0, 2],
+    order: [0, 1, 0, 2, 3, 4, 3, 2, 5, 5, 0, 2],
   },
   boss: {
-    bpm: 160,
+    bpm: 152,
     leadVol: 0.05,
     patterns: [
       {
         lead: 'D5 D5 . F5 . D5 G#5 . A5 . G#5 F5 . D5 . C5',
         harm: 'A4 . . . A4 . . . D5 . . . C5 . . .',
         bass: 'D2 D2 D3 D2 D2 D3 D2 D2 A#1 A#1 A#2 A#1 C2 C2 C3 C2',
-        drums: 'k k s h k k s k k k s h k s s s',
+        drums: 'k . h k s . h . k k h . s . h h',
       },
       {
         lead: 'A5 - G5 - F5 - E5 - F5 . E5 . C#5 - - -',
         harm: 'F5 . . . D5 . . . D5 . . . A4 . . .',
-        bass: 'D2 D3 D2 D3 F2 F3 F2 F3 G2 G3 G2 G3 A2 A3 A2 A3',
-        drums: 'k h s k k h s k k h s k s s s s',
+        bass: 'D2 D2 D3 D2 F2 F2 F3 F2 G2 G2 G3 G2 A2 A2 A3 A2',
+        drums: 'k . h . s . h k k . h . s s s s',
+      },
+      // the second part leans on B flat and falls to A
+      {
+        lead: 'A#5 - A5 - G5 - F5 - E5 - C#5 - E5 - A5 -',
+        harm: 'D5 . . . A#4 . . . C#5 . . . E5 . . .',
+        bass: 'A#1 A#1 A#2 A#1 A#1 A#1 A#2 A#1 A1 A1 A2 A1 A1 A1 A2 A1',
+        drums: 'k . h k s . h . k k h . s . h h',
+      },
+      // the stalking bar: a heartbeat of kicks under two long notes
+      {
+        lead: 'D5 - - - - - - - F5 - - - E5 - - -',
+        harm: 'A4 . . . . . . . A#4 . . . A4 . . .',
+        bass: 'D2 . . D2 . . D2 . D2 . . D2 . . C2 .',
+        drums: 'k . . k . . k . k . . k . . s s',
       },
     ],
-    order: [0, 0, 1, 0, 1],
+    order: [0, 0, 1, 0, 2, 2, 1, 3],
   },
 };
 

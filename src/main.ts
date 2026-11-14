@@ -25,7 +25,7 @@ import type { Transport } from './net/transport';
 import { webOnline } from './net/web-online';
 import { ClientSession, HostSession } from './net/session';
 import { createRenderer } from './render/renderer';
-import { buildRunLog, saveRunLog } from './runlog';
+import { buildRunLog, createFrameCounter, saveRunLog, type RunLog } from './runlog';
 import { floor01 } from './sim/config/floor01';
 import { BOSS_RUSH, FLOORS, RUN_FLOORS } from './sim/config/floors';
 import { createSim, stepSim } from './sim/sim';
@@ -147,8 +147,14 @@ function startGame() {
     gfxDone = done ?? null;
     gfxNote.style.display = '';
   }
+  /** the bosses in the fight right now: their track plays while there is one */
+  let bossesUp = 0;
+  /** a run's log, with how smoothly it ran */
+  const frameCounter = createFrameCounter();
+  const logRun = (s: SimState, note?: RunLog['note'], fallen?: string) => saveRunLog({ ...buildRunLog(s, note, fallen), frames: frameCounter.stats() });
   function countFrame() {
     const now = performance.now();
+    frameCounter.frame(now, mode === 'playing');
     fpsFrames++;
     if (now - fpsSince >= 500) {
       fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsSince))} FPS`;
@@ -620,7 +626,10 @@ function startGame() {
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
         for (const e of frameEvents) {
-          if (e.type === 'alarmChanged') audio.music.playTrack(e.level >= 5 ? 'boss' : 'battle');
+          // the fast track belongs to a boss fight and to the highest alarm
+          if (e.type === 'bossSpawn') bossesUp++;
+          if (e.type === 'bossDead') bossesUp = Math.max(0, bossesUp - 1);
+          if (e.type === 'alarmChanged' || e.type === 'bossSpawn' || e.type === 'bossDead') audio.music.playTrack(s.alarm.level >= 5 || bossesUp > 0 ? 'boss' : 'battle');
           if (e.type === 'gameWon' || e.type === 'gameLost') audio.music.playTrack(null);
         }
       }
@@ -630,7 +639,7 @@ function startGame() {
         // replay): remembered, some characters can only be bought after
         if (e.type === 'bossDead' && e.kind && !s.versus && mode === 'playing' && s.players.some(p => p.id === localId()) && recordBossBeaten(profile, e.kind)) storeProfile();
         // a boss fight is worth a log of its own, even if the run goes on or is left afterwards
-        if (e.type === 'bossDead' && role !== 'client' && (mode === 'playing' || mode === 'paused')) saveRunLog(buildRunLog(view(), 'bossDead', e.kind));
+        if (e.type === 'bossDead' && role !== 'client' && (mode === 'playing' || mode === 'paused')) logRun(view(), 'bossDead', e.kind);
       }
       frameEvents = [];
     },
@@ -705,7 +714,7 @@ function startGame() {
     mode = 'over';
     keyboard.releaseAll();
     const s = view();
-    saveRunLog(buildRunLog(s));
+    logRun(s);
     const result = summary(s);
     // gun game goes on to the next map once someone has made it through the ladder
     const gunNext = s.versus?.rule === 'gungame' ? { mode: 'ffa' as const, rule: 'gungame' as const, map: DISCOVERY_MAPS[(DISCOVERY_MAPS.indexOf(s.map.id) + 1) % DISCOVERY_MAPS.length] } : null;
@@ -753,6 +762,8 @@ function startGame() {
     padCtl2.setFirstPerson(versus, aimOf(1));
     if (versus && !padActive) lockPointer(true);
     loop.resume();
+    frameCounter.reset();
+    bossesUp = 0;
     ensureAudio().music.playTrack('battle');
   }
 
@@ -1044,7 +1055,7 @@ function startGame() {
 
   function toTitle() {
     // a run that is left unfinished still leaves a log (how far it got, what hurt)
-    if ((mode === 'playing' || mode === 'paused') && role !== 'client' && view().phase === 'playing' && view().tick > 5 * 60) saveRunLog(buildRunLog(view(), 'left'));
+    if ((mode === 'playing' || mode === 'paused') && role !== 'client' && view().phase === 'playing' && view().tick > 5 * 60) logRun(view(), 'left');
     if (role !== 'solo') leaveLan(false);
     mode = 'title';
     setSplit(false);

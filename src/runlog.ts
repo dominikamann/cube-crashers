@@ -34,6 +34,36 @@ export interface RunLog {
   idleShare: number;
   /** what happened in each 10 second slice */
   samples: { t: number; distance: number; idleSeconds: number; kills: number; alarm: number }[];
+  /** how smoothly it ran on this machine: frames per second, the share of frames over 33 ms and the longest one */
+  frames?: FrameStats;
+}
+
+export interface FrameStats {
+  fps: number;
+  slowShare: number;
+  worstMs: number;
+}
+
+/** counts the frames of a run; a pause (more than a second without a frame) is not a slow frame */
+export function createFrameCounter() {
+  let frames = 0, ms = 0, slow = 0, worst = 0, last = 0;
+  return {
+    reset() {
+      frames = ms = slow = worst = last = 0;
+    },
+    /** `running` is false while the game is paused or in a menu */
+    frame(now: number, running: boolean) {
+      const d = now - last;
+      if (running && last && d < 1000) {
+        frames++;
+        ms += d;
+        if (d > 33.4) slow++;
+        if (d > worst) worst = d;
+      }
+      last = running ? now : 0;
+    },
+    stats: (): FrameStats | undefined => (frames ? { fps: Math.round((frames * 10000) / ms) / 10, slowShare: Math.round((slow / frames) * 1000) / 1000, worstMs: Math.round(worst) } : undefined),
+  };
 }
 
 export function buildRunLog(s: SimState, note?: RunLog['note'], fallen?: string): RunLog {
