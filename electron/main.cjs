@@ -146,12 +146,13 @@ ipcMain.handle('lan:discover', event => {
 // ---------- online server list ----------
 
 // the shared list lives on GitHub, so a new server needs no new release of the game
+// (asked for with the time in the address: GitHub hands out a copy up to five minutes old otherwise)
 const SERVER_LIST_URL = 'https://raw.githubusercontent.com/dominikamann/cube-crashers/main/servers.json';
 
 ipcMain.handle('lan:serverList', async event => {
   if (!fromGame(event)) return null;
   try {
-    const res = await fetch(SERVER_LIST_URL, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+    const res = await fetch(`${SERVER_LIST_URL}?t=${Date.now()}`, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
     if (!res.ok) return null;
     const text = await res.text();
     return text.length < 200_000 ? JSON.parse(text) : null;

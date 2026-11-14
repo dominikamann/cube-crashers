@@ -104,7 +104,7 @@ export function webOnline(secure = location.protocol === 'https:', open: OpenSoc
     join: address => connectWeb(socketUrl(address, secure), open),
     async fetchList() {
       try {
-        const res = await fetch(SERVER_LIST_URL, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
+        const res = await fetch(`${SERVER_LIST_URL}?t=${Date.now()}`, { signal: AbortSignal.timeout(5000), cache: 'no-store' });
         if (!res.ok) return null;
         const text = await res.text();
         return text.length < 200_000 ? JSON.parse(text) : null;
