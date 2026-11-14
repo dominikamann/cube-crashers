@@ -432,6 +432,19 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'dominikJoined':
             toast(t('toast.dominikJoined'), 'warn');
             break;
+          case 'witchPress':
+            if (e.playerId === p.id) toast(t('toast.witchPress'), 'warn');
+            else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn');
+            break;
+          case 'witchDance':
+            toast(t('toast.witchDance'), 'warn');
+            break;
+          case 'witchDanceEnd':
+            toast(t('toast.witchDanceEnd'), 'good');
+            break;
+          case 'witchFace':
+            toast(t('toast.witchFace'), 'final');
+            break;
           case 'dominikLeft':
             toast(t('toast.dominikLeft'), 'good');
             break;

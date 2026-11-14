@@ -21,8 +21,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 8: a Single floor on the LAN, wild bosses, voices and a boss that waits (0.5.5).
  * 9: Angry Dominik, his hammer and the baby dinos; characters; a longer wait to come back in versus (0.5.7).
  * 10: the Tarantula Queen, her brood and her webs; shots with a height (1.0.0).
+ * 11: the Schrättele of the Town: her fire, her dance with the small Schrättele, her press and her twigs.
  */
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

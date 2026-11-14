@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { applySnapshot, encodeSnapshot, serializeSnapshot } from '../../src/net/snapshot';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
+import { FLOORS } from '../../src/sim/config/floors';
+import { witchPounce } from '../../src/sim/systems/witch';
 
 describe('snapshots', () => {
   it('carry everything the client draws, rounded, through JSON', () => {
@@ -52,5 +54,35 @@ describe('floor changes over the network', () => {
     expect(view.map.id).toBe(host.map.id);
     expect(view.theme).toBe(host.theme);
     expect(view.run.floor).toBe(1);
+  });
+
+  it("carry the Schrättele: her fire, her dance with the small ones, the player she presses and the twigs burning", () => {
+    const host = createSim(FLOORS.waldsee.map, 4, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(e => e.id === host.boss!.enemyId)!;
+    host.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
+    const roundTrip = () => {
+      const view = createSim(floor01, 3, { players: 2 });
+      expect(applySnapshot(view, JSON.parse(serializeSnapshot(host, [])).state)).toBe(true);
+      return view;
+    };
+    // pressing a player
+    host.players[0].pos = { x: body.pos.x + 4, z: body.pos.z };
+    witchPounce(host, host.players[0]);
+    for (let i = 0; i < 70; i++) stepSim(host, []);
+    host.boss!.witch!.embers.push({ id: 900, pos: { x: 40, z: 50 }, radius: 1.1, from: host.tick, until: host.tick + 100 });
+    let view = roundTrip();
+    expect(view.map.id).toBe('waldsee');
+    expect(view.boss!.kind).toBe('witch');
+    expect(view.boss!.witch!.press?.playerId).toBe(0);
+    expect(view.boss!.witch!.embers).toHaveLength(1);
+    expect(view.boss!.witch!.fire).toEqual(host.boss!.witch!.fire);
+    // dancing round the fire
+    body.hp = body.maxHp * 0.6;
+    for (let i = 0; i < 30; i++) stepSim(host, []);
+    view = roundTrip();
+    const w = view.boss!.witch!;
+    expect(w.dance?.helpers).toEqual(host.boss!.witch!.dance!.helpers);
+    expect(w.heat).toBeCloseTo(host.boss!.witch!.heat, 2);
+    expect(view.enemies.filter(e => e.kind === 'witchling').map(e => e.id)).toEqual(host.boss!.witch!.dance!.helpers);
   });
 });

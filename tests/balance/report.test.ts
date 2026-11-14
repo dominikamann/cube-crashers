@@ -38,6 +38,7 @@ describe.skipIf(!process.env.BALANCE_REPORT)('balance report', () => {
       ['worm (final)', 'rooftop', true, undefined],
       ['rex (final)', 'rooftop', true, 'rex'],
       ['spider (final)', 'rooftop', true, 'spider'],
+      ['witch (town)', 'waldsee', false, undefined],
     ] as const;
     for (const [name, floor, final, boss] of fights) {
       for (const d of ['ultraLow', 'medium', 'ultraHigh'] as const) out.push(pad(name, 16) + pad(d, 11) + [1, 3, 5].map(l => pad(cell(botFight(floor, 'pixelBlaster', l, d, 3, final, boss)))).join(''));

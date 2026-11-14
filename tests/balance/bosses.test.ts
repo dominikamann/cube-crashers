@@ -7,7 +7,7 @@ import { run, quietSim } from '../sim/helpers';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim } from '../../src/sim/sim';
 import { enterFloor } from '../../src/sim/systems/run';
-import { ALL_WEAPONS, BOSSES, DIFFICULTIES, LEVELS, bossHealth, weaponDps } from './measure';
+import { ALL_WEAPONS, BOSSES, DIFFICULTIES, LEVELS, bossHealth, botFight, fastestKill, weaponDps } from './measure';
 
 /**
  * How long a boss lives, from the game's own numbers: its health against what a weapon deals to a boss when
@@ -69,6 +69,27 @@ describe('how long a boss lives', () => {
     const share = bossHealth('rhino', { wild: true }) / bossHealth('rhino');
     expect(share).toBeGreaterThanOrEqual(0.6);
     expect(share).toBeLessThan(1);
+  });
+});
+
+describe('the Schrättele of the Town', () => {
+  it('does not fall in under half a minute, not even to the strongest weapon at its best, on any difficulty', () => {
+    for (const d of DIFFICULTIES)
+      for (const w of ['pixelBlaster', 'flySwatter'] as const) expect(fastestKill('witch', 'waldsee', w, 5, d), `${w} on ${d}`).toBeGreaterThanOrEqual(30);
+  });
+
+  it('is beaten on Ultra Low by a lone player with the weapon everyone starts with', () => {
+    const f = botFight('waldsee', 'pixelBlaster', 1, 'ultraLow');
+    expect(f.won).toBe(true);
+    expect(f.downs).toBeLessThanOrEqual(1);
+    // (a fight, not a walkover)
+    expect(f.seconds).toBeGreaterThan(45);
+  });
+
+  it('is a fight on Ultra High: a lone player well armed wins it, but not in passing', () => {
+    const f = botFight('waldsee', 'pixelBlaster', 5, 'ultraHigh');
+    expect(f.won).toBe(true);
+    expect(f.seconds).toBeGreaterThan(60);
   });
 });
 

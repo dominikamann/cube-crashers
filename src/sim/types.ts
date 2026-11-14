@@ -29,7 +29,8 @@ export type EnemyKind =
   | 'fish'
   | 'shark'
   | 'kraken'
-  | 'spiderling';
+  | 'spiderling'
+  | 'witchling';
 export type WeaponKind =
   | 'pixelBlaster'
   | 'laserSword'
@@ -49,7 +50,7 @@ export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp'
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
-export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
@@ -431,6 +432,36 @@ export interface BossState {
   gate?: number;
   /** the share of its health it takes in full a second (left out: BOSS_HP.gate.share) */
   gateShare?: number;
+  /** the Schrättele: her fire, her mask, her moves (see witch.ts) */
+  witch?: WitchState;
+}
+
+/** what the Schrättele of the Town is up to (see systems/witch.ts) */
+export interface WitchState {
+  /** her bonfire: where it burns, and how far its heat reaches right now (it grows while she dances) */
+  fire: Vec2;
+  heat: number;
+  /** how fast she walks, before her pace wavers */
+  speed: number;
+  /** her two-faced mask: the grinning face, and from half her health on the glaring one (turned at tick `turnedAt`) */
+  face: 'grin' | 'glare';
+  turnedAt?: number;
+  /**
+   * what she is doing, from tick `at` until `until`: crouched and looking about (`scan`) before a charge or a hop,
+   * running with the broom raised (`charge`, from `from` to `to`), in mid-hop (`hop`), sweeping the burning broom
+   * (`sweep`), throwing burning twigs (`throw`), or dazed after she was thrown off (`reel`). `target` is the
+   * player she is after, `next` what follows the scan or the hop.
+   */
+  move: { kind: 'scan' | 'charge' | 'hop' | 'sweep' | 'throw' | 'reel'; at: number; until: number; from: Vec2; to?: Vec2; target?: number; next?: 'charge' | 'hop' | 'press' } | null;
+  /** "s'Schrättele druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
+  press: { playerId: number; at: Vec2; until: number; struggle: number; hurt: number; held: boolean } | null;
+  /** the Schrättelestanz: the small Schrättele dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
+  dance: { helpers: number[]; at: number; until: number } | null;
+  /** burning twigs on the floor: they burn from `from` until `until` */
+  embers: { id: number; pos: Vec2; radius: number; from: number; until: number }[];
+  /** when the next drumbeat of the dance comes, and the next crackle of the fire */
+  nextDrumAt: number;
+  nextCrackleAt: number;
 }
 
 export interface Vehicle {
@@ -691,6 +722,20 @@ export type SimEvent =
   /** a baby dino breaks out of its egg */
   | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }
+  /** the Schrättele sits on a player ("s'Schrättele druckt"), and lets go of them (`broke`: they shook her off, or a teammate knocked her off) */
+  | { type: 'witchPress'; playerId: number; pos: Vec2 }
+  | { type: 'witchRelease'; playerId: number; broke: boolean; pos: Vec2 }
+  /** the Schrättelestanz begins round the fire, a drum is struck while it lasts, and it is broken */
+  | { type: 'witchDance'; pos: Vec2 }
+  | { type: 'witchDrum'; pos: Vec2; beat: number }
+  | { type: 'witchDanceEnd'; pos: Vec2 }
+  /** she turns her mask: from now on the glaring face */
+  | { type: 'witchFace'; pos: Vec2 }
+  /** she sweeps her burning broom round in front of her (`dir`: the way she faces), or throws burning twigs from `from` to each of `to` */
+  | { type: 'witchSweep'; pos: Vec2; dir: Vec2 }
+  | { type: 'witchTwigs'; from: Vec2; to: Vec2[]; at: number }
+  /** her bonfire crackles */
+  | { type: 'fireCrackle'; pos: Vec2 }
   | { type: 'gameWon'; score: number }
   | { type: 'gameLost' };
 
