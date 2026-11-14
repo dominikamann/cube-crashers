@@ -341,7 +341,7 @@ export function createFx(scene: THREE.Scene): Fx {
   };
   /** Angry Dominik's hammer in the air: out along its line and back, after the warning (see boss.ts) */
   const hammers: { from: Vec2; to: Vec2; age: number }[] = [];
-  /** the Schrättele's burning twigs in the air: from her hand to where they come down, in `flight` seconds */
+  /** the witch's burning twigs in the air: from her hand to where they come down, in `flight` seconds */
   const twigs: { from: Vec2; to: Vec2; flight: number; age: number }[] = [];
   /** fire colours: her broom, her twigs, her end */
   const FIRE = [0xff4a0a, 0xff7a14, 0xffa524, 0xffd040, 0xffffff];
@@ -379,7 +379,7 @@ export function createFx(scene: THREE.Scene): Fx {
               burst(e.pos, (en.id === s.mini?.enemyId ? DOMINIK.small : DOMINIK.scale) * 2.2, 3, DOMINIK_CHIPS, 3, 0.07, 0.7);
               break;
             }
-            // (the Schrättele loses bits of her clothes and her straw)
+            // (the witch loses bits of her clothes and her straw)
             if ([s.boss, ...(s.bosses ?? [])].some(b => b?.kind === 'witch' && b.enemyId === en.id)) {
               if (time - (chipped.get(en.id) ?? -1e9) < 0.2) break;
               chipped.set(en.id, time);
@@ -423,7 +423,7 @@ export function createFx(scene: THREE.Scene): Fx {
             // (Angry Dominik goes in a thunderstorm: bolt after bolt strikes him where he stands, closer and
             // faster, and only then he bursts; see `dying`)
             if (e.kind === 'witch') {
-              // the Schrättele goes up in flames: a burst of fire where she stood, her rags and her mask flying, a
+              // the witch goes up in flames: a burst of fire where she stood, her rags and her mask flying, a
               // column of sparks that rises a long way, and the pieces of her burning broom (her fire burns down
               // by itself, see witch-fire.ts)
               pops.push({ x: e.pos.x, y: 1.4, z: e.pos.z, age: 0, life: 0.35, size: 7, color: 0xffb040, ring: false });

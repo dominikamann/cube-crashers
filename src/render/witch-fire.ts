@@ -4,7 +4,7 @@ import { allBosses } from '../sim/util';
 import { InstancedPool, lambert } from './pool';
 
 /**
- * The Schrättele's bonfire: logs in a ring of stones, voxel flames that leap and flicker, sparks that rise, a glow on
+ * The witch's bonfire: logs in a ring of stones, voxel flames that leap and flicker, sparks that rise, a glow on
  * the floor where its heat reaches (it hurts, see witch.ts: the ring shows how far), and its light. While she dances
  * it burns higher. The twigs she throws burn on the floor for a while with small flames of their own.
  * When she falls, the fire flares up once more and burns down to embers and smoke.
@@ -46,7 +46,7 @@ export function createWitchFires(scene: THREE.Scene): WitchFires {
   const smokes: Spark[] = [];
   // her light: added while a fire burns (a light that comes and goes makes the scene's shaders recompile, so only then)
   let light: THREE.PointLight | null = null;
-  /** where each Schrättele's fire was last seen (by boss body), for the finale */
+  /** where each witch's fire was last seen (by boss body), for the finale */
   const lastFire = new Map<number, { pos: Vec2; heat: number }>();
   /** fires burning down after she fell: where, and since when */
   const dying: { pos: Vec2; heat: number; since: number }[] = [];

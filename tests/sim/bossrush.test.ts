@@ -25,10 +25,10 @@ function killBoss(s: SimState) {
 }
 
 describe('Boss Rush', () => {
-  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, the Tarantula Queen, King Rex, then Angry Dominik', () => {
-    expect(BOSS_RUSH.map(b => b.boss)).toEqual(['megaBlock', 'worm', 'kraken', 'rhino', 'spider', 'rex', 'dominik']);
+  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, the Tarantula Queen, King Rex, Die Hex, then Angry Dominik', () => {
+    expect(BOSS_RUSH.map(b => b.boss)).toEqual(['megaBlock', 'worm', 'kraken', 'rhino', 'spider', 'rex', 'witch', 'dominik']);
     const s = bossRush();
-    expect(s.run.floors).toHaveLength(7);
+    expect(s.run.floors).toHaveLength(8);
     expect(s.boss?.kind).toBe('megaBlock');
     expect(s.nests).toHaveLength(0);
   });
@@ -83,7 +83,7 @@ describe('Boss Rush', () => {
 
   it('beating the last boss wins the rush', () => {
     const s = bossRush();
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       killBoss(s);
       floorCleared(s);
       s.run.shop!.ready.push(...s.players.map(p => p.id));

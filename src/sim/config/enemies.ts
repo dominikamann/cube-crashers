@@ -14,7 +14,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   blob: { hp: 14, speed: 2.0, radius: 0.35, coins: 1, score: 10, contactDamage: 15 },
   // the Tarantula Queen's brood: quick, in a swarm, one good hit each
   spiderling: { hp: 26, speed: 3.6, radius: 0.3, coins: 1, score: 20, contactDamage: 9 },
-  // the small Schrättele: they dance round the fire with the big one, quick and light, one or two good hits each
+  // the little witches: they dance round the fire with the big one, quick and light, one or two good hits each
   witchling: { hp: 34, speed: 3.3, radius: 0.35, coins: 2, score: 30, contactDamage: 12 },
   hunter: { hp: 12, speed: 4.4, radius: 0.3, coins: 1, score: 15, contactDamage: 18 },
   tank: { hp: 110, speed: 1.1, radius: 0.6, coins: 5, score: 60, contactDamage: 30 },

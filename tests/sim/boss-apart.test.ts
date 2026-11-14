@@ -9,7 +9,7 @@ const bodies = (s: SimState): Enemy[] => (s.bosses ?? []).filter(b => b.enemyId 
 
 describe('bosses do not walk into each other', () => {
   it('in a Boss Brawl their bodies stay apart, all the way through', () => {
-    const s = createSim(FLOORS.arena.map, 5, { mode: 'brawl', players: 1 });
+    const s = createSim(FLOORS.arena.map, 6, { mode: 'brawl', players: 1 });
     s.players[0].invulnUntil = 1e9;
     let seen = 0, since = 0, streak = 0;
     for (let i = 0; i < 120 * 60; i++) {
