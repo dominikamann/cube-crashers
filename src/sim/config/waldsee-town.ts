@@ -421,14 +421,15 @@ export const WALDSEE_HOUSES: WaldseeHouse[] = [
   { kind: 'house', name: "", col: 'ecd0a0', roof: 'a9553a', wall: 4.54, cx: 84.2, cz: 22.49, ang: -1.56 },
 ];
 /** trees with a bench round the trunk (tiles) */
-export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [50, 46], [48, 55], [55, 54]];
+export const WALDSEE_TREES: [number, number][] = [[17, 57], [22, 56], [20, 64], [27, 61], [31, 58], [46, 49], [53, 48], [48, 55], [55, 54]];
 /** the Federle-Brunnen: its two tiles, the basin on the first and the round block on the second */
 export const WALDSEE_FOUNTAIN: [number, number][] = [[42, 48], [43, 48]];
 /** parked cars, each two tiles long from its tile southward: the police car in front of the station */
 export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind: 'police', at: [64, 46] }];
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
-  { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
+  // (the Czardas: along its whole front, from its east end to near the fountain, but not up to it)
+  { name: "Czardas", at: [[46, 46], [48.5, 46], [51, 46], [53.5, 46], [56, 46], [48, 48], [50.5, 48], [55.5, 48]] },
   // (the ice-cream parlour: centred before its west front)
   { name: "Eisdiele", at: [[64, 63], [64, 66], [62, 64.5]] },
 ];
