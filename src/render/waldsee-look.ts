@@ -465,7 +465,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n);
       if (!shown(b)) return;
       // (the Czardas's colours belong to the Czardas only: a neighbour whose middle lands on its tile stays neutral)
-      const h0 = houseAt(tx, tz), h = h0 && h0.col === '6f93c9' && bi !== 280 ? null : h0;
+      // (and the part left of it, building 124, is one house with the yellow one beside it: it wears its yellow)
+      const h0 = bi === 124 ? houseAt(38, 42) : houseAt(tx, tz), h = h0 && h0.col === '6f93c9' && bi !== 280 ? null : h0;
       // (a house with a painted shop front wears the facade's colours on all its walls and gables)
       const shop = shopHouses().get(bi);
       const plaster = shop ? shop.col : h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
