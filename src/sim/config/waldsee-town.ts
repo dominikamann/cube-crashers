@@ -428,8 +428,9 @@ export const WALDSEE_FOUNTAIN: [number, number][] = [[42, 48], [43, 48]];
 export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind: 'police', at: [64, 46] }];
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
-  // (the Czardas: along its whole front, from its east end to near the fountain, but not up to it)
-  { name: "Czardas", at: [[46, 46], [48.5, 46], [51, 46], [53.5, 46], [56, 46], [48, 48], [50.5, 48], [55.5, 48]] },
+  // (the Czardas: along its whole front toward the fountain, but not up to it; none round the corner on the side
+  // toward the police)
+  { name: "Czardas", at: [[45.5, 46], [47.8, 46], [50.1, 46], [52.4, 46], [47, 48], [49.5, 48], [51.8, 48]] },
   // (the ice-cream parlour: centred before its west front)
   { name: "Eisdiele", at: [[64, 63], [64, 66], [62, 64.5]] },
 ];
