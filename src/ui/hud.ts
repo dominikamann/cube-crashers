@@ -440,7 +440,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn', t('toast.witchPressMateHow'));
             break;
           case 'witchDance':
-            toast(t('toast.witchDance'), 'warn');
+            toast(t('toast.witchDance'), 'final', t('toast.witchDanceHow'));
             break;
           case 'witchDanceEnd':
             toast(t('toast.witchDanceEnd'), 'good');
