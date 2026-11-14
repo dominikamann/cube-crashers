@@ -286,8 +286,9 @@ export interface LanActions {
 export interface Screens {
   title(): void;
   /** `live`: a game with others that goes on while this menu is open */
-  pause(live?: boolean): void;
-  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }): void;
+  pause(live?: boolean, leave?: { label: string; action: () => void }): void;
+  /** `leave`: in a game with others, the way out of it (back to the list one came from) instead of "Main menu" */
+  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }, leave?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
   lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null, game?: GameInfo | null): void;
   /** the online server list; update() fills it in as servers answer */
@@ -1061,17 +1062,18 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         }
       });
     },
-    pause(live = false) {
-      back = () => api.pause(live);
+    pause(live = false, leave) {
+      back = () => api.pause(live, leave);
       show('', s => {
         text(s, 'h2', '', t(live ? 'pause.titleLive' : 'pause.title'));
         if (live) text(s, 'p', 'pause-live', t('pause.live'));
         button(s, t('menu.resume'), actions.resume, true);
         button(s, t('menu.settings'), settingsScreen);
-        button(s, t('menu.mainMenu'), actions.mainMenu);
+        if (leave) button(s, leave.label, leave.action);
+        else button(s, t('menu.mainMenu'), actions.mainMenu);
       });
     },
-    result(won, r, again) {
+    result(won, r, again, leave) {
       show('result', s => {
         // a won Tower Run gets its own headline: the whole tower is done
         const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && (r.mode === 'bossrush' || r.mode === 'brawl') ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
@@ -1115,7 +1117,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         s.append(row);
         if (again) button(row, again.label, again.action, true);
         else button(row, t('menu.playAgain'), actions.play, true);
-        button(row, t('menu.mainMenu'), actions.mainMenu);
+        if (leave) button(row, leave.label, leave.action);
+        else button(row, t('menu.mainMenu'), actions.mainMenu);
       });
     },
     lobby(players, difficulty, isHost, me, lan, vote, server, game) {

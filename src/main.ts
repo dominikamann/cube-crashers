@@ -775,7 +775,7 @@ function startGame() {
     setTimeout(() => {
       if (mode !== 'over') return;
       setHudVisible(false);
-      screens.result(won, result, again);
+      screens.result(won, result, again, wayOut());
     }, 1800);
   }
 
@@ -904,6 +904,9 @@ function startGame() {
     if (notice) screens.notice(notice, back);
     else back();
   }
+
+  /** in a game with others: the button that leaves it, back to the list it was joined from */
+  const wayOut = () => (role === 'solo' ? undefined : { label: t(role === 'host' ? 'net.endGame' : client?.server ? 'net.leaveServer' : 'net.leaveGame'), action: () => leaveToOrigin() });
 
   async function hostGame() {
     if (!(await ensureLan())) return;
@@ -1145,7 +1148,7 @@ function startGame() {
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
     audio?.mixer.setPaused(true);
-    screens.pause(role !== 'solo');
+    screens.pause(role !== 'solo', wayOut());
   }
 
   function toTitle() {
