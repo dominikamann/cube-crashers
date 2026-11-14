@@ -643,8 +643,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
       // cyan roofline; the lit ground floor holds the shop window with the robots, the name glowing above
       {
-        // a free-standing modern glass tower, taller than its neighbours, with a hipped roof and PV
-        const X0 = 23, X1 = 30, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
+        // a modern glass tower, taller than its neighbours, with a hipped roof and PV; flush with the house to its
+        // left (west, x 22.6) and stopping short of the house to its right (x 28.3), whose door is beside it
+        const X0 = 22.6, X1 = 28.2, Z0 = 44, Z1 = 50, W = X1 - X0, D = Z1 - Z0, Ht = 9.4, cx = (X0 + X1) / 2, cz = (Z0 + Z1) / 2, S = 80;
         const curtain = (wB: number, hB: number, front: boolean) => {
           const cw = Math.round(wB * S), ch = Math.round(hB * S), c = document.createElement('canvas');
           c.width = cw;
