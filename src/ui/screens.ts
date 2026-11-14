@@ -343,19 +343,15 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     return e;
   }
 
-  /** "10/10 players (6 bots)" */
-  const seats = (r: ServerRow) => {
-    const c = playerCount(r.info!);
-    return c.bots > 0 ? t('online.playersBots', { n: c.players, max: c.max, b: c.bots }) : t('online.players', { n: c.players, max: c.max });
-  };
   let countdown: HTMLElement | null = null;
   const countdownText = (server: ServerStatus) => (server.running ? t('lobby.running') : server.startsIn === null ? t('lobby.waitingPlayers') : t('lobby.startsIn', { s: server.startsIn }));
   /**
    * What is played, as a row of small badges: the game, the rule (a server that takes turns), the map, how hard it
    * is (co-op), teams, a fixed view, and whether a match is running. The same row in the server list, in a
-   * server's lobby and in a LAN lobby.
+   * server's lobby and in a LAN lobby. The server list adds who is there (`seats`: places taken, people and bots
+   * among them) and the ping.
    */
-  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean }) => {
+  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
     const row = document.createElement('div');
     row.className = 'badges';
     const add = (kind: string, label_: string) => text(row, 'span', `badge ${kind}`, label_);
@@ -366,6 +362,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     // (not on a server that takes turns between the rules: there teams come and go)
     if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
+    if (g.seats) {
+      const humans = g.seats.players - g.seats.bots;
+      add('seats', t('online.players', { n: g.seats.players, max: g.seats.max }));
+      add(humans > 0 ? 'humans here' : 'humans', t('online.humans', { n: humans }));
+      if (g.seats.bots > 0) add('bots', t('online.bots', { n: g.seats.bots }));
+    }
+    if (g.ping !== undefined) add(g.ping < 80 ? 'ping' : g.ping < 160 ? 'ping slow' : 'ping bad', t('online.ping', { ms: g.ping }));
     if (g.running) add('live', t('online.running'));
     parent.append(row);
     return row;
@@ -1349,13 +1352,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
               r.status === 'checking' ? [t('online.checking')]
               : r.status === 'offline' ? [t('online.offline'), r.address]
               : r.status === 'incompatible' ? [t('online.otherVersion', { v: r.info!.version }), r.address]
-              : [seats(r), t('online.ping', { ms: r.ping ?? 0 })];
+              : [];
             sub.textContent = bits.join(' · ');
             const info = document.createElement('div');
             info.className = 'server-info';
             info.append(name);
-            if (r.status === 'online') gameBadges(info, { ...r.info!, running: r.info!.playing });
-            info.append(sub);
+            if (r.status === 'online') gameBadges(info, { ...r.info!, running: r.info!.playing, seats: playerCount(r.info!), ping: r.ping ?? 0 });
+            else info.append(sub);
             el.append(info);
             if (r.status === 'online') {
               const b = button(el, t('online.join'), () => h.join(r.address), true);

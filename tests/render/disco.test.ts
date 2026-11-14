@@ -56,6 +56,28 @@ describe('disco show', () => {
     expect(fx.discoLight().k).toBe(0);
   });
 
+  it('bursts when its thrower falls: it does not wait for them where they come back', () => {
+    const { fx, s, zap, run } = show(4);
+    run(1, [zap]);
+    expect(fx.discoLight().k).toBeGreaterThan(0);
+    s.players[0].downUntil = s.tick + 180;
+    run(0.1);
+    expect(fx.discoLight().k).toBe(0);
+    // (and it stays gone once they are up again)
+    s.players[0].downUntil = null;
+    run(0.1);
+    expect(fx.discoLight().k).toBe(0);
+  });
+
+  it('is gone after a cut to another time: a ball thrown in the kill cam does not hang on in the match', () => {
+    const { fx, s, zap, run } = show(4);
+    run(1, [zap]);
+    expect(fx.discoLight().k).toBeGreaterThan(0);
+    s.tick += 120;
+    run(0.1);
+    expect(fx.discoLight().k).toBe(0);
+  });
+
   it('draws from pools that are made once: nothing new comes into the scene while it runs', () => {
     const { scene, zap, run } = show(4);
     const pools = scene.children.length;

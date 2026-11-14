@@ -14,6 +14,8 @@ const RISE = 0.2;
 export const ZAP = { out: 0.07, hold: 0.3, in: 0.1, apart: 0.02 };
 /** no more beams than this are drawn at a time, however many balls are up (and half as many on low graphics) */
 export const MAX_DISCO_BEAMS = 24;
+/** a jump in the game's clock that is a cut to another time, not a late frame */
+const CUT_TICKS = 30;
 /** how far in front of whoever threw it the ball hangs, and how high */
 const AHEAD = 2.8, HEIGHT = 2.1;
 const RADIUS = 0.4;
@@ -111,9 +113,13 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
   const from = new THREE.Vector3();
   const glow = { x: 0, z: 0, color: 0xffffff, k: 0 };
   let low = false;
+  let lastTick = 0;
 
   return {
     update(s, events, dt) {
+      // another time is shown (the kill cam begins or ends): a ball of the time before does not hang on in it
+      if (Math.abs(s.tick - lastTick) > CUT_TICKS) list.length = 0;
+      lastTick = s.tick;
       for (const e of events) {
         if (e.type !== 'discoZap') continue;
         const who = s.players.find(p => p.id === e.playerId);
@@ -143,7 +149,9 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
         b.left -= dt;
         // it stays with whoever threw it, floating after them
         const owner = s.players.find(p => p.id === b.ownerId);
-        if (owner) {
+        // (and goes with them: when they fall it bursts where it hangs, and is not there where they come back)
+        if (owner && owner.downUntil !== null) b.left = 0;
+        else if (owner) {
           const k = 1 - Math.exp(-dt * 9);
           b.x += (owner.pos.x + owner.aim.x * AHEAD - b.x) * k;
           b.z += (owner.pos.z + owner.aim.z * AHEAD - b.z) * k;

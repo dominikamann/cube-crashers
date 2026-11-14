@@ -565,6 +565,10 @@ body.no-map .mapbox { display: none; }
 .badge.rule { color: #ff8be6; }
 .badge.map { color: var(--gold); }
 .badge.live { color: var(--green); }
+.badge.humans.here { color: var(--green); }
+.badge.bots, .badge.ping { color: rgba(255, 255, 255, 0.55); }
+.badge.ping.slow { color: var(--gold); }
+.badge.ping.bad { color: #ff6b6b; }
 .screen > .badges .badge { font-size: 10px; padding: 6px 10px 5px; }
 /* the board on Tab: everyone in the game, the best first */
 .scoreboard { display: flex; align-items: center; justify-content: center; z-index: 35; background: rgba(10, 8, 30, 0.35); }
