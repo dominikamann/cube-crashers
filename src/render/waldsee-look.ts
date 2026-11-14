@@ -1137,19 +1137,69 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           box(x, 2.55, z, 1.9, 0.1, 1.9, 0xd0202a, 0.3);
         }
       } else if (s.kind === 'brille') {
-        // the optician: a white house with dark red shutters, two great windows hung with red cloth either
-        // side of a glass door up four steps, grey planters with little firs, its name on a pale board
-        pane(-span * 0.27, span * 0.38, 1.4, 1.7, 0x4a4f5c);
-        pane(span * 0.29, span * 0.34, 1.4, 1.7, 0x4a4f5c);
-        for (const a of [-span * 0.27, span * 0.29]) onFace(s, a, 0.09, 1.25, span * 0.2, 1.1, 0.04, 0xb02a5a);
-        onFace(s, 0.02, 0.06, 1.45, 0.6, 1.9, 0.06, 0x9fb0b8);
-        [0.2, 0.4, 0.6, 0.8].forEach((o, k) => onFace(s, 0.02, o, 0.5 - k * 0.12, 0.9, 0.12, 0.2, 0x3a3f46));
-        for (const a of [-span / 2 + 0.2, span / 2 - 0.2]) {
-          onFace(s, a, 0.4, 0.4, 0.4, 0.8, 0.4, 0x8e9299);
-          onFace(s, a, 0.4, 1.1, 0.3, 0.6, 0.3, 0x3f7a3a);
+        // the optician: the real white house painted flush on its wall, dark red shutters upstairs, two great
+        // windows hung with red cloth either side of a glass door up four steps, grey planters with little
+        // firs, its name on a pale board
+        const wall = (s as OnWall).wall;
+        const W = wall?.width ?? span, H = wall?.eave ?? 6.4, along = wall?.along ?? 0, S = 64;
+        const cw = Math.round(W * S), ch = Math.round(H * S), canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const g = canvas.getContext('2d')!;
+        const rect = (u0: number, u1: number, y0: number, y1: number, c: string) => {
+          g.fillStyle = c;
+          g.fillRect((u0 + W / 2) * S, (H - y1) * S, (u1 - u0) * S, (y1 - y0) * S);
+        };
+        // white plaster, a grey plinth, the shadow under the eaves
+        rect(-W / 2, W / 2, 0, H, '#f1efe8');
+        rect(-W / 2, W / 2, 0, 0.25, '#b9bcc2');
+        const shadow = g.createLinearGradient(0, 0, 0, 0.6 * S);
+        shadow.addColorStop(0, 'rgba(60,56,50,0.28)');
+        shadow.addColorStop(1, 'rgba(60,56,50,0)');
+        g.fillStyle = shadow;
+        g.fillRect(0, 0, cw, 0.6 * S);
+        // the door (at the snapped point, where the name hangs) and a great window each side, red cloth in them
+        const door = Math.max(-W / 2 + 0.4, Math.min(W / 2 - 0.4, along));
+        const bays: [number, number][] = [[-W / 2 + 0.3, door - 0.55], [door + 0.55, W / 2 - 0.3]];
+        for (const [u0, u1] of bays) {
+          if (u1 - u0 < 0.7) continue;
+          rect(u0, u1, 0.6, 2.4, '#4a4f5c');
+          rect(u0 + 0.06, u1 - 0.06, 0.66, 2.34, '#33404f');
+          rect(u0 + 0.06, u1 - 0.06, 1.25, 2.34, '#b02a5a');
+          rect((u0 + u1) / 2 - 0.03, (u0 + u1) / 2 + 0.03, 0.6, 2.4, '#4a4f5c');
         }
-        for (const a of [-1.2, 0.1, 1.3]) for (const side of [-1, 1]) onFace(s, a + side * 0.42, 0.05, 3.6, 0.3, 0.8, 0.05, 0x9a1f2c);
-        sign(s, 'die brille', 2.7, 2.2, { back: '#e9ecef', ink: '#3a3f46', rim: '#3a3f46' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+        rect(door - 0.4, door + 0.4, 0.25, 2.5, '#6a7480');
+        rect(door - 0.34, door + 0.34, 0.31, 2.44, '#9fb0b8');
+        rect(door - 0.02, door + 0.02, 0.31, 2.44, '#6a7480');
+        // upstairs: a window per bay and storey in a pale frame, dark red shutters either side
+        const nUp = Math.max(1, Math.round(W / 1.5));
+        for (let y = 3.9; y + 0.6 < H - 0.2; y += 1.7) {
+          for (let k = 0; k < nUp; k++) {
+            const u = -W / 2 + (k + 0.5) * (W / nUp);
+            rect(u - 0.36, u + 0.36, y - 0.5, y + 0.5, '#fbf8f0');
+            rect(u - 0.3, u + 0.3, y - 0.44, y + 0.44, '#4d626d');
+            rect(u - 0.02, u + 0.02, y - 0.44, y + 0.44, '#fbf8f0');
+            rect(u - 0.64, u - 0.38, y - 0.5, y + 0.5, '#8a2a30');
+            rect(u + 0.38, u + 0.64, y - 0.5, y + 0.5, '#8a2a30');
+          }
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(W, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        // (the plane is centred on the wall's middle, which lies `along` behind the snapped point)
+        const [fx, fz] = on(s, -along, 0.04);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(s);
+        add(m);
+        [0.2, 0.4, 0.6, 0.8].forEach((o, k) => onFace(s, door - along, o, 0.5 - k * 0.12, 0.9, 0.12, 0.2, 0x3a3f46));
+        for (const a of [-W / 2 + 0.2, W / 2 - 0.2]) {
+          onFace(s, a - along, 0.4, 0.4, 0.4, 0.8, 0.4, 0x8e9299);
+          onFace(s, a - along, 0.4, 1.1, 0.3, 0.6, 0.3, 0x3f7a3a);
+        }
+        sign(s, 'die brille', 2.7, Math.min(2.2, W), { back: '#e9ecef', ink: '#3a3f46', rim: '#3a3f46' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
       } else {
         // the tattoo studio at the corner: rough cream plaster, grey painted bands round the windows, a doorway
         // set back up five steps, the street's name on a dark plate, its own name on small grey boards
