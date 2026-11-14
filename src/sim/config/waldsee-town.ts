@@ -429,8 +429,8 @@ export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind:
 /** tables: the terrace of the Czardas, the beer garden of the Hasen, in front of the ice-cream parlour */
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
   { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
-  { name: "Eisdiele", at: [[64, 63], [64, 65], [64, 67], [65, 68], [67, 68]] },
-  { name: "Memo", at: [[30, 90], [30, 88], [28, 90]] },
+  // (the ice-cream parlour: centred before its west front)
+  { name: "Eisdiele", at: [[64, 63], [64, 66], [62, 64.5]] },
 ];
 /** the front of the Czardas toward the square */
 export const WALDSEE_CZARDAS: WaldseeFace = {"x": 54.5, "z": 44, "dx": 0, "dz": 1, "len": 1};
@@ -444,11 +444,13 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
   { text: "AmannLabs", kind: 'amannlabs', x: 25.4, z: 50.0, dx: 0, dz: 1, len: 5 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
-  { text: "Lädele", kind: 'shop', x: 13.0, z: 70.5, dx: 1, dz: 0, len: 1 },
+  // (on their real houses: the little shop in Ravensburger Strasse 24, beside the optician in number 20)
+  { text: "Lädele", kind: 'shop', x: 13.4, z: 65.6, dx: 0.91, dz: -0.41, len: 2 },
   // (put in by hand, from photos: the inn across the junction, the clothes shop and the optician on the west side of
   // the Ravensburger Strasse, the tattoo studio at the corner of the square)
   { text: "Wirtschaft z. Flasche", kind: 'flasche', x: 61.5, z: 76.0, dx: 0, dz: -1, len: 5 },
-  { text: "NKD", kind: 'nkd', x: 23.0, z: 83.0, dx: 1, dz: 0, len: 2 },
+  // (the clothes shop in Ravensburger Strasse 26)
+  { text: "NKD", kind: 'nkd', x: 17.3, z: 75.2, dx: 0.87, dz: -0.49, len: 3 },
   { text: "die brille", kind: 'brille', x: 9.0, z: 56.5, dx: 1, dz: 0, len: 1 },
   { text: "EMPIRE INK.", kind: 'empire', x: 51.0, z: 61.0, dx: 0, dz: -1, len: 4 },
   { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
@@ -461,7 +463,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   { at: [7.68, 48.46], dir: [-0.426, -0.905], half: 6.88, lake: false },
   { at: [32.16, 90.56], dir: [0.714, 0.7], half: 6.88, lake: false },
   { at: [12.9, 71.32], dir: [-0.899, 0.437], half: 6.88, lake: false },
-  { at: [87.69, 72.98], dir: [0.969, 0.247], half: 4.69, lake: false },
+  // (the Wurzacher Strasse: the barrier a metre further forward)
+  { at: [87.06, 72.82], dir: [0.969, 0.247], half: 4.69, lake: false },
   { at: [10.36, 60.26], dir: [-0.946, 0.325], half: 6.88, lake: false },
   { at: [54.72, 75.4], dir: [-0.845, 0.535], half: 4.69, lake: false },
   { at: [85.42, 47.53], dir: [0.978, -0.21], half: 4.69, lake: true },

@@ -112,7 +112,7 @@ eisFace=face(MK['eis'],want=(-1,0))
 tablesEis=spots((eisFace['x']+eisFace['dx']*2.6,eisFace['z']+eisFace['dz']*2.6),4,1.8,4)
 nemoFace=face(MK['memo'],skip=(face(MK['amadeus'])['house'],))
 tablesNemo=spots((nemoFace['x']+nemoFace['dx']*2,nemoFace['z']+nemoFace['dz']*2),3,1.8,4)
-tables={'Czardas':tablesCz,'Eisdiele':tablesEis,'Memo':tablesNemo}
+tables={'Czardas':tablesCz,'Eisdiele':tablesEis}
 allTables={p for l in tables.values() for p in l}
 
 # --- signs over doors, and the shop of AmannLabs by the fountain: a big window with robots in it
