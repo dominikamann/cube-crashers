@@ -178,6 +178,10 @@ const onBlock = <F extends WaldseeFace>(f: F): F & OnWall => {
   const z = f.dz > 0 ? b.z1 + 1 : f.dz < 0 ? b.z0 : Math.min(Math.max(f.z, b.z0 + 1), b.z1);
   return { ...f, x, z, len: f.dx ? b.z1 - b.z0 + 1 : b.x1 - b.x0 + 1 };
 };
+/** the big rounded corner house: a spot on its wall that looks across the square at the ice-cream parlour, and its
+ *  rounded corner (the entrance is counted from the end of that wall toward it) */
+const CORNER_HOUSE: WaldseeFace = { x: 57.6, z: 64.2, dx: 1, dz: 0, len: 1 };
+const CORNER_ROUND: [number, number] = [56.8, 69.0];
 /**
  * The real buildings that carry a painted shop front: their plaster (and shutters) in the facade's own colours on
  * every wall and gable, found by snapping each shop to its wall (the wall's feet know the building)
@@ -195,8 +199,8 @@ const shopHouses = () => (SHOP_HOUSES ??= (() => {
     flasche: [0xdfe6d6], nkd: [0xe4dfd2], brille: [0xf1efe8, '8a2a30'], empire: [0xe6dcc4], police: [0xf1efe8, '2f5a3c'],
   };
   for (const s of WALDSEE_SIGNS) if (BY_KIND[s.kind]) put(s, BY_KIND[s.kind][0], BY_KIND[s.kind][1]);
-  // (the big rounded corner house between the inn and the ice-cream parlour: pale cream on the whole building)
-  put({ x: 68, z: 74.6, dx: 0, dz: -1, len: 1 }, 0xeee3bd);
+  // (the big rounded corner house across the square from the ice-cream parlour: pale cream on the whole building)
+  put(CORNER_HOUSE, 0xeee3bd);
   return m;
 })());
 /** grass patches out in the water that are not joined to the town: drowned, so no island is left */
@@ -1027,12 +1031,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
   }
 
-  // ---- the big rounded corner house between the inn and the ice-cream parlour: cream plaster, a grey plinth and
+  // ---- the big rounded corner house across the square from the ice-cream parlour: cream plaster, a grey plinth and
   // cornice, white-framed windows in grey surrounds in even rows on every street-facing wall segment of the real
   // building (each segment one textured plane flush on it, clipped to the wall's outline), a flat entrance with a
   // stone frame, a bench, bollards and a bicycle rack at the wall. Nothing of it is solid.
   {
-    const id = (onBlock({ x: 68, z: 74.6, dx: 0, dz: -1, len: 1 }) as OnWall).wall?.id;
+    const id = (onBlock(CORNER_HOUSE) as OnWall).wall?.id;
     const S = 64;
     const feet = id === undefined ? [] : wallFeet().filter(w => {
       if (w.id !== id) return false;
@@ -1040,10 +1044,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const gd = waldseeGround(Math.floor(mx), Math.floor(mz));
       return len > 0.45 && gd !== 'house' && gd !== 'water';
     });
-    // (the entrance: on the longest north-facing segment, its middle `DOOR` tiles from the segment's east end)
+    // (the entrance: on the longest segment looking at the ice-cream parlour, its middle `DOOR` tiles from the
+    // segment's end toward the rounded corner)
     const DOOR = 1.9, RACK = [0.12, 1.32];
     let main: Foot | undefined;
-    for (const w of feet) if (w.nz < -0.9 && (!main || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) > Math.hypot(main.x1 - main.x0, main.z1 - main.z0)) && Math.max(w.x0, w.x1) > 71) main = w;
+    for (const w of feet) if (w.nx * CORNER_HOUSE.dx + w.nz * CORNER_HOUSE.dz > 0.9 && (!main || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) > Math.hypot(main.x1 - main.x0, main.z1 - main.z0))) main = w;
+    // (whether a segment's second foot is its end toward the rounded corner)
+    const toCorner = (w: Foot) => Math.hypot(w.x1 - CORNER_ROUND[0], w.z1 - CORNER_ROUND[1]) < Math.hypot(w.x0 - CORNER_ROUND[0], w.z0 - CORNER_ROUND[1]);
     for (const w of feet) {
       const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), ex = (w.x1 - w.x0) / L, ez = (w.z1 - w.z0) / L;
       // (the canvas runs along the plane's own x axis: (nz, -nx); `flip` when the wall's first foot lies at its far end)
@@ -1073,7 +1080,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       if (E < H - 0.3) rect(0, E - 0.02, E + 0.1, L, '#b5b3ad');
       // the windows: as many as fit 1.3 tiles apart, spread along the segment so the rows run on round the curve
       const n = Math.max(L > 0.8 ? 1 : 0, Math.round(L / 1.3));
-      const doorU = w === main ? cu(w.x1 > w.x0 ? L - DOOR : DOOR) : -9;
+      const doorU = w === main ? cu(toCorner(w) ? L - DOOR : DOOR) : -9;
       const win = (u: number, y0: number, y1: number, ww: number) => {
         rect(u - ww / 2 - 0.07, y0 - 0.07, y1 + 0.07, ww + 0.14, '#9a9ca0');
         rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
@@ -1113,8 +1120,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
       m.rotation.y = Math.atan2(w.nx, w.nz);
       add(m);
-      // the bollards: low grey stones along the wall's left part, and nothing else solid
-      if (w.nz < -0.9 && w !== main) {
+      // the bollards: low grey stones along the other walls looking the same way, and nothing else solid
+      if (main && w.nx * main.nx + w.nz * main.nz > 0.9 && w !== main) {
         const k = Math.floor(L / 0.9);
         for (let i = 0; i < k; i++) {
           const t = (i + 0.5) * (L / k);
@@ -1122,8 +1129,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         }
       }
       if (w === main) {
-        // (distances from the segment's east end: `at(d)` is that spot, `out` off the wall)
-        const east = w.x1 > w.x0 ? 1 : 0;
+        // (distances from the segment's end toward the rounded corner: `at(d)` is that spot, `out` off the wall)
+        const east = toCorner(w) ? 1 : 0;
         const at = (d: number, out: number): [number, number] => {
           const t = east ? L - d : d;
           return [w.x0 + ex * t + w.nx * out, w.z0 + ez * t + w.nz * out];
