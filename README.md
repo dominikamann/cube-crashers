@@ -428,6 +428,11 @@ floor). Who joins while a match is running waits in the lobby for the next one.
 
 The server is a small program without graphics. Pick one way:
 
+**Free in the cloud, online day and night** (no computer of your own has to keep running): Oracle Cloud's
+Always Free tier is enough for it. [The step-by-step guide](docs/hosting-oracle-cloud.md) gets a server up in
+about 20 minutes, all in the browser: one script to paste, one port to open, and it keeps itself on the
+newest version.
+
 **Docker** (recommended):
 
 ```bash
@@ -527,7 +532,8 @@ Players with the desktop app keep using port 47800, on the same server and in th
 
 ### Get your server into the list
 
-Open a pull request that adds it to [`servers.json`](servers.json). `address` is where the desktop app
+Open a pull request that adds it to [`servers.json`](servers.json) (on GitHub: the pencil icon on the file,
+no git needed). `address` is where the desktop app
 connects; `web` is the address for browser players, if your server takes them (leave it out otherwise):
 
 ```json
