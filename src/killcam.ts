@@ -52,8 +52,12 @@ export class KillCamRecorder {
   /** the replay of what is kept, watched from `killerId`'s side; null when nothing was recorded */
   start(killerId: number): KillCamPlayback | null {
     if (this.frames.length === 0) return null;
-    const frames = this.frames.map(f => JSON.parse(f.snap) as { state: SnapState; events: SimEvent[] });
-    const first = frames[0].state;
+    // each moment is read when the replay gets to it: reading five seconds at once made the picture stand still
+    // for a moment just when the replay began
+    type Moment = { state: SnapState; events: SimEvent[] };
+    const frames = this.frames.map(f => ({ tick: f.tick, snap: f.snap }));
+    const read = (i: number) => JSON.parse(frames[i].snap) as Moment;
+    const first = read(0).state;
     const map = FLOORS[first.mapId]?.map;
     if (!map) return null;
     const state = createSim(map, 1, { mode: 'versus', players: first.players.length });
@@ -62,9 +66,10 @@ export class KillCamRecorder {
     let clock = first.tick;
     let events: SimEvent[] = [];
     const applyUpTo = (tick: number) => {
-      while (next < frames.length && frames[next].state.tick <= tick) {
-        applySnapshot(state, frames[next].state);
-        events.push(...frames[next].events);
+      while (next < frames.length && frames[next].tick <= tick) {
+        const m = read(next);
+        applySnapshot(state, m.state);
+        events.push(...m.events);
         next++;
       }
     };

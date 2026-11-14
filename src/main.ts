@@ -605,8 +605,9 @@ function startGame() {
       if (split) renderer.setLookAhead(1, true);
       // players and vehicles are drawn between two ticks, so a fast kart glides instead of hopping
       const shown = replay ? replay.state : s;
-      // (a LAN client's state comes in snapshots: there the smoother goes by the time between frames)
-      const restore = smooth(shown, alpha, role === 'client' && !replay ? { frameDt } : undefined);
+      // (a LAN client's state comes in snapshots: there the smoother goes by the time between frames. So does the
+      // kill cam's: its replay runs by its own clock, not by the ticks of the match that goes on behind it)
+      const restore = smooth(shown, alpha, role === 'client' || replay ? { frameDt } : undefined);
       try {
         renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
         // (the graphics test draws the picture a second time: see graphics-test.ts)
