@@ -19,7 +19,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
 **Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
 **first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
-⬇️ Quick install: **[Installer → always the latest release](https://github.com/dominikamann/cube-crashers/releases/latest)**:
+Runs on Windows and macOS; a browser version lets you try it first.**[Installer → always the latest release](https://github.com/dominikamann/cube-crashers/releases/latest)**:
 `.exe` for Windows, `.dmg` for macOS. 
 
 <table>
@@ -102,7 +102,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
   </tr>
 </table>
 
-Runs on **Windows and macOS**; a [browser version](https://amannlabs.itch.io/cube-crashers) lets you try it first. Free and open source (MIT).
+Free and open source (MIT).
 
 ---
 
