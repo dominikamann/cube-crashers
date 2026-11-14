@@ -59,6 +59,26 @@ const hull = (pts: [number, number][]): [number, number][] => {
   };
   return [...half(p), ...half([...p].reverse())];
 };
+/**
+ * How high a wall's eaves are (a polygon of [x, y, z]): the height of its longest level top edge, so one low corner
+ * (where an annex joins, say) does not take the windows of the storeys above it; a gable wall, with no level top,
+ * has its eaves at its lowest top corner. Infinity for a wall with no top above the ground
+ */
+const wallEave = (q: number[]): number => {
+  const level = new Map<number, number>();
+  let low = Infinity;
+  const m = q.length / 3;
+  for (let i = 0; i < m; i++) {
+    const j = (i + 1) % m, y0 = q[3 * i + 1], y1 = q[3 * j + 1];
+    if (y0 > 0.3) low = Math.min(low, y0);
+    if (y0 <= 0.3 || y1 <= 0.3 || Math.abs(y1 - y0) > 0.15) continue;
+    const h = Math.round(((y0 + y1) / 2) * 10) / 10, len = Math.hypot(q[3 * j] - q[3 * i], q[3 * j + 2] - q[3 * i + 2]);
+    level.set(h, (level.get(h) ?? 0) + len);
+  }
+  let best = -1, at = low;
+  for (const [h, len] of level) if (len > best + 1e-6 || (Math.abs(len - best) < 1e-6 && h < at)) ((best = len), (at = h));
+  return at;
+};
 type Foot = { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number; id: number; eave: number; prof: [number, number][] };
 // (worked out on first use: shown() needs waldseeGround, which comes further down)
 let FEET: Foot[] | null = null;
@@ -103,10 +123,9 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
         prof.push(...pts);
         gabled = true;
       }
-      // (its own eave: the lowest of its top corners, so a front on a wall higher than the house's lowest roof
-      // reaches up to that wall's own roof)
-      let own = Infinity;
-      for (let i = 1; i < q.length; i += 3) if (q[i] > 0.3) own = Math.min(own, q[i]);
+      // (its own eave (see wallEave), so a front on a wall higher than the house's lowest roof reaches up to that
+      // wall's own roof)
+      const own = wallEave(q);
       out.push({ x0, z0, x1, z1, nx, nz, id, eave: isFinite(own) ? own : eave, prof: gabled ? hull(prof) : prof });
     }
   }
@@ -603,8 +622,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const wall = k === 'w';
         // (each wall its own eaves: the lowest of its top corners, so a tall part of a house next to a low annex
         // gets windows all the way up, not only as high as the annex's roof)
-        let eave = Infinity;
-        if (wall) for (const p of pts) if (p.y > 0.3) eave = Math.min(eave, p.y);
+        // (a level top edge low on the wall that is shorter than the main one does not count, see wallEave)
+        let eave = wall ? wallEave(q) : Infinity;
         if (!isFinite(eave)) eave = eaves;
         const storeys = Math.max(1, Math.round(eave / 2)), storey = eave / storeys;
         col.setHex(wall ? plaster : tiles);
@@ -1042,7 +1061,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       if (w.id !== id) return false;
       const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), mx = (w.x0 + w.x1) / 2 + w.nx * 0.7, mz = (w.z0 + w.z1) / 2 + w.nz * 0.7;
       const gd = waldseeGround(Math.floor(mx), Math.floor(mz));
-      return len > 0.45 && gd !== 'house' && gd !== 'water';
+      return len > 0.05 && gd !== 'house' && gd !== 'water';
     });
     // (the entrance: on the longest segment looking at the ice-cream parlour, its middle `DOOR` tiles from the
     // segment's end toward the rounded corner)
@@ -1051,15 +1070,35 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     for (const w of feet) if (w.nx * CORNER_HOUSE.dx + w.nz * CORNER_HOUSE.dz > 0.9 && (!main || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) > Math.hypot(main.x1 - main.x0, main.z1 - main.z0))) main = w;
     // (whether a segment's second foot is its end toward the rounded corner)
     const toCorner = (w: Foot) => Math.hypot(w.x1 - CORNER_ROUND[0], w.z1 - CORNER_ROUND[1]) < Math.hypot(w.x0 - CORNER_ROUND[0], w.z0 - CORNER_ROUND[1]);
-    for (const w of feet) {
-      const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), ex = (w.x1 - w.x0) / L, ez = (w.z1 - w.z0) / L;
-      // (the canvas runs along the plane's own x axis: (nz, -nx); `flip` when the wall's first foot lies at its far end)
-      const flip = ex * w.nz - ez * w.nx < 0;
-      const cu = (t: number) => (flip ? L - t : t);
-      const ymax = Math.max(...w.prof.map(p => p[1]));
-      const H = Math.ceil(ymax * S) / S, E = w.eave;
+    // (the walls in runs: pieces joined end to end without a sharp corner make one canvas, so the windows run on
+    // evenly round the rounded corner, however short its pieces; each piece shows its part of the canvas)
+    const len = (w: Foot) => Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
+    // (whether a piece's first foot is its left end as one looks at it: toward (-nz, nx), where a plane's texture starts)
+    const leftFirst = (w: Foot) => (w.x1 - w.x0) * w.nz - (w.z1 - w.z0) * w.nx >= 0;
+    const leftEnd = (w: Foot): [number, number] => (leftFirst(w) ? [w.x0, w.z0] : [w.x1, w.z1]);
+    const rightEnd = (w: Foot): [number, number] => (leftFirst(w) ? [w.x1, w.z1] : [w.x0, w.z0]);
+    const joins = (a: Foot, b: Foot) => a !== b && a.nx * b.nx + a.nz * b.nz > 0.6 && Math.hypot(rightEnd(a)[0] - leftEnd(b)[0], rightEnd(a)[1] - leftEnd(b)[1]) < 0.2;
+    const runs: Foot[][] = [], used = new Set<Foot>();
+    for (const first of [...feet.filter(w => !feet.some(o => joins(o, w))), ...feet]) {
+      if (used.has(first)) continue;
+      const run = [first];
+      used.add(first);
+      for (let next = feet.find(o => !used.has(o) && joins(first, o)); next; next = feet.find(o => !used.has(o) && joins(run[run.length - 1], o))) {
+        used.add(next);
+        run.push(next);
+      }
+      runs.push(run);
+    }
+    for (const run of runs) {
+      const from: number[] = [];
+      let W = 0;
+      for (const w of run) ((from.push(W)), (W += len(w)));
+      const ymax = Math.max(...run.flatMap(w => w.prof.map(p => p[1])));
+      const H = Math.ceil(ymax * S) / S, E = Math.min(...run.map(w => w.eave));
+      // (a spot `t` along piece `k` from its first foot, across the run's canvas)
+      const cu = (k: number, t: number) => from[k] + (leftFirst(run[k]) ? t : len(run[k]) - t);
       const canvas = document.createElement('canvas');
-      canvas.width = Math.max(8, Math.round(L * S));
+      canvas.width = Math.max(8, Math.round(W * S));
       canvas.height = Math.round(H * S);
       const g = canvas.getContext('2d')!;
       const px = (u: number) => u * S, py = (y: number) => (H - y) * S;
@@ -1067,20 +1106,23 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = c;
         g.fillRect(px(u), py(y1), ww * S, (y1 - y0) * S);
       };
-      // only inside the wall's outline (the gable and mansard stand higher than the eaves)
+      // only inside the walls' outlines (the gable and mansard stand higher than the eaves)
       g.beginPath();
-      w.prof.forEach(([t, y], i) => (i ? g.lineTo(px(cu(t)), py(y)) : g.moveTo(px(cu(t)), py(y))));
-      g.closePath();
+      run.forEach((w, k) => {
+        w.prof.forEach(([t, y], i) => (i ? g.lineTo(px(cu(k, t)), py(y)) : g.moveTo(px(cu(k, t)), py(y))));
+        g.closePath();
+      });
       g.clip();
-      rect(0, 0, H, L, '#eee3bd');
-      rect(0, 0, 0.55, L, '#a3a4a6');
-      rect(0, 0.55, 0.6, L, '#8f9094');
+      rect(0, 0, H, W, '#eee3bd');
+      rect(0, 0, 0.55, W, '#a3a4a6');
+      rect(0, 0.55, 0.6, W, '#8f9094');
       // the slim grey cornice over the ground floor, a darker band at the eaves
-      rect(0, 2.0, 2.12, L, '#b5b3ad');
-      if (E < H - 0.3) rect(0, E - 0.02, E + 0.1, L, '#b5b3ad');
-      // the windows: as many as fit 1.3 tiles apart, spread along the segment so the rows run on round the curve
-      const n = Math.max(L > 0.8 ? 1 : 0, Math.round(L / 1.3));
-      const doorU = w === main ? cu(toCorner(w) ? L - DOOR : DOOR) : -9;
+      rect(0, 2.0, 2.12, W, '#b5b3ad');
+      if (E < H - 0.3) rect(0, E - 0.02, E + 0.1, W, '#b5b3ad');
+      // the windows: as many as fit 1.3 tiles apart, spread evenly along the whole run
+      const n = Math.max(W > 0.8 ? 1 : 0, Math.round(W / 1.3));
+      const mk = main ? run.indexOf(main) : -1;
+      const doorU = main && mk >= 0 ? cu(mk, toCorner(main) ? len(main) - DOOR : DOOR) : -9;
       const win = (u: number, y0: number, y1: number, ww: number) => {
         rect(u - ww / 2 - 0.07, y0 - 0.07, y1 + 0.07, ww + 0.14, '#9a9ca0');
         rect(u - ww / 2, y0, y1, ww, '#fbf8f0');
@@ -1093,7 +1135,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         rect(u - ww / 2 - 0.09, y0 - 0.1, y0 - 0.03, ww + 0.18, '#a7a8ab');
       };
       for (let k = 0; k < n; k++) {
-        const u = (k + 0.5) * (L / n);
+        const u = (k + 0.5) * (W / n);
         for (let fl = 0; fl * 2 < ymax - 0.6; fl++) {
           const f0 = fl * 2, top = Math.min(ymax, f0 + 2);
           if (fl === 0) {
@@ -1103,7 +1145,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         }
       }
       // the entrance: a flat door in a grey stone frame with pilasters and a lintel
-      if (w === main && doorU > 0) {
+      if (doorU > 0) {
         rect(doorU - 0.55, 0, 1.95, 0.14, '#a3a4a6');
         rect(doorU + 0.41, 0, 1.95, 0.14, '#a3a4a6');
         rect(doorU - 0.58, 1.78, 1.95, 1.16, '#a3a4a6');
@@ -1114,12 +1156,20 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
-      const geo = new THREE.PlaneGeometry(L, H), mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
-      disposables.push(tex, geo, mat);
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
-      m.rotation.y = Math.atan2(w.nx, w.nz);
-      add(m);
+      const mat = new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 });
+      disposables.push(tex, mat);
+      run.forEach((w, k) => {
+        const L = len(w), geo = new THREE.PlaneGeometry(L, H), uv = geo.attributes.uv;
+        for (let i = 0; i < uv.count; i++) uv.setX(i, (from[k] + uv.getX(i) * L) / W);
+        disposables.push(geo);
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set((w.x0 + w.x1) / 2 + w.nx * 0.04, H / 2, (w.z0 + w.z1) / 2 + w.nz * 0.04);
+        m.rotation.y = Math.atan2(w.nx, w.nz);
+        add(m);
+      });
+    }
+    for (const w of feet) {
+      const L = len(w), ex = (w.x1 - w.x0) / L, ez = (w.z1 - w.z0) / L;
       // the bollards: low grey stones along the other walls looking the same way, and nothing else solid
       if (main && w.nx * main.nx + w.nz * main.nz > 0.9 && w !== main) {
         const k = Math.floor(L / 0.9);

@@ -535,7 +535,7 @@ function startGame() {
           [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }],
         );
         // the Town is walked in first person, and stays so while one is there
-        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused') && !params.has('see') && params.get('demo') !== 'witch';
+        const inTown = s.map.id === 'waldsee' && s.run.stage === 'floor' && s.phase === 'playing' && forced === 'both' && (mode === 'playing' || mode === 'paused') && !params.has('see') && !params.has('free') && params.get('demo') !== 'witch';
         const controls = [{ control: keyboard, look: lookFor(localId()) }, { control: padCtl, look: lookFor(localId()) }, { control: padCtl2, look: lookFor(1) }];
         townView.update(inTown, controls);
         if (inTown) for (const c of controls) if (!c.control.firstPerson) c.control.setFirstPerson(true, c.look);
@@ -1130,8 +1130,8 @@ function startGame() {
     }
     // V (or the player's view key): first person on or off; the mouse gets captured to turn the view
     // (not when the LAN host fixed the view)
-    // (nor in the Town, which is walked in first person only)
-    const inTown = view().map.id === 'waldsee' && view().run.stage === 'floor';
+    // (nor in the Town, which is walked in first person only, unless `&free` lets the view free, to try it)
+    const inTown = view().map.id === 'waldsee' && view().run.stage === 'floor' && !params.has('see') && !params.has('free');
     const fixedView = inTown || (role === 'host' ? host?.viewMode !== 'both' : role === 'client' ? client?.viewMode !== 'both' : false);
     if (mode === 'playing' && e.code === settings.bindings.view && !e.repeat && !fixedView) lockPointer(!keyboard.firstPerson);
     // a versus vote in the lobby: 1 or 2
