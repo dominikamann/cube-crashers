@@ -19,7 +19,10 @@ export function shotAtWall(s: SimState, pos: Vec2): void {
   if (!spot || spot.kind !== 'wall') return;
   const tx = Math.floor(pos.x), tz = Math.floor(pos.z);
   const i = spot.along === 'x' ? tx - spot.tx : tz - spot.tz;
-  if (i < 0 || i >= spot.w || (spot.along === 'x' ? tz !== spot.tz : tx !== spot.tx)) return;
+  // (a block that stands right before the logo's wall is hit in its place: the corner of the house next door, before
+  // the left end of the shop sign in the Town)
+  const depth = spot.along === 'x' ? (tz - spot.tz) * spot.facing.z : (tx - spot.tx) * spot.facing.x;
+  if (i < 0 || i >= spot.w || (depth !== 0 && depth !== 1)) return;
   // only from the side the logo is on
   if ((pos.x - (tx + 0.5)) * spot.facing.x + (pos.z - (tz + 0.5)) * spot.facing.z < 0) return;
   const egg = (s.logoEgg ??= { hits: 0, given: 0, restUntil: 0 });

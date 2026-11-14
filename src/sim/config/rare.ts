@@ -3,6 +3,8 @@ import type { RareKind } from '../types';
 export const JETPACK = {
   /** 5 seconds of flight */
   fuelTicks: 300,
+  /** every further jetpack picked up on top of the one on your back makes its tank this much bigger */
+  extraFuel: 0.1,
   /** an empty tank fills up again in 6 seconds on the ground */
   rechargeTicks: 360,
   /** Space has to be held this long before you take off; a shorter tap is a jump */
@@ -32,3 +34,6 @@ export const ALL_RARE: RareKind[] = ['slushMachine', 'bubblegumBazooka', 'leafBl
 
 /** frozen monsters take this much more damage */
 export const FROZEN_DAMAGE = 2;
+
+/** how much the tank of a jetpack holds (ticks of flight) with `extra` further jetpacks picked up on top of it */
+export const jetTank = (extra = 0): number => JETPACK.fuelTicks * (1 + JETPACK.extraFuel * extra);

@@ -253,9 +253,15 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     // just took hold of a ladder
   } else if (flying && moveDir) {
     const speed = PLAYER_SPEED * JETPACK.speedFactor * (1 + 0.12 * p.perks.speed) * turbo * Math.min(len, 1);
-    // over everything, but never past the outer wall of the map
-    p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
-    p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
+    if (s.map.solids) {
+      // (in the Town the houses are too high to fly over: the flight stops at their fronts, and the barriers and
+      // fences are the end of the map in the air as on the ground)
+      moveCircle(s.map, p.pos, moveDir.x * speed * DT, moveDir.z * speed * DT, PLAYER_RADIUS, BLOCKS_AIR);
+    } else {
+      // over everything, but never past the outer wall of the map
+      p.pos.x = Math.min(s.map.w - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.x + moveDir.x * speed * DT));
+      p.pos.z = Math.min(s.map.h - 1 - PLAYER_RADIUS, Math.max(1 + PLAYER_RADIUS, p.pos.z + moveDir.z * speed * DT));
+    }
   } else if (p.perched && p.vehicleId === null && !flying) {
     // on top of a wall: walk along it; step off the edge and you drop to the floor
     if (moveDir) {

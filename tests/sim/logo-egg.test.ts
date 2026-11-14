@@ -85,4 +85,32 @@ describe('the AmannLabs easter egg', () => {
     expect(events.filter(e => e.type === 'logoHit')).toHaveLength(LOGO_EGG.hits);
     expect(events.filter(e => e.type === 'logoEgg')).toHaveLength(1);
   });
+
+  it('the whole sign counts, its mark at the left end too, where the corner of the house next door stands before the wall', () => {
+    for (const x of [24.5, 25.5, 26.5, 27.5]) {
+      const s = createSim(floorWaldsee, 5, { mode: 'quick' });
+      s.enemies = [];
+      s.hordes = [];
+      s.boss = null;
+      s.players[0].pos = { x, z: 52.5 };
+      let hits = 0;
+      for (let i = 0; i < 40 && hits < 3; i++) {
+        stepSim(s, [{ type: 'aim', playerId: 0, point: { x, z: 45 } }, { type: 'fire', playerId: 0 }]);
+        hits += s.events.filter(e => e.type === 'logoHit').length;
+      }
+      expect(hits, `at ${x}`).toBeGreaterThanOrEqual(3);
+    }
+    // (not the wall beside the sign)
+    const s = createSim(floorWaldsee, 5, { mode: 'quick' });
+    s.enemies = [];
+    s.hordes = [];
+    s.boss = null;
+    s.players[0].pos = { x: 23.5, z: 52.5 };
+    let beside = 0;
+    for (let i = 0; i < 40; i++) {
+      stepSim(s, [{ type: 'aim', playerId: 0, point: { x: 23.5, z: 45 } }, { type: 'fire', playerId: 0 }]);
+      beside += s.events.filter(e => e.type === 'logoHit').length;
+    }
+    expect(beside).toBe(0);
+  });
 });

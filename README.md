@@ -554,7 +554,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `W` `A` `S` `D` / arrow keys | Move: `W` is up the screen, the mouse only aims (*Settings → Walking* switches to "toward the crosshair"). In first person `W` walks where you look. |
 | `V` | First person on / off (mouse turns and tilts the view) |
 | `1`–`6` / mouse wheel | Select a weapon |
-| `Q` | Select the rare weapon (when you have one) |
+| `Q` | Select the rare weapon when you have one; without one, switch to the next weapon |
 | `Space` | Jump over barriers and glitch floor; landing **stomps** everything around you (several in a row get weaker). Only the top of a jump is out of the monsters' reach. **Hold** to fly when you carry a jetpack. |
 | `Shift` | **Dash**: short, invulnerable, damages what you pass |
 | `E` | Get in / out of a kart · on a pad: open the towers, `E` again builds the selected one (mouse wheel or `1`–`5` to choose), hold to build it right away |
@@ -649,7 +649,8 @@ you **climb onto the block**, the same perch the jetpack lands you on. Walk off 
 
 Lies somewhere on the map now and then. Pick it up and **hold Space** to fly over walls, glitch floor and
 monsters. The tank lasts about 5 seconds of flight and fills up again on the ground; you keep the jetpack
-for the rest of the floor.
+for the rest of the floor. Pick up another one while you carry one and the tank gets 10% bigger each time. In the Town you fly along its streets, over the monsters and the low things in
+them: its houses are too high, and its barriers and fences are the end of the map in the air as well.
 
 **Shots have a height.** A shot starts as high as you are and flies straight to the first monster or rival in
 its line of fire: down from a jetpack onto the floor, up from the floor to someone flying, level between two

@@ -4,7 +4,7 @@ import { WALDSEE_FIRE } from '../../src/sim/config/floor-waldsee';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
 import { BRAWL, spawnBoss } from '../../src/sim/systems/boss';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, nearestFree, reachable } from '../../src/sim/map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, nearestFree, reachable } from '../../src/sim/map/tilemap';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { floorCleared } from '../../src/sim/systems/run';
 import { spawnWild, WILD } from '../../src/sim/systems/wild-boss';
@@ -428,7 +428,8 @@ describe('the little witches about the Town', () => {
     run(s, 900);
     expect(Math.hypot(e.pos.x - start.x, e.pos.z - start.z)).toBeGreaterThan(1);
     // someone steps into sight: the little witch is after them
-    s.players[0].pos = nearestFree(s.map, { x: e.pos.x + 3, z: e.pos.z }, 0.4, BLOCKS_WALKER);
+    // (on whichever side of her the street is open)
+    s.players[0].pos = [[3, 0], [-3, 0], [0, 3], [0, -3]].map(([dx, dz]) => nearestFree(s.map, { x: e.pos.x + dx, z: e.pos.z + dz }, 0.4, BLOCKS_WALKER)).find(q => hasLos(s.map, q, e.pos))!;
     run(s, 20);
     expect(s.hordes.find(h => h.id === e.hordeId)?.aggro).toBe(true);
   });

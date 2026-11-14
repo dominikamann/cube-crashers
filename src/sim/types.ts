@@ -185,6 +185,8 @@ export interface Player {
   /** tick of the last damage taken (for healing on easy levels) */
   lastDamageAt: number;
   jetFuel: number;
+  /** how many more jetpacks were picked up on top of the one carried: each makes its tank bigger (see jetTank) */
+  jetExtra?: number;
   flying: boolean;
   /** standing on top of a wall block (landed there with the jetpack) */
   perched?: boolean;

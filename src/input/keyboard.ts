@@ -117,7 +117,7 @@ export class Keyboard {
       if (slot >= 0 && slot < TOWER_ORDER.length) this.chosen = TOWER_ORDER[slot];
     } else {
       if (slot >= 0) this.slot = this.shopKey = slot;
-      if (action === 'rare') this.slot = -1;
+      if (action === 'rare' && first) this.slot = -1;
       // R says ready in the shop unless the player gave R a job of its own
       if (code === 'Enter' || (code === 'KeyR' && action === null)) this.readyPressed = true;
     }
@@ -313,6 +313,8 @@ export class Keyboard {
     if (this.use) cmds.push({ type: 'use', playerId });
     if (this.held('use')) cmds.push({ type: 'hold', playerId });
     this.jump = this.dash = this.use = false;
+    // (Q with no rare weapon to pick: on to the next weapon, like one notch of the wheel)
+    if (p && this.slot === -1 && !p.rare && p.weapons.length > 0) this.slot = p.weapons.length > 1 ? (p.selected + 1) % p.weapons.length : null;
     if (p && this.wheelSteps !== 0 && p.weapons.length > 0) {
       const n = p.weapons.length;
       this.slot = (((p.selected + this.wheelSteps) % n) + n) % n;

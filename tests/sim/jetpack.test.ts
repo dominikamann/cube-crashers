@@ -28,6 +28,28 @@ describe('jetpack', () => {
     expect(s.events).toContainEqual({ type: 'jetpackPicked', playerId: 0 });
   });
 
+  it('another one on top of the one on your back makes the tank a tenth bigger each time, until the jetpack is gone', () => {
+    const s = withJetpack();
+    const p = s.players[0];
+    for (const n of [1, 2]) {
+      p.jetFuel = 10;
+      s.jetpacks.push({ id: s.nextId++, pos: { ...p.pos } });
+      stepSim(s, []);
+      expect(s.jetpacks).toHaveLength(0);
+      expect(p.jetFuel).toBeCloseTo(JETPACK.fuelTicks * (1 + 0.1 * n));
+    }
+    // the bigger tank fills up to its brim on the ground, in the same time as a plain one
+    p.jetFuel = 0;
+    run(s, JETPACK.rechargeTicks + 2);
+    expect(p.jetFuel).toBeCloseTo(JETPACK.fuelTicks * 1.2);
+    // a new jetpack after losing this one starts plain again
+    p.jetpack = false;
+    p.jetFuel = 0;
+    s.jetpacks.push({ id: s.nextId++, pos: { ...p.pos } });
+    stepSim(s, []);
+    expect(p.jetFuel).toBe(JETPACK.fuelTicks);
+  });
+
   it('flies over a wall and burns fuel while flying', () => {
     const s = withJetpack();
     const p = s.players[0];

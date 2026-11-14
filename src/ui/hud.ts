@@ -12,7 +12,7 @@ import { Tile, tileAt } from '../sim/map/tilemap';
 import { t, type StringKey } from '../i18n';
 import { cssColor, isColorBlind, palette, playerColor } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
-import { JETPACK } from '../sim/config/rare';
+import { jetTank } from '../sim/config/rare';
 import { ALARM_MAX, DASH_RECHARGE_TICKS, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
 import { comboMult } from '../sim/systems/combat';
@@ -352,7 +352,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       }
 
       jetBox.style.display = p.jetpack ? '' : 'none';
-      jetFill.style.width = `${(p.jetFuel / JETPACK.fuelTicks) * 100}%`;
+      jetFill.style.width = `${Math.min(1, p.jetFuel / jetTank(p.jetExtra)) * 100}%`;
       rareSlot.style.display = p.rare ? '' : 'none';
       if (p.rare) {
         rareGlyph.textContent = RARE_GLYPH[p.rare.kind];

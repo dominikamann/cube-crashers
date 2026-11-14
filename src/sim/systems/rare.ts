@@ -2,7 +2,7 @@ import { spotClear } from './ground';
 import { carryingCube, jumpTicks } from './versus';
 import { perchable } from '../map/perch';
 import { PLAYER_RADIUS } from '../config/balance';
-import { JETPACK, RARE } from '../config/rare';
+import { JETPACK, jetTank, RARE } from '../config/rare';
 import { BLOCKS_WALKER, hasLos, isFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
@@ -47,16 +47,18 @@ export function placeStartJetpack(s: SimState): void {
 export function updateJetpacks(s: SimState): void {
   if (s.tick >= s.nextJetpackAt) {
     s.nextJetpackAt = s.tick + JETPACK.respawnTicks;
-    // (none in the Town: one stays on the ground between its houses)
-    if (s.jetpacks.length === 0 && s.map.id !== 'waldsee') placeJetpack(s, s.map.powerSpots);
+    // (in the Town too: one flies along its streets there, not over its houses, see player.ts)
+    if (s.jetpacks.length === 0) placeJetpack(s, s.map.powerSpots);
   }
   // from a kart or a unicorn too: you ride over it and have it on your back when you get out
   const alive = s.players.filter(p => p.downUntil === null);
   s.jetpacks = s.jetpacks.filter(j => {
     const p = alive.find(x => dist(x.pos, j.pos) <= JETPACK.pickupRadius);
     if (!p) return true;
+    // (one more on top of the one on their back: a bigger tank, for as long as they keep the jetpack)
+    p.jetExtra = p.jetpack ? (p.jetExtra ?? 0) + 1 : 0;
     p.jetpack = true;
-    p.jetFuel = JETPACK.fuelTicks;
+    p.jetFuel = jetTank(p.jetExtra);
     s.events.push({ type: 'jetpackPicked', playerId: p.id });
     return false;
   });
@@ -204,7 +206,7 @@ export function updateFlight(s: SimState, p: Player, wantsToFly: boolean): boole
   }
   if (!p.flying) {
     // the tank refills on the ground
-    if (p.jetpack && p.air === 0 && !wantsToFly) p.jetFuel = Math.min(JETPACK.fuelTicks, p.jetFuel + JETPACK.fuelTicks / JETPACK.rechargeTicks);
+    if (p.jetpack && p.air === 0 && !wantsToFly) p.jetFuel = Math.min(jetTank(p.jetExtra), p.jetFuel + jetTank(p.jetExtra) / JETPACK.rechargeTicks);
     return false;
   }
   // let go (or out of fuel): sink down gently instead of dropping

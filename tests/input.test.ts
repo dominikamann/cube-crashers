@@ -279,9 +279,26 @@ describe('mouse steering', () => {
 
   it('selects the rare weapon with Q', () => {
     const s = createSim(floor01, 1);
+    s.players[0].rare = { kind: 'slushMachine', until: 1e9, cooldown: 0 };
     const k = new Keyboard();
     k.keyDown('KeyQ', 0);
     expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
+  });
+
+  it('without a rare weapon Q goes on to the next weapon, once per press', () => {
+    const s = createSim(floor01, 1);
+    s.players[0].weapons.push({ kind: 'bomb', level: 1, cooldown: 0 }, { kind: 'laserSword', level: 1, cooldown: 0 });
+    const k = new Keyboard();
+    k.keyDown('KeyQ', 0);
+    expect(k.commands(s, 0, 10)).toContainEqual({ type: 'select', playerId: 0, slot: 1 });
+    s.players[0].selected = 1;
+    // (held down, the key repeats: that is still one press)
+    k.keyDown('KeyQ', 0);
+    expect(k.commands(s, 0, 20).some(c => c.type === 'select')).toBe(false);
+    k.keyUp('KeyQ');
+    s.players[0].selected = 2;
+    k.keyDown('KeyQ', 0);
+    expect(k.commands(s, 0, 30)).toContainEqual({ type: 'select', playerId: 0, slot: 0 });
   });
 });
 
@@ -375,7 +392,9 @@ describe('Keyboard with rebound keys', () => {
     k.keyDown('KeyR', 0);
     k.keyDown('ControlLeft', 0);
     k.keyDown('KeyB', 0);
-    const after = k.commands(createSim(floor01, 1), 0, 20);
+    const s = createSim(floor01, 1);
+    s.players[0].rare = { kind: 'slushMachine', until: 1e9, cooldown: 0 };
+    const after = k.commands(s, 0, 20);
     expect(after).toContainEqual({ type: 'select', playerId: 0, slot: -1 });
     expect(after).toContainEqual({ type: 'dash', playerId: 0 });
     expect(k.firstPerson).toBe(true);

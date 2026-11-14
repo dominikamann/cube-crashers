@@ -509,7 +509,7 @@ export function witchDown(s: SimState, b: BossState): void {
 }
 
 /** how many little witches walk the Town's streets on their own (each one a horde, so more of them with more players) */
-export const TOWN_WITCHLINGS = 5;
+export const TOWN_WITCHLINGS = 10;
 
 /**
  * The little witches out in the Town: each on her own, at places spread over the Town (each as far from the

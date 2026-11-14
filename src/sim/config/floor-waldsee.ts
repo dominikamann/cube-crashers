@@ -154,4 +154,6 @@ b.put('w', [80, 71], [10, 53], [29, 86], [48, 46], [55, 73], [83, 47], [30, 62],
 export const WALDSEE_FIRE = { x: 42.5, z: 54.5 };
 export const floorWaldseeRows = b.rows();
 // (the real houses' outlines: one stops at them where a front runs slanted across the tiles, see waldsee-solids.ts)
-export const floorWaldsee: FloorMap = { ...parseMap('waldsee', floorWaldseeRows), solids: WALDSEE_SOLIDS };
+/** the glass case with the robots at the AmannLabs shop, out in front of its wall (see waldsee-look.ts): solid like the wall */
+const SHOP_CASE = [23.65, 50, 28.35, 50, 28.35, 50, 28.35, 50.75, 28.35, 50.75, 23.65, 50.75, 23.65, 50.75, 23.65, 50];
+export const floorWaldsee: FloorMap = { ...parseMap('waldsee', floorWaldseeRows), solids: [...WALDSEE_SOLIDS, SHOP_CASE] };
