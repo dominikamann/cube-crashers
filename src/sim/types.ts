@@ -679,7 +679,10 @@ export type SimEvent =
   /** a medic station's pulse: its reach, and the players it patched up */
   | { type: 'towerHealed'; pos: Vec2; radius: number; targets: Vec2[] }
   | { type: 'towerDestroyed'; kind: TowerKind; pos: Vec2 }
-  | { type: 'playerHit'; playerId: number; hp: number }
+  /** `by`: the player whose shot or blow it was (none for monsters, the floor, ...) */
+  | { type: 'playerHit'; playerId: number; hp: number; pos: Vec2; amount: number; by?: number }
+  /** a hit on a vehicle someone is in: the vehicle takes it, not the driver */
+  | { type: 'vehicleHit'; vehicleId: number; pos: Vec2; amount: number; by?: number }
   | { type: 'playerDown'; playerId: number }
   | { type: 'playerDowned'; playerId: number }
   | { type: 'playerRevived'; playerId: number; by: number }

@@ -42,18 +42,24 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
   // coin-op chaos: hits between players count double
   else if (attackerId !== undefined && coinOpRule(s) === 'double') amount *= 2;
   amount *= quadOf(s, attackerId);
+  // continuous damage (contact, glitch floor) would report a hit every tick; four times a second is enough
+  const report = s.tick - p.lastHitEventAt >= HIT_EVENT_TICKS || amount >= 5;
   if (p.vehicleId !== null) {
     damageVehicle(s, p.vehicleId, amount);
+    // (the vehicle takes it, not its driver: a hit on it is seen and heard all the same)
+    if (report) {
+      p.lastHitEventAt = s.tick;
+      s.events.push({ type: 'vehicleHit', vehicleId: p.vehicleId, pos: { ...p.pos }, amount, by: attackerId });
+    }
     return;
   }
   p.hp = Math.max(0, p.hp - amount);
   p.lastDamageAt = s.tick;
   s.stats.damageTaken += amount;
   s.stats.damageBy[source] += amount;
-  // continuous damage (contact, glitch floor) would report a hit every tick; four times a second is enough
-  if (s.tick - p.lastHitEventAt >= HIT_EVENT_TICKS || amount >= 5 || p.hp <= 0) {
+  if (report || p.hp <= 0) {
     p.lastHitEventAt = s.tick;
-    s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp });
+    s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp, pos: { ...p.pos }, amount, by: attackerId });
   }
   if (p.hp > 0) return;
 

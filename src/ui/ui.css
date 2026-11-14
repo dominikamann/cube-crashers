@@ -353,6 +353,15 @@ body.split .build .card { width: 96px; }
 .fp-cross::before, .fp-cross::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6); }
 .fp-cross::before { left: 10px; top: 0; width: 2px; height: 22px; }
 .fp-cross::after { top: 10px; left: 0; width: 22px; height: 2px; }
+/* a shot that landed: four marks round the crosshair flash out and fade; a kill in red, bigger and longer */
+.fp-hit { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; transform: translate(-50%, -50%); opacity: 0; fill: none; stroke: #fff; stroke-width: 3.5; stroke-linecap: round; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.9)); }
+.fp-cross.hit .fp-hit { animation: fp-hit 0.24s ease-out; }
+.fp-cross.kill .fp-hit { width: 60px; height: 60px; stroke: #ff3b5c; stroke-width: 4.5; animation: fp-hit 0.5s ease-out; }
+@keyframes fp-hit { 0% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); } }
+/* hit: a red glow round the edge of the view, gone in a moment */
+.hurt-glow { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 18px rgba(255, 40, 60, 0.55); }
+.hurt-glow.on { animation: hurt-glow 0.35s ease-out; }
+@keyframes hurt-glow { 0% { opacity: 1; } 100% { opacity: 0; } }
 
 .tip-box.pinned { border-style: solid; border-color: var(--gold); background: rgba(40, 30, 0, 0.55); padding-right: 36px; position: relative; cursor: default; }
 .tip-close { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 11px; cursor: pointer; pointer-events: auto; }

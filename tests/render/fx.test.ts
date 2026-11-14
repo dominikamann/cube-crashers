@@ -16,7 +16,7 @@ describe('fx screen shake', () => {
   const pos = { x: 5, z: 5 };
 
   it('shakes for hits, explosions and a falling nest', () => {
-    expect(shakeAfter({ type: 'playerHit', playerId: 0, hp: 50 })).toBeGreaterThan(0);
+    expect(shakeAfter({ type: 'playerHit', playerId: 0, hp: 50, pos, amount: 10 })).toBeGreaterThan(0);
     expect(shakeAfter({ type: 'explosion', pos, radius: 2 })).toBeGreaterThan(0);
     expect(shakeAfter({ type: 'nestDestroyed', id: 1, pos })).toBeGreaterThan(0);
     expect(shakeAfter({ type: 'kartLand', pos })).toBeGreaterThan(0);

@@ -411,9 +411,26 @@ export function createFx(scene: THREE.Scene): Fx {
             burst(e.pos, l.h * 0.6, Math.max(2, Math.min(8, Math.round(2 + e.amount / 6))), [l.day, l.night], 3, 0.1, 0.7);
             break;
           }
-          case 'playerHit':
+          case 'playerHit': {
             addShake(0.06);
+            // a hit shows on whoever took it: a white flash over the figure and bits of their suit flying off,
+            // more for a harder hit (a server older than this sends no spot: then where the player is)
+            const p = s.players.find(x => x.id === e.playerId);
+            const at = e.pos ?? p?.pos;
+            if (!at) break;
+            const hard = Math.min(1, (e.amount ?? 10) / 30);
+            pops.push({ x: at.x, y: 0.85, z: at.z, age: 0, life: 0.12, size: 1.1 + hard * 0.6, color: 0xffffff, ring: false });
+            burst(at, 0.85, Math.round(6 + hard * 10), [p ? playerColor(p.color) : 0xffffff, 0xffffff, 0xff5a5f], 3.5 + hard * 2, 0.09, 0.9);
             break;
+          }
+          case 'vehicleHit': {
+            // sparks off the bodywork, and off a unicorn a puff of rainbow
+            const v = s.vehicles.find(x => x.id === e.vehicleId);
+            const hard = Math.min(1, e.amount / 30);
+            pops.push({ x: e.pos.x, y: 0.6, z: e.pos.z, age: 0, life: 0.1, size: 1 + hard * 0.5, color: 0xffe9a8, ring: false });
+            burst(e.pos, 0.6, Math.round(7 + hard * 10), v?.kind === 'unicorn' ? RAINBOW : [0xffffff, 0xffe14a, 0xff8c42], 4.5 + hard * 2, 0.06, 1.3);
+            break;
+          }
           case 'playerDown':
             addShake(0.3);
             break;
