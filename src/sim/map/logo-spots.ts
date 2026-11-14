@@ -2,15 +2,25 @@ import { Tile, type FloorMap } from './tilemap';
 import type { Vec2 } from '../types';
 
 /**
- * Where an AmannLabs logo goes, in tiles. 'floor': painted on a w x h patch of floor.
+ * Where an AmannLabs logo goes, in tiles. 'floor': painted on a w x h patch of floor (turned by `yaw` about its
+ * middle, about the up axis, where the walls round it do not run along the grid).
  * 'wall': on the side of a straight run of w wall blocks starting at (tx, tz), going along x or z,
  * on the face that looks toward `facing`.
  */
 export type LogoSpot =
-  | { kind: 'floor'; tx: number; tz: number; w: number; h: number }
+  | { kind: 'floor'; tx: number; tz: number; w: number; h: number; yaw?: number }
   | { kind: 'wall'; tx: number; tz: number; w: number; along: 'x' | 'z'; facing: Vec2 };
 
 const SIZE = { w: 4, h: 1 };
+
+/** a spot of the map as a turned floor patch sees it: where it would lie if the patch lay unturned at tx, tz */
+export function onFloorLogo(spot: { tx: number; tz: number; w: number; h: number; yaw?: number }, p: Vec2): Vec2 {
+  const yaw = spot.yaw ?? 0;
+  if (!yaw) return p;
+  const cx = spot.tx + spot.w / 2, cz = spot.tz + spot.h / 2, dx = p.x - cx, dz = p.z - cz, c = Math.cos(yaw), s = Math.sin(yaw);
+  // (the patch is turned (x, z) -> (x cos + z sin, -x sin + z cos) about its middle; this turns back)
+  return { x: cx + dx * c - dz * s, z: cz + dx * s + dz * c };
+}
 /** wall blocks come in a few heights, the same for every patch of this many tiles (see wallHeight in world.ts) */
 const HEIGHT_PATCH = 4;
 const FACINGS: Vec2[] = [{ x: 0, z: 1 }, { x: 0, z: -1 }, { x: 1, z: 0 }, { x: -1, z: 0 }];
@@ -29,9 +39,10 @@ export function logoSpots(map: FloorMap): LogoSpot[] {
 const spotCache = new WeakMap<FloorMap, LogoSpot[]>();
 
 function findLogoSpots(map: FloorMap): LogoSpot[] {
-  // (the Town: one on the floor of the yard by the police, as on every map; on its walls only the AmannLabs shop's own
-  // sign, on the front of the house at z 50: shoot it for the easter egg. Its picture is the shop sign, not drawn again)
-  if (map.id === 'waldsee') return [{ kind: 'floor', tx: 64, tz: 38, ...SIZE }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }];
+  // (the Town: one on the floor of the yard by the police, as on every map, in the middle of the yard and turned along
+  // the houses on either side of it; on its walls only the AmannLabs shop's own sign, on the front of the house at
+  // z 50: shoot it for the easter egg. Its picture is the shop sign, not drawn again)
+  if (map.id === 'waldsee') return [{ kind: 'floor', tx: 64, tz: 37.9, ...SIZE, yaw: 0.231 }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }];
   const at = (x: number, z: number) => (x < 0 || z < 0 || x >= map.w || z >= map.h ? Tile.Wall : map.tiles[z * map.w + x]);
   const points = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.map(n => n.pos), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
   let seed = 0;

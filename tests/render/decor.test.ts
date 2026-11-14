@@ -67,7 +67,8 @@ describe('decoration', () => {
           // no tall grass under it, no wall next to it to hang a tree crown over it
           // (the minigame maps have no decoration to hang over it, and the maze has no room for a margin)
           if (!['race', 'lane', 'maze'].includes(id))
-            for (let tz = s.tz - 1; tz <= s.tz + s.h; tz++) for (let tx = s.tx - 1; tx <= s.tx + s.w; tx++) if (tileOf(tx, tz) !== Tile.Floor) report.push(`${id}: wall or hazard next to the floor logo at ${tx},${tz}`);
+            // (by whole tiles: a patch may lie between them)
+            for (let tz = Math.floor(s.tz) - 1; tz <= Math.ceil(s.tz + s.h); tz++) for (let tx = Math.floor(s.tx) - 1; tx <= Math.ceil(s.tx + s.w); tx++) if (tileOf(tx, tz) !== Tile.Floor) report.push(`${id}: wall or hazard next to the floor logo at ${tx},${tz}`);
           for (const g of map.grass ?? []) if (g.x >= s.tx && g.x <= s.tx + s.w && g.z >= s.tz && g.z <= s.tz + s.h) report.push(`${id}: grass on the floor logo`);
         } else {
           const len = s.along === 'x' ? { x: s.w, z: 1 } : { x: 1, z: s.w };

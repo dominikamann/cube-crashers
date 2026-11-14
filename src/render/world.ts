@@ -618,7 +618,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // the AmannLabs logo once or twice per map, painted in when the image is ready
   let disposed = false;
   /** the A of the floor logo: it wakes up when a player steps on the logo */
-  let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; words: THREE.Mesh; wordsMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number }; glow: number } | null = null;
+  let logoMark: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; ring: THREE.Mesh; ringMat: THREE.MeshBasicMaterial; words: THREE.Mesh; wordsMat: THREE.MeshBasicMaterial; spot: { tx: number; tz: number; w: number; h: number; yaw?: number }; glow: number } | null = null;
   /** the wall logos glow gently, like a sign */
   const logoMats: THREE.MeshBasicMaterial[] = [];
   /** the wall logos wobble when a shot hits them, as long as they still have something to give */
@@ -650,7 +650,13 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           // before it is drawn, so each half of a split screen gets its own
           wordsMesh.matrixAutoUpdate = false;
           wordsMesh.frustumCulled = false;
-          const flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+          // (flat on the floor, turned with the patch)
+          const yaw = spot.yaw ?? 0, flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, yaw, 0, 'YXZ'));
+          // (a spot across the patch from its middle, turned with it)
+          const turned = (x: number, z: number): [number, number] => {
+            const cx = spot.tx + spot.w / 2, cz = spot.tz + spot.h / 2, dx = x - cx, dz = z - cz;
+            return [cx + dx * Math.cos(yaw) + dz * Math.sin(yaw), cz - dx * Math.sin(yaw) + dz * Math.cos(yaw)];
+          };
           const pose = { q: new THREE.Quaternion(), at: new THREE.Vector3(), size: new THREE.Vector3() };
           wordsMesh.onBeforeRender = (_r, _s, camera) => {
             const g = camera.position.y < FP_CAMERA_BELOW ? 0 : (logoMark?.glow ?? 0);
@@ -669,14 +675,15 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           const geo = new THREE.PlaneGeometry(at.w, at.h);
           const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, forceSinglePass: true });
           const mesh = new THREE.Mesh(geo, mat);
-          mesh.rotation.x = -Math.PI / 2;
-          mesh.position.set(at.cx, 0.03, at.cz);
+          mesh.rotation.set(-Math.PI / 2, yaw, 0, 'YXZ');
+          const [mx, mz] = turned(at.cx, at.cz);
+          mesh.position.set(mx, 0.03, mz);
           // a ring of light on the floor under it, that opens when the A wakes up
           const ringGeo = new THREE.RingGeometry(0.4 * LOGO_FLOOR_SIZE, 0.47 * LOGO_FLOOR_SIZE, 48);
           const ringMat = new THREE.MeshBasicMaterial({ color: 0x2bf0ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
           const ring = new THREE.Mesh(ringGeo, ringMat);
           ring.rotation.x = -Math.PI / 2;
-          ring.position.set(at.cx, 0.025, at.cz);
+          ring.position.set(mx, 0.025, mz);
           disposables.push(tex, geo, mat, ringGeo, ringMat);
           addToScene(mesh);
           addToScene(ring);
@@ -1075,7 +1082,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         k.mesh.position.y = 0.03 + g * 0.9 + g * 0.08 * Math.sin(time * 5);
         k.mesh.scale.setScalar(1 + 0.05 * Math.sin(time * 2.4) + g * 0.6);
         // lying flat at rest, standing up and turning when awake
-        k.mesh.rotation.set(-Math.PI / 2 + g * Math.PI / 2, g * time * 2.5, 0, 'YXZ');
+        k.mesh.rotation.set(-Math.PI / 2 + g * Math.PI / 2, (k.spot.yaw ?? 0) + g * time * 2.5, 0, 'YXZ');
         k.mat.opacity = 0.7 + 0.3 * g;
         k.mat.color.setScalar(1 + g * 0.9);
         // the ring opens under it and breathes between the logo's cyan and magenta

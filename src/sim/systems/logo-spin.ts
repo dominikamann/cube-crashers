@@ -1,6 +1,6 @@
 import { TICK_RATE } from '../types';
 import type { SimState } from '../types';
-import { logoSpots } from '../map/logo-spots';
+import { logoSpots, onFloorLogo } from '../map/logo-spots';
 import { damageEnemy } from './combat';
 
 /**
@@ -20,7 +20,10 @@ export function logoKeeper(s: SimState): number | null {
   const r = logoSpots(s.map).find(x => x.kind === 'floor');
   if (!r || r.kind !== 'floor') return null;
   const m = LOGO_SPIN.margin;
-  const on = s.players.find(p => p.downUntil === null && p.pos.x > r.tx - m && p.pos.x < r.tx + r.w + m && p.pos.z > r.tz - m && p.pos.z < r.tz + r.h + m);
+  const on = s.players.find(p => {
+    const q = onFloorLogo(r, p.pos);
+    return p.downUntil === null && q.x > r.tx - m && q.x < r.tx + r.w + m && q.z > r.tz - m && q.z < r.tz + r.h + m;
+  });
   return on ? on.id : null;
 }
 
@@ -35,7 +38,8 @@ export function updateLogoSpin(s: SimState): void {
   const blow = (LOGO_SPIN.dps * LOGO_SPIN.everyTicks) / TICK_RATE;
   for (const e of [...s.enemies]) {
     // the monster's body reaches the logo
-    const dx = Math.max(r.tx - e.pos.x, 0, e.pos.x - (r.tx + r.w)), dz = Math.max(r.tz - e.pos.z, 0, e.pos.z - (r.tz + r.h));
+    const q = onFloorLogo(r, e.pos);
+    const dx = Math.max(r.tx - q.x, 0, q.x - (r.tx + r.w)), dz = Math.max(r.tz - q.z, 0, q.z - (r.tz + r.h));
     if (e.hp > 0 && Math.hypot(dx, dz) <= e.radius) damageEnemy(s, e, blow, 'explosion', keeper);
   }
 }

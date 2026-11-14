@@ -4,6 +4,7 @@ import { createSim, stepSim } from '../../src/sim/sim';
 import { betweenOf, floorCleared, INTERMISSIONS, runProgress } from '../../src/sim/systems/run';
 import { ladders } from '../../src/sim/map/ladders';
 import { logoSpots } from '../../src/sim/map/logo-spots';
+import { logoKeeper } from '../../src/sim/systems/logo-spin';
 import { FLOORS } from '../../src/sim/config/floors';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, inSolid, isFree, moveCircle, nearestFree, Tile } from '../../src/sim/map/tilemap';
 import { buildFlowField, flowDir } from '../../src/sim/map/flowfield';
@@ -70,7 +71,23 @@ describe('the Town as the game between two floors', () => {
     expect(m.vehicleSpots).toHaveLength(0);
     expect(m.pads).toHaveLength(0);
     expect(ladders(m)).toHaveLength(0);
-    expect(logoSpots(m)).toEqual([{ kind: 'floor', tx: 64, tz: 38, w: 4, h: 1 }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }]);
+    expect(logoSpots(m)).toEqual([{ kind: 'floor', tx: 64, tz: 37.9, w: 4, h: 1, yaw: 0.231 }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }]);
+  });
+
+  it('the floor logo lies turned along the houses of the yard: standing on its turned ends wakes it, beside them does not', () => {
+    const s = createSim(FLOORS.waldsee.map, 4, { mode: 'quick' });
+    const r = logoSpots(s.map)[0];
+    if (r.kind !== 'floor') throw new Error('no floor logo');
+    const cx = r.tx + r.w / 2, cz = r.tz + r.h / 2, yaw = r.yaw ?? 0;
+    // (the patch's long side runs (cos, -sin) of its yaw)
+    const at = (along: number, across: number) => ({ x: cx + Math.cos(yaw) * along + Math.sin(yaw) * across, z: cz - Math.sin(yaw) * along + Math.cos(yaw) * across });
+    // (at the corners the turn moves most: these lie on the turned patch, but off the patch as it would lie unturned)
+    for (const [along, across] of [[-1.8, 0.7], [1.8, -0.7]]) {
+      s.players[0].pos = at(along, across);
+      expect(logoKeeper(s), `on ${along}, ${across}`).toBe(0);
+      s.players[0].pos = at(along, across * 2.4);
+      expect(logoKeeper(s), `beside ${along}, ${across}`).toBeNull();
+    }
   });
 });
 
