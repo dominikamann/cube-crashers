@@ -55,12 +55,26 @@ describe('the sharks of the Town\'s lake', () => {
     expect(sharks(s)).toHaveLength(0);
   });
 
-  it('rarely: most of the time watching brings nothing', () => {
+  it('not every look brings one', () => {
     const s = atTheLake();
     s.rng.next = () => LAKE_SHARK.chance + 0.01;
     for (let i = 0; i < LAKE_SHARK.rollTicks * 5; i++) stepSim(s, [lookAt(12)]);
     expect(sharks(s)).toHaveLength(0);
-    expect(LAKE_SHARK.chance).toBeLessThanOrEqual(0.15);
+    expect(LAKE_SHARK.chance).toBeLessThan(0.5);
+  });
+
+  it('up to three are out at a time: a fourth stays in the lake until one of them is squashed', () => {
+    const s = atTheLake();
+    s.rng.next = () => 0;
+    const watch = (ticks: number) => {
+      for (let i = 0; i < ticks; i++) stepSim(s, [lookAt(12)]);
+    };
+    watch((LAKE_SHARK.restTicks + LAKE_SHARK.rollTicks) * 5);
+    expect(sharks(s).filter(e => e.hp > 0)).toHaveLength(LAKE_SHARK.most);
+    const gone = sharks(s)[0];
+    s.enemies = s.enemies.filter(e => e !== gone);
+    watch(LAKE_SHARK.restTicks + LAKE_SHARK.rollTicks * 2);
+    expect(sharks(s).filter(e => e.hp > 0)).toHaveLength(LAKE_SHARK.most);
   });
 
   it('comes from out in the lake over the barrier, lands in the lane and is after the watcher', () => {

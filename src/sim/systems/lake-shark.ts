@@ -6,21 +6,23 @@ import { spawnHorde } from './hordes';
 
 /**
  * The sharks of the Town's lake. Whoever stands at the barrier of the police lane and watches them for a while
- * may, once in a rare while, see one leap out of the water: it comes over the barrier in an arc, lands in the
- * lane and is after them. One at a time, and after a leap the lake is quiet for a good while.
+ * may, before long, see one leap out of the water: it comes over the barrier in an arc, lands in the lane and is
+ * after them. After a leap the lake is quiet for a moment; up to three of them are out at a time.
  */
 export const LAKE_SHARK = {
   /** how near the barrier one stands to watch, and how squarely one looks out over the lake (cosine) */
   near: 7,
   look: 0.6,
   /** every so many ticks of watching the game rolls `chance` */
-  rollTicks: 4 * TICK_RATE,
-  chance: 0.1,
+  rollTicks: 2 * TICK_RATE,
+  chance: 0.25,
   /** how far out in the lake it comes from, how far inside the barrier it lands, how long it is in the air */
   out: 6,
   inside: 2.5,
   leapTicks: 54,
-  restTicks: 90 * TICK_RATE,
+  restTicks: 12 * TICK_RATE,
+  /** no more than this many sharks out of the lake at a time */
+  most: 3,
 };
 
 const LAKE = WALDSEE_BARRIERS.find(b => b.lake);
@@ -34,12 +36,18 @@ export function watchesLake(p: Player): boolean {
   return len > 0.01 && (dx * LAKE.dir[0] + dz * LAKE.dir[1]) / len >= LAKE_SHARK.look;
 }
 
+const sharksOut = (s: SimState): number => s.enemies.filter(e => e.kind === 'shark' && e.hp > 0).length;
+
 /** A shark leaps out of the lake at `p`: it flies in over the barrier and is held until it lands. */
 export function leapAt(s: SimState, p: Player): void {
   if (!LAKE) return;
   const from: Vec2 = { x: LAKE.at[0] + LAKE.dir[0] * LAKE_SHARK.out, z: LAKE.at[1] + LAKE.dir[1] * LAKE_SHARK.out };
   const land = nearestFree(s.map, { x: LAKE.at[0] - LAKE.dir[0] * LAKE_SHARK.inside, z: LAKE.at[1] - LAKE.dir[1] * LAKE_SHARK.inside }, 0.6, BLOCKS_ENEMY);
+  const room = LAKE_SHARK.most - sharksOut(s);
   const horde = spawnHorde(s, land, [{ kind: 'shark', count: 1 }], { rush: true });
+  // (a bigger team gets more than one at once, but never more than the lake lets out)
+  const mine = s.enemies.filter(e => e.hordeId === horde.id);
+  s.enemies = s.enemies.filter(e => e.hordeId !== horde.id || mine.indexOf(e) < Math.max(1, room));
   for (const e of s.enemies) {
     if (e.hordeId !== horde.id) continue;
     e.leap = { from, to: { ...e.pos }, at: s.tick, until: s.tick + LAKE_SHARK.leapTicks };
@@ -68,7 +76,7 @@ export function updateLakeShark(s: SimState): void {
     return;
   }
   if (++w.ticks % LAKE_SHARK.rollTicks !== 0 || s.tick < w.restUntil) return;
-  if (s.enemies.some(e => e.kind === 'shark' && e.hp > 0) || s.rng.next() >= LAKE_SHARK.chance) return;
+  if (sharksOut(s) >= LAKE_SHARK.most || s.rng.next() >= LAKE_SHARK.chance) return;
   w.restUntil = s.tick + LAKE_SHARK.restTicks;
   leapAt(s, watcher);
 }
