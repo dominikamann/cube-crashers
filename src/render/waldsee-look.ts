@@ -764,8 +764,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#dcd8cc');
       };
       const d = Math.max(-W / 2 + 1.4, Math.min(W / 2 - 1.4, doorU));
-      // (the plain second door at the far west end of the front)
-      const d2 = big ? W / 2 - 1.0 : 1e9;
+      // (one entrance only on the front)
+      const d2 = 1e9;
       const n = Math.max(2, Math.round((W - 0.8) / 1.8)), pitch = (W - 0.8) / n;
       for (let k = 0; k < n; k++) {
         const u = -W / 2 + 0.8 + (k + 0.5) * pitch;
@@ -774,15 +774,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         if (big && Math.abs(u - d) > 1.1 && Math.abs(u - d2) > 1.0) win(u, 1.75, 0.7, 0.85, false);
       }
       if (big) {
-        // the front: a dark brown wooden frame with a glass door and menu cards beside it, a plain grey door at the far end
+        // the front: a dark brown wooden frame with a glass door and menu cards beside it
         rect(d - 0.62, 0, d + 0.62, 2.2, '#5a3322');
         rect(d - 0.52, 0, d + 0.52, 2.1, '#2b2624');
         rect(d - 0.02, 0, d + 0.02, 2.1, '#5a3322');
         rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
         rect(d + 0.7, 1.1, d + 0.95, 1.5, '#f4f1e6');
         rect(d - 0.95, 1.1, d - 0.7, 1.5, '#f4f1e6');
-        rect(d2 - 0.5, 0, d2 + 0.5, 2.1, '#9a9ea6');
-        rect(d2 - 0.4, 0, d2 + 0.4, 2.0, '#34383e');
       } else {
         // the side: a brown wooden door in a white stone frame, an arched fanlight of small panes, a white niche with
         // a small golden saint over it, a lamp each side and a menu box; the plaque with the name on the wall at the left
@@ -846,9 +844,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       add(m);
       return d;
     };
-    // (the front: the door a little east of the middle, a plain second door at the west end, no lettering)
+    // (the front: the one door in the middle, no lettering)
     const alongF = f.wall?.along ?? 0;
-    const door = at(f, wallPlane(f, -3, true, 'CZARDAS') - alongF);
+    const door = at(f, wallPlane(f, 0, true, 'CZARDAS') - alongF);
     // (the terrace is centred on its tables, not on the door)
     const tab = WALDSEE_TABLES.find(p => p.name === 'Czardas')?.at ?? [];
     const mx = tab.reduce((a, [x]) => a + x + 0.5, 0) / Math.max(1, tab.length), mz = tab.reduce((a, [, z]) => a + z + 0.5, 0) / Math.max(1, tab.length);
