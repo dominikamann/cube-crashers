@@ -439,8 +439,10 @@ export const WALDSEE_CZARDAS: WaldseeFace = {"x": 54.5, "z": 44, "dx": 0, "dz": 
 /** the second door of the Czardas, on its side toward the Hauptstrasse (if there is one) */
 export const WALDSEE_CZARDAS_SIDE: WaldseeFace | null = {"x": 55.0, "z": 42.5, "dx": 1, "dz": 0, "len": 1};
 /** names over doors; 'amannlabs' is the shop by the fountain with robots behind its glass */
-export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nkd' | 'brille' | 'empire' | 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' })[] = [
+export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nkd' | 'brille' | 'empire' | 'eis' | 'amadeus' | 'hasen' | 'police' | 'amannlabs' | 'shop' | 'nemo' | 'bank' | 'frauen' })[] = [
   { text: "Eisdiele", kind: 'eis', x: 68.0, z: 68.5, dx: -1, dz: 0, len: 1 },
+  // (the clothes shop "Frauenzimmer": the corner house east of the lane, its shop front on the Wurzacher Strasse)
+  { text: "Frauenzimmer", kind: 'frauen', x: 87.5, z: 70.6, dx: 0, dz: 1, len: 1 },
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
