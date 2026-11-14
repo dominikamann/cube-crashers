@@ -622,7 +622,8 @@ function leap(s: SimState, b: BossState): void {
   // (she may come down on a wall inside the map: she stands on those)
   boss.pos = b.kind === 'spider' ? { ...l.to } : nearestFree(s.map, l.to, boss.radius, BLOCKS_ENEMY);
   b.leap = null;
-  s.events.push({ type: 'stomp', pos: { ...boss.pos }, radius: BOSS.leapRadius });
+  // (Die Hex lands with her own blow, and nothing shows where)
+  if (b.kind !== 'witch') s.events.push({ type: 'stomp', pos: { ...boss.pos }, radius: BOSS.leapRadius });
 }
 
 /** The Kraken wraps a tentacle round `p` and starts dragging them in. */

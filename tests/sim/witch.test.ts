@@ -361,3 +361,22 @@ describe('the Hexentanz and the two faces', () => {
     expect(most).toBeGreaterThan(0);
   });
 });
+
+describe('Die Hex as a wild boss', () => {
+  it('stands still by the elevator until someone wakes her', async () => {
+    const { createSim, stepSim } = await import('../../src/sim/sim');
+    const { floor01 } = await import('../../src/sim/config/floor01');
+    const { releaseWildBoss } = await import('../../src/sim/systems/wild-boss');
+    const s = createSim(floor01, 5, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
+    s.enemies.length = 0;
+    s.wild = { kind: 'witch' };
+    expect(releaseWildBoss(s)).toBe(true);
+    const body = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    const start = { ...body.pos };
+    // (the players far away, so nothing wakes her)
+    const far = [...s.map.waypoints].sort((a, b) => Math.hypot(b.x - start.x, b.z - start.z) - Math.hypot(a.x - start.x, a.z - start.z))[0];
+    for (const p of s.players) p.pos = { ...far };
+    for (let i = 0; i < 120; i++) stepSim(s, []);
+    expect(Math.hypot(body.pos.x - start.x, body.pos.z - start.z)).toBeLessThan(0.5);
+  });
+});

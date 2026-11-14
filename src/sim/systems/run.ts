@@ -58,7 +58,6 @@ export function floorCleared(s: SimState): void {
   // the Town was the game between two floors: on to the shop, the run's floor stays the same
   if (s.run.side) {
     s.run.side = false;
-    s.score += FLOOR_BONUS;
     backIn(s);
     openShop(s);
     return;

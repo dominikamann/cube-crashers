@@ -155,7 +155,8 @@ export function witchBusy(b: BossState): boolean {
 export function witchHit(b: BossState, amount: number, byPlayerId?: number): number {
   const w = b.witch;
   if (!w) return amount;
-  if (w.press && byPlayerId !== w.press.playerId) w.press.hurt += amount;
+  // (a teammate's hits free the one she holds; a tower or a blast nobody fired does not)
+  if (w.press && byPlayerId !== undefined && byPlayerId !== w.press.playerId) w.press.hurt += amount;
   return w.dance ? amount * WITCH.danceArmor : amount;
 }
 
@@ -419,8 +420,9 @@ export function updateWitch(s: SimState, b: BossState, intents?: Map<number, Int
     for (const p of s.players) if (p.downUntil === null && !aloft(s, p) && dist(p.pos, e.pos) < e.radius + PLAYER_RADIUS * 0.5) damagePlayer(s, p, WITCH.emberDps * DT, 'other');
   }
   if (!me) return;
-  // her pace wavers all the while: she never walks in time with anything
-  me.speed = w.speed * (0.95 + 0.55 * waver(s.tick / TICK_RATE, me.id));
+  // her pace wavers all the while: she never walks in time with anything (not while she waits as a wild boss by
+  // the elevator: then she stands, see boss.ts)
+  if (b.waiting === undefined) me.speed = w.speed * (0.95 + 0.55 * waver(s.tick / TICK_RATE, me.id));
   // the mask turns at half her health
   if (w.face === 'grin' && me.hp <= me.maxHp * 0.5) {
     w.face = 'glare';
