@@ -1171,13 +1171,82 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'police') {
-      // the police post: the real house, white with dark green shutters (see the walls above); on it a round-topped
-      // door in a grey stone frame, the blue sign with POLIZEI beside it and a blue lamp over the door
-      onFace(s, 0, 0.04, 1.15, 1.3, 2.3, 0.06, 0xa9adb3);
-      onFace(s, 0, 0.07, 1.05, 1.0, 2.1, 0.05, 0x5a3a26);
-      [0.9, 0.7, 0.4].forEach((wd, k) => onFace(s, 0, 0.06, 2.3 + k * 0.12, wd * 1.3, 0.13, 0.06, 0xa9adb3));
-      onFace(s, 0, 0.12, 2.75, 0.3, 0.16, 0.12, 0x3f7cff, true);
-      sign(s, 'POLIZEI', 2.0, 1.4, { back: '#1f4fa8', ink: '#ffffff', rim: '#1f4fa8' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      // the police post: the real house, white plaster with dark green shutters on every window, painted as one
+      // plane flush on the real wall; a round-topped door in a grey frame, set in a bay where no window is (the
+      // ground-floor windows leave it free), the blue POLIZEI board and a blue lamp over it
+      const wl = (s as OnWall).wall ?? { width: 6, along: 0, eave: 4.6 };
+      const S = 80, wB = wl.width, H = wl.eave;
+      const cw = Math.round(wB * S), ch = Math.round(H * S);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => (u + wB / 2) * S;
+      const py = (y: number) => (H - y) * S;
+      g.fillStyle = '#f1efe8';
+      g.fillRect(0, 0, cw, ch);
+      g.fillStyle = '#c9c7bf';
+      g.fillRect(0, py(0.25), cw, 0.25 * S);
+      const shade = g.createLinearGradient(0, 0, 0, 0.5 * S);
+      shade.addColorStop(0, 'rgba(60,56,48,0.28)');
+      shade.addColorStop(1, 'rgba(60,56,48,0)');
+      g.fillStyle = shade;
+      g.fillRect(0, 0, cw, 0.5 * S);
+      // bays about 1.7 wide; the door takes the one nearest the front's point (the snapped spot on the wall)
+      const bays = Math.max(2, Math.round(wB / 1.7)), bw = wB / bays;
+      const mid = -wl.along;
+      let doorBay = 0;
+      for (let k = 1; k < bays; k++) if (Math.abs(-wB / 2 + (k + 0.5) * bw - mid) < Math.abs(-wB / 2 + (doorBay + 0.5) * bw - mid)) doorBay = k;
+      const win = (u: number, y0: number, h: number) => {
+        const ww = Math.min(0.8, bw - 0.9);
+        g.fillStyle = '#2f5a3c';
+        for (const sd of [-1, 1]) g.fillRect(px(u + sd * (ww / 2 + 0.2) - 0.18), py(y0 + h), 0.36 * S, h * S);
+        g.fillStyle = '#fbf9f2';
+        g.fillRect(px(u - ww / 2 - 0.05), py(y0 + h + 0.05), (ww + 0.1) * S, (h + 0.1) * S);
+        g.fillStyle = '#56707e';
+        g.fillRect(px(u - ww / 2), py(y0 + h), ww * S, h * S);
+        g.fillStyle = '#fbf9f2';
+        g.fillRect(px(u - 0.02), py(y0 + h), 0.04 * S, h * S);
+        g.fillRect(px(u - ww / 2), py(y0 + h * 0.62), ww * S, 0.04 * S);
+        g.fillStyle = '#d6d3ca';
+        g.fillRect(px(u - ww / 2 - 0.1), py(y0 - 0.01), (ww + 0.2) * S, 0.07 * S);
+      };
+      // upper storeys from 3.0 up (clear of the door, its arch and the board), about 1.5 apart
+      const storeys = Math.max(1, Math.floor((H - 3.0 + 0.3) / 1.5));
+      for (let st = 0; st < storeys; st++) for (let k = 0; k < bays; k++) win(-wB / 2 + (k + 0.5) * bw, 3.0 + st * 1.5, 0.95);
+      for (let k = 0; k < bays; k++) if (k !== doorBay) win(-wB / 2 + (k + 0.5) * bw, 0.95, 1.2);
+      // the door: a grey stone frame with a round top, a brown leaf, a glass fanlight
+      const du = -wB / 2 + (doorBay + 0.5) * bw, dw = 1.0;
+      g.fillStyle = '#a9adb3';
+      g.fillRect(px(du - dw / 2 - 0.12), py(1.95), (dw + 0.24) * S, 1.95 * S);
+      g.beginPath();
+      g.arc(px(du), py(1.95), (dw / 2 + 0.12) * S, Math.PI, 0);
+      g.fill();
+      g.fillStyle = '#5a3a26';
+      g.fillRect(px(du - dw / 2), py(1.95), dw * S, 1.95 * S);
+      g.beginPath();
+      g.arc(px(du), py(1.95), (dw / 2) * S, Math.PI, 0);
+      g.fill();
+      g.fillStyle = '#56707e';
+      g.beginPath();
+      g.arc(px(du), py(1.95), (dw / 2 - 0.1) * S, Math.PI, 0);
+      g.fill();
+      g.fillStyle = '#c9a55a';
+      g.fillRect(px(du + 0.32), py(1.05), 0.06 * S, 0.06 * S);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(wB, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const [fx, fz] = on(s, mid, 0.04);
+      m.position.set(fx, H / 2, fz);
+      m.rotation.y = faceYaw(s);
+      add(m);
+      // the board and the lamp stand over the door (between its arch and the first upper windows)
+      const door = mid + du, [bx, bz] = on(s, door, 0);
+      sign({ ...s, x: bx, z: bz }, 'POLIZEI', 2.72, 1.5, { back: '#1f4fa8', ink: '#ffffff', rim: '#1f4fa8' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      onFace(s, door + 0.95, 0.1, 2.5, 0.18, 0.3, 0.12, 0x3f7cff, true);
       continue;
     }
     onFace(s, 0, 0.03, 1, 0.9, 2, 0.06, 0x4a4f5c);
