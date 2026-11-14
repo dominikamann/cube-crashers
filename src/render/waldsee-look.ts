@@ -103,7 +103,11 @@ const wallFeet = (): Foot[] => (FEET ??= (() => {
         prof.push(...pts);
         gabled = true;
       }
-      out.push({ x0, z0, x1, z1, nx, nz, id, eave, prof: gabled ? hull(prof) : prof });
+      // (its own eave: the lowest of its top corners, so a front on a wall higher than the house's lowest roof
+      // reaches up to that wall's own roof)
+      let own = Infinity;
+      for (let i = 1; i < q.length; i += 3) if (q[i] > 0.3) own = Math.min(own, q[i]);
+      out.push({ x0, z0, x1, z1, nx, nz, id, eave: isFinite(own) ? own : eave, prof: gabled ? hull(prof) : prof });
     }
   }
   return out;
@@ -128,6 +132,43 @@ const onWall = <F extends WaldseeFace>(f: F): F & OnWall => {
   const sgn = Math.sign(-best.nz * best.ex + best.nx * best.ez) || 1;
   const wall = { id: best.id, width: best.len, along: (best.u - 0.5) * best.len * sgn, eave: best.eave, prof: best.prof.map(([t, y]): [number, number] => [(t - best.len / 2) * sgn, y]) };
   return { ...f, x: best.x, z: best.z, dx: best.nx, dz: best.nz, len: Math.max(1, Math.min(f.len, Math.floor(best.len))), wall };
+};
+/** a piece of a house's front: its own wall (a face at its middle), how long it is, where it starts across the
+ *  front (from the left as one looks at it) and how high its eave is */
+type FrontPiece = { face: WaldseeFace; len: number; u0: number; eave: number };
+type Front = { pieces: FrontPiece[]; width: number; eave: number };
+/**
+ * The whole street front of the house a front snapped to: its wall and the walls of the same house joined to it end
+ * to end that look about the same way (a front with slight kinks or a step in its line), from left to right
+ */
+const frontOf = (f: WaldseeFace & OnWall): Front | null => {
+  const id = f.wall?.id;
+  if (id === undefined) return null;
+  const mine = wallFeet().filter(w => w.id === id && w.nx * f.dx + w.nz * f.dz > 0.7);
+  const off = (w: Foot) => {
+    const ex = w.x1 - w.x0, ez = w.z1 - w.z0, t = Math.max(0, Math.min(1, ((f.x - w.x0) * ex + (f.z - w.z0) * ez) / (ex * ex + ez * ez)));
+    return Math.hypot(w.x0 + ex * t - f.x, w.z0 + ez * t - f.z);
+  };
+  const start = mine.reduce<Foot | null>((b, w) => (!b || off(w) < off(b) ? w : b), null);
+  if (!start || off(start) > 0.1) return null;
+  const ends = (w: Foot): [number, number][] => [[w.x0, w.z0], [w.x1, w.z1]];
+  const touches = (a: Foot, b: Foot) => ends(a).some(([x, z]) => ends(b).some(([x2, z2]) => Math.hypot(x - x2, z - z2) < 0.2));
+  const chain = [start];
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const w of mine) if (!chain.includes(w) && chain.some(c => touches(c, w))) ((grew = true), chain.push(w));
+  }
+  // (left as one looks at it: the farthest along the front's `along`)
+  const along = (w: Foot) => -((w.x0 + w.x1) / 2 - f.x) * f.dz + ((w.z0 + w.z1) / 2 - f.z) * f.dx;
+  chain.sort((a, b) => along(b) - along(a));
+  let u = 0;
+  const pieces = chain.map(w => {
+    const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
+    const p = { face: { x: (w.x0 + w.x1) / 2, z: (w.z0 + w.z1) / 2, dx: w.nx, dz: w.nz, len: 1 }, len, u0: u, eave: w.eave };
+    u += len;
+    return p;
+  });
+  return { pieces, width: u, eave: Math.min(...pieces.map(p => p.eave)) };
 };
 const onBlock = <F extends WaldseeFace>(f: F): F & OnWall => {
   if (WALDSEE_LOD2.length) return onWall(f);
@@ -198,6 +239,8 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   const c = codeAt(tx, tz);
   if (alley(tx, tz)) return 'street';
   if (c >= 6 && (WALDSEE_REPLACED.includes(c - 6) || BUILT.has(c - 6))) return 'street';
+  // (a house taken away south of the lake, along the Wurzacher Strasse, leaves the street paved, not water)
+  if (takenAway(c) && tz >= 62) return 'street';
   if (takenAway(c) || drowned(tx, tz)) return 'water';
   // (a house tile is a low block hidden inside the real building that stands there, see buildWaldseeTown)
   // (a house tile, or a yard behind the houses, is paved: the real buildings stand on it, and where a tile reaches
@@ -405,6 +448,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   const onFace = (f: WaldseeFace, along: number, out: number, y: number, w: number, h: number, t: number, color: number, glowing = false) => {
     const [x, z] = on(f, along, out);
     (glowing ? lamp : box)(x, y, z, w, h, t, color, faceYaw(f));
+  };
+  /** a painted front (a canvas `front.width` across, `H` high) laid over the pieces of a house's front, each its part */
+  const paintFront = (canvas: HTMLCanvasElement, front: Front, H: number) => {
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const mat = new THREE.MeshLambertMaterial({ map: tex });
+    disposables.push(tex, mat);
+    for (const p of front.pieces) {
+      const geo = new THREE.PlaneGeometry(p.len, H), uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setX(i, (p.u0 + uv.getX(i) * p.len) / front.width);
+      disposables.push(geo);
+      const m = new THREE.Mesh(geo, mat);
+      const [x, z] = on(p.face, 0, 0.04);
+      m.position.set(x, H / 2, z);
+      m.rotation.y = faceYaw(p.face);
+      add(m);
+    }
+  };
+  /** where a spot `u` across a painted front (from its left end) lies: the face of its piece and how far along it */
+  const frontAt = (front: Front, u: number): [WaldseeFace, number] => {
+    const p = front.pieces.find(q => u < q.u0 + q.len) ?? front.pieces[front.pieces.length - 1];
+    return [p.face, p.len / 2 - (u - p.u0)];
   };
   /** a name on a board on the face of a house */
   const sign = (f: WaldseeFace, text: string, y: number, width: number, colors: { back: string; ink: string; rim: string }, font = 'italic bold 84px Georgia, "Times New Roman", serif', mark?: string) => {
@@ -1911,8 +1977,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // the little shop "Lädele" (from a photo): one plane flush on the real wall, white rough plaster, mauve shutters
       // on the windows above, a flat grey canopy over the whole width, under it a dark fascia, a big shop window on
       // the left, a double glass door right of the middle, a small window beside it, and the name on a yellow board
-      // on the wall left of the window
-      const S = 80, real = (s as OnWall).wall, wB = real?.width ?? w, H = real?.eave ?? 6;
+      // on the wall left of the window. It covers the whole house front, all the pieces of its wall
+      const S = 80, real = (s as OnWall).wall, front = frontOf(s), wB = front?.width ?? real?.width ?? w, H = front?.eave ?? real?.eave ?? 6;
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(wB * S);
       canvas.height = Math.round(H * S);
@@ -2000,17 +2066,20 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       g.scale(Math.min(1, (bw - 0.1 * S) / wide), 1);
       g.fillText(s.text, 0, 0);
       g.restore();
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
-      const geo = new THREE.PlaneGeometry(wB, H);
-      const mat = new THREE.MeshLambertMaterial({ map: tex });
-      disposables.push(tex, geo, mat);
-      const m = new THREE.Mesh(geo, mat);
-      const [fx, fz] = on(s, -(real?.along ?? 0), 0.05);
-      m.position.set(fx, H / 2, fz);
-      m.rotation.y = faceYaw(s);
-      add(m);
+      if (front) paintFront(canvas, front, H);
+      else {
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const geo = new THREE.PlaneGeometry(wB, H);
+        const mat = new THREE.MeshLambertMaterial({ map: tex });
+        disposables.push(tex, geo, mat);
+        const m = new THREE.Mesh(geo, mat);
+        const [fx, fz] = on(s, -(real?.along ?? 0), 0.05);
+        m.position.set(fx, H / 2, fz);
+        m.rotation.y = faceYaw(s);
+        add(m);
+      }
       continue;
     }
     if (s.kind === 'nemo') {
@@ -2426,7 +2495,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         // street sign on the corner beside it; right of it two shop windows with the name on dark boards in the
         // glass, a pale plaster band above them with two small lamps on arms, a small plaque between door and
         // windows; further right a plain window and another house door; simple dark-framed windows above
-        const real = (s as OnWall).wall, W = real?.width ?? span, H = real?.eave ?? 6, S = 64;
+        // (over the whole house front, all the pieces of its wall up to the AmannLabs house)
+        const real = (s as OnWall).wall, front = frontOf(s), W = front?.width ?? real?.width ?? span, H = front?.eave ?? real?.eave ?? 6, S = 64;
         const cw = Math.round(W * S), ch = Math.round(H * S);
         const canvas = document.createElement('canvas');
         canvas.width = cw;
@@ -2515,24 +2585,29 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
             rect(u - 0.02, u + 0.02, y - 0.44, y + 0.44, '#3b3f46');
           }
         }
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 8;
-        const geo = new THREE.PlaneGeometry(W, H), mat = new THREE.MeshLambertMaterial({ map: tex });
-        disposables.push(tex, geo, mat);
-        const m = new THREE.Mesh(geo, mat);
+        // (a spot `u` across the canvas, from its middle: the face of its piece and how far along it)
         const mid = -(real?.along ?? 0);
-        const [fx, fz] = on(s, mid, 0.04);
-        m.position.set(fx, H / 2, fz);
-        m.rotation.y = faceYaw(s);
-        add(m);
+        const at = (u: number): [WaldseeFace, number] => (front ? frontAt(front, u + W / 2) : [s, mid - u]);
+        if (front) paintFront(canvas, front, H);
+        else {
+          const tex = new THREE.CanvasTexture(canvas);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 8;
+          const geo = new THREE.PlaneGeometry(W, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+          disposables.push(tex, geo, mat);
+          const m = new THREE.Mesh(geo, mat);
+          const [fx, fz] = on(s, mid, 0.04);
+          m.position.set(fx, H / 2, fz);
+          m.rotation.y = faceYaw(s);
+          add(m);
+        }
         // five grey stone steps up to the glass door, two to the house door
-        for (let k = 0; k < 5; k++) onFace(s, mid + eu, 0.62 - k * 0.12, (0.1 + k * 0.1) / 2, ew + 0.2, 0.1 + k * 0.1, 0.24, 0x8e9299);
-        if (hasDoor) for (let k = 0; k < 2; k++) onFace(s, mid + du, 0.3 - k * 0.12, (0.1 + k * 0.1) / 2, 0.9, 0.1 + k * 0.1, 0.24, 0x8e9299);
+        for (let k = 0; k < 5; k++) onFace(...at(eu), 0.62 - k * 0.12, (0.1 + k * 0.1) / 2, ew + 0.2, 0.1 + k * 0.1, 0.24, 0x8e9299);
+        if (hasDoor) for (let k = 0; k < 2; k++) onFace(...at(du), 0.3 - k * 0.12, (0.1 + k * 0.1) / 2, 0.9, 0.1 + k * 0.1, 0.24, 0x8e9299);
         // two small lamps on arms over the sign band
         for (const u of wu) {
-          onFace(s, mid + u, 0.12, 2.82, 0.04, 0.04, 0.24, 0x2a2d33);
-          onFace(s, mid + u, 0.26, 2.78, 0.16, 0.12, 0.14, 0xffe2a0, true);
+          onFace(...at(u), 0.12, 2.82, 0.04, 0.04, 0.24, 0x2a2d33);
+          onFace(...at(u), 0.26, 2.78, 0.16, 0.12, 0.14, 0xffe2a0, true);
         }
       }
       continue;
