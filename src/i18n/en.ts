@@ -309,6 +309,7 @@ export const en = {
   'character.cup': 'Soda cup',
   'character.babyDino': 'Baby Dino',
   'settings.graphics': 'Graphics',
+  'settings.quality': 'Quality',
   'settings.damageNumbers': 'Damage numbers',
   'settings.graphicsTest': 'Best for this computer',
   'settings.graphicsTestRun': 'Test now',

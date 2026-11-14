@@ -529,18 +529,12 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   function settingsScreen() {
     show('settings', s => {
       text(s, 'h2', '', t('settings.title'));
-      // two cards side by side (one above the other on a narrow screen), so nothing needs scrolling:
-      // the game on the left; sound, you and about on the right. In each a label on the left, its control on the right
+      // three cards one under the other: you; the game with its controls, graphics and sound; about.
+      // In each a label on the left, its control on the right; the cards scroll between the title and the way back
       const columns = document.createElement('div');
       columns.className = 'settings-columns';
       s.append(columns);
-      const cards = [0, 1].map(() => {
-        const c = document.createElement('div');
-        c.className = 'settings-card';
-        columns.append(c);
-        return c;
-      });
-      let card = cards[1];
+      let card!: HTMLElement;
       const row = (label: string) => {
         text(card, 'div', 'settings-label', label);
         const cell = document.createElement('div');
@@ -548,9 +542,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         card.append(cell);
         return cell;
       };
-      const section = (label: string, column: 0 | 1 = 1) => {
-        card = cards[column];
-        return text(card, 'div', 'settings-section', label);
+      /** a heading: of a new card, or (`sub`) of a part of the card that is open */
+      const section = (label: string, sub = false) => {
+        if (!sub) {
+          card = document.createElement('div');
+          card.className = 'settings-card';
+          columns.append(card);
+        }
+        return text(card, 'div', `settings-section${sub ? ' sub' : ''}`, label);
       };
       const chips = <V,>(label: string, items: { label: string; value: V }[], get: () => V, set: (v: V) => void) => {
         const cell = row(label);
@@ -561,6 +560,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             const c = document.createElement('button');
             c.className = `chip small${it.value === get() ? ' on' : ''}`;
             c.textContent = it.label;
+            c.setAttribute('aria-pressed', String(it.value === get()));
             c.addEventListener('click', () => {
               actions.click();
               set(it.value);
@@ -574,51 +574,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       };
       const onOff = [{ label: t('settings.on'), value: true }, { label: t('settings.off'), value: false }];
 
-      section(t('settings.sound'));
-      for (const key of ['music', 'sfx'] as const) {
-        const input = document.createElement('input');
-        input.type = 'range';
-        input.min = '0';
-        input.max = '1';
-        input.step = '0.05';
-        input.value = String(settings[key]);
-        input.addEventListener('input', () => {
-          settings[key] = Number(input.value);
-          changed();
-        });
-        row(t(key === 'music' ? 'settings.music' : 'settings.sfx')).append(input);
-      }
-
-      // graphics sit with the sound on the right, where there is room for all four
-      chips(t('settings.graphics'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
-      // the test picks the setting for this machine; the counter shows what it gets
-      const best = row(t('settings.graphicsTest'));
-      const run = document.createElement('button');
-      run.className = 'chip small';
-      run.textContent = `${t('settings.graphicsTestRun')} \u203a`;
-      run.addEventListener('click', () => {
-        actions.click();
-        actions.testGraphics(() => settingsScreen());
-      });
-      best.append(run);
-      chips(t('settings.fps'), onOff, () => settings.showFps, v => (settings.showFps = v));
-      section(t('settings.gameplay'), 0);
-      const keys = row(t('settings.keys'));
-      const change = document.createElement('button');
-      change.className = 'chip small';
-      change.textContent = `${t('settings.changeKeys')} ›`;
-      change.addEventListener('click', () => {
-        actions.click();
-        controlsScreen();
-      });
-      keys.append(change);
-      chips(t('settings.mouse'), [0.5, 1, 1.5, 2, 3].map(v => ({ label: `${v}×`, value: v })), () => settings.mouseSensitivity, v => (settings.mouseSensitivity = v));
-      chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
-      chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
-      chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
-      chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
-      text(card, 'div', 'settings-note', t('settings.colorBlindHint'));
-
       section(t('settings.player'));
       const input = document.createElement('input');
       input.type = 'text';
@@ -630,6 +585,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         changed();
       });
       input.addEventListener('keydown', e => e.stopPropagation());
+      input.setAttribute('aria-label', t('settings.name'));
       row(t('settings.name')).append(input);
       const colors = row(t('settings.color'));
       colors.classList.add('colors');
@@ -641,6 +597,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           if (c === null) b.textContent = 'A';
           else b.style.background = hex(c);
           b.title = c === null ? t('settings.colorAuto') : '';
+          b.setAttribute('aria-pressed', String(settings.color === c));
           b.addEventListener('click', () => {
             actions.click();
             settings.color = c;
@@ -681,9 +638,70 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         }
       };
       drawCast();
+
+      section(t('settings.gameplay'));
+      chips(t('settings.damageNumbers'), onOff, () => settings.damageNumbers, v => (settings.damageNumbers = v));
+      chips(t('settings.killCam'), onOff, () => settings.killCam, v => (settings.killCam = v));
+      chips(t('settings.colorBlind'), onOff, () => settings.colorBlind, v => (settings.colorBlind = v));
+      text(card, 'div', 'settings-note', t('settings.colorBlindHint'));
+
+      section(t('controls.title'), true);
+      const keys = row(t('settings.keys'));
+      const change = document.createElement('button');
+      change.className = 'chip small';
+      change.textContent = `${t('settings.changeKeys')} ›`;
+      change.addEventListener('click', () => {
+        actions.click();
+        controlsScreen();
+      });
+      keys.append(change);
+      // which key does what, one piece each so a line only breaks between two of them
+      const help = document.createElement('div');
+      help.className = 'settings-note settings-keys';
+      for (const piece of t('menu.controls').split(' · ')) text(help, 'span', '', piece);
+      card.append(help);
+      chips(t('settings.mouse'), [0.5, 1, 1.5, 2, 3].map(v => ({ label: `${v}×`, value: v })), () => settings.mouseSensitivity, v => (settings.mouseSensitivity = v));
+      chips(t('settings.walk'), [{ label: t('settings.walkScreen'), value: false }, { label: t('settings.walkAim'), value: true }], () => settings.steerWithMouse, v => (settings.steerWithMouse = v));
+
+      section(t('settings.graphics'), true);
+      chips(t('settings.quality'), GRAPHICS_QUALITIES.map(g => ({ label: t(`graphics.${g}`), value: g })), () => settings.graphics, v => (settings.graphics = v));
+      // the test picks the setting for this machine; the counter shows what it gets
+      const best = row(t('settings.graphicsTest'));
+      const run = document.createElement('button');
+      run.className = 'chip small';
+      run.textContent = `${t('settings.graphicsTestRun')} \u203a`;
+      run.addEventListener('click', () => {
+        actions.click();
+        actions.testGraphics(() => settingsScreen());
+      });
+      best.append(run);
+      chips(t('settings.fps'), onOff, () => settings.showFps, v => (settings.showFps = v));
+
+      section(t('settings.sound'), true);
+      for (const key of ['music', 'sfx'] as const) {
+        const label = t(key === 'music' ? 'settings.music' : 'settings.sfx');
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = '0';
+        input.max = '1';
+        input.step = '0.05';
+        input.value = String(settings[key]);
+        input.setAttribute('aria-label', label);
+        const cell = row(label);
+        cell.append(input);
+        // how loud, as a number beside the slider
+        const percent = text(cell, 'span', 'settings-value', '');
+        const show = () => (percent.textContent = `${Math.round(settings[key] * 100)}%`);
+        show();
+        input.addEventListener('input', () => {
+          settings[key] = Number(input.value);
+          show();
+          changed();
+        });
+      }
+
       section(t('settings.about'));
       text(row(t('settings.version')), 'span', 'settings-version', `v${APP_VERSION}`);
-      text(s, 'p', 'controls-help', t('menu.controls'));
       button(s, t('menu.back'), () => back());
     });
   }
