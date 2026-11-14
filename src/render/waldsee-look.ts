@@ -1879,8 +1879,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       } else if (s.kind === 'nkd') {
         // the clothes shop: the whole real wall painted flush, pale plaster with plain windows above, below a long
         // glass shopfront with the door in the middle and a dark grey fascia carrying the red name
+        // (the street front may be several wall pieces with slight kinks: each gets its part of the shopfront, the
+        // door and the name on the piece the shop snapped to)
         const wall = (s as OnWall).wall;
-        const wB = wall?.width ?? span, H = wall?.eave ?? 3.6, mid = -(wall?.along ?? 0);
+        const front = (face: WaldseeFace, wB: number, H: number, main: boolean) => {
         const S = 64, cw = Math.max(64, Math.round(wB * S)), ch = Math.round(H * S);
         const canvas = document.createElement('canvas');
         canvas.width = cw;
@@ -1899,7 +1901,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(0, 0, cw, 0.5 * S);
         // the shopfront: the fascia sits at 2.55-3.15, glass below it, a window either side of the door in the middle
         const fasciaTop = 3.15, fasciaBot = 2.5;
-        const doorW = Math.min(1.3, wB * 0.25), gap = 0.15;
+        const doorW = main ? Math.min(1.3, wB * 0.25) : 0, gap = main ? 0.15 : 0.05;
         g.fillStyle = '#3d4046';
         g.fillRect(0, py(fasciaTop), cw, (fasciaTop - fasciaBot) * S);
         g.fillStyle = '#8f949c';
@@ -1930,6 +1932,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           g.fill();
         }
         // the glass door with a handle
+        if (main) {
         const dx0 = -doorW / 2;
         g.fillStyle = '#f4f1ea';
         g.fillRect(px(dx0), py(2.4), doorW * S, 2.22 * S);
@@ -1937,12 +1940,15 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(px(dx0 + 0.07), py(2.33), (doorW - 0.14) * S, 2.08 * S);
         g.fillStyle = '#c9ccd2';
         g.fillRect(px(dx0 + doorW - 0.22), py(1.3), 0.05 * S, 0.5 * S);
+        }
         // the name: red letters on the fascia, left of centre, as on the real one
+        if (main) {
         g.fillStyle = '#d0202a';
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
         g.fillText(s.text, px(-wB * 0.14), py((fasciaTop + fasciaBot) / 2) + 2);
+        }
         // upper storeys, two tiles apart: pale-framed windows over the shopfront bays
         const nUp = Math.max(1, Math.round(wB / 1.7));
         for (let y = 4.55; y + 0.55 < H - 0.15; y += 2) {
@@ -1963,10 +1969,16 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const mat = new THREE.MeshLambertMaterial({ map: tex });
         disposables.push(tex, geo, mat);
         const m = new THREE.Mesh(geo, mat);
-        const [fx, fz] = on(s, mid, 0.04);
+        const [fx, fz] = on(face, 0, 0.04);
         m.position.set(fx, H / 2, fz);
-        m.rotation.y = faceYaw(s);
+        m.rotation.y = faceYaw(face);
         add(m);
+        };
+        const pieces = wall?.id === undefined ? [] : wallFeet().filter(w => w.id === wall.id && w.nx * s.dx + w.nz * s.dz >= 0.5);
+        if (!pieces.length) front(s, wall?.width ?? span, wall?.eave ?? 3.6, true);
+        // (the piece the shop snapped to is the one whose middle is nearest the snapped point)
+        const near = pieces.reduce((best, w) => (Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z) < Math.hypot((best.x0 + best.x1) / 2 - s.x, (best.z0 + best.z1) / 2 - s.z) ? w : best), pieces[0]);
+        for (const w of pieces) front({ x: (w.x0 + w.x1) / 2, z: (w.z0 + w.z1) / 2, dx: w.nx, dz: w.nz, len: 1 }, Math.hypot(w.x1 - w.x0, w.z1 - w.z0), w.eave, w === near);
       } else if (s.kind === 'brille') {
         // the optician: the real white house painted flush on its wall, dark red shutters upstairs, two great
         // windows hung with red cloth either side of a glass door up four steps, grey planters with little
