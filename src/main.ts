@@ -817,10 +817,19 @@ function startGame() {
     solo = dailyRun
       ? // the same run for everyone today: fixed seed and difficulty, every weapon
         createSim(floor01, dailySeed(dailyRun), { mode: 'run', players: names.length, difficulty: DAILY_DIFFICULTY, names, colors, characters, countdown: true })
-      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, characters, countdown: !params.has('capture'), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
+      : createSim(first, fixed > 0 ? fixed : randomSeed(), { mode, players: names.length, unlocked: profile.unlocked, difficulty: settings.difficulty, names, colors, characters, countdown: !params.has('capture') && !(import.meta.env.DEV && params.has('nocount')), rushMaps: mode === 'bossrush' ? rushMapsFor(settings.rushMap, BOSS_RUSH.length) : undefined });
     if (params.has('demo')) applyDemo(solo);
     enterPlay();
     if (cast && params.has('fp')) keyboard.setFirstPerson(true, { x: 0, z: -1 });
+    // (dev, for screenshots: &at=x,z puts the first player there, &face=dx,dz turns their first-person view that way)
+    if (import.meta.env.DEV && params.has('at')) {
+      const [x, z] = params.get('at')!.split(',').map(Number);
+      if (Number.isFinite(x) && Number.isFinite(z)) solo.players[0].pos = { x, z };
+    }
+    if (import.meta.env.DEV && params.has('face')) {
+      const [x, z] = params.get('face')!.split(',').map(Number);
+      if (Number.isFinite(x) && Number.isFinite(z)) keyboard.setFirstPerson(true, { x, z });
+    }
   }
 
   // ---------- LAN ----------

@@ -401,7 +401,9 @@ export function updateEnemies(s: SimState): void {
     // a climber goes over whatever is in its way: straight for the nearest player
     const reach = climbers.get(e.id);
     const climbs = reach !== undefined;
-    if (climbs && e.state === 'move' && !isHeld) {
+    // (not while it wanders, unaware of the players: see startUnaware in boss.ts)
+    const roaming = e.hordeId !== null && hordes.get(e.hordeId)?.aggro === false;
+    if (climbs && e.state === 'move' && !isHeld && !roaming) {
       const prey = nearestPlayer(players, e.pos);
       if (prey && prey.d > 1.2) dir = unit(e.pos, prey.p.pos);
     }

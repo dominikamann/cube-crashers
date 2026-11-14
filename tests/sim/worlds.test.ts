@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { FLOORS, RUN_BOSSES, runBosses, runFloors } from '../../src/sim/config/floors';
-import { BLOCKS_WALKER, isFree, Tile, tileAt, type FloorMap } from '../../src/sim/map/tilemap';
+import { BLOCKS_WALKER, isFree, nearestFree, Tile, tileAt, type FloorMap } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { grabPlayer, spawnBoss } from '../../src/sim/systems/boss';
+import { alertBoss, grabPlayer, spawnBoss } from '../../src/sim/systems/boss';
 import { enterFloor } from '../../src/sim/systems/run';
 import { spawnEnemy } from '../../src/sim/systems/enemies';
 import type { Vec2 } from '../../src/sim/types';
@@ -116,6 +116,8 @@ describe('under water', () => {
 
   it('the Kraken crawls toward the players', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
+    // (it knows they are there: see the bosses that have not seen anyone yet in boss-unaware.test.ts)
+    alertBoss(s, s.boss!);
     const p = s.players[0];
     p.invulnUntil = 1e9;
     const k = s.enemies.find(e => e.id === s.boss!.enemyId)!;
@@ -175,8 +177,11 @@ describe('under water', () => {
     const s = createSim(FLOORS.underwater.map, 3, { mode: 'quick', players: 1 });
     expect(s.boss?.kind).toBe('kraken');
     s.players[0].invulnUntil = 1e9;
-    // held in place far from the player: it lashes and inks from afar instead of crawling up to grab
-    s.enemies.find(e => e.id === s.boss!.enemyId)!.speed = 0;
+    // held in place away from the player, but in sight of them: it lashes and inks from afar instead of crawling up to grab
+    alertBoss(s, s.boss!);
+    const held = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    held.speed = 0;
+    s.players[0].pos = nearestFree(s.map, { x: held.pos.x, z: held.pos.z + 12 }, 0.4, BLOCKS_WALKER);
     let warned = 0;
     for (let i = 0; i < 20 * 60; i++) {
       stepSim(s, []);

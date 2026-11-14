@@ -132,8 +132,16 @@ function pushOutOfBosses(s: SimState, p: Player): void {
     if (d >= edge) continue;
     // dead centre: push toward the player's facing so they come out somewhere
     const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
-    const out = { x: e.pos.x + nx * edge, z: e.pos.z + nz * edge };
-    p.pos = isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER) ? out : nearestFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER);
+    // (out to its edge that way; where a wall is there, round its edge to the nearest side that is free: never
+    // into the wall, from where nobody could get out again)
+    const toward = Math.atan2(nz, nx);
+    for (let k = 0; k <= 12; k++) {
+      const a = toward + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 12);
+      const out = { x: e.pos.x + Math.cos(a) * edge, z: e.pos.z + Math.sin(a) * edge };
+      if (!isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER)) continue;
+      p.pos = out;
+      break;
+    }
   }
 }
 

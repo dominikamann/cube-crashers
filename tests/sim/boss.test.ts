@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FLOORS, RUN_FLOORS } from '../../src/sim/config/floors';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim } from '../../src/sim/sim';
-import { BOSS, bossHp, megaLeap } from '../../src/sim/systems/boss';
+import { alertBoss, BOSS, bossHp, megaLeap } from '../../src/sim/systems/boss';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { BOSS_HP } from '../../src/sim/config/balance';
 import { damagePlayer } from '../../src/sim/systems/player';
@@ -17,6 +17,8 @@ function bossFloor(kind: 'megaBlock' | 'worm', players = 1): SimState {
   s.run.floors = [...RUN_FLOORS];
   s.run.bosses = undefined;
   enterFloor(s, index);
+  // (it knows the players are there: see boss-unaware.test.ts for the boss that has not seen anyone yet)
+  alertBoss(s, s.boss!);
   s.boss!.nextAttackAt = Number.MAX_SAFE_INTEGER;
   s.hordes = [];
   s.enemies = s.enemies.filter(e => e.kind === 'megaBlock' || e.kind === 'wormSegment');

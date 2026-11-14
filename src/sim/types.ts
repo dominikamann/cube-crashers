@@ -418,6 +418,10 @@ export interface BossState {
   wild?: boolean;
   /** a wild boss waits by the elevator until someone comes near or hurts it: the speed it gets back then */
   waiting?: number;
+  /** a boss that has not seen anyone yet: it wanders with this horde of its own until it sees someone or is hurt */
+  roam?: number;
+  /** the Schrättele has not seen anyone yet: she keeps watch by her fire and attacks nobody until she does */
+  unseen?: boolean;
   /** Angry Dominik's laser eyes: it aims from `startAt`, burns from `fireAt` to `endAt`, turning from angle `from` by `sweep` */
   laser?: { startAt: number; fireAt: number; endAt: number; from: number; sweep: number } | null;
   /** the Kraken: a player held by a tentacle and dragged in, until this tick */

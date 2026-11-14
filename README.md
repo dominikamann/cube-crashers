@@ -49,6 +49,15 @@ with up to nine friends on your LAN or online, together against the monsters or 
 
 <table>
   <tr>
+    <td><img src="docs/design/screenshots/town-czardas.webp" alt="The Town in first person: the Czardas on the Hochstatt of Bad Waldsee, its terrace and the trees of the square" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The Town, always in first person: the Czardas on the Hochstatt, built from real building data</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
     <td><img src="docs/design/candy.webp" alt="Candy Factory with conveyor belts" /></td>
     <td><img src="docs/design/arena.webp" alt="Boss fight against the Mega Block" /></td>
   </tr>
@@ -216,7 +225,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 |---|---|---|---|
 | 1 | Arcade Plaza | Nests, daylight | a game between |
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
-| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block** *or* the **Rhino** in the arena, or under water **the Kraken** with fish and sharks (or **the Schrättele**) | a game between |
+| 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, the **Rhino** *or* **the Schrättele** in the arena, or under water **the Kraken** with fish and sharks | a game between |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
 | 5 | Rooftop | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele** | – |
 
@@ -227,7 +236,7 @@ floor), and on the LAN everyone gets the same ones. Every world can also be play
 **Wild bosses:** now and then a smaller boss waits by the elevator once the last nest has fallen: rarely on
 the first floor, more often the higher you are. It is never a boss your run has a floor for, and always one that
 suits the world (the **Rhino** where there is room to charge, **King Rex** in the city, the jungle and the
-Server Farm). The doors are open: lure it away and slip past, or beat it for a crate.
+Server Farm, **the Schrättele** with a fire of her own on the plaza, in the Candy Factory and in the Server Farm). The doors are open: lure it away and slip past, or beat it for a crate.
 
 Between the floors the elevator takes you to a short game of its own, then to the shop. There are five of them
 and a run has four gaps, so every run draws its own order by its seed, and no game comes twice:
@@ -325,7 +334,7 @@ the whole team.
 
 - **Mouse speed (first person):** how fast the mouse or touchpad turns the view, 0.5× to 3×. On a touchpad try 2× or 3×.
 - **Graphics quality:** Low, Medium, High (default) or Ultra. Higher levels use sharper shadows, smoothing,
-  glow, colour grading and (Ultra) ambient occlusion. Pick Low on older laptops.
+  glow, colour grading and (Ultra, in the view from above) ambient occlusion. Pick Low on older laptops.
 - **Damage numbers:** floating numbers when you hit something (can be switched off).
 - **Suit colour:** pick one of six colours or *automatic*. On the LAN you get it if nobody else has it.
 - **Graphics:** four levels. **Test now** tries them on your computer and keeps the best one that runs smoothly (it also runs once by itself on the first start); **Show FPS** puts the frames a second in the corner.
@@ -716,14 +725,15 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Glitch Ghost** | Drifts straight through walls toward you; from afar you only see it flicker. | It flickers in and out |
 | **Pixel Fish** | Small and fast, in schools (under water). | – |
 | **Shark** | Under water: lunges at you with its jaws. | Red lane on the ground |
+| **Little Schrättele** | The Town's little witches: they walk its streets on their own until they see you, then come for you; the elevator stays shut until the last one is squashed (the HUD counts them). They also dance round the fire with the Schrättele. | – |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls straight at you over walls and barriers, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl, and the final boss of some Tower Runs. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Charges like mad and flings whoever it hits. | Red lane on the ground |
 | **King Rex** | The last boss of the Boss Rush; in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
-| **The Schrättele** | Boss of the Town, and like every boss in the Boss Rush, the Boss Brawl, versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little witches and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. | Her crouch and her cackle; a fan of strikes before the sweep |
-| **Mega Block** | Boss of floor 3 (in some runs the Rhino or the Kraken takes its place). | Red rings, marked lines |
-| **Segment Worm** | One of the three final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
+| **The Schrättele** | Boss of the Town; like every boss also in the Boss Rush and the Boss Brawl, and in versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little Schrättele and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. | Her crouch and her cackle; a fan of strikes before the sweep |
+| **Mega Block** | Boss of floor 3 (in some runs the Rhino, the Schrättele or the Kraken takes its place). | Red rings, marked lines |
+| **Segment Worm** | One of the four final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
 
 ---
@@ -885,6 +895,7 @@ docs/         gameplay GIF and screenshots
 - [x] Angry Dominik, the Thunder Hammer, baby dinos; a cast of characters to play as, robots for bots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [x] The Town: Bad Waldsee's old town from real building data, walked in first person, with the Schrättele as its boss
+- [x] Little Schrättele in the Town's streets (the elevator waits for them), finer houses and roofs, an end screen in the middle: version 1.2
 - [ ] More in [IDEAS.md](IDEAS.md): a full Lane Defense mode, new floors and bosses, plugins. Add your own!
 
 ## Contributing

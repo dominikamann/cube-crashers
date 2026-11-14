@@ -6,6 +6,7 @@ import { RACE, raceSeconds } from '../sim/systems/race';
 import { LANE } from '../sim/systems/lane';
 import { MAZE } from '../sim/systems/maze';
 import { runProgress } from '../sim/systems/run';
+import { witchlingsLeft } from '../sim/systems/witch';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { t, type StringKey } from '../i18n';
@@ -248,12 +249,15 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       const alive = s.nests.filter(n => n.state !== 'destroyed').length;
       // (a boss fight needs no line here: the boss bar and the countdown say it, and the box stays small)
       const nestsLine = s.nests.length > 0 ? t('hud.nests', { n: s.nests.length - alive, total: s.nests.length }) : '';
+      // (the little Schrättele out in the Town's streets: how many are still about, the elevator waits for them)
+      const out = s.enemies.filter(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0).length;
+      const witchlingsLine = out > 0 ? t('hud.witchlings', { n: out }) : '';
       const def = floorDef(s.map.id);
       // nests and floor on one line (the floor's name is in the countdown), so the box stays small
       // (a game between two floors is not a floor: it has its name and a count of its own)
       const at = runProgress(s);
       const floorLine = s.run.mode !== 'run' ? '' : at.stage === 'between' ? t('hud.between', { ...at, name: t((def?.name ?? 'floor.shaft') as 'floor.shaft') }) : t('hud.floor', at);
-      nestText.textContent = [nestsLine, floorLine].filter(Boolean).join(' · ');
+      nestText.textContent = [nestsLine, witchlingsLine, floorLine].filter(Boolean).join(' · ');
       floorText.textContent = '';
 
       const shop = s.run.stage === 'shop' ? s.run.shop : null;
@@ -450,7 +454,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'bossDead':
             // (the Schrättele is beaten, but little ones are still out in the streets: the elevator waits for them)
-            if (e.kind === 'witch' && s.enemies.some(x => x.kind === 'witchling' && x.hp > 0)) toast(t('toast.witchlings'), 'warn');
+            if (e.kind === 'witch' && witchlingsLeft(s)) toast(t('toast.witchlings'), 'final', t('toast.witchlingsHow'));
             break;
           case 'dominikLeft':
             toast(t('toast.dominikLeft'), 'good');

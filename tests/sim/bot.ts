@@ -111,6 +111,9 @@ export function createBot(): (s: SimState) => Command[] {
     else if (crate) goal = crate;
     else if (s.elevatorOpen) goal = s.map.elevator;
     else if (nest) goal = nest.pos;
+    // (the Schrättele is beaten and the elevator waits for the little Schrättele out in the Town: after them)
+    else if (s.witchlingsWait && s.enemies.some(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0))
+      goal = s.enemies.filter(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0).reduce((a, e) => (d(e.pos, p.pos) < d(a.pos, p.pos) ? e : a)).pos;
     else goal = s.map.spawn;
 
     // towers are solid: the way round them (rebuilt when one goes up or down)

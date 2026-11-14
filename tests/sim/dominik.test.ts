@@ -232,13 +232,18 @@ describe("Angry Dominik's hammer", () => {
     const { s, from } = strike(0.9, BOSS.hammerRings[0]);
     const p = s.players[0];
     stepSim(s, []);
-    // a wall across his path, two tiles behind him
+    // a wall across his path, two tiles behind him (the map is shared by every test: put back as it was after)
     const row = Math.floor(p.pos.z) + 2;
+    const before = s.map.tiles.slice(row * s.map.w, (row + 1) * s.map.w);
     for (let x = 0; x < s.map.w; x++) s.map.tiles[row * s.map.w + x] = Tile.Wall;
-    still(s, BOSS.warnTicks + 5);
-    expect(p.hp).toBeLessThan(p.maxHp);
-    expect(p.pos.z).toBeLessThan(row);
-    expect(p.pos.z).toBeGreaterThan(from.z + BOSS.hammerRings[0]);
+    try {
+      still(s, BOSS.warnTicks + 5);
+      expect(p.hp).toBeLessThan(p.maxHp);
+      expect(p.pos.z).toBeLessThan(row);
+      expect(p.pos.z).toBeGreaterThan(from.z + BOSS.hammerRings[0]);
+    } finally {
+      s.map.tiles.splice(row * s.map.w, s.map.w, ...before);
+    }
   });
 
   it('his lightning hurts but throws no one', () => {

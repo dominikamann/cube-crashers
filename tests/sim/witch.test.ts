@@ -354,6 +354,8 @@ describe('the Schrättelestanz and the two faces', () => {
 
   it('her burning twigs keep burning where they land', () => {
     const s = town();
+    // (she has seen the player already)
+    s.boss!.unseen = undefined;
     const p = s.players[0];
     p.invulnUntil = Number.MAX_SAFE_INTEGER;
     let most = 0;
@@ -362,6 +364,23 @@ describe('the Schrättelestanz and the two faces', () => {
       most = Math.max(most, (s.boss?.witch?.embers ?? []).filter(e => e.from <= s.tick).length);
     }
     expect(most).toBeGreaterThan(0);
+  });
+});
+
+describe('the Schrättele keeps watch', () => {
+  it('attacks nobody until she sees someone, then she does', () => {
+    const s = town();
+    const me = bodyOf(s);
+    // (out of her sight: far off behind the houses)
+    const far = s.map.waypoints.filter(w => Math.hypot(w.x - me.pos.x, w.z - me.pos.z) > 25)[0];
+    s.players[0].pos = nearestFree(s.map, far, 0.4, BLOCKS_WALKER);
+    const seenAttacks = (ticks: number) => run(s, ticks).filter(e => e.type === 'bossAttack' || e.type === 'witchPress' || e.type === 'blastWarning').length;
+    expect(seenAttacks(20 * 60)).toBe(0);
+    expect(s.boss!.unseen).toBe(true);
+    // she sees the player: it starts
+    s.players[0].pos = nearestFree(s.map, { x: me.pos.x + 4, z: me.pos.z }, 0.4, BLOCKS_WALKER);
+    run(s, 30);
+    expect(s.boss!.unseen).toBeUndefined();
   });
 });
 

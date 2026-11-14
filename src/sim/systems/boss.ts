@@ -1,9 +1,9 @@
 import { clearSpot } from './ground';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
+import { AGGRO_RADIUS, BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
-import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2 } from '../types';
+import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossState, type Enemy, type Horde, type Intent, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { DIFFICULTY } from '../config/difficulty';
 import { ENEMIES } from '../config/enemies';
@@ -221,6 +221,59 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2): void {
 /** how close a player comes before a waiting wild boss goes for them */
 export const WILD_WAKE = 9;
 
+/** the nearest spot on the floor for a body that is in a wall (from in there it sees nothing, so not by sight) */
+function outOfWall(s: SimState, e: Enemy): Vec2 {
+  const r = Math.min(e.radius, 0.9);
+  for (let ring = 0.5; ring <= 10; ring += 0.5)
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, c = { x: e.pos.x + Math.cos(a) * ring, z: e.pos.z + Math.sin(a) * ring };
+      if (isFree(s.map, c, r, BLOCKS_ENEMY)) return c;
+    }
+  return e.pos;
+}
+
+/** A boss knows the players are there: it stops wandering or keeping watch (it has seen someone, or is hurt). */
+export function alertBoss(s: SimState, b: BossState): void {
+  b.unseen = undefined;
+  if (b.roam === undefined) return;
+  const body = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
+  if (body) body.hordeId = null;
+  s.hordes = s.hordes.filter(x => x.id !== b.roam);
+  b.roam = undefined;
+}
+
+/** how far a boss sees: whoever is farther off, or behind a wall, it does not attack */
+export const BOSS_SIGHT = 40;
+
+/** the living players a boss sees from where it is (a worm from where it was last): who is in clear sight, or right by it */
+export function seenBy(s: SimState, b: BossState): Player[] {
+  const body = b.enemyId !== null ? byId(s, b.enemyId) : undefined, from = body?.pos ?? (b.enemyId === null ? b.lastPos : undefined);
+  if (!from) return [];
+  // (one standing right by it is noticed, even where a wall beside them both is in the way of the line between them)
+  const close = (body?.radius ?? 1) + 2.5;
+  // (one up on a wall top stands over the walls: seen as far as it sees)
+  return s.players.filter(p => p.downUntil === null && (dist(p.pos, from) <= close || (dist(p.pos, from) <= BOSS_SIGHT && (p.perched || hasLos(s.map, from, p.pos)))));
+}
+
+/**
+ * The boss of a floor starts out unaware of the players: it wanders about like a horde of its own (see hordes.ts)
+ * and attacks nobody until it sees someone or is hurt. The Schrättele does not wander: she keeps watch by her fire,
+ * and attacks nobody until she sees someone or is hurt. (The worm is many pieces: it comes at once.)
+ */
+export function startUnaware(s: SimState, b: BossState): void {
+  if (b.kind === 'witch') {
+    b.unseen = true;
+    return;
+  }
+  if (b.enemyId === null || b.kind === 'worm') return;
+  const body = byId(s, b.enemyId);
+  if (!body) return;
+  const h: Horde = { id: s.nextId++, waypoint: { ...body.pos }, aggro: false, rush: false, nextWanderAt: s.tick + Math.floor(s.rng.range(60, 180)) };
+  s.hordes.push(h);
+  body.hordeId = h.id;
+  b.roam = h.id;
+}
+
 export const BRAWL = {
   kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider', 'witch'] as BossKind[],
   /** this many of them come a second time */
@@ -282,7 +335,8 @@ function telegraph(s: SimState, pos: Vec2, radius: number, damage: number, delay
 }
 
 function attack(s: SimState, b: BossState): void {
-  const alive = s.players.filter(p => p.downUntil === null);
+  // (it goes for those it sees, nobody else)
+  const alive = seenBy(s, b);
   if (alive.length === 0) return;
   // its voice goes with its big moves only (a roar every few seconds would wear thin)
   const voice = () => s.events.push({ type: 'bossAttack', kind: b.kind });
@@ -363,7 +417,7 @@ function attack(s: SimState, b: BossState): void {
       for (let i = 1; i <= BOSS.spiderFangs; i++) telegraph(s, { x: spider.pos.x + dir.x * (2 + i * BOSS.waveStep), z: spider.pos.z + dir.z * (2 + i * BOSS.waveStep) }, 1.2, BOSS.strikeDamage, 45 + i * 4);
     }
   } else if (b.kind === 'witch') {
-    witchAttack(s, b);
+    witchAttack(s, b, alive);
   } else if (b.kind === 'dominik') {
     const dom = byId(s, b.enemyId!);
     if (!dom) return;
@@ -711,6 +765,10 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   laser(s, b);
   updateWitch(s, b, intents);
   const living = bodies(s, b);
+  // a body that has ended up in a wall (a leap or a shove too far) steps back out onto the floor: in there it
+  // sees nobody and nobody sees it. (Not the climbers, which go over walls, nor a worm's pieces, nor in mid-leap)
+  if (!b.leap && b.kind !== 'spider' && b.kind !== 'kraken' && b.kind !== 'worm')
+    for (const e of living) if (!isFree(s.map, e.pos, 0.3, BLOCKS_ENEMY)) e.pos = outOfWall(s, e);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
   if (living.length === 0 && b.kind === 'spider' && !b.brood) {
@@ -789,6 +847,30 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     const entries = s.map.waypoints.filter(w => s.players.every(p => dist(w, p.pos) > 10));
     if (sea < BOSS.seaCap && s.enemies.length + 8 <= ENEMY_CAP && entries.length > 0) spawnHorde(s, s.rng.pick(entries), SCHOOL, { rush: true });
   }
+  if (b.unseen) {
+    // the Schrättele by her fire: no attack until she sees someone (as near and as clear as a horde would) or is hurt
+    const body = living[0];
+    const seen = s.players.some(p => p.downUntil === null && dist(p.pos, body.pos) <= AGGRO_RADIUS && hasLos(s.map, body.pos, p.pos));
+    if (!seen && body.hp >= body.maxHp) {
+      b.nextAttackAt = s.tick + TICK_RATE;
+      return;
+    }
+    b.unseen = undefined;
+    b.nextAttackAt = Math.max(b.nextAttackAt, s.tick + TICK_RATE);
+  }
+  if (b.roam !== undefined) {
+    // it has seen nobody yet: it wanders and does not attack, until its horde has seen someone or it is hurt
+    const body = living[0];
+    const h = s.hordes.find(x => x.id === b.roam);
+    if (h && !h.aggro && body.hp >= body.maxHp) {
+      b.nextAttackAt = s.tick + TICK_RATE;
+      body.cooldownUntil = Math.max(body.cooldownUntil, s.tick + TICK_RATE);
+      return;
+    }
+    // (it has seen someone: from now on it is the boss, after a moment to turn on them)
+    alertBoss(s, b);
+    b.nextAttackAt = Math.max(b.nextAttackAt, s.tick + TICK_RATE);
+  }
   if (b.waiting !== undefined) {
     // a wild boss waits by the elevator until someone comes near or hurts it
     const body = living[0];
@@ -804,6 +886,11 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   }
   // (the witch finishes what she is doing before she starts on something new)
   if (s.tick >= b.nextAttackAt && !witchBusy(b)) {
+    // (a boss attacks nobody it does not see: it tries again in a moment)
+    if (seenBy(s, b).length === 0) {
+      b.nextAttackAt = s.tick + TICK_RATE / 2;
+      return;
+    }
     attack(s, b);
     const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : 1;
     b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * haste);

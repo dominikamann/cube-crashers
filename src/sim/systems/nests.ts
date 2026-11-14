@@ -29,7 +29,7 @@ import { BLOCKS_WALKER, moveCircle, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 import { dropCoins, explode } from './combat';
-import { spawnBoss, startBrawl } from './boss';
+import { spawnBoss, startBrawl, startUnaware } from './boss';
 import { enterRace } from './race';
 import { enterLane } from './lane';
 import { enterMaze } from './maze';
@@ -146,6 +146,8 @@ export function setupFloor(s: SimState): void {
     // (the Town has its own boss, whatever the run's floors have, and she appears at the fire beside the fountain)
     const town = !rushBoss && s.map.id === 'waldsee';
     spawnBoss(s, rushBoss ?? (town ? undefined : s.run.bosses?.[s.run.floor]) ?? def!.boss!, town ? WALDSEE_FIRE : undefined);
+    // (it has not seen anyone yet: it wanders until it does)
+    if (s.boss) startUnaware(s, s.boss);
     // (and little witches walk its streets, to be squashed as well before the elevator opens)
     if (town) spreadWitchlings(s, WALDSEE_FIRE);
     // (the Boss Rush has nothing but crates and the shop to arm the team; a boss floor of the run is frugal)

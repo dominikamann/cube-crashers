@@ -172,10 +172,11 @@ function warn(s: SimState, pos: Vec2, radius: number, damage: number, delay: num
 }
 
 /** She picks what to do next (called when her next attack is due and she is not busy). */
-export function witchAttack(s: SimState, b: BossState): void {
+export function witchAttack(s: SimState, b: BossState, seen: Player[]): void {
   const w = b.witch, me = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
   if (!w || !me) return;
-  const alive = s.players.filter(p => p.downUntil === null);
+  // (only those she sees)
+  const alive = seen;
   if (alive.length === 0) return;
   const voice = () => s.events.push({ type: 'bossAttack', kind: 'witch' });
   if (w.dance) {
@@ -423,7 +424,8 @@ export function updateWitch(s: SimState, b: BossState, intents?: Map<number, Int
   if (!me) return;
   // her pace wavers all the while: she never walks in time with anything (not while she waits as a wild boss by
   // the elevator: then she stands, see boss.ts)
-  if (b.waiting === undefined) me.speed = w.speed * (0.95 + 0.55 * waver(s.tick / TICK_RATE, me.id));
+  // (and not while she keeps watch by her fire, having seen nobody yet: then she stands and looks about)
+  if (b.waiting === undefined) me.speed = b.unseen ? 0 : w.speed * (0.95 + 0.55 * waver(s.tick / TICK_RATE, me.id));
   // the mask turns at half her health
   if (w.face === 'grin' && me.hp <= me.maxHp * 0.5) {
     w.face = 'glare';

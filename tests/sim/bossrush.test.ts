@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
 import { BOSS_RUSH } from '../../src/sim/config/floors';
 import { createSim, stepSim } from '../../src/sim/sim';
+import { alertBoss } from '../../src/sim/systems/boss';
 import { floorCleared } from '../../src/sim/systems/run';
 import type { SimState } from '../../src/sim/types';
 import { run } from './helpers';
@@ -69,6 +70,8 @@ describe('Boss Rush', () => {
       run(s, 3, () => [{ type: 'ready', playerId: 0 }]);
     }
     expect(s.boss?.kind).toBe('rex');
+    // (it knows the players are there)
+    alertBoss(s, s.boss!);
     const rex = s.enemies.find(e => e.id === s.boss!.enemyId)!;
     expect(rex.kind).toBe('trex');
     expect(rex.maxHp).toBeGreaterThan(1000);
