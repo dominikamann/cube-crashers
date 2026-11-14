@@ -563,3 +563,20 @@ body.no-map .mapbox { display: none; }
 .badge.map { color: var(--gold); }
 .badge.live { color: var(--green); }
 .screen > .badges .badge { font-size: 10px; padding: 6px 10px 5px; }
+/* the board on Tab: everyone in the game, the best first */
+.scoreboard { display: flex; align-items: center; justify-content: center; z-index: 35; background: rgba(10, 8, 30, 0.35); }
+.score-panel { display: flex; flex-direction: column; gap: 12px; width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 80px); overflow: hidden; padding: 16px 18px; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 10px; background: rgba(14, 11, 38, 0.9); }
+.score-head { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.score-head .badge { font-size: 10px; padding: 6px 10px 5px; }
+.score-table { display: grid; column-gap: 14px; row-gap: 0; align-items: center; font-size: 10px; }
+.score-th { padding: 0 0 7px; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; text-align: right; color: rgba(255, 255, 255, 0.6); border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.score-th.name { text-align: left; color: var(--gold); font-size: 9px; }
+.score-table.team0 .score-th.name { color: #ff7a8a; }
+.score-table.team1 .score-th.name { color: #7ab8ff; }
+.score-td { padding: 7px 0 6px; text-align: right; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.score-td.name { display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; }
+.score-td.first { color: var(--gold); }
+.score-td.me { color: var(--cyan); background: rgba(43, 240, 255, 0.07); }
+.score-td.down { opacity: 0.5; }
+.score-dot { flex: none; width: 10px; height: 10px; border: 2px solid var(--shadow); }
+.score-you { padding: 2px 5px; border-radius: 3px; background: rgba(43, 240, 255, 0.18); font-size: 7px; }
