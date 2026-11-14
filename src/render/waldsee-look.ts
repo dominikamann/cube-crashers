@@ -358,6 +358,109 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
 export const waldseeLake = (tx: number, tz: number): boolean => LAKE.isWater(tx, tz);
 /** whether a tile is a little islet of green out in the lake (no path round it) */
 export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx, tz);
+/** how far a roof reaches out over its walls, at the eaves and over the gables (tiles) */
+const OVERHANG = 0.35;
+/** the roofs of the buildings that stand, flat on the ground, to tell whether a spot lies under another house */
+let ROOF_PLAN: { id: number; ring: number[]; x0: number; x1: number; z0: number; z1: number }[] | null = null;
+const underRoof = (x: number, z: number, not: number): boolean => {
+  ROOF_PLAN ??= WALDSEE_LOD2.flatMap((b, id) =>
+    shown(b)
+      ? b.filter(([k]) => k === 'r').map(([, q]) => {
+          const ring: number[] = [];
+          for (let i = 0; i < q.length; i += 3) ring.push(q[i], q[i + 2]);
+          const xs = ring.filter((_, i) => i % 2 === 0), zs = ring.filter((_, i) => i % 2 === 1);
+          return { id, ring, x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+        })
+      : [],
+  );
+  for (const r of ROOF_PLAN) {
+    if (r.id === not || x < r.x0 || x > r.x1 || z < r.z0 || z > r.z1) continue;
+    let c = false;
+    for (let i = 0, j = r.ring.length - 2; i < r.ring.length; j = i, i += 2)
+      if (r.ring[i + 1] > z !== r.ring[j + 1] > z && x < ((r.ring[j] - r.ring[i]) * (z - r.ring[i + 1])) / (r.ring[j + 1] - r.ring[i + 1]) + r.ring[i]) c = !c;
+    if (c) return true;
+  }
+  return false;
+};
+/**
+ * The roofs of a building reaching out over its walls: every edge of a sloped roof that meets no other roof of the
+ * house (the eaves, and the verge over a gable) is moved `OVERHANG` outward in the roof's own plane; the ridges and
+ * hips stay. Not where another house stands against it (the roof would reach into that house's wall). The roofs as
+ * new point lists, by the old ones
+ */
+export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): Map<number[], number[]> => {
+  const out = new Map<number[], number[]>();
+  const roofs = b.filter(([k]) => k === 'r').map(([, q]) => q);
+  const key = (q: number[], i: number) => `${Math.round(q[3 * i] * 20)},${Math.round(q[3 * i + 1] * 20)},${Math.round(q[3 * i + 2] * 20)}`;
+  const edges = new Map<string, number>();
+  const edgeKey = (q: number[], i: number, j: number) => [key(q, i), key(q, j)].sort().join('|');
+  for (const q of roofs) for (let i = 0, m = q.length / 3; i < m; i++) edges.set(edgeKey(q, i, (i + 1) % m), (edges.get(edgeKey(q, i, (i + 1) % m)) ?? 0) + 1);
+  // (where a corner should go, by its key: each roof that moves it says so, and every roof with that corner follows,
+  // so the roofs stay joined along their ridges, hips and valleys)
+  const goes = new Map<string, THREE.Vector3[]>();
+  for (const q of roofs) {
+    const m = q.length / 3;
+    if (m < 3) continue;
+    const P = Array.from({ length: m }, (_, i) => new THREE.Vector3(q[3 * i], q[3 * i + 1], q[3 * i + 2]));
+    const n = new THREE.Vector3();
+    for (let i = 0; i < m; i++) {
+      const a = P[i], d = P[(i + 1) % m];
+      n.x += (a.y - d.y) * (a.z + d.z);
+      n.y += (a.z - d.z) * (a.x + d.x);
+      n.z += (a.x - d.x) * (a.y + d.y);
+    }
+    if (n.lengthSq() < 1e-9) continue;
+    n.normalize();
+    // (a flat roof keeps to its walls)
+    if (Math.abs(n.y) > 0.97) continue;
+    const mid = P.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(m);
+    // each edge: its direction, the way out of the roof in its plane, and whether it reaches out
+    const E = P.map((a, i) => {
+      const d = P[(i + 1) % m].clone().sub(a);
+      const t = d.clone().normalize(), o = new THREE.Vector3().crossVectors(t, n).normalize();
+      if (o.dot(a.clone().add(P[(i + 1) % m]).multiplyScalar(0.5).sub(mid)) < 0) o.negate();
+      const c = a.clone().add(P[(i + 1) % m]).multiplyScalar(0.5);
+      const free = edges.get(edgeKey(q, i, (i + 1) % m)) === 1 && !underRoof(c.x + o.x * 0.6, c.z + o.z * 0.6, id) && d.length() > 0.05;
+      return { t, o, free };
+    });
+    const toward = (p: THREE.Vector3, i: number): THREE.Vector3 => {
+      const e1 = E[(i + m - 1) % m], e2 = E[i];
+      if (e1.free && e2.free) {
+        // (a corner between two edges that reach out: as far out along both, the mitre, not too far at a sharp one)
+        const k = Math.max(0.35, 1 + e1.o.dot(e2.o));
+        return p.clone().add(e1.o.clone().add(e2.o).multiplyScalar(OVERHANG / k));
+      }
+      // (the end of a ridge or hip: on along it, as far as the edge beside it reaches out)
+      if (e1.free) {
+        const along = e2.t.clone().negate(), s = along.dot(e1.o);
+        return s > 0.25 ? p.clone().add(along.multiplyScalar(OVERHANG / s)) : p;
+      }
+      if (e2.free) {
+        const s = e1.t.dot(e2.o);
+        return s > 0.25 ? p.clone().add(e1.t.clone().multiplyScalar(OVERHANG / s)) : p;
+      }
+      return p;
+    };
+    // (no corner goes further than twice the overhang: at a very sharp or slanting one it stays where it is)
+    const Q = P.map((p, i) => {
+      const to = toward(p, i);
+      return to.distanceTo(p) > 2 * OVERHANG ? p : to;
+    });
+    for (let i = 0; i < m; i++) if (!Q[i].equals(P[i])) (goes.get(key(q, i)) ?? goes.set(key(q, i), []).get(key(q, i))!).push(Q[i]);
+  }
+  for (const q of roofs) {
+    let moved = false;
+    const nq = q.slice();
+    for (let i = 0; i < q.length / 3; i++) {
+      const to = goes.get(key(q, i));
+      if (!to) continue;
+      const p = to.reduce((a, v) => a.add(v), new THREE.Vector3()).divideScalar(to.length);
+      ((nq[3 * i] = p.x), (nq[3 * i + 1] = p.y), (nq[3 * i + 2] = p.z), (moved = true));
+    }
+    if (moved) out.set(q, nq);
+  }
+  return out;
+};
 /** whether a real building stands in the game (see shownBase, and the houses the lake takes away) */
 export const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => shownBase(b) && !LAKE.get().hidden.has(WALDSEE_LOD2.indexOf(b));
 /** the plan's house at a tile, for its colours (the real building there takes them) */
@@ -603,7 +706,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         eaves = 0;
         for (const [, q] of b) for (let i = 1; i < q.length; i += 3) eaves = Math.max(eaves, q[i]);
       }
-      for (const [k, q] of b) {
+      // (the roofs reach out a little over the walls and gables)
+      const over = roofsOver(b, bi);
+      for (const [k, q0] of b) {
+        const q = k === 'r' ? (over.get(q0) ?? q0) : q0;
         const pts: THREE.Vector3[] = [];
         for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
         if (pts.length < 3) continue;
