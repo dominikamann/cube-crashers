@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
-  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
+  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
   WALDSEE_SHORE_TREES, WALDSEE_TREES, type WaldseeFace, type WaldseeHouse,
 } from '../sim/config/waldsee-town';
 
@@ -2096,7 +2096,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           rect(u - ww / 2, u + ww / 2, 0.82, 1.94, '#46586a');
           rect(u - ww / 2 + 0.08, u + ww / 2 - 0.08, 1.12, 1.78, '#1d1f24');
           text('TATTOO', u, 1.58, 0.15, '#e9e4d6', ww - 0.2);
-          text('LADEN', u, 1.34, 0.15, '#e9e4d6', ww - 0.2);
+          text('NK...', u, 1.34, 0.15, '#e9e4d6', ww - 0.2);
           rect(u - ww / 2, u + ww / 2, 0.82, 1.0, 'rgba(255,255,255,0.12)');
         }
         const bu0 = wu[0] - ww / 2 - 0.14, bu1 = wu[1] + ww / 2 + 0.14;
@@ -2255,7 +2255,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
       return best;
     };
-    for (const [rx0, rz0, rx1, rz1] of WALDSEE_FENCE_RUNS) {
+    for (const [rx0, rz0, rx1, rz1] of [...WALDSEE_FENCE_RUNS, ...WALDSEE_EXTRA_FENCES]) {
       // (none in the AmannLabs gap: its alleys end in the dark glass of the house itself)
       if ((rx0 + rx1) / 2 > 21.5 && (rx0 + rx1) / 2 < 30.5 && (rz0 + rz1) / 2 > 44 && (rz0 + rz1) / 2 < 52) continue;
       // (from house to house: both ends carried on to the walls beside the run, a little into them)

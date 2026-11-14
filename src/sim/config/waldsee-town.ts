@@ -452,7 +452,7 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   // the Ravensburger Strasse, the tattoo studio at the corner of the square)
   { text: "Wirtschaft z. Flasche", kind: 'flasche', x: 61.5, z: 76.0, dx: 0, dz: -1, len: 5 },
   // (the clothes shop in Ravensburger Strasse 26)
-  { text: "LADEN", kind: 'nkd', x: 17.3, z: 75.2, dx: 0.87, dz: -0.49, len: 3 },
+  { text: "NK...", kind: 'nkd', x: 17.3, z: 75.2, dx: 0.87, dz: -0.49, len: 3 },
   { text: "die brille", kind: 'brille', x: 9.0, z: 56.5, dx: 1, dz: 0, len: 1 },
   // (the tattoo studio: Hochstatt 1, the corner house across from the optician, next to AmannLabs; its door at the
   // corner to the Ravensburger Strasse)
@@ -515,3 +515,7 @@ export const WALDSEE_BOAT: [number, number] | null = [102, 45];
 export const WALDSEE_BOAT2: [number, number] | null = [106, 48];
 /** a shark's fin in the water to the right of the boats (tiles) */
 export const WALDSEE_SHARK: [number, number] | null = [103, 52];
+
+/** board fences put in by hand, besides those tools/waldsee/fences.py finds: [x0, z0, x1, z1] in tiles (behind the
+ * barrier between the clothes shop and the little shop, so one does not see on down the lane) */
+export const WALDSEE_EXTRA_FENCES: number[][] = [[11.34, 70.41, 12.66, 73.11]];
