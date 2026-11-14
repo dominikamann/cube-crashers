@@ -111,7 +111,9 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   if (c >= 6 && (WALDSEE_REPLACED.includes(c - 6) || BUILT.has(c - 6))) return 'street';
   if (takenAway(c) || drowned(tx, tz)) return 'water';
   // (a house tile is a low block hidden inside the real building that stands there, see buildWaldseeTown)
-  return c === 0 ? 'water' : c === 3 ? 'street' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : 'yard';
+  // (a house tile, or a yard behind the houses, is paved: the real buildings stand on it, and where a tile reaches
+  // a little past a front one sees cobbles, not a block)
+  return c === 0 ? 'water' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : 'street';
 };
 /** the plan's house at a tile, for its colours (the real building there takes them) */
 const houseAt = (tx: number, tz: number): WaldseeHouse | null => {
@@ -303,7 +305,14 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   // in their house's plaster with a window to every tile and storey, the roofs in its tiles. (Not the houses
   // taken away for the view of the lake, nor the AmannLabs shop, which is built on its own.)
   {
-    const wallPos: number[] = [], wallUv: number[] = [], wallCol: number[] = [], roofPos: number[] = [], roofCol: number[] = [];
+    const roofPos: number[] = [], roofCol: number[] = [];
+    /** the walls, one set to each colour of shutters ('' none) */
+    const wallSets = new Map<string, { pos: number[]; uv: number[]; col: number[] }>();
+    const walls = (shut: string) => {
+      let w = wallSets.get(shut);
+      if (!w) wallSets.set(shut, (w = { pos: [], uv: [], col: [] }));
+      return w;
+    };
     const col = new THREE.Color();
     const PALE = [0xf4f1ea, 0xf1e7c9, 0xecd0a0, 0xe9b9a6, 0xcfe0c0, 0xc6d9e6, 0xefe6d6, 0xf6efe0, 0xe8d5bd];
     const TILES = [0xb45a3c, 0xc06544, 0xa9553a, 0xb8623f, 0x9c5038];
@@ -320,10 +329,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           if (k !== 'w' || q[i + 1] > 0.3) continue;
           const x = Math.floor(q[i]), z = Math.floor(q[i + 2]), g = waldseeGround(x, z);
           if (x >= 0 && z >= 0 && x < MAP_W && z < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || takenAway(codeAt(x, z)) || drowned(x, z))) return;
-          if (lake && q[i] > lake.at[0] && q[i + 2] < lake.at[1] + 14) return;
         }
+      // (and out beyond the shore, north of the lane: the houses of the Wurzacher Strasse further south stay, so one
+      // looks down it to the gate)
+      if (lake && cx / n > lake.at[0] && cz / n < lake.at[1] + 6) return;
       const h = houseAt(tx, tz);
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
+      const shutters = h?.shut ?? '';
       for (const [k, q] of b) {
         const pts: THREE.Vector3[] = [];
         for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
@@ -348,10 +360,10 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         for (const t of tris)
           for (const i of t) {
             const p = pts[i];
-            (wall ? wallPos : roofPos).push(p.x, p.y, p.z);
-            (wall ? wallCol : roofCol).push(col.r, col.g, col.b);
+            (wall ? walls(shutters).pos : roofPos).push(p.x, p.y, p.z);
+            (wall ? walls(shutters).col : roofCol).push(col.r, col.g, col.b);
             // (a window to every tile along the wall and every storey up it)
-            if (wall) wallUv.push(p.x * -nrm.z + p.z * nrm.x, (p.y + 0.4) / 1.9);
+            if (wall) walls(shutters).uv.push((p.x * -nrm.z + p.z * nrm.x) / 2, (p.y + 0.4) / 2);
           }
       }
     });
@@ -368,29 +380,37 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       disposables.push(geo, mat);
       add(m);
     };
-    const windows = (() => {
+    const windows = (shut: string) => {
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 64;
       const g = canvas.getContext('2d')!;
       g.fillStyle = '#ffffff';
       g.fillRect(0, 0, 64, 64);
+      // a window: a pale frame, dark glass, a cross, a sill; shutters beside it if the house has them
       g.fillStyle = '#f7f5f0';
-      g.fillRect(19, 14, 26, 34);
+      g.fillRect(20, 14, 24, 34);
       g.fillStyle = '#3d4a5c';
-      g.fillRect(22, 17, 20, 28);
+      g.fillRect(23, 17, 18, 28);
       g.fillStyle = '#f7f5f0';
       g.fillRect(31, 17, 2, 28);
-      g.fillRect(22, 29, 20, 2);
+      g.fillRect(23, 28, 18, 2);
       g.fillStyle = '#e4e1da';
-      g.fillRect(17, 48, 30, 3);
+      g.fillRect(18, 48, 28, 3);
+      if (shut) {
+        g.fillStyle = '#' + shut;
+        g.fillRect(9, 14, 10, 34);
+        g.fillRect(45, 14, 10, 34);
+        g.fillStyle = 'rgba(0,0,0,0.18)';
+        for (let y = 17; y < 46; y += 4) (g.fillRect(9, y, 10, 1), g.fillRect(45, y, 10, 1));
+      }
       const tex = new THREE.CanvasTexture(canvas);
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
       disposables.push(tex);
       return tex;
-    })();
-    mesh(wallPos, wallCol, new THREE.MeshLambertMaterial({ map: windows, vertexColors: true, side: THREE.DoubleSide }), wallUv);
+    };
+    for (const [shut, w] of wallSets) mesh(w.pos, w.col, new THREE.MeshLambertMaterial({ map: windows(shut), vertexColors: true, side: THREE.DoubleSide }), w.uv);
     mesh(roofPos, roofCol, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
     // the lake round the Town, flat on the ground beyond the map
     for (const ring of WALDSEE_LAKES) {
@@ -1101,114 +1121,13 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'police') {
-      // the police in the former Franciscan monastery: a bright white Baroque front, big white-framed windows
-      // with dark green shutters, a stone arched doorway (No. 10) and the blue POLIZEI sign — painted on the
-      // face itself so it is not stretched like the walls
-      const W = 7, Hh = 6, S = 80;
-      const cw = W * S, ch = Hh * S;
-      const canvas = document.createElement('canvas');
-      canvas.width = cw;
-      canvas.height = ch;
-      const g = canvas.getContext('2d')!;
-      const px = (u: number) => (u + W / 2) * S;
-      const py = (y: number) => (Hh - y) * S;
-      g.fillStyle = '#f7f4ec';
-      g.fillRect(0, 0, cw, ch);
-      // (a little shadow under the eaves, a plinth at the foot)
-      const eave = g.createLinearGradient(0, 0, 0, 0.5 * S);
-      eave.addColorStop(0, 'rgba(60,55,45,0.22)');
-      eave.addColorStop(1, 'rgba(60,55,45,0)');
-      g.fillStyle = eave;
-      g.fillRect(0, 0, cw, 0.5 * S);
-      g.fillStyle = '#e7e1d4';
-      g.fillRect(0, py(0.28), cw, 0.28 * S);
-      const window = (u: number, yc: number) => {
-        const ww = 0.66, wh = 1.35;
-        // shutters
-        g.fillStyle = '#2f4a3a';
-        g.fillRect(px(u - ww / 2 - 0.3), py(yc + wh / 2), 0.28 * S, wh * S);
-        g.fillRect(px(u + ww / 2 + 0.02), py(yc + wh / 2), 0.28 * S, wh * S);
-        g.fillStyle = '#263d30';
-        for (let b = 0; b < wh * 6; b++) {
-          g.fillRect(px(u - ww / 2 - 0.3), py(yc + wh / 2) + (b + 0.5) * (wh * S) / (wh * 6), 0.28 * S, 1.5);
-          g.fillRect(px(u + ww / 2 + 0.02), py(yc + wh / 2) + (b + 0.5) * (wh * S) / (wh * 6), 0.28 * S, 1.5);
-        }
-        // white frame + glass + cross
-        g.fillStyle = '#ffffff';
-        g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
-        g.fillStyle = '#c2cdd4';
-        g.fillRect(px(u - ww / 2 + 0.06), py(yc + wh / 2 - 0.06), (ww - 0.12) * S, (wh - 0.14) * S);
-        g.fillStyle = '#ffffff';
-        g.fillRect(px(u - 0.03), py(yc + wh / 2 - 0.06), 0.06 * S, (wh - 0.14) * S);
-        g.fillRect(px(u - ww / 2 + 0.06), py(yc + 0.03), (ww - 0.12) * S, 0.05 * S);
-      };
-      for (const yc of [4.15, 2.95]) for (let k = 0; k < 4; k++) window(-W / 2 + (k + 0.5) * (W / 4), yc);
-      // the arched stone doorway with a wooden door, "10" beside it
-      const ah = 2.5, aw = 1.3, ar = aw / 2, spring = ah - ar;
-      g.fillStyle = '#d8ccb0';
-      g.beginPath();
-      g.moveTo(px(-aw / 2), py(0));
-      g.lineTo(px(-aw / 2), py(spring));
-      g.arc(px(0), py(spring), ar * S, Math.PI, 0, false);
-      g.lineTo(px(aw / 2), py(0));
-      g.closePath();
-      g.fill();
-      g.fillStyle = '#8a5326';
-      g.beginPath();
-      g.moveTo(px(-aw / 2 + 0.12), py(0.02));
-      g.lineTo(px(-aw / 2 + 0.12), py(spring));
-      g.arc(px(0), py(spring), (ar - 0.12) * S, Math.PI, 0, false);
-      g.lineTo(px(aw / 2 - 0.12), py(0.02));
-      g.closePath();
-      g.fill();
-      g.strokeStyle = '#5f3717';
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(px(0), py(0.02));
-      g.lineTo(px(0), py(spring));
-      g.stroke();
-      g.fillStyle = '#3a3a3a';
-      g.font = `bold ${Math.round(0.34 * S)}px "Helvetica Neue", Arial, sans-serif`;
-      g.textAlign = 'left';
-      g.textBaseline = 'alphabetic';
-      g.fillText('10', px(aw / 2 + 0.18), py(1.8));
-      // ground-floor windows beside the door
-      window(-2.4, 1.35);
-      window(2.4, 1.35);
-      // the blue POLIZEI sign over the door
-      g.fillStyle = '#1f4fa8';
-      g.fillRect(px(-1.25), py(2.95), 2.5 * S, 0.5 * S);
-      g.fillStyle = '#ffffff';
-      g.font = `bold ${Math.round(0.3 * S)}px "Helvetica Neue", Arial, sans-serif`;
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText('POLIZEI', px(0), py(2.95) + 0.25 * S);
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
-      const geo = new THREE.PlaneGeometry(W, Hh), mat = new THREE.MeshLambertMaterial({ map: tex });
-      disposables.push(tex, geo, mat);
-      const m = new THREE.Mesh(geo, mat);
-      const [fx, fz] = on(s, 0, 0.06);
-      m.position.set(fx, Hh / 2, fz);
-      m.rotation.y = faceYaw(s);
-      add(m);
-      // the courtyard on the left as one looks at the front: a hedge with an iron fence before the wing,
-      // and a row of light cloister arches on the wing's ground floor behind it
-      for (let k = 0; k < 17; k++) {
-        const a = 3.3 + k * 0.28;
-        // the hedge
-        onFace(s, a, 1.15, 0.42, 0.3, 0.85, 0.42, k % 2 ? 0x3f7a3a : 0x478544);
-        // the iron fence, just in front of it
-        onFace(s, a, 1.5, 0.6, 0.045, 1.2, 0.045, 0x24262b);
-      }
-      onFace(s, 5.6, 1.5, 1.2, 4.8, 0.04, 0.04, 0x24262b);
-      for (let k = 0; k < 5; k++) {
-        const a = 3.7 + k * 0.9;
-        onFace(s, a, -0.9, 0.9, 0.62, 1.65, 0.06, 0x30303a);
-        for (const side of [-1, 1]) onFace(s, a + side * 0.26, -0.86, 1.78, 0.14, 0.22, 0.07, 0xece6da);
-        onFace(s, a, -0.86, 1.88, 0.32, 0.14, 0.07, 0xece6da);
-      }
+      // the police post: the real house, white with dark green shutters (see the walls above); on it a round-topped
+      // door in a grey stone frame, the blue sign with POLIZEI beside it and a blue lamp over the door
+      onFace(s, 0, 0.04, 1.15, 1.3, 2.3, 0.06, 0xa9adb3);
+      onFace(s, 0, 0.07, 1.05, 1.0, 2.1, 0.05, 0x5a3a26);
+      [0.9, 0.7, 0.4].forEach((wd, k) => onFace(s, 0, 0.06, 2.3 + k * 0.12, wd * 1.3, 0.13, 0.06, 0xa9adb3));
+      onFace(s, 0, 0.12, 2.75, 0.3, 0.16, 0.12, 0x3f7cff, true);
+      sign(s, 'POLIZEI', 2.0, 1.4, { back: '#1f4fa8', ink: '#ffffff', rim: '#1f4fa8' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
       continue;
     }
     onFace(s, 0, 0.03, 1, 0.9, 2, 0.06, 0x4a4f5c);
