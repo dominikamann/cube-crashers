@@ -626,56 +626,131 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     });
   }
 
-  // ---- the Czardas on the Hochstatt, the place to sit: its name over the door, a striped awning, strings of
-  // lights over the terrace, barrels to stand at, flower boxes, and the board with today's offer
+  // ---- the Czardas on the Hochstatt, the place to sit: a blue-grey house with cream corner strips and bands, red
+  // shutters and a round-topped door; its name on a board over the door, strings of lights over the terrace and the
+  // board with today's offer. The house front and its side are one painted plane each, exactly as wide as the real
+  // walls, so nothing spills onto the neighbours
   {
-    const f = onBlock(WALDSEE_CZARDAS), w = Math.min(5, Math.max(3, f.len));
-    for (let k = 0; k < w * 4; k++) onFace(f, -w / 2 + (k + 0.5) / 4, 0.44, 2.3, 0.25, 0.07, 0.9, k % 2 ? 0xf4ecd8 : 0xb8322a);
-    for (const side of [-1, 1]) onFace(f, (side * w) / 2, 0.84, 1.15, 0.06, 2.3, 0.06, 0x3a3f52);
-
-    sign(f, 'CZARDAS', 3.05, Math.min(3.2, w), { back: '#f4f1ea', ink: '#c2452d', rim: '#e8862e' }, 'bold 80px Georgia, "Times New Roman", serif');
-    // (the portal: white, a round-topped niche with a figure over the wooden door)
-    onFace(f, 0, 0.05, 1.3, 1.3, 2.6, 0.08, 0xf4f1ea);
-    onFace(f, 0, 0.1, 1.0, 0.8, 2.0, 0.06, 0x7a5638);
-    onFace(f, 0, 0.1, 2.3, 0.5, 0.5, 0.06, 0xdfe3e8);
-    onFace(f, 0, 0.14, 2.28, 0.18, 0.36, 0.08, 0xc9a06a);
-    const out = 5.4, bulbs = [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0];
+    const f = onBlock(WALDSEE_CZARDAS), S = 64;
+    // (a face moved along its wall)
+    const at = (face: WaldseeFace, u: number): WaldseeFace => {
+      const [x, z] = on(face, u, 0);
+      return { ...face, x, z };
+    };
+    /** one wall of the house on a plane; `doorU` is where its door should be, from the wall's middle. Returns the door's place */
+    const wallPlane = (face: WaldseeFace & OnWall, doorU: number, big: boolean): number => {
+      const W = face.wall?.width ?? Math.max(3, face.len), H = face.wall?.eave ?? 4.64;
+      const cw = Math.round(W * S), ch = Math.round(H * S);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => (u + W / 2) * S, py = (y: number) => (H - y) * S;
+      const rect = (u0: number, y0: number, u1: number, y1: number, c: string) => {
+        g.fillStyle = c;
+        g.fillRect(px(u0), py(y1), (u1 - u0) * S, (y1 - y0) * S);
+      };
+      // plaster, the stone plinth, a cream band between the storeys, cream strips at the corners, shadow under the eaves
+      rect(-W / 2, 0, W / 2, H, '#8398b4');
+      rect(-W / 2, 0, W / 2, 0.5, '#8d8f95');
+      rect(-W / 2, 2.38, W / 2, 2.5, '#e6dfcb');
+      rect(-W / 2, 0, -W / 2 + 0.3, H, '#e6dfcb');
+      rect(W / 2 - 0.3, 0, W / 2, H, '#e6dfcb');
+      const sh = g.createLinearGradient(0, 0, 0, 0.5 * S);
+      sh.addColorStop(0, 'rgba(30,40,60,0.28)');
+      sh.addColorStop(1, 'rgba(30,40,60,0)');
+      g.fillStyle = sh;
+      g.fillRect(0, 0, cw, 0.5 * S);
+      // a window: cream frame, dark panes, a cross, a sill and red shutters either side
+      const win = (u: number, yc: number, ww: number, wh: number, shutters: boolean) => {
+        if (shutters) for (const e of [-1, 1]) {
+          const x0 = u + e * (ww / 2 + 0.04) - (e < 0 ? 0.27 : 0);
+          rect(x0, yc - wh / 2, x0 + 0.27, yc + wh / 2, '#b3322a');
+          for (let k = 1; k < 6; k++) rect(x0, yc - wh / 2 + (wh * k) / 6, x0 + 0.27, yc - wh / 2 + (wh * k) / 6 + 0.02, '#8a2420');
+        }
+        rect(u - ww / 2, yc - wh / 2, u + ww / 2, yc + wh / 2, '#ece6d3');
+        rect(u - ww / 2 + 0.05, yc - wh / 2 + 0.05, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#566a7c');
+        rect(u - ww / 2 + 0.05, yc + wh * 0.1, u + ww / 2 - 0.05, yc + wh / 2 - 0.05, '#7890a2');
+        rect(u - 0.02, yc - wh / 2 + 0.05, u + 0.02, yc + wh / 2 - 0.05, '#ece6d3');
+        rect(u - ww / 2 + 0.05, yc - 0.02, u + ww / 2 - 0.05, yc + 0.02, '#ece6d3');
+        rect(u - ww / 2 - 0.05, yc - wh / 2 - 0.05, u + ww / 2 + 0.05, yc - wh / 2, '#d6cfba');
+      };
+      const d = Math.max(-W / 2 + 0.95, Math.min(W / 2 - 0.95, doorU));
+      const n = Math.max(2, Math.round((W - 0.6) / 1.8)), pitch = (W - 0.6) / n;
+      let wide = false;
+      for (let k = 0; k < n; k++) {
+        const u = -W / 2 + 0.3 + (k + 0.5) * pitch;
+        win(u, 3.55, 0.66, 0.96, true);
+        if (Math.abs(u - d) < 1.0) continue;
+        if (big && !wide && Math.abs(u - d) < 2.4) {
+          // (the big plain window next to the door)
+          win(u, 1.55, 1.25, 1.05, false);
+          wide = true;
+        } else win(u, 1.6, 0.66, 0.96, true);
+      }
+      // the door: a cream surround, a round-topped light over a brown wooden door, a step
+      rect(d - 0.5, 0, d + 0.5, 2.15, '#ece6d3');
+      rect(d - 0.4, 0, d + 0.4, 2.05, '#6a4630');
+      rect(d - 0.02, 0, d + 0.02, 2.05, '#4a2f20');
+      rect(d - 0.5, 2.15, d + 0.5, 2.28, '#ece6d3');
+      g.fillStyle = '#ece6d3';
+      g.beginPath();
+      g.arc(px(d), py(2.3), 0.5 * S, Math.PI, 0);
+      g.fill();
+      g.fillStyle = '#6c7f8c';
+      g.beginPath();
+      g.arc(px(d), py(2.32), 0.4 * S, Math.PI, 0);
+      g.fill();
+      rect(d - 0.02, 2.3, d + 0.02, 2.72, '#ece6d3');
+      rect(d - 0.58, 0, d + 0.58, 0.07, '#b9b6ae');
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(W, H), mat = new THREE.MeshLambertMaterial({ map: tex });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const [mx, mz] = on(face, -(face.wall?.along ?? 0), 0.04);
+      m.position.set(mx, H / 2, mz);
+      m.rotation.y = faceYaw(face);
+      add(m);
+      return d;
+    };
+    // (the front: the door at the end of the wall near the Hochstatt, the big window beside it)
+    const alongF = f.wall?.along ?? 0;
+    const door = at(f, wallPlane(f, alongF + 0.4, true) - alongF);
+    sign(door, 'CZARDAS', 3.05, 2.4, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' }, 'bold 80px Georgia, "Times New Roman", serif');
+    for (const e of [-1, 1]) {
+      const [lx, lz] = on(door, e * 0.78, 0.1);
+      lamp(lx, 2.0, lz, 0.14, 0.3, 0.14, 0xffd76a);
+    }
+    const out = 5.4, bulbs = [0xffd76a, 0xff8a5a, 0x7fe0c0, 0xfff1c0], w = 3;
     for (const side of [-1, 0, 1]) {
-      const [px, pz] = on(f, side * (w / 2 + 1.6), out);
+      const [px, pz] = on(door, side * (w / 2 + 1.6), out);
       box(px, 1.5, pz, 0.07, 3, 0.07, 0x3a3f52);
       for (let k = 0; k <= 12; k++) {
         const t = k / 12, sag = Math.sin(Math.PI * t) * 0.4;
-        const [sx, sz] = on(f, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
+        const [sx, sz] = on(door, side * (w / 2) * (1 - t) + side * (w / 2 + 1.6) * t, 0.1 + (out - 0.1) * t);
         lamp(sx, 2.9 + 0.1 * t - sag, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
       }
     }
     for (let k = 0; k <= 16; k++) {
       const t = k / 16;
-      const [sx, sz] = on(f, -w / 2 - 1.6 + (w + 3.2) * t, out);
+      const [sx, sz] = on(door, -w / 2 - 1.6 + (w + 3.2) * t, out);
       lamp(sx, 3 - Math.sin(Math.PI * ((t * 2) % 1)) * 0.25, sz, 0.09, 0.09, 0.09, bulbs[k % 4]);
     }
-    for (const side of [-1, 1]) {
-      const [bx, bz] = on(f, side * (w / 2 + 0.9), 1.3);
-      box(bx, 0.5, bz, 0.62, 1, 0.62, 0x8a5a36, 0.4);
-      for (const y of [0.2, 0.8]) box(bx, y, bz, 0.66, 0.07, 0.66, 0x3a3f52, 0.4);
-      box(bx, 1.03, bz, 0.74, 0.06, 0.74, 0xb9895a, 0.4);
-      lamp(bx + 0.12, 1.16, bz, 0.1, 0.2, 0.1, 0xf2b84c);
-    }
     for (let k = 0; k < 5; k++) {
-      const [fx, fz] = on(f, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
-      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(f));
-      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(f));
-      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(f.dz), 0.58, fz + q * 0.3 * Math.abs(f.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
+      const [fx, fz] = on(door, -w / 2 - 1.3 + ((w + 2.6) * (k + 0.5)) / 5, out + 0.7);
+      box(fx, 0.2, fz, 1, 0.4, 0.34, 0x6b4a32, faceYaw(door));
+      box(fx, 0.46, fz, 0.94, 0.16, 0.3, 0x4f9a4a, faceYaw(door));
+      for (let q = -1; q <= 1; q++) box(fx + q * 0.3 * Math.abs(door.dz), 0.58, fz + q * 0.3 * Math.abs(door.dx), 0.16, 0.14, 0.16, q ? 0xd8322a : 0xff6f8a);
     }
-    // its second door, on the side toward the Hauptstrasse, a small board with its name over it
+    // its second door, on the side toward the Hauptstrasse: the same house, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
-      const sd = onBlock(WALDSEE_CZARDAS_SIDE);
-      onFace(sd, 0, 0.03, 1, 0.8, 2, 0.06, 0x5a3a26);
-      onFace(sd, 0, 0.3, 2.2, 1.2, 0.07, 0.6, 0xb8322a);
-      onFace(sd, 0.62, 0.2, 2.0, 0.14, 0.26, 0.14, 0xffd76a, true);
-      sign(sd, 'Czardas', 2.7, 1.5, { back: '#3a1512', ink: '#ffe9b0', rim: '#f2c94c' });
+      const sd = onBlock(WALDSEE_CZARDAS_SIDE), alongS = sd.wall?.along ?? 0;
+      const door2 = at(sd, wallPlane(sd, alongS, false) - alongS);
+      sign(door2, 'Czardas', 2.95, 1.5, { back: '#f4f1ea', ink: '#b3322a', rim: '#8398b4' });
     }
-    const [cx, cz] = on(f, w / 2 + 1.9, 2.6);
+    const [cx, cz] = on(door, w / 2 + 1.9, 2.6);
     box(cx, 0.45, cz, 0.5, 0.9, 0.08, 0x2a2d33, 0.5);
     box(cx, 0.45, cz + 0.05, 0.4, 0.5, 0.02, 0xf4f1ea, 0.5);
   }
