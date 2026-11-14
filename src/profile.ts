@@ -11,7 +11,7 @@ export const UNLOCKS = [
   { id: 'hoverboard', kind: 'vehicle', cost: 8 },
   { id: 'endless', kind: 'mode', cost: 12 },
   // a character for the end of the game: its boss has to be beaten first, then it can be bought
-  { id: 'babyDino', kind: 'character', cost: 150, boss: 'rex' },
+  { id: 'babyDino', kind: 'character', cost: 50, boss: 'rex' },
 ] as const;
 
 export type UnlockId = (typeof UNLOCKS)[number]['id'];
