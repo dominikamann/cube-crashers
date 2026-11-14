@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import markUrl from './amannlabs-mark.png';
 import {
-  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
+  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
   WALDSEE_SHORE_TREES, WALDSEE_TREES, type WaldseeFace, type WaldseeHouse,
 } from '../sim/config/waldsee-town';
 
@@ -21,6 +21,16 @@ const codeAt = (tx: number, tz: number): number => {
 /** a house taken away at the lake's edge: its tiles are water, no walls and no roof */
 const takenAway = (c: number): boolean => c >= 6 && WALDSEE_HIDDEN.includes(c - 6);
 const MAP_W = WALDSEE_TILES[0].length / 2, MAP_H = WALDSEE_TILES.length;
+/** the houses one knows, built new as clean blocks (see buildWaldseeTown): their tiles are not drawn as town houses */
+const BUILT = new Map(WALDSEE_BUILT.map(b => [b.house, b]));
+/** where a front lies on a house built new: on the edge of its block, the way the front looks */
+const onBlock = <F extends WaldseeFace>(f: F): F => {
+  const b = BUILT.get(codeAt(Math.floor(f.x - f.dx * 0.5 - (f.dx ? 0 : 0.0001)), Math.floor(f.z - f.dz * 0.5 - (f.dz ? 0 : 0.0001))) - 6);
+  if (!b) return f;
+  const x = f.dx > 0 ? b.x1 + 1 : f.dx < 0 ? b.x0 : Math.min(Math.max(f.x, b.x0 + 1), b.x1);
+  const z = f.dz > 0 ? b.z1 + 1 : f.dz < 0 ? b.z0 : Math.min(Math.max(f.z, b.z0 + 1), b.z1);
+  return { ...f, x, z, len: f.dx ? b.z1 - b.z0 + 1 : b.x1 - b.x0 + 1 };
+};
 /** grass patches out in the water that are not joined to the town: drowned, so no island is left */
 const DROWNED_ISLANDS: Set<number> = (() => {
   const key = (x: number, z: number) => z * MAP_W + x;
@@ -60,13 +70,13 @@ const alley = (tx: number, tz: number): boolean => WALDSEE_ALLEY.some(([x, z]) =
 export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   const c = codeAt(tx, tz);
   if (alley(tx, tz)) return 'street';
-  if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return 'street';
+  if (c >= 6 && (WALDSEE_REPLACED.includes(c - 6) || BUILT.has(c - 6))) return 'street';
   if (takenAway(c) || drowned(tx, tz)) return 'water';
   return c === 0 ? 'water' : c === 3 ? 'street' : c === 4 ? 'meadow' : c === 5 ? 'gravel' : c < 6 ? 'yard' : 'house';
 };
 export const waldseeHouse = (tx: number, tz: number): WaldseeHouse | null => {
   const c = codeAt(tx, tz);
-  return c >= 6 && !takenAway(c) && !alley(tx, tz) && !WALDSEE_REPLACED.includes(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
+  return c >= 6 && !takenAway(c) && !alley(tx, tz) && !WALDSEE_REPLACED.includes(c - 6) && !BUILT.has(c - 6) ? WALDSEE_HOUSES[c - 6] ?? null : null;
 };
 /** how high the roof stands over the walls at a tile, in blocks */
 export const waldseeRoof = (tx: number, tz: number): number => (waldseeHouse(tx, tz) ? Number(WALDSEE_ROOFS[tz]?.[tx] ?? 0) * 0.2 : 0);
@@ -243,6 +253,45 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   });
 
+  // ---- the houses one knows, built new on their lot as clean blocks: plaster in their own colour from the
+  // ground to the eaves, three storeys of windows (with shutters where they have them) on every side that looks
+  // onto a street, and a gable roof along the longer side with a little overhang
+  for (const b of WALDSEE_BUILT) {
+    const h = WALDSEE_HOUSES[b.house];
+    if (!h) continue;
+    const w = b.x1 - b.x0 + 1, d = b.z1 - b.z0 + 1, cx = b.x0 + w / 2, cz = b.z0 + d / 2, top = h.wall;
+    const plaster = parseInt(h.col, 16), roof = parseInt(h.roof, 16);
+    box(cx, (top - 0.4) / 2, cz, w, top + 0.4, d, plaster);
+    box(cx, 0.2, cz, w + 0.04, 0.6, d + 0.04, shade(plaster, 0.82));
+    box(cx, top - 0.05, cz, w + 0.08, 0.1, d + 0.08, shade(plaster, 0.9));
+    const storey = (top - 0.6) / 3;
+    const sides: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    for (const [dx, dz] of sides) {
+      const n = dx ? d : w;
+      for (let k = 0; k < n; k++) {
+        const tx = dx ? (dx > 0 ? b.x1 + 1 : b.x0 - 1) : b.x0 + k, tz = dz ? (dz > 0 ? b.z1 + 1 : b.z0 - 1) : b.z0 + k;
+        const g = codeAt(tx, tz);
+        if (g !== 2 && g !== 3) continue;
+        const f: WaldseeFace = { x: dx ? (dx > 0 ? b.x1 + 1 : b.x0) : tx + 0.5, z: dz ? (dz > 0 ? b.z1 + 1 : b.z0) : tz + 0.5, dx, dz, len: 1 };
+        // (the ground floor is the shop's, where there is one: its windows only above)
+        for (let st = 1; st < 3; st++) {
+          const y = 0.6 + storey * (st + 0.5);
+          onFace(f, 0, 0.03, y, 0.56, storey * 0.56, 0.05, 0xf4f1ea);
+          onFace(f, 0, 0.05, y, 0.46, storey * 0.48, 0.05, 0x3d4a5c);
+          onFace(f, 0, 0.06, y, 0.04, storey * 0.48, 0.05, 0xf4f1ea);
+          if (h.shut) for (const side of [-1, 1]) onFace(f, side * 0.4, 0.05, y, 0.2, storey * 0.52, 0.05, parseInt(h.shut, 16));
+        }
+      }
+    }
+    // the roof: slabs along the longer side, each narrower than the one below
+    const along = w >= d, len = (along ? w : d) + 0.3, across = (along ? d : w) + 0.3, steps = 6;
+    const rise = Math.min(0.42, (across / 2) * 0.16);
+    for (let k = 0; k < steps; k++) {
+      const a = across * (1 - k / steps);
+      box(cx, top + rise * (k + 0.5), cz, along ? len : a, rise, along ? a : len, shade(roof, 0.94 + 0.03 * (k % 2)));
+    }
+  }
+
   // ---- trees: a trunk, a crown of leaves, and a bench all round the trunk
   const leaf = [0x4f9a4a, 0x5aa653, 0x468c42], wood = 0x8a5a36, bark = 0x6b4a32;
   for (const [tx, tz] of WALDSEE_TREES) {
@@ -360,7 +409,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   // ---- the Czardas on the Hochstatt, the place to sit: its name over the door, a striped awning, strings of
   // lights over the terrace, barrels to stand at, flower boxes, and the board with today's offer
   {
-    const f = WALDSEE_CZARDAS, w = Math.max(3, f.len);
+    const f = onBlock(WALDSEE_CZARDAS), w = Math.min(5, Math.max(3, f.len));
     for (let k = 0; k < w * 4; k++) onFace(f, -w / 2 + (k + 0.5) / 4, 0.44, 2.3, 0.25, 0.07, 0.9, k % 2 ? 0xf4ecd8 : 0xb8322a);
     for (const side of [-1, 1]) onFace(f, (side * w) / 2, 0.84, 1.15, 0.06, 2.3, 0.06, 0x3a3f52);
 
@@ -400,7 +449,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
     // its second door, on the side toward the Hauptstrasse, a small board with its name over it
     if (WALDSEE_CZARDAS_SIDE) {
-      const sd = WALDSEE_CZARDAS_SIDE;
+      const sd = onBlock(WALDSEE_CZARDAS_SIDE);
       onFace(sd, 0, 0.03, 1, 0.8, 2, 0.06, 0x5a3a26);
       onFace(sd, 0, 0.3, 2.2, 1.2, 0.07, 0.6, 0xb8322a);
       onFace(sd, 0.62, 0.2, 2.0, 0.14, 0.26, 0.14, 0xffd76a, true);
@@ -412,7 +461,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
   }
 
   // ---- names over doors, each with what belongs to the place
-  for (const s of WALDSEE_SIGNS) {
+  for (const s0 of WALDSEE_SIGNS) {
+    const s = onBlock(s0);
     const w = Math.max(2, Math.min(4, s.len));
     if (s.kind === 'amannlabs') {
       // the house is a modern tech building: a dark glass curtain wall with thin light mullions and a glowing
