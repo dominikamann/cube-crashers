@@ -126,7 +126,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const shopTitle = el('h2', '', shopBox);
   const shopTimer = el('div', 'sub', shopBox);
   const shopList = el('div', 'shop-list', shopBox);
-  const shopReady = el('button', 'btn alt', shopBox, t('shop.ready'));
+  const shopReady = el('button', 'btn alt', shopBox, t('shop.ready', { key: 'Enter' }));
   shopReady.addEventListener('mousedown', e => {
     e.preventDefault();
     onShop.ready();
@@ -266,14 +266,16 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         const offers = shop.offers[p.id] ?? [];
         const ready = shop.ready.includes(p.id);
         shopTimer.textContent = t('shop.timer', { s: Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE)), coins: p.coins, ready: shop.ready.length, total: s.players.length });
-        const key = JSON.stringify([offers, ready, p.coins, shop.creditSold]);
+        // (on a controller the d-pad buys, left, up, right, down for the offers in turn, and its jump button is ready)
+        const padJump = padMode ? (padMode === '\u25A1' ? '\u2715' : 'A') : null;
+        const key = JSON.stringify([offers, ready, p.coins, shop.creditSold, padJump]);
         if (key !== shopKey) {
           shopKey = key;
           shopTitle.textContent = t('shop.title', { n: s.run.floor + 2 });
           shopList.innerHTML = '';
           offers.forEach((o, i) => {
             const card = el('div', `card shop-card${o.sold ? ' sold' : ''}${p.coins < o.cost || (o.kind === 'credit' && shop.creditSold) ? ' poor' : ''}`, shopList);
-            el('div', 'key', card, String(i + 1));
+            el('div', 'key', card, padJump ? ['\u25C0', '\u25B2', '\u25B6', '\u25BC'][i] ?? String(i + 1) : String(i + 1));
             const label = o.kind === 'weapon' ? t('shop.weapon', { name: t(`weapon.${o.weapon!}`) }) : o.kind === 'perk' ? t(`perk.${o.perk!}`) : t(o.kind === 'heal' ? 'shop.heal' : 'shop.credit');
             el('div', 'name', card, label);
             el('div', 'cost', card, o.sold ? t('shop.sold') : `● ${o.cost}`);
@@ -282,7 +284,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
               onShop.buy(i);
             });
           });
-          shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready');
+          shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready', { key: padJump ?? 'Enter' });
         }
       }
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));

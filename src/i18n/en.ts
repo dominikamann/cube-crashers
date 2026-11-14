@@ -263,7 +263,7 @@ export const en = {
   'shop.heal': 'Full health',
   'shop.credit': '+1 life for everyone',
   'shop.sold': 'Sold',
-  'shop.ready': 'Ready (Enter)',
+  'shop.ready': 'Ready ({key})',
   'shop.waiting': 'Waiting for the others…',
   'menu.credits': 'Credits',
   'credits.by': 'A game by',
