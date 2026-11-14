@@ -442,7 +442,7 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   { text: "Amadeus", kind: 'amadeus', x: 29.0, z: 82.5, dx: -1, dz: 0, len: 1 },
   { text: "Hasen", kind: 'hasen', x: 1.5, z: 35.0, dx: 0, dz: -1, len: 1 },
   { text: "Polizei", kind: 'police', x: 66.0, z: 47.0, dx: -1, dz: 0, len: 6 },
-  { text: "AmannLabs", kind: 'amannlabs', x: 25.4, z: 50.0, dx: 0, dz: 1, len: 5 },
+  { text: "AmannLabs", kind: 'amannlabs', x: 26.0, z: 50.0, dx: 0, dz: 1, len: 6 },
   { text: "Memo", kind: 'nemo', x: 28.0, z: 90.0, dx: 1, dz: 0, len: 2 },
   // (on their real houses: the little shop in Ravensburger Strasse 24, beside the optician in number 20)
   { text: "Lädele", kind: 'shop', x: 13.4, z: 65.6, dx: 0.91, dz: -0.41, len: 2 },
