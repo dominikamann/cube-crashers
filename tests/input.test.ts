@@ -434,3 +434,18 @@ describe('mouse sensitivity (first person)', () => {
     expect(turned(0.5)).toBeCloseTo(turned(1) / 2);
   });
 });
+
+describe('a key whose release got lost', () => {
+  it('works again with the next press of its own (the rare weapon key switched no weapon until the next pause)', () => {
+    const k = new Keyboard();
+    const sim = createSim(floor01, 1);
+    const slots = () => k.commands(sim, 0, 10).filter(c => c.type === 'select').map(c => (c as { slot: number }).slot);
+    k.keyDown('KeyQ', 0, false);
+    expect(slots()).toEqual([-1]);
+    // (no keyUp came; the keyboard's own repeats while it is held do not count)
+    k.keyDown('KeyQ', 50, true);
+    expect(slots()).toEqual([]);
+    k.keyDown('KeyQ', 900, false);
+    expect(slots()).toEqual([-1]);
+  });
+});
