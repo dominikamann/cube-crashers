@@ -3,14 +3,15 @@ import { BOSS_RUSH, FLOORS, RUN_BOSSES, runBosses } from '../../src/sim/config/f
 import { WALDSEE_FIRE } from '../../src/sim/config/floor-waldsee';
 import { floor01 } from '../../src/sim/config/floor01';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { BRAWL } from '../../src/sim/systems/boss';
+import { BRAWL, spawnBoss } from '../../src/sim/systems/boss';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, nearestFree, reachable } from '../../src/sim/map/tilemap';
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { floorCleared } from '../../src/sim/systems/run';
-import { WILD } from '../../src/sim/systems/wild-boss';
+import { spawnWild, WILD } from '../../src/sim/systems/wild-boss';
 import { WITCH, witchPounce } from '../../src/sim/systems/witch';
 import type { Command, SimState } from '../../src/sim/types';
 
-/** a Single floor of the Town: the Schrättele at her fire, nobody else */
+/** a Single floor of the Town: the witch at her fire, nobody else */
 function town(players = 1, seed = 4): SimState {
   const s = createSim(FLOORS.waldsee.map, seed, { mode: 'quick', players });
   s.crates = [];
@@ -32,7 +33,7 @@ const run = (s: SimState, ticks: number, cmds: (s: SimState) => Command[] = () =
   return events;
 };
 
-describe('the Schrättele', () => {
+describe('the witch', () => {
   it('is the boss of the Town, and appears beside her fire by the Federle-Brunnen', () => {
     expect(FLOORS.waldsee.boss).toBe('witch');
     const s = town();
@@ -53,12 +54,74 @@ describe('the Schrättele', () => {
     expect(s.boss?.kind).toBe('witch');
   });
 
-  it('belongs to the Town: no other boss list picks her', () => {
-    expect(BOSS_RUSH.map(b => b.boss)).not.toContain('witch');
-    expect(BRAWL.kinds).not.toContain('witch');
-    expect(Object.values(RUN_BOSSES).flat()).not.toContain('witch');
-    expect(Object.values(WILD.fits).flat()).not.toContain('witch');
-    for (let seed = 1; seed < 60; seed++) expect(runBosses(seed, ['floor01', 'candy', 'arena', 'neon', 'rooftop'])).not.toContain('witch');
+  it('is in every boss list, like the other bosses', () => {
+    expect(BOSS_RUSH.map(b => b.boss)).toContain('witch');
+    expect(BOSS_RUSH.find(b => b.boss === 'witch')?.map).toBe('waldsee');
+    expect(BRAWL.kinds).toContain('witch');
+    expect(Object.values(RUN_BOSSES).flat()).toContain('witch');
+    expect(Object.values(WILD.fits).flat()).toContain('witch');
+    const picked = new Set<string>();
+    for (let seed = 1; seed < 200; seed++) for (const b of runBosses(seed, ['floor01', 'candy', 'arena', 'neon', 'rooftop'])) if (b) picked.add(b);
+    expect(picked).toContain('witch');
+  });
+
+  it('a run that goes through the Town does not meet her on one of its floors as well', () => {
+    let withTown = 0, without = 0;
+    for (let seed = 1; seed < 200; seed++) {
+      const s = createSim(floor01, seed, { mode: 'run' });
+      const town = s.run.between!.includes('town');
+      if (town) withTown++;
+      else if (s.run.bosses!.includes('witch')) without++;
+      if (town) expect(s.run.bosses, `seed ${seed}`).not.toContain('witch');
+      expect(s.run.bosses).toEqual(createSim(floor01, seed, { mode: 'run' }).run.bosses);
+    }
+    expect(withTown).toBeGreaterThan(0);
+    // (without the Town she is still one of the floors' bosses)
+    expect(without).toBeGreaterThan(0);
+  });
+
+  it('on any other map she lights her own fire on open floor the players can reach, clear of the elevator, and fights there', () => {
+    for (const map of ['arena', 'rooftop', 'floor01', 'servers', 'jungle'] as const) {
+      const s = createSim(FLOORS[map].map, 3, { mode: 'quick' });
+      s.enemies = [];
+      s.boss = null;
+      s.nests = [];
+      s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+      spawnBoss(s, 'witch');
+      const w = s.boss!.witch!, me = bodyOf(s);
+      expect(isFree(s.map, w.fire, WITCH.heat, BLOCKS_ENEMY), map).toBe(true);
+      expect(reachable(s.map, s.map.spawn, BLOCKS_WALKER)[Math.floor(w.fire.z) * s.map.w + Math.floor(w.fire.x)], map).toBe(1);
+      expect(Math.hypot(w.fire.x - s.map.elevator.x, w.fire.z - s.map.elevator.z), map).toBeGreaterThan(WITCH.heat + 2);
+      // she stands beside it, out of its heat
+      expect(Math.hypot(me.pos.x - w.fire.x, me.pos.z - w.fire.z), map).toBeGreaterThan(WITCH.heat);
+      const p = s.players[0];
+      p.invulnUntil = Number.MAX_SAFE_INTEGER;
+      p.pos = nearestFree(s.map, { x: w.fire.x + 7, z: w.fire.z }, 0.4, BLOCKS_WALKER);
+      let attacks = 0;
+      for (let i = 0; i < 30 * 60; i++) {
+        stepSim(s, []);
+        attacks += s.events.filter(e => e.type === 'bossAttack').length;
+      }
+      expect(attacks, map).toBeGreaterThan(2);
+      // hurt, she dances round her own fire
+      me.hp = me.maxHp * 0.6;
+      run(s, 120);
+      expect(s.boss!.witch!.dance, map).not.toBeNull();
+    }
+  });
+
+  it('comes into a Boss Brawl and as a wild boss with a fire of her own', () => {
+    const s = createSim(FLOORS.floor01.map, 3, { mode: 'quick' });
+    s.enemies = [];
+    s.boss = null;
+    const wild = spawnWild(s, 'witch', { ...s.map.elevator });
+    expect(wild?.kind).toBe('witch');
+    expect(wild?.witch).toBeDefined();
+    expect(isFree(s.map, wild!.witch!.fire, WITCH.heat, BLOCKS_ENEMY)).toBe(true);
+    const brawl = createSim(FLOORS.arena.map, 3, { mode: 'brawl' });
+    brawl.brawl!.queue = ['witch', 'rex'];
+    run(brawl, 2);
+    expect(brawl.bosses!.map(b => b.kind)).toContain('witch');
   });
 
   it('her fire burns whoever stands in its heat, but not who jumps over it, nor who keeps away', () => {
@@ -96,7 +159,7 @@ describe('the Schrättele', () => {
   });
 });
 
-describe('s\'Schrättele druckt', () => {
+describe('die Hex druckt', () => {
   const pressed = () => {
     const s = town();
     calm(s);
@@ -221,8 +284,8 @@ describe('s\'Schrättele druckt', () => {
   });
 });
 
-describe('the Schrättelestanz and the two faces', () => {
-  it('from the second phase on she dances round the fire with small Schrättele, the heat grows and she hardly feels a hit', () => {
+describe('the Hexentanz and the two faces', () => {
+  it('from the second phase on she dances round the fire with little witches, the heat grows and she hardly feels a hit', () => {
     const s = town();
     calm(s);
     const me = bodyOf(s);

@@ -108,6 +108,9 @@ export interface SimOptions {
   rushMaps?: string[];
   /** the games between the floors, in order, instead of the ones the seed picks (tests, servers) */
   between?: Between[];
+  /** no Town: it is walked in first person only, so where first person is switched off (a LAN host's top view)
+   * it is never one of the games between the floors, and Die Hex's Boss Rush fight moves to the arena */
+  noTown?: boolean;
   /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
   countdown?: boolean;
   /** unlocked items (profile ids); leave out to allow everything */
@@ -128,13 +131,15 @@ export const COUNTDOWN_TICKS = 6 * TICK_RATE;
 export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {}): SimState {
   const difficulty = opts.difficulty ?? 'medium';
   const mode = opts.mode ?? 'quick';
-  const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map((b, i) => (opts.rushMaps?.[i] && FLOORS[opts.rushMaps[i]] ? opts.rushMaps[i] : b.map)) : [firstMap.id];
+  const rush = (b: { map: string }, i: number) => (opts.rushMaps?.[i] && FLOORS[opts.rushMaps[i]] ? opts.rushMaps[i] : b.map);
+  const floors = mode === 'run' ? runFloors(seed) : mode === 'bossrush' ? BOSS_RUSH.map((b, i) => (opts.noTown && rush(b, i) === 'waldsee' ? 'arena' : rush(b, i))) : [firstMap.id];
+  const between = opts.between ?? (opts.noTown ? betweenOf(seed, floors.length, ['town']) : undefined);
   const map = mode === 'run' ? FLOORS[RUN_FLOORS[0]].map : mode === 'bossrush' ? FLOORS[floors[0]].map : firstMap;
   const s: SimState = {
     tick: 0,
     seed,
     difficulty,
-    run: { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null, ...(mode === 'run' ? { between: opts.between ?? betweenOf(seed, floors.length) } : {}) },
+    run: { mode, floors, floor: 0, stage: 'floor', stageUntil: 0, shop: null, ...(mode === 'run' ? { between: between ?? betweenOf(seed, floors.length) } : {}) },
     theme: 'plaza',
     rng: new Rng(seed),
     map,
@@ -179,8 +184,9 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     events: [],
     flow: null,
   };
-  initRun(s, mode, floors, opts.between);
-  if (mode === 'run') s.run.bosses = runBosses(seed, floors);
+  initRun(s, mode, floors, between);
+  // (a run that goes through the Town meets Die Hex there: not on one of its floors as well)
+  if (mode === 'run') s.run.bosses = runBosses(seed, floors, s.run.between?.includes('town') ? ['witch'] : []);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];

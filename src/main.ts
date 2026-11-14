@@ -1255,7 +1255,7 @@ function applyDemo(sim: SimState) {
       showroom?.({ x: body?.pos.x ?? at.x, z: body?.pos.z ?? at.z, height: Number(params.get('h')) || 4.3, radius: Number(params.get('r')) || 7, ...(params.has('look') ? { look: Number(params.get('look')) } : {}) });
     });
   }
-  // ?demo=witch&map=waldsee: the Schrättele on show beside her fire (on another map: in its middle), and the camera
+  // ?demo=witch&map=waldsee: the witch on show beside her fire (on another map: in its middle), and the camera
   // circles her (&angle=…: it stands still). She stands and looks about (&act=1: she fights, &act=stand: she attacks without walking; &face=glare:
   // the glaring face; &dance=1: she dances round the fire with the small ones; &r=…, &h=…, &look=… as for Dominik)
   if (params.get('demo') === 'witch') {

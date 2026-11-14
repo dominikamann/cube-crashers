@@ -447,7 +447,7 @@ export function updateVersus(s: SimState): void {
     v.nextHordeAt = s.tick + VERSUS.chaosEveryTicks;
     if (s.enemies.length < 40) spawnHorde(s, s.rng.pick(s.map.waypoints), [{ kind: 'blob', count: 4 }, { kind: 'hunter', count: 2 }], { rush: true });
   }
-  // chaos with a boss: now and then King Rex or the Rhino breaks in, far from everyone
+  // chaos with a boss: now and then King Rex, the Rhino or Die Hex breaks in, far from everyone
   if (v.boss) {
     // (the wait for the next one starts when this one has fallen)
     if (s.boss) v.nextBossAt = 0;
@@ -456,7 +456,7 @@ export function updateVersus(s: SimState): void {
       const alive = s.players.filter(p => p.downUntil === null);
       const far = (w: Vec2) => Math.min(Infinity, ...alive.map(p => dist(p.pos, w)));
       const spot = [...s.map.waypoints].sort((a, b) => far(b) - far(a))[0] ?? s.map.spawn;
-      spawnWild(s, s.rng.pick(WILD.fits[s.map.id] ?? ['rex', 'rhino']), spot);
+      spawnWild(s, s.rng.pick(WILD.fits[s.map.id] ?? ['rex', 'rhino', 'witch']), spot);
       v.nextBossAt = 0;
     }
   }

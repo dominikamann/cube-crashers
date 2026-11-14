@@ -11,7 +11,7 @@ const bounds = (scene: THREE.Scene) => {
   return new THREE.Box3().setFromObject(scene.children[0]);
 };
 
-describe('the Schrättele, as she is drawn', () => {
+describe('the witch, as she is drawn', () => {
   it('stands on the floor, about as tall as a person, and crouches with her feet on it', () => {
     const scene = new THREE.Scene();
     const f = createWitchFigures(scene);

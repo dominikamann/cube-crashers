@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
-  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
+  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARK, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
   WALDSEE_SHORE_TREES, WALDSEE_TREES, type WaldseeFace, type WaldseeHouse,
 } from '../sim/config/waldsee-town';
 
@@ -1418,10 +1418,44 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'bank') {
-      // the bank, seen over the hedge behind the barrier: a hedge before it, its name on the wall
-      for (let k = -2; k <= 2; k++) onFace(s, k * 0.9, 1.2, 0.6, 0.86, 1.2, 0.6, k % 2 ? 0x3f7a3a : 0x478544);
+      // the bank, seen down the lane behind the barrier: a tall trimmed hedge with a little iron gate fills the lane's
+      // mouth from wall to wall, the house (light blue-grey) stands behind it with its name up high
+      const lane = WALDSEE_BARRIERS.find(b => Math.abs(b.at[0] - 10.36) < 0.1 && Math.abs(b.at[1] - 60.26) < 0.1);
+      if (lane) {
+        const ax = -lane.dir[1], az = lane.dir[0], yaw = Math.atan2(-az, ax);
+        const hx = lane.at[0] + lane.dir[0] * 1.0, hz = lane.at[1] + lane.dir[1] * 1.0;
+        // (how far one can go along the barrier's line from the hedge's spot to the real wall, to each side)
+        const reach = (sx: number): number => {
+          let best = 6;
+          for (const w of wallFeet()) {
+            const ex = w.x1 - w.x0, ez = w.z1 - w.z0, den = ax * sx * ez - az * sx * ex;
+            if (Math.abs(den) < 1e-6) continue;
+            const t = ((w.x0 - hx) * ez - (w.z0 - hz) * ex) / den, u = ((w.x0 - hx) * az * sx - (w.z0 - hz) * ax * sx) / den;
+            if (t > 0.2 && u >= -0.02 && u <= 1.02 && t < best) best = t;
+          }
+          return best;
+        };
+        const left = reach(-1), right = reach(1), width = left + right, mid = (right - left) / 2;
+        const gateAt = width * 0.25, gateW = 0.9;
+        const hedgePart = (t0: number, t1: number, colour: number) => {
+          const t = (t0 + t1) / 2;
+          box(hx + ax * (mid + t), 0.8, hz + az * (mid + t), t1 - t0, 1.6, 0.55, colour, yaw);
+        };
+        const n = Math.max(2, Math.round(width / 0.9));
+        for (let k = 0; k < n; k++) {
+          const t0 = -width / 2 + (k * width) / n, t1 = t0 + width / n;
+          if (t1 > gateAt - gateW / 2 && t0 < gateAt + gateW / 2) {
+            if (t0 < gateAt - gateW / 2 - 0.05) hedgePart(t0, gateAt - gateW / 2, 0x3f7a3a);
+            if (t1 > gateAt + gateW / 2 + 0.05) hedgePart(gateAt + gateW / 2, t1, 0x478544);
+          } else hedgePart(t0, t1, k % 2 ? 0x3f7a3a : 0x478544);
+        }
+        // (the gate: two posts, a top rail, thin bars)
+        for (const side of [-1, 1]) box(hx + ax * (mid + gateAt + side * gateW / 2), 0.5, hz + az * (mid + gateAt + side * gateW / 2), 0.07, 1.0, 0.07, 0x3a3d42, yaw);
+        box(hx + ax * (mid + gateAt), 0.95, hz + az * (mid + gateAt), gateW, 0.06, 0.06, 0x3a3d42, yaw);
+        for (let k = 0; k < 6; k++) box(hx + ax * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.45, hz + az * (mid + gateAt - gateW / 2 + 0.1 + k * 0.14), 0.03, 0.9, 0.03, 0x3a3d42, yaw);
+      }
       // the whole front on one plane flush on the real wall: light plaster, a glazed ground floor with the entrance,
-      // a row of windows per storey, and the blue-and-orange Volksbank board over the doors
+      // a row of windows per storey, and the blue-and-orange board "Bank" up high (no brand name)
       const wl = (s as OnWall).wall, wB = wl?.width ?? Math.max(3, s.len), H = wl?.eave ?? 6;
       const S = 80, cw = Math.round(wB * S), ch = Math.round(H * S);
       const canvas = document.createElement('canvas');
@@ -1430,9 +1464,9 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       const g = canvas.getContext('2d')!;
       const px = (u: number) => (u + wB / 2) * S;
       const py = (y: number) => (H - y) * S;
-      g.fillStyle = '#e4dfd3';
+      g.fillStyle = '#c3ccd3';
       g.fillRect(0, 0, cw, ch);
-      g.fillStyle = '#b9b4a8';
+      g.fillStyle = '#9aa3a9';
       g.fillRect(0, py(0.2), cw, 0.2 * S);
       const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
       shadow.addColorStop(0, 'rgba(60,56,48,0.28)');
@@ -1474,17 +1508,17 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillRect(px(u - 0.02), py(2.12), 0.04 * S, 1.8 * S);
         if (door) g.fillRect(px(u - bw / 2 + 0.18), py(1.9), (bw - 0.36) * S, 0.05 * S);
       }
-      // the Volksbank board: blue with the orange rim, the name in white
-      const bwid = Math.min(wB - 0.4, 2.6), bh = 0.5, by = 2.7;
+      // the board: blue with the orange rim, the name in white
+      const bwid = Math.min(wB - 0.4, 2.4), bh = 0.7, by = Math.min(3.4, H - 0.9);
       g.fillStyle = '#1f4fa8';
       g.fillRect(px(-bwid / 2), py(by + bh / 2), bwid * S, bh * S);
       g.fillStyle = '#f28c1e';
       g.fillRect(px(-bwid / 2), py(by - bh / 2 + 0.06), bwid * S, 0.06 * S);
       g.fillStyle = '#ffffff';
-      g.font = `bold ${Math.round(0.3 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      g.font = `bold ${Math.round(0.5 * S)}px "Helvetica Neue", Arial, sans-serif`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillText('Volksbank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
+      g.fillText('Bank', cw / 2, py(by + 0.02), (bwid - 0.2) * S);
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -1498,71 +1532,98 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'shop') {
-      // the little shop: the whole real wall painted flush: a grey canopy over big windows full of things and a
-      // glass door, pink shutters on the windows upstairs, its name on a blue board
+      // the little shop "Lädele" (from a photo): one plane flush on the real wall, white rough plaster, mauve shutters
+      // on the windows above, a flat grey canopy over the whole width, under it a dark fascia, a big shop window on
+      // the left, a double glass door right of the middle, a small window beside it, and the name on a yellow board
+      // on the wall left of the window
       const S = 80, real = (s as OnWall).wall, wB = real?.width ?? w, H = real?.eave ?? 6;
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(wB * S);
       canvas.height = Math.round(H * S);
       const g = canvas.getContext('2d')!;
-      const px = (u: number) => (u + wB / 2) * S;
-      const py = (y: number) => (H - y) * S;
-      g.fillStyle = '#ece3d0';
+      const X = (f: number) => f * wB * S, py = (y: number) => (H - y) * S;
+      g.fillStyle = '#efeadf';
       g.fillRect(0, 0, canvas.width, canvas.height);
-      g.fillStyle = '#d3c9b4';
-      g.fillRect(0, py(0.2), canvas.width, 0.2 * S);
+      for (let i = 0; i < canvas.width * canvas.height / 90; i++) {
+        g.fillStyle = i % 2 ? 'rgba(120,110,95,0.07)' : 'rgba(255,255,255,0.10)';
+        g.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+      }
       const shade = g.createLinearGradient(0, 0, 0, 0.6 * S);
       shade.addColorStop(0, 'rgba(66,58,44,0.30)');
       shade.addColorStop(1, 'rgba(66,58,44,0)');
       g.fillStyle = shade;
       g.fillRect(0, 0, canvas.width, 0.6 * S);
-      // upstairs: a window with a pair of pink shutters per storey and per 1.5 tiles, as many as fit under the eave
-      const nUp = Math.max(1, Math.round(wB / 1.6));
-      for (let st = 1; (st + 1) * 2 <= H + 0.3; st++) {
-        const yc = st * 2 + 1.05;
-        for (let k = 0; k < nUp; k++) {
-          const u = -wB / 2 + (k + 0.5) * (wB / nUp);
-          g.fillStyle = '#b97a8c';
-          for (const side of [-1, 1]) g.fillRect(px(u + side * 0.43 - 0.11), py(yc + 0.45), 0.22 * S, 0.9 * S);
-          g.fillStyle = '#fbf8f0';
-          g.fillRect(px(u - 0.3), py(yc + 0.44), 0.6 * S, 0.88 * S);
+      // upstairs: windows in grey frames with a mauve shutter either side, a storey every 2 tiles up to the eave
+      const centres = wB > 3.5 ? [0.19, 0.55, 0.77] : wB > 2 ? [0.3, 0.7] : [0.5];
+      for (let yc = 3.4; yc + 0.7 <= H; yc += 2) {
+        for (const c of centres) {
+          const u = X(c), ww = 0.62 * S, wh = 0.92 * S, top = py(yc + 0.46);
+          g.fillStyle = '#a46479';
+          for (const side of [-1, 1]) g.fillRect(u + side * (ww / 2 + 0.2 * S) - 0.18 * S, top - 0.04 * S, 0.36 * S, wh + 0.1 * S);
+          g.fillStyle = '#8f98a0';
+          g.fillRect(u - ww / 2 - 0.05 * S, top - 0.05 * S, ww + 0.1 * S, wh + 0.1 * S);
           g.fillStyle = '#5d717d';
-          g.fillRect(px(u - 0.25), py(yc + 0.39), 0.5 * S, 0.78 * S);
-          g.fillStyle = '#fbf8f0';
-          g.fillRect(px(u - 0.02), py(yc + 0.39), 0.04 * S, 0.78 * S);
+          g.fillRect(u - ww / 2, top, ww, wh);
+          g.fillStyle = '#f2f2ee';
+          g.fillRect(u - 0.02 * S, top, 0.04 * S, wh);
+          g.fillRect(u - ww / 2, top + wh * 0.38, ww, 0.04 * S);
         }
       }
-      // downstairs: the door at one end (the left, as one looks at it) and a big window, with the canopy above both
-      const doorU = -wB / 2 + 0.75, winL = doorU + 0.75, winR = wB / 2 - 0.15;
-      g.fillStyle = '#4a3a30';
-      g.fillRect(px(doorU - 0.55), py(2.05), 1.1 * S, 2.05 * S);
-      g.fillStyle = '#3b4a54';
-      g.fillRect(px(doorU - 0.45), py(1.95), 0.9 * S, 1.85 * S);
-      g.fillStyle = '#d8d2c4';
-      g.fillRect(px(doorU + 0.28), py(1.0), 0.05 * S, 0.3 * S);
-      if (winR - winL > 0.8) {
-        g.fillStyle = '#4a3a30';
-        g.fillRect(px(winL), py(2.0), (winR - winL) * S, 1.6 * S);
-        const glass = g.createLinearGradient(0, py(1.9), 0, py(0.5));
-        glass.addColorStop(0, '#46535b');
-        glass.addColorStop(1, '#6b5a40');
+      // downstairs: grey plinth, dark fascia, the shopfront over the whole width
+      g.fillStyle = '#a9a7a2';
+      g.fillRect(0, py(0.35), canvas.width, 0.35 * S);
+      g.fillStyle = '#2f2e2c';
+      g.fillRect(X(0.17), py(2.0), X(0.80) - X(0.17), 0.2 * S);
+      const glassBox = (f0: number, f1: number, y0: number, y1: number, warm: boolean) => {
+        g.fillStyle = '#6f736f';
+        g.fillRect(X(f0), py(y1), X(f1) - X(f0), (y1 - y0) * S);
+        const glass = g.createLinearGradient(0, py(y1), 0, py(y0));
+        glass.addColorStop(0, '#53606a');
+        glass.addColorStop(1, warm ? '#8a7650' : '#3f4a52');
         g.fillStyle = glass;
-        g.fillRect(px(winL + 0.08), py(1.92), (winR - winL - 0.16) * S, 1.44 * S);
-        // a lit shelf with boxes in many colours
-        g.fillStyle = '#e8c88a';
-        g.fillRect(px(winL + 0.08), py(1.0), (winR - winL - 0.16) * S, 0.06 * S);
-        const cols = ['#d8322a', '#2f7a4a', '#2f5fbf', '#f2b632', '#8a5a9a'];
-        const n = Math.max(2, Math.round((winR - winL - 0.4) / 0.3));
+        g.fillRect(X(f0) + 0.06 * S, py(y1) + 0.06 * S, X(f1) - X(f0) - 0.12 * S, (y1 - y0 - 0.12) * S);
+      };
+      // the big window with shelves of goods
+      glassBox(0.18, 0.54, 0.55, 1.8, true);
+      const wL = X(0.18) + 0.1 * S, wR = X(0.54) - 0.1 * S;
+      const cols = ['#d8322a', '#e8d6a0', '#2f5fbf', '#f2b632', '#9aa0a8', '#2f7a4a'];
+      for (const sy of [0.95, 1.4]) {
+        g.fillStyle = '#d9c9a2';
+        g.fillRect(wL, py(sy), wR - wL, 0.04 * S);
+        const n = Math.max(3, Math.round((wR - wL) / (0.3 * S)));
         for (let i = 0; i < n; i++) {
-          g.fillStyle = cols[i % cols.length];
-          g.fillRect(px(winL + 0.22 + i * ((winR - winL - 0.44) / n)), py(1.0 + 0.2 + (i % 3) * 0.1), 0.16 * S, (0.2 + (i % 3) * 0.1) * S);
+          g.fillStyle = cols[(i + (sy > 1 ? 2 : 0)) % cols.length];
+          const hh = (0.16 + ((i * 7) % 3) * 0.06) * S;
+          g.fillRect(wL + 0.04 * S + i * ((wR - wL - 0.1 * S) / n), py(sy) - hh, 0.18 * S, hh);
         }
       }
-      // the canopy: a grey strip over door and window
-      g.fillStyle = '#9aa0a8';
-      g.fillRect(px(-wB / 2 + 0.1), py(2.3), (wB - 0.2) * S, 0.2 * S);
-      g.fillStyle = '#7d838b';
-      g.fillRect(px(-wB / 2 + 0.1), py(2.12), (wB - 0.2) * S, 0.04 * S);
+      // the double glass door, and the small window beside it
+      glassBox(0.55, 0.73, 0.35, 1.8, false);
+      g.fillStyle = '#6f736f';
+      g.fillRect(X(0.64) - 0.02 * S, py(1.75), 0.04 * S, 1.35 * S);
+      glassBox(0.745, 0.83, 0.75, 1.8, true);
+      // the grey flat canopy over the whole width
+      g.fillStyle = '#6c7a86';
+      g.fillRect(X(0.0), py(2.35), canvas.width, 0.22 * S);
+      g.fillStyle = '#9aa4ad';
+      g.fillRect(X(0.0), py(2.35), canvas.width, 0.06 * S);
+      // the name on a yellow board on the wall left of the window
+      const bx = X(0.015), bw = X(0.16) - X(0.015), by = py(1.45), bh = 0.34 * S;
+      g.fillStyle = '#f5cf1e';
+      g.fillRect(bx, by, bw, bh);
+      g.strokeStyle = '#d8a800';
+      g.lineWidth = 3;
+      g.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3);
+      g.fillStyle = '#9a1b1b';
+      g.font = `bold ${Math.round(0.24 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      const wide = g.measureText(s.text).width;
+      g.save();
+      g.translate(bx + bw / 2, by + bh / 2 + 1);
+      g.scale(Math.min(1, (bw - 0.1 * S) / wide), 1);
+      g.fillText(s.text, 0, 0);
+      g.restore();
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
@@ -1574,8 +1635,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       m.position.set(fx, H / 2, fz);
       m.rotation.y = faceYaw(s);
       add(m);
-      const mid = { ...s, x: fx, z: fz };
-      sign(mid, s.text, 2.62, Math.min(2.2, wB - 0.2), { back: '#1f3f8f', ink: '#ffd23f', rim: '#ffd23f' });
       continue;
     }
     if (s.kind === 'nemo') {
@@ -2037,7 +2096,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
           rect(u - ww / 2, u + ww / 2, 0.82, 1.94, '#46586a');
           rect(u - ww / 2 + 0.08, u + ww / 2 - 0.08, 1.12, 1.78, '#1d1f24');
           text('TATTOO', u, 1.58, 0.15, '#e9e4d6', ww - 0.2);
-          text('LADEN', u, 1.34, 0.15, '#e9e4d6', ww - 0.2);
+          text('NK...', u, 1.34, 0.15, '#e9e4d6', ww - 0.2);
           rect(u - ww / 2, u + ww / 2, 0.82, 1.0, 'rgba(255,255,255,0.12)');
         }
         const bu0 = wu[0] - ww / 2 - 0.14, bu1 = wu[1] + ww / 2 + 0.14;
@@ -2196,7 +2255,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
       return best;
     };
-    for (const [rx0, rz0, rx1, rz1] of WALDSEE_FENCE_RUNS) {
+    for (const [rx0, rz0, rx1, rz1] of [...WALDSEE_FENCE_RUNS, ...WALDSEE_EXTRA_FENCES]) {
       // (none in the AmannLabs gap: its alleys end in the dark glass of the house itself)
       if ((rx0 + rx1) / 2 > 21.5 && (rx0 + rx1) / 2 < 30.5 && (rz0 + rz1) / 2 > 44 && (rz0 + rz1) / 2 < 52) continue;
       // (from house to house: both ends carried on to the walls beside the run, a little into them)

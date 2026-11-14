@@ -43,7 +43,7 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   kraken: { w: 3.0, h: 2.2, d: 2.6, day: 0xd04a8a, night: 0xff6ab0, eyeY: 1.5, eyeX: 0.6, eye: 0.45 },
   phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
   trex: { w: 1.1, h: 2.0, d: 2.2, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.8, eyeX: 0.26, eye: 0.16 },
-  // the small Schrättele: a figure of her own (see witch-figure.ts); this is her size and her green skirt
+  // the little witches: a figure of her own (see witch-figure.ts); this is her size and her green skirt
   witchling: { w: 0.4, h: 1.15, d: 0.35, day: 0x2f7d3a, night: 0x3fa04c, eyeY: 0.95, eyeX: 0.05, eye: 0 },
 };
 
@@ -171,7 +171,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // for a moment before they burst (see fx.ts)
   const domStood = new Map<number, { x: number; z: number; yaw: number }>();
   const domDying: { x: number; z: number; yaw: number; until: number }[] = [];
-  // the Schrättele and the small ones: figures of their own, and her bonfire
+  // the witch and the small ones: figures of their own, and her bonfire
   const witches = createWitchFigures(scene);
   const witchFires = createWitchFires(scene);
   /** her steps follow the ground she covers: where each one was, how far into the stride, and how long she counts as moving */
@@ -453,7 +453,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
       witches.begin();
       for (const e of s.enemies) {
-        // the Schrättele and the small Schrättele have figures of their own
+        // the witch and the little witches have figures of their own
         const witchBoss = e.kind === 'tank' ? allBosses(s).find(b => b.kind === 'witch' && b.enemyId === e.id) : undefined;
         if (witchBoss || e.kind === 'witchling') {
           let born = bornAt.get(e.id);

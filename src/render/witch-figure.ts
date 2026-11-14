@@ -3,7 +3,7 @@ import { FLASH } from './pool';
 import { Sculpt } from './figure';
 
 /**
- * The Schrättele of the Narrenzunft Waldsee, and the small ones that dance with her: a figure of boxes in the game's
+ * Die Hex, the witch of the Town's Fasnet, and the small ones that dance with her: a figure of boxes in the game's
  * voxel style. She stands on y = 0 and looks along +z (as the monsters do), about 2.3 high before `scale`.
  *
  * Her carved wooden mask has two faces, the grinning one in front and the glaring one at the back of her head: at
@@ -58,7 +58,7 @@ const SCARF = 0xc4262e, SCARF_DARK = 0x9a1c24, STRAW = 0xe2c062, STRAW_DARK = 0x
 const BLOUSE = 0xd6a12a, BLOUSE_DARK = 0xb4841c, CAPE = 0x18181d, CAPE_EDGE = 0x26262c, GLOVE = 0x111114;
 const SKIRT = 0x2f7d3a, SKIRT_DARK = 0x235f2c, UNDER = 0xc0262c, BLOOMERS = 0xf1eee6, SHOE = 0x2b2119;
 const SOCK = [0xb8232f, 0xf2efe8, 0x2f6b3a, 0xf2efe8];
-const STICK = 0x8a5a2f, TWIG = [0x6b5236, 0x4c3a26, 0xe8e2d4, 0x7a5f3c], HOT = [0xff6a14, 0xffb52e, 0xff3a0a, 0xffe07a];
+const STICK = 0x5e3b1e, STICK_DARK = 0x4a2e17, BAND = 0x2a2420, TWIG = [0x6b5236, 0x4c3a26, 0xe8e2d4, 0x7a5f3c], HOT = [0xff6a14, 0xffb52e, 0xff3a0a, 0xffe07a];
 
 /** the two faces of her mask, top row first, 8 wide: d carved dark, k eye, w teeth, c red cheek, r glint, n nose */
 const GRIN = ['........', '.dd..dd.', 'd......d', '.kk..kk.', 'c..nn..c', 'c..nn..c', 'dwwwwwwd', '.dwwwwd.', '..dddd..'];
@@ -152,19 +152,26 @@ function build(): Figure {
     fore.box(BLOUSE, 0.12, 0.22, 0.12, side * 0.31, 1.03, 0);
     fore.box(GLOVE, 0.13, 0.14, 0.13, side * 0.31, 0.86, 0.01);
   }
-  // the broom in her right hand: a stick, and at its foot the bundle of birch twigs tied with a band (and the same
-  // bundle burning, shown when it is alight)
+  // the broom in her right hand: she holds the long stick by its end, a little crooked and dark; at its far end the
+  // bundle of birch twigs, tied with two bands, fanning out wider toward the tip (and the same bundle burning, shown
+  // when it is alight). It points along her forearm, away from her: everything below the hand in its own frame
   const hand = [-0.31, 0.86, 0.02] as [number, number, number];
   const broom = f.part('broom', hand, 'foreR');
-  // (she holds it near the middle: the stick reaches up past her hand, the twigs hang below it)
-  broom.box(STICK, 0.055, 1.5, 0.055, hand[0], hand[1] + 0.05, hand[2]);
-  broom.box(SHOE, 0.1, 0.05, 0.1, hand[0], hand[1] - 0.72, hand[2]);
+  const STICK_LEN = 1.3;
+  broom.box(STICK, 0.06, 0.7, 0.06, hand[0], hand[1] - 0.27, hand[2]);
+  // (the lower half bends off a little: an old stick, not a turned one)
+  broom.box(STICK_DARK, 0.055, 0.66, 0.055, hand[0] + 0.025, hand[1] - 0.93, hand[2] + 0.01, [0.03, 0, 0.06]);
+  for (const y of [STICK_LEN - 0.02, STICK_LEN + 0.1]) broom.box(BAND, 0.1, 0.045, 0.1, hand[0] + 0.035, hand[1] - y, hand[2] + 0.012);
   const bundle = (name: string, colors: number[], glow: boolean) => {
     const p = f.part(name, hand, 'broom');
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2, r = 0.03 + (i % 3) * 0.035, len = 0.42 + (i % 4) * 0.06;
-      const x = hand[0] + Math.cos(a) * r, z = hand[2] + Math.sin(a) * r, y = hand[1] - 0.74 - len / 2;
-      const rot: [number, number, number] = [Math.sin(a) * 0.22 * (1 + (i % 3)), 0, -Math.cos(a) * 0.22 * (1 + (i % 3))];
+    const top = hand[1] - STICK_LEN + 0.02;
+    for (let i = 0; i < 18; i++) {
+      // an inner ring of long twigs and an outer ring of shorter ones, each leaning out the more the further out it sits
+      const outer = i % 2 === 1, a = (i / 18) * Math.PI * 2 + (outer ? 0.2 : 0);
+      const r = outer ? 0.045 : 0.02, len = (outer ? 0.48 : 0.6) + (i % 3) * 0.05, tilt = outer ? 0.28 : 0.14;
+      const x = hand[0] + 0.035 + Math.cos(a) * (r + Math.sin(tilt) * len * 0.5), z = hand[2] + 0.012 + Math.sin(a) * (r + Math.sin(tilt) * len * 0.5);
+      const y = top - Math.cos(tilt) * len * 0.5;
+      const rot: [number, number, number] = [-Math.sin(a) * tilt, 0, Math.cos(a) * tilt];
       if (glow) p.glow(colors[i % colors.length], 1.6, 0.035, len, 0.035, x, y, z, rot);
       else p.box(colors[i % colors.length], 0.035, len, 0.035, x, y, z, rot);
     }
@@ -204,7 +211,7 @@ export function createWitchFigures(scene: THREE.Scene): WitchFigures {
     // what every pose starts from: standing, the broom held slanting down before her
     let crouch = 0, lean = 0.08, twist = 0, headYaw = 0, headTilt = 0, bob = 0;
     let hipL = 0, hipR = 0, kneeL = 0, kneeR = 0;
-    let armL = 0.15, armLz = 0.18, foreL = -0.3, armR = -0.25, armRz = -0.12, foreR = -0.35, broom = -0.6, broomZ = 0;
+    let armL = 0.15, armLz = 0.18, foreL = -0.3, armR = -0.25, armRz = -0.12, foreR = -0.35, broom = -0.75, broomZ = 0;
     let flare = 1, capeLift = 0.12;
     // walking: her stride, a little uneven, and a quick look about now and then
     const swing = p.moving ? Math.sin(p.stride) : 0;
@@ -290,7 +297,7 @@ export function createWitchFigures(scene: THREE.Scene): WitchFigures {
         break;
       }
       case 'sweep': {
-        // the burning broom drawn back to one side, then swept round across her front
+        // the burning broom drawn back to one side, then swept round across her front, low, its twigs ahead
         const strike = p.t > 0.72 ? ease((p.t - 0.72) / 0.18) : 0;
         twist = 0.9 - 1.9 * strike;
         crouch = 0.15;
@@ -298,8 +305,8 @@ export function createWitchFigures(scene: THREE.Scene): WitchFigures {
         armR = -1.4;
         armRz = -1.1 + 0.6 * strike;
         foreR = -0.3;
-        broom = 1.35;
-        broomZ = 0.3;
+        broom = 0.45;
+        broomZ = 0;
         armL = -0.4;
         capeLift = 0.3 + 0.8 * strike;
         break;

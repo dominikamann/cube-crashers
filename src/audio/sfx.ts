@@ -329,13 +329,13 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 1500, freqEnd: 700, attack: 0.01, sustain: 0.45, decay: 0.2, volume: 0.06, vibrato: { rate: 55, depth: 500 }, lowpass: 3200 },
     { wave: 'sawtooth', freq: 110, freqEnd: 70, attack: 0.04, sustain: 0.4, decay: 0.35, volume: 0.14, vibrato: { rate: 42, depth: 22 }, lowpass: 700 },
   ],
-  // the Schrättele: a cackle, high and nasal, that falls and wavers ("hä-hä-hä-hä"), with a breath of air in it
+  // the witch: a cackle, high and nasal, that falls and wavers ("hä-hä-hä-hä"), with a breath of air in it
   roar_witch: [
     ...[1180, 1090, 1150, 1020, 940].map((freq, i): SynthParams => ({ wave: 'square', freq, freqEnd: freq * 0.82, attack: 0.006, sustain: 0.05, decay: 0.06, volume: 0.075, vibrato: { rate: 34, depth: 60 }, lowpass: 2600, at: i * 0.105 })),
     ...[590, 545, 575, 510, 470].map((freq, i): SynthParams => ({ wave: 'sawtooth', freq, freqEnd: freq * 0.8, attack: 0.006, sustain: 0.05, decay: 0.06, volume: 0.05, lowpass: 1500, at: i * 0.105 })),
     { wave: 'noise', freq: 2000, attack: 0.02, sustain: 0.4, decay: 0.15, volume: 0.05, lowpass: 3800 },
   ],
-  // a drum of the Schrättelestanz: a low skin struck hard, a slap on top
+  // a drum of the Hexentanz: a low skin struck hard, a slap on top
   witchDrum: [
     { wave: 'sine', freq: 118, freqEnd: 48, attack: 0.002, sustain: 0.03, decay: 0.32, volume: 0.5 },
     { wave: 'noise', freq: 500, attack: 0.001, sustain: 0.015, decay: 0.07, volume: 0.22, lowpass: 1300 },
@@ -596,7 +596,7 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'bossPhase':
       return one('bossPhase');
     case 'bossDead':
-      // (the Schrättele goes up in her fire)
+      // (the witch goes up in her fire)
       return e.kind === 'dominik' ? [{ id: 'thunder', pitch: 1 }, { id: 'bossDead', pitch: 1 }] : e.kind === 'witch' ? [{ id: 'fireWhoosh', pitch: 0.55 }, { id: 'bossDead', pitch: 1 }, { id: 'roar_witch', pitch: 1.6 }] : one('bossDead');
     case 'dominikJoined':
       return [{ id: 'thunder', pitch: 1.3 }, { id: 'roar_dominik', pitch: 1.5 }];

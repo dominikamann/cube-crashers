@@ -65,12 +65,12 @@ describe('the Town as the game between two floors', () => {
     expect(s.map.id).not.toBe('waldsee');
   });
 
-  it('has no karts, no build pads, no ladders and no logos', () => {
+  it('has no karts, no build pads, no ladders, and one small logo on the floor only', () => {
     const m = FLOORS.waldsee.map;
     expect(m.vehicleSpots).toHaveLength(0);
     expect(m.pads).toHaveLength(0);
     expect(ladders(m)).toHaveLength(0);
-    expect(logoSpots(m)).toHaveLength(0);
+    expect(logoSpots(m)).toEqual([{ kind: 'floor', tx: 64, tz: 38, w: 4, h: 1 }]);
   });
 });
 
@@ -236,5 +236,19 @@ describe('the barriers of the Town', () => {
           const d = px * b.dir[0] + pz * b.dir[1], l = Math.abs(-px * b.dir[1] + pz * b.dir[0]);
           expect(d > -0.3 && d < 6 && l < b.half, `tile ${x},${z} behind the barrier at ${b.at}`).toBe(false);
         }
+  });
+});
+
+describe('the Town and the view', () => {
+  it('is never a game between the floors, nor Die Hex\'s Boss Rush map, when first person is off', async () => {
+    const { BOSS_RUSH } = await import('../../src/sim/config/floors');
+    for (let seed = 1; seed <= 60; seed++) {
+      expect(createSim(floor01, seed, { mode: 'run', noTown: true }).run.between).not.toContain('town');
+    }
+    const rush = createSim(floor01, 3, { mode: 'bossrush', noTown: true }).run.floors;
+    expect(rush).not.toContain('waldsee');
+    expect(rush).toHaveLength(BOSS_RUSH.length);
+    // (with first person on, the Town still comes in most runs)
+    expect(Array.from({ length: 60 }, (_, i) => createSim(floor01, i + 1, { mode: 'run' }).run.between?.includes('town')).filter(Boolean).length).toBeGreaterThan(30);
   });
 });

@@ -72,7 +72,7 @@ describe('how long a boss lives', () => {
   });
 });
 
-describe('the Schrättele of the Town', () => {
+describe('the witch of the Town', () => {
   it('does not fall in under half a minute, not even to the strongest weapon at its best, on any difficulty', () => {
     for (const d of DIFFICULTIES)
       for (const w of ['pixelBlaster', 'flySwatter'] as const) expect(fastestKill('witch', 'waldsee', w, 5, d), `${w} on ${d}`).toBeGreaterThanOrEqual(30);
