@@ -500,7 +500,8 @@ const hash = (a: number, b: number) => {
 export function waldseeBlockHeight(tx: number, tz: number): number {
   const h = waldseeHouse(tx, tz);
   if (h) return h.wall + waldseeRoof(tx, tz) + 0.4;
-  const g = waldseeGround(tx, tz);
+  // (the lake as drawn covers its ground too: no block of the plan's meadow sticks out of the water)
+  const g = waldseeLake(tx, tz) ? 'water' : waldseeGround(tx, tz);
   return g === 'water' ? 0.26 : g === 'yard' ? 1.5 : g === 'meadow' ? 0.36 + 0.06 * hash(tx >> 1, tz >> 1) : 0.4;
 }
 
@@ -512,7 +513,8 @@ const GRAVEL = [0xd2c7ab, 0xc9bea2, 0xd9cfb4];
 export function waldseeBlockColor(tx: number, tz: number): number {
   const h = waldseeHouse(tx, tz);
   if (h) return parseInt(h.col, 16);
-  const g = waldseeGround(tx, tz);
+  // (the lake as drawn covers its ground too: no block of the plan's meadow sticks out of the water)
+  const g = waldseeLake(tx, tz) ? 'water' : waldseeGround(tx, tz);
   const k = Math.floor(hash(tx, tz) * 3);
   return g === 'water' ? WATER[k] : g === 'street' ? STREET[k] : g === 'meadow' ? MEADOW[k] : g === 'gravel' ? GRAVEL[k] : 0xcfc4ae;
 }
