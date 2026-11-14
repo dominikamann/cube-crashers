@@ -611,6 +611,7 @@ window when you pressed V, the game cannot capture it: *Click to aim* appears, a
 | `T` | Dance: your character does its dance, for everyone to see (it ends when you walk on) |
 | `H` | Team overview: everyone in the team with their lives, for ten seconds (it also shows for a moment when a teammate loses a life) |
 | Middle mouse button | Ping: "Over here!" at the crosshair, for everyone |
+| `Tab` (hold) | The board of who stands where: points, kills and falls in versus (teams apart), score, kills, coins, helping up and falls in a co-op game |
 | `F11` | Fullscreen (desktop app) |
 
 These are the default keys: change them under *Settings → Keys → Change keys*. The arrow keys, right `Shift` and
