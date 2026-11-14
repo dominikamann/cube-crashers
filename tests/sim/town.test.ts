@@ -71,6 +71,31 @@ describe('the Town as the game between two floors', () => {
   });
 });
 
+describe('the lane to the elevator', () => {
+  it('has no one-tile nubs, and one can walk from the start to the elevator by steering at rough waypoints', () => {
+    const m = FLOORS.waldsee.map;
+    const wall = (x: number, z: number) => m.tiles[z * m.w + x] === 1;
+    for (let z = 40; z < 56; z++)
+      for (let x = 66; x < 90; x++) {
+        if (wall(x, z)) continue;
+        const n = [wall(x + 1, z), wall(x - 1, z), wall(x, z + 1), wall(x, z - 1)].filter(Boolean).length;
+        expect(n, `nub at ${x},${z}`).toBeLessThan(3);
+      }
+    const s = createSim(m, 4, { mode: 'quick' });
+    s.enemies = [];
+    s.boss = null;
+    s.players[0].invulnUntil = 1e9;
+    const route = [[67, 52.5], [75, 50.5], [m.elevator.x, m.elevator.z]];
+    let wp = 0;
+    for (let t = 0; t < 1500 && wp < route.length; t++) {
+      const p = s.players[0].pos, dx = route[wp][0] - p.x, dz = route[wp][1] - p.z, d = Math.hypot(dx, dz);
+      if (d < 0.5) { wp++; continue; }
+      stepSim(s, [{ type: 'move', playerId: 0, dir: { x: dx / d, z: dz / d } }]);
+    }
+    expect(wp).toBe(route.length);
+  });
+});
+
 describe('the barriers of the Town', () => {
   it('have no walkable tile on or behind their line', async () => {
     const { WALDSEE_BARRIERS } = await import('../../src/sim/config/waldsee-town');
