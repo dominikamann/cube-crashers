@@ -2470,11 +2470,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
             bar(u0, y0, u1, y1, 0.07);
             bar(u1, y0, u0, y1, 0.07);
           };
-          // the timber along the sloped edges (half of it lies outside the outline and is clipped off)
-          for (let i = 0; i < prof.length; i++) {
-            const [ua, ya] = prof[i], [ub, yb] = prof[(i + 1) % prof.length];
-            if (ya >= gb - 0.01 && yb >= gb - 0.01) bar(ua, ya, ub, yb, 0.2);
-          }
+          // (no timber along the sloped edges: the roof reaches out over them, and a second red stripe under its
+          // edge would only double it)
           // the sill beam at the foot, the beams between the storeys
           const b1 = gb + gh * 0.44, b2 = gb + gh * 0.77;
           beam(gb + 0.05);
