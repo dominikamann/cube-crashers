@@ -454,7 +454,9 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
   // (the clothes shop in Ravensburger Strasse 26)
   { text: "NKD", kind: 'nkd', x: 17.3, z: 75.2, dx: 0.87, dz: -0.49, len: 3 },
   { text: "die brille", kind: 'brille', x: 9.0, z: 56.5, dx: 1, dz: 0, len: 1 },
-  { text: "EMPIRE INK.", kind: 'empire', x: 51.0, z: 61.0, dx: 0, dz: -1, len: 4 },
+  // (the tattoo studio: Hochstatt 1, the corner house across from the optician, next to AmannLabs; its door at the
+  // corner to the Ravensburger Strasse)
+  { text: "EMPIRE INK.", kind: 'empire', x: 17.35, z: 54.0, dx: 0.48, dz: 0.88, len: 4 },
   { text: "Bank", kind: 'bank', x: 2.0, z: 74.0, dx: 0, dz: 1, len: 4 },
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */
@@ -462,7 +464,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   // (from just behind the Czardas's side door across to the corner of the white house opposite: the whole yard
   // by the police is open)
   { at: [58.39, 35.95], dir: [-0.372, -0.928], half: 4.43, lake: false },
-  { at: [7.68, 48.46], dir: [-0.426, -0.905], half: 6.88, lake: false },
+  // (the Ravensburger Strasse toward the Hasen: right behind the optician's flower pot)
+  { at: [9.13, 51.54], dir: [-0.426, -0.905], half: 6.88, lake: false },
   { at: [32.16, 90.56], dir: [0.714, 0.7], half: 6.88, lake: false },
   { at: [12.9, 71.32], dir: [-0.899, 0.437], half: 6.88, lake: false },
   // (the Wurzacher Strasse: the barrier a metre further forward)
