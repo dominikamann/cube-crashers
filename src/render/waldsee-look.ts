@@ -1827,9 +1827,11 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         g.fillStyle = '#d6d3ca';
         g.fillRect(px(u - ww / 2 - 0.1), py(y0 - 0.01), (ww + 0.2) * S, 0.07 * S);
       };
-      // upper storeys from 3.0 up (clear of the door, its arch and the board), about 1.5 apart
-      const storeys = Math.max(1, Math.floor((H - 3.0 + 0.3) / 1.5));
-      for (let st = 0; st < storeys; st++) for (let k = 0; k < bays; k++) win(-wB / 2 + (k + 0.5) * bw, 3.0 + st * 1.5, 0.95);
+      // upper storeys from 3.0 up to just under the eave (clear of the door, its arch and the board), spread evenly
+      // over the whole height so no band of bare wall is left at the top
+      const top = H - 0.3, storeys = Math.max(1, Math.round((top - 3.0) / 1.6)), step = (top - 3.0) / storeys;
+      const wh = Math.max(0.5, Math.min(1.0, step - 0.4));
+      for (let st = 0; st < storeys; st++) for (let k = 0; k < bays; k++) win(-wB / 2 + (k + 0.5) * bw, 3.0 + st * step + (step - wh) / 2, wh);
       for (let k = 0; k < bays; k++) if (k !== doorBay) win(-wB / 2 + (k + 0.5) * bw, 0.95, 1.2);
       // the door: a grey stone frame with a round top, a brown leaf, a glass fanlight
       const du = -wB / 2 + (doorBay + 0.5) * bw, dw = 1.0;
