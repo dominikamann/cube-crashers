@@ -440,7 +440,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           case 'witchPress':
             // (long enough to read while she holds you down)
-            if (e.playerId === p.id) toast(t('toast.witchPress'), 'final', t('toast.witchPressHow'));
+            // (the jump button of a controller where one is played: A, or the cross on a PlayStation pad)
+            if (e.playerId === p.id) toast(t('toast.witchPress'), 'final', t('toast.witchPressHow', padMode ? { 'key.jump': padMode === '\u25A1' ? '\u2715' : 'A' } : undefined));
             else toast(t('toast.witchPressMate', { name: s.players.find(x => x.id === e.playerId)?.name ?? '' }), 'warn', t('toast.witchPressMateHow'));
             break;
           case 'witchDance':
@@ -609,7 +610,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         } else {
           introRule.textContent = t(mode === 'run' ? 'mode.run' : mode === 'endless' ? 'mode.endless' : 'mode.quick');
           introMode.textContent = mode === 'run' ? t('intro.floor', { level, n: s.run.floor + 1, of: s.run.floors.length, name: floorName }) : `${level} · ${floorName}`;
-          introHint.textContent = t(mode === 'run' ? 'mode.runHint' : mode === 'endless' ? 'mode.endlessHint' : 'mode.quickHint');
+          // (the Town has a goal of its own: the Schrättele and every little one, then the elevator)
+          introHint.textContent = s.map.id === 'waldsee' ? t('intro.townHint') : t(mode === 'run' ? 'mode.runHint' : mode === 'endless' ? 'mode.endlessHint' : 'mode.quickHint');
         }
         const shown = counting ? String(Math.ceil(s.countdown! / TICK_RATE)) : t('versus.go');
         if (shown !== introShown) {

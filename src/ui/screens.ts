@@ -417,7 +417,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         else if (boss || profile.tickets < u.cost) b.disabled = true;
       }
       s.append(grid);
-      button(s, t('menu.back'), () => back(), true);
+      button(s, t('menu.back'), () => back());
     });
   }
 
@@ -516,7 +516,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         thanks.classList.add('pop');
       };
       thank('credits');
-      button(s, t('menu.back'), () => back(), true);
+      button(s, t('menu.back'), () => back());
     });
   }
 
@@ -678,7 +678,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       section(t('settings.about'));
       text(row(t('settings.version')), 'span', 'settings-version', `v${APP_VERSION}`);
       text(s, 'p', 'controls-help', t('menu.controls'));
-      button(s, t('menu.back'), () => back(), true);
+      button(s, t('menu.back'), () => back());
     });
   }
 
@@ -767,7 +767,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         draw();
         say(t('controls.resetDone'));
       });
-      button(foot, t('menu.back'), () => settingsScreen(), true);
+      button(foot, t('menu.back'), () => settingsScreen());
     });
   }
 
@@ -1364,7 +1364,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       if (goBack) back = goBack;
       show('', s => {
         text(s, 'p', '', textValue);
-        if (goBack) button(s, t('menu.back'), goBack, true);
+        if (goBack) button(s, t('menu.back'), goBack);
         else button(s, t('menu.mainMenu'), actions.mainMenu, true);
       });
     },
