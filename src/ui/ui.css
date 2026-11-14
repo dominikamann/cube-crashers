@@ -547,3 +547,10 @@ body.no-map .mapbox { display: none; }
 .chip.drop::after { flex: none; }
 /* the title's buttons all as wide */
 .screen.title .row2 .btn { min-width: 310px; }
+/* the button the controller or the keyboard is on: a white frame round it that breathes, so it is plain on every
+   colour of button and over every background */
+.btn:focus-visible, .btn.pad-focus, .chip:focus-visible, .chip.pad-focus { outline: 3px solid #fff; outline-offset: 3px; animation: focus-breathe 1.1s ease-in-out infinite; }
+.chip:focus-visible, .chip.pad-focus { outline-width: 2px; outline-offset: 2px; }
+.foot .btn:focus-visible, .foot .btn.pad-focus { outline-width: 2px; }
+@keyframes focus-breathe { 50% { outline-offset: 6px; outline-color: var(--gold); } }
+@media (prefers-reduced-motion: reduce) { .btn:focus-visible, .btn.pad-focus, .chip:focus-visible, .chip.pad-focus { animation: none; } }
