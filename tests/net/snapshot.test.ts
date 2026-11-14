@@ -83,6 +83,9 @@ describe('floor changes over the network', () => {
     const w = view.boss!.witch!;
     expect(w.dance?.helpers).toEqual(host.boss!.witch!.dance!.helpers);
     expect(w.heat).toBeCloseTo(host.boss!.witch!.heat, 2);
-    expect(view.enemies.filter(e => e.kind === 'witchling').map(e => e.id)).toEqual(host.boss!.witch!.dance!.helpers);
+    // (her dancers among them, and the little witches out in the streets as well)
+    const small = (sim: typeof host) => sim.enemies.filter(e => e.kind === 'witchling').map(e => e.id);
+    expect(small(view)).toEqual(small(host));
+    expect(small(view)).toEqual(expect.arrayContaining(host.boss!.witch!.dance!.helpers));
   });
 });

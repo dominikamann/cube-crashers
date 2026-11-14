@@ -32,10 +32,23 @@ describe('the roofs of the Town', () => {
     expect(houses.size).toBeGreaterThan(200);
   });
 
-  it('stay joined: a corner two roofs share goes to one spot (no further apart than it was in the data)', () => {
-    const spread = (ps: number[][]) => Math.max(...ps.map(p => dist(p, ps[0])));
-    const torn = all.filter(c => c.now.length > 1 && spread(c.now) > spread(c.before) + 0.01);
-    expect(torn.map(c => `${c.id} at ${c.was.map(v => v.toFixed(2))}`)).toEqual([]);
+  it('stay joined: corners that meet in the data (closer than a few centimetres) stay as close after reaching out', () => {
+    const torn: string[] = [];
+    WALDSEE_LOD2.forEach((b, id) => {
+      if (!shown(b)) return;
+      const over = roofsOver(b, id), pts: { was: number[]; now: number[] }[] = [];
+      for (const [k, q] of b) {
+        if (k !== 'r') continue;
+        const nq = over.roofs.get(q) ?? q;
+        for (let i = 0; i < q.length; i += 3) pts.push({ was: [q[i], q[i + 1], q[i + 2]], now: [nq[i], nq[i + 1], nq[i + 2]] });
+      }
+      for (let a = 0; a < pts.length; a++)
+        for (let c = a + 1; c < pts.length; c++) {
+          const before = dist(pts[a].was, pts[c].was);
+          if (before < 0.07 && dist(pts[a].now, pts[c].now) > before + 0.01) torn.push(`${id} at ${pts[a].was.map(v => v.toFixed(2))}`);
+        }
+    });
+    expect(torn).toEqual([]);
   });
 
   it('never reach out far: no corner moves more than twice the overhang', () => {

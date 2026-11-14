@@ -446,6 +446,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'witchFace':
             toast(t('toast.witchFace'), 'final');
             break;
+          case 'bossDead':
+            // (the Schrättele is beaten, but little ones are still out in the streets: the elevator waits for them)
+            if (e.kind === 'witch' && s.enemies.some(x => x.kind === 'witchling' && x.hp > 0)) toast(t('toast.witchlings'), 'warn');
+            break;
           case 'dominikLeft':
             toast(t('toast.dominikLeft'), 'good');
             break;

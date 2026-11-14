@@ -240,7 +240,7 @@ describe('the barriers of the Town', () => {
 });
 
 describe('the Town and the view', () => {
-  it('is never a game between the floors, nor Die Hex\'s Boss Rush map, when first person is off', async () => {
+  it('is never a game between the floors, nor the Schrättele\'s Boss Rush map, when first person is off', async () => {
     const { BOSS_RUSH } = await import('../../src/sim/config/floors');
     for (let seed = 1; seed <= 60; seed++) {
       expect(createSim(floor01, seed, { mode: 'run', noTown: true }).run.between).not.toContain('town');

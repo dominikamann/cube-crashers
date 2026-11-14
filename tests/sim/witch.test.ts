@@ -8,7 +8,7 @@ import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, nearestFree, reachable } from '../
 import { damageEnemy } from '../../src/sim/systems/combat';
 import { floorCleared } from '../../src/sim/systems/run';
 import { spawnWild, WILD } from '../../src/sim/systems/wild-boss';
-import { WITCH, witchPounce } from '../../src/sim/systems/witch';
+import { TOWN_WITCHLINGS, WITCH, witchPounce } from '../../src/sim/systems/witch';
 import type { Command, SimState } from '../../src/sim/types';
 
 /** a Single floor of the Town: the witch at her fire, nobody else */
@@ -159,7 +159,7 @@ describe('the witch', () => {
   });
 });
 
-describe('die Hex druckt', () => {
+describe("s'Schrättele druckt", () => {
   const pressed = () => {
     const s = town();
     calm(s);
@@ -284,7 +284,7 @@ describe('die Hex druckt', () => {
   });
 });
 
-describe('the Hexentanz and the two faces', () => {
+describe('the Schrättelestanz and the two faces', () => {
   it('from the second phase on she dances round the fire with little witches, the heat grows and she hardly feels a hit', () => {
     const s = town();
     calm(s);
@@ -296,7 +296,8 @@ describe('the Hexentanz and the two faces', () => {
     expect(events.some(e => e.type === 'witchDance')).toBe(true);
     const w = s.boss!.witch!;
     expect(w.dance!.helpers.length).toBe(WITCH.helpers[2]);
-    expect(s.enemies.filter(e => e.kind === 'witchling')).toHaveLength(WITCH.helpers[2]);
+    // (her dancers: the little witches out in the streets go their own way, in hordes of their own)
+    expect(s.enemies.filter(e => e.kind === 'witchling' && e.hordeId === null)).toHaveLength(WITCH.helpers[2]);
     run(s, 240);
     expect(w.heat).toBeGreaterThan(WITCH.heat + 0.5);
     // she goes round the fire
@@ -337,6 +338,8 @@ describe('the Hexentanz and the two faces', () => {
   it('when she falls, the small ones and the burning twigs go with her, and the elevator opens', () => {
     const s = town();
     calm(s);
+    // (the little witches out in the streets are squashed already)
+    s.enemies = s.enemies.filter(e => !(e.kind === 'witchling' && e.hordeId !== null));
     const me = bodyOf(s);
     me.hp = me.maxHp * 0.6;
     run(s, 2);
@@ -362,7 +365,7 @@ describe('the Hexentanz and the two faces', () => {
   });
 });
 
-describe('Die Hex as a wild boss', () => {
+describe('the Schrättele as a wild boss', () => {
   it('stands still by the elevator until someone wakes her', async () => {
     const { createSim, stepSim } = await import('../../src/sim/sim');
     const { floor01 } = await import('../../src/sim/config/floor01');
@@ -378,5 +381,50 @@ describe('Die Hex as a wild boss', () => {
     for (const p of s.players) p.pos = { ...far };
     for (let i = 0; i < 120; i++) stepSim(s, []);
     expect(Math.hypot(body.pos.x - start.x, body.pos.z - start.z)).toBeLessThan(0.5);
+  });
+});
+
+describe('the little witches about the Town', () => {
+  const wanderers = (s: SimState) => s.enemies.filter(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0);
+
+  it('a few of them walk about the Town on their own, spread over it and away from the start, not yet after anyone', () => {
+    const s = createSim(FLOORS.waldsee.map, 4, { mode: 'quick', players: 1 });
+    const ws = wanderers(s);
+    expect(ws.length).toBeGreaterThanOrEqual(TOWN_WITCHLINGS);
+    for (const e of ws) {
+      expect(Math.hypot(e.pos.x - s.map.spawn.x, e.pos.z - s.map.spawn.z)).toBeGreaterThan(10);
+      expect(s.hordes.find(h => h.id === e.hordeId)?.aggro).toBe(false);
+    }
+    for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < ws.length; j++) {
+      if (ws[i].hordeId === ws[j].hordeId) continue;
+      expect(Math.hypot(ws[i].pos.x - ws[j].pos.x, ws[i].pos.z - ws[j].pos.z)).toBeGreaterThan(8);
+    }
+  });
+
+  it('they wander until they see someone, then come for them', () => {
+    const s = createSim(FLOORS.waldsee.map, 4, { mode: 'quick', players: 1 });
+    calm(s);
+    const e = wanderers(s)[0];
+    const start = { ...e.pos };
+    run(s, 900);
+    expect(Math.hypot(e.pos.x - start.x, e.pos.z - start.z)).toBeGreaterThan(1);
+    // someone steps into sight: the little witch is after them
+    s.players[0].pos = nearestFree(s.map, { x: e.pos.x + 3, z: e.pos.z }, 0.4, BLOCKS_WALKER);
+    run(s, 20);
+    expect(s.hordes.find(h => h.id === e.hordeId)?.aggro).toBe(true);
+  });
+
+  it('the elevator stays shut while one of them is left, even when the witch is beaten', () => {
+    const s = town();
+    calm(s);
+    bodyOf(s).hp = 0;
+    run(s, 2);
+    expect(s.boss).toBeNull();
+    expect(wanderers(s).length).toBeGreaterThan(0);
+    expect(s.elevatorOpen).toBe(false);
+    for (const e of wanderers(s)) damageEnemy(s, e, 1000, 'pixelBlaster', 0);
+    const events = run(s, 2);
+    expect(s.elevatorOpen).toBe(true);
+    expect(events.some(e => e.type === 'elevatorOpen')).toBe(true);
   });
 });

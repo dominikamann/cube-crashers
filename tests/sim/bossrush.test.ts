@@ -25,7 +25,7 @@ function killBoss(s: SimState) {
 }
 
 describe('Boss Rush', () => {
-  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, the Tarantula Queen, King Rex, Die Hex, then Angry Dominik', () => {
+  it('is every boss in a row: Mega Block, Segment Worm, the Kraken, the Rhino, the Tarantula Queen, King Rex, the Schrättele, then Angry Dominik', () => {
     expect(BOSS_RUSH.map(b => b.boss)).toEqual(['megaBlock', 'worm', 'kraken', 'rhino', 'spider', 'rex', 'witch', 'dominik']);
     const s = bossRush();
     expect(s.run.floors).toHaveLength(8);

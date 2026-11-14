@@ -13,6 +13,7 @@ import { updateLane } from './systems/lane';
 import { updateMaze } from './systems/maze';
 import { setupVersus, updateVersus } from './systems/versus';
 import { moveBoss, updateBoss } from './systems/boss';
+import { awaitWitchlings } from './systems/witch';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -109,7 +110,7 @@ export interface SimOptions {
   /** the games between the floors, in order, instead of the ones the seed picks (tests, servers) */
   between?: Between[];
   /** no Town: it is walked in first person only, so where first person is switched off (a LAN host's top view)
-   * it is never one of the games between the floors, and Die Hex's Boss Rush fight moves to the arena */
+   * it is never one of the games between the floors, and the Schrättele's Boss Rush fight moves to the arena */
   noTown?: boolean;
   /** the game opens with a countdown (5 4 3 2 1 GO!) during which nothing moves; leave out to start at once */
   countdown?: boolean;
@@ -185,7 +186,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     flow: null,
   };
   initRun(s, mode, floors, between);
-  // (a run that goes through the Town meets Die Hex there: not on one of its floors as well)
+  // (a run that goes through the Town meets the Schrättele there: not on one of its floors as well)
   if (mode === 'run') s.run.bosses = runBosses(seed, floors, s.run.between?.includes('town') ? ['witch'] : []);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
@@ -295,6 +296,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateTowers(s);
   updateAreas(s);
   updateBoss(s, intents);
+  awaitWitchlings(s);
   updateEggs(s);
   updateWebs(s);
   updateMiniDominik(s);

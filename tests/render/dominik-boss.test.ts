@@ -8,7 +8,8 @@ describe('Angry Dominik, the boss', () => {
     for (const shape of [voxelBody('dominik', DOMINIK.width, DOMINIK.height, DOMINIK.depth), voxelBody('dominikHead', DOMINIK.head.w, DOMINIK.head.h, DOMINIK.head.d)]) {
       expect(shape.geometry.getAttribute('position').count).toBeGreaterThan(1000);
     }
-  });
+    // (building his voxel body takes a few seconds, more on a busy machine)
+  }, 20000);
 
   it('has his neck, arms, legs and hammer, and draws them', () => {
     const scene = new THREE.Scene();

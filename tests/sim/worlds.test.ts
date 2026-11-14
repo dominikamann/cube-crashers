@@ -61,7 +61,7 @@ describe('the new worlds', () => {
     expect(runFloors(7)).toEqual(runFloors(7));
   });
 
-  it('and its bosses too: the arena has the Mega Block, the Rhino or Die Hex, the roof ends with the worm, King Rex, the Tarantula Queen or Die Hex', () => {
+  it('and its bosses too: the arena has the Mega Block, the Rhino or the Schrättele, the roof ends with the worm, King Rex, the Tarantula Queen or the Schrättele', () => {
     const mid = new Set<string>(), last = new Set<string>(), pairs = new Set<string>();
     for (let seed = 1; seed < 400; seed++) {
       const floors = runFloors(seed), bosses = runBosses(seed, floors);
@@ -82,7 +82,7 @@ describe('the new worlds', () => {
     }
     expect([...mid].sort()).toEqual(['kraken', 'megaBlock', 'rhino', 'witch']);
     expect([...last].sort()).toEqual(['rex', 'spider', 'witch', 'worm']);
-    // (nearly every pair of the 15 there are: no boss comes twice in a run, so never Die Hex twice)
+    // (nearly every pair of the 15 there are: no boss comes twice in a run, so never the Schrättele twice)
     expect(pairs.size).toBeGreaterThanOrEqual(13);
     expect([...pairs]).not.toContain('witch+witch');
     expect(runBosses(7, runFloors(7))).toEqual(runBosses(7, runFloors(7)));

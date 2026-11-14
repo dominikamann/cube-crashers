@@ -137,6 +137,7 @@ function enterMap(s: SimState, def: (typeof FLOORS)[string]): void {
   s.bubbles = [];
   s.flow = null;
   s.elevatorOpen = false;
+  s.witchlingsWait = false;
   s.players.forEach((p, i) => {
     p.pos = spawnPoint(s, i);
     if (!isFree(s.map, p.pos, 0.4, BLOCKS_WALKER)) p.pos = nearestFree(s.map, p.pos, 0.4, BLOCKS_WALKER);

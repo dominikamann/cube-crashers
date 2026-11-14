@@ -1,19 +1,20 @@
-import { PLAYER_RADIUS } from '../config/balance';
+import { PLAYER_RADIUS, START_CLEAR_RADIUS } from '../config/balance';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, reachable } from '../map/tilemap';
 import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import { DT, TICK_RATE, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2, type WitchState } from '../types';
 import { dist } from '../util';
 import { spawnEnemy } from './enemies';
+import { spawnHorde } from './hordes';
 import { damagePlayer } from './player';
 import { aloft } from './rare';
 
 /**
- * Die Hex, the witch of the Fasnet, the boss of the Town. She has her bonfire beside the Federle-Brunnen,
+ * The Schrättele, the witch of the Fasnet, the boss of the Town. She has her bonfire beside the Federle-Brunnen,
  * and its heat hurts whoever comes too close (the logs are low: a jump takes you over the flames). She crouches and
  * looks about, then charges or hops at someone with her broom raised; she leaps onto a player and presses them down
- * ("die Hex druckt") until they shake her off or a teammate knocks her off; she sweeps her burning broom and
+ * ("s'Schrättele druckt") until they shake her off or a teammate knocks her off; she sweeps her burning broom and
  * throws burning twigs that keep burning on the floor. From the second phase on she dances round the fire with
- * little witches (the Hexentanz): the heat grows, the drums go, and she hardly feels a hit until the small
+ * little witches (the Schrättelestanz): the heat grows, the drums go, and she hardly feels a hit until the small
  * ones are beaten. At half her health she turns her mask from the grinning face to the glaring one, and is quicker
  * and harder from then on. She never moves in time with anything: her pace wavers all the while.
  */
@@ -49,7 +50,7 @@ export const WITCH = {
    *  second at most, for this share of the flight; nothing on the floor shows where she will land */
   homing: 2.6,
   homingShare: 0.7,
-  /** "die Hex druckt": how far she leaps for it, how long she is in the air (the ring warns as long), how near her
+  /** "s'Schrättele druckt": how far she leaps for it, how long she is in the air (the ring warns as long), how near her
    *  landing the player must still be, how long she sits on them and what that does a second. Shaking her off takes
    *  `struggle` jumps (a dash counts double); a teammate knocks her off with `knock` of her health in hits. */
   pressReach: 9,
@@ -503,4 +504,38 @@ export function witchDown(s: SimState, b: BossState): void {
     s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos }, elite: false });
   }
   w.dance = null;
+}
+
+/** how many little witches walk the Town's streets on their own (each one a horde, so more of them with more players) */
+export const TOWN_WITCHLINGS = 5;
+
+/**
+ * The little witches out in the Town: each on her own, at places spread over the Town (each as far from the
+ * others as can be), away from the start and from the witch's fire. They wander like any horde until they see
+ * someone, and the elevator waits for them as well as for the witch (see witchlingsLeft).
+ */
+export function spreadWitchlings(s: SimState, fire: Vec2): void {
+  const pool = s.map.waypoints.filter(w => dist(w, s.map.spawn) > START_CLEAR_RADIUS && dist(w, fire) > 10);
+  if (pool.length === 0) return;
+  const chosen: Vec2[] = [s.rng.pick(pool)];
+  while (chosen.length < Math.min(TOWN_WITCHLINGS, pool.length)) {
+    let best = pool[0], far = -1;
+    for (const w of pool) {
+      const d = Math.min(...chosen.map(c => dist(c, w)));
+      if (d > far) ((far = d), (best = w));
+    }
+    chosen.push(best);
+  }
+  for (const w of chosen) spawnHorde(s, w, [{ kind: 'witchling', count: 1 }]);
+}
+
+/** whether one of the little witches that walk the Town is still about (not the ones dancing with the witch) */
+export const witchlingsLeft = (s: SimState): boolean => s.enemies.some(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0);
+
+/** the witch is beaten: the elevator opens once the last little witch out in the Town is squashed too */
+export function awaitWitchlings(s: SimState): void {
+  if (!s.witchlingsWait || witchlingsLeft(s)) return;
+  s.witchlingsWait = false;
+  s.elevatorOpen = true;
+  s.events.push({ type: 'elevatorOpen' });
 }

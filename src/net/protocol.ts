@@ -22,8 +22,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 9: Angry Dominik, his hammer and the baby dinos; characters; a longer wait to come back in versus (0.5.7).
  * 10: the Tarantula Queen, her brood and her webs; shots with a height (1.0.0).
  * 11: the witch of the Town: her fire, her dance with the little witches, her press and her twigs.
+ * 12: little witches walking the Town on their own; its elevator waits for them (1.2.0).
  */
-export const PROTOCOL_VERSION = 11;
+export const PROTOCOL_VERSION = 12;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

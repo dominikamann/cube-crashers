@@ -15,7 +15,7 @@ import { aloft } from './rare';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
 import { spawnHorde, type HordeComp } from './hordes';
-import { moveWitch, setupWitch, startDance, updateWitch, witchAttack, witchBusy, witchDown, WITCH } from './witch';
+import { moveWitch, setupWitch, startDance, updateWitch, witchAttack, witchBusy, witchDown, witchlingsLeft, WITCH } from './witch';
 
 export const BOSS = {
   deathCoins: 60,
@@ -622,7 +622,7 @@ function leap(s: SimState, b: BossState): void {
   // (she may come down on a wall inside the map: she stands on those)
   boss.pos = b.kind === 'spider' ? { ...l.to } : nearestFree(s.map, l.to, boss.radius, BLOCKS_ENEMY);
   b.leap = null;
-  // (Die Hex lands with her own blow, and nothing shows where)
+  // (the Schrättele lands with her own blow, and nothing shows where)
   if (b.kind !== 'witch') s.events.push({ type: 'stomp', pos: { ...boss.pos }, radius: BOSS.leapRadius });
 }
 
@@ -749,6 +749,11 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
       // a wild boss (Tower Run, versus chaos): nothing ends with it, and it leaves a crate behind (not in the
       // Gun Game, where weapons come from kills)
       if (s.versus?.rule !== 'gungame') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) } });
+      return;
+    }
+    // (in the Town the little witches out in the streets have to be squashed as well: the elevator waits)
+    if (witchlingsLeft(s)) {
+      s.witchlingsWait = true;
       return;
     }
     s.elevatorOpen = true;

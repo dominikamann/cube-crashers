@@ -34,5 +34,21 @@ describe('the Town, built', () => {
     expect(objects.length).toBeGreaterThan(50);
     // (no plane of a painted front is left without a size or stands at a spot that is not a number)
     for (const o of objects) expect(Number.isFinite(o.position.x) && Number.isFinite(o.position.y) && Number.isFinite(o.position.z)).toBe(true);
+    // (and every mesh's own geometry: points, normals and texture spots all numbers, as many normals as points)
+    let meshes = 0;
+    for (const o of objects)
+      o.traverse(m => {
+        if (!(m instanceof THREE.Mesh)) return;
+        meshes++;
+        const g = m.geometry as THREE.BufferGeometry, pos = g.getAttribute('position');
+        expect(pos.count, m.type).toBeGreaterThan(0);
+        for (const name of ['position', 'normal', 'uv']) {
+          const at = g.getAttribute(name);
+          if (!at) continue;
+          if (name === 'normal') expect(at.count).toBe(pos.count);
+          for (let i = 0; i < at.array.length; i++) if (!Number.isFinite(at.array[i])) throw new Error(`${name} of a ${m.type} is not a number at ${i}`);
+        }
+      });
+    expect(meshes).toBeGreaterThan(50);
   }, 30000);
 });

@@ -18,7 +18,7 @@ export const WILD = {
   versusHp: 0.4,
   /**
    * which bosses suit which world: the Rhino needs room to charge, King Rex is at home in the city, the jungle
-   * and between the machines, Die Hex lights her fire on the plaza, among the sweets and between the machines. (The Kraken needs water, the Segment Worm a wide roof and the Mega Block is too
+   * and between the machines, the Schrättele lights her fire on the plaza, among the sweets and between the machines. (The Kraken needs water, the Segment Worm a wide roof and the Mega Block is too
    * big for the aisles of a nest floor: never wild.)
    */
   fits: {

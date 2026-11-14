@@ -453,9 +453,9 @@ export interface WitchState {
    * player she is after, `next` what follows the scan or the hop.
    */
   move: { kind: 'scan' | 'charge' | 'hop' | 'sweep' | 'throw' | 'reel'; at: number; until: number; from: Vec2; to?: Vec2; target?: number; next?: 'charge' | 'hop' | 'press' } | null;
-  /** "die Hex druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
+  /** "s'Schrättele druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
   press: { playerId: number; at: Vec2; until: number; struggle: number; hurt: number; held: boolean } | null;
-  /** the Hexentanz: the little witches dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
+  /** the Schrättelestanz: the little witches dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
   dance: { helpers: number[]; at: number; until: number } | null;
   /** burning twigs on the floor: they burn from `from` until `until` */
   embers: { id: number; pos: Vec2; radius: number; from: number; until: number }[];
@@ -549,7 +549,7 @@ export interface VersusState {
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;
-  /** chaos with a boss: now and then King Rex, the Rhino or Die Hex breaks in; when the next one comes */
+  /** chaos with a boss: now and then King Rex, the Rhino or the Schrättele breaks in; when the next one comes */
   boss?: boolean;
   nextBossAt?: number;
   /** king of the cube: the zone, its radius and when it moves on */
@@ -722,10 +722,10 @@ export type SimEvent =
   /** a baby dino breaks out of its egg */
   | { type: 'eggHatch'; pos: Vec2 }
   | { type: 'wormSplit'; pos: Vec2 }
-  /** the witch sits on a player ("die Hex druckt"), and lets go of them (`broke`: they shook her off, or a teammate knocked her off) */
+  /** the witch sits on a player ("s'Schrättele druckt"), and lets go of them (`broke`: they shook her off, or a teammate knocked her off) */
   | { type: 'witchPress'; playerId: number; pos: Vec2 }
   | { type: 'witchRelease'; playerId: number; broke: boolean; pos: Vec2 }
-  /** the Hexentanz begins round the fire, a drum is struck while it lasts, and it is broken */
+  /** the Schrättelestanz begins round the fire, a drum is struck while it lasts, and it is broken */
   | { type: 'witchDance'; pos: Vec2 }
   | { type: 'witchDrum'; pos: Vec2; beat: number }
   | { type: 'witchDanceEnd'; pos: Vec2 }
@@ -797,6 +797,8 @@ export interface SimState {
   credits: number;
   alarm: { level: number; nextAt: number };
   elevatorOpen: boolean;
+  /** the Town: the witch is beaten, and the elevator waits for the little witches still out in the streets */
+  witchlingsWait?: boolean;
   score: number;
   stats: RunStats;
   /** a versus match (PvP), or null in the co-op modes */

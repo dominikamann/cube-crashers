@@ -76,3 +76,25 @@ describe('the barriers of the Town', () => {
     }
   });
 });
+
+describe('the fences put in by hand', () => {
+  it('leave nothing to walk on behind them: one side of each is solid all along', async () => {
+    const { WALDSEE_EXTRA_FENCES } = await import('../../src/sim/config/waldsee-town');
+    const { FLOORS } = await import('../../src/sim/config/floors');
+    const { isFree, BLOCKS_WALKER } = await import('../../src/sim/map/tilemap');
+    const map = FLOORS.waldsee.map;
+    for (const [x0, z0, x1, z1] of WALDSEE_EXTRA_FENCES) {
+      const len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
+      const open = (side: number) => {
+        let n = 0;
+        for (let t = 0.1; t <= 0.9; t += 0.1)
+          for (const o of [0.25, 0.45, 0.65]) {
+            const p = { x: x0 + (x1 - x0) * t + nx * o * side, z: z0 + (z1 - z0) * t + nz * o * side };
+            if (isFree(map, p, 0.1, BLOCKS_WALKER)) n++;
+          }
+        return n;
+      };
+      expect(Math.min(open(1), open(-1)), `fence ${[x0, z0, x1, z1]}`).toBe(0);
+    }
+  });
+});

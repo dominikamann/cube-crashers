@@ -130,7 +130,8 @@ export function botFight(floor: string, weapon: WeaponKind, level: number, diffi
   let dead = -1;
   for (let i = 0; i < 15 * 60 * TICK_RATE && s.phase === 'playing' && dead < 0; i++) {
     stepSim(s, bot(s));
-    if (s.elevatorOpen) dead = s.tick;
+    // (the boss is down: in the Town the elevator then still waits for the little witches out in the streets)
+    if (s.elevatorOpen || s.witchlingsWait) dead = s.tick;
   }
   return { won: dead >= 0, seconds: ((dead >= 0 ? dead : s.tick) - start) / TICK_RATE, downs: s.stats.downs };
 }

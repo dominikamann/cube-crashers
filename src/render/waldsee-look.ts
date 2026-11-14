@@ -40,7 +40,7 @@ const shownBase = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
   if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return false;
   const north = cz < 62;
   const g = waldseeGround(tx, tz);
-  if (north && tx >= 0 && tz >= 0 && tx < MAP_W && tz < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz))) return false;
+  if (north && tx >= 0 && tz >= 0 && tx < MAP_W && tz < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz) || takenAway(c))) return false;
   const lake = WALDSEE_BARRIERS.find(x => x.lake);
   return !(lake && cx > lake.at[0] && cz < lake.at[1] + 6);
 };
@@ -163,7 +163,7 @@ type FrontPiece = { face: WaldseeFace; len: number; u0: number; eave: number };
 type Front = { pieces: FrontPiece[]; width: number; eave: number };
 /**
  * The whole street front of the house a front snapped to: its wall and the walls of the same house joined to it end
- * to end that look about the same way (a front with slight kinks or a step in its line), from left to right
+ * to end that look about the same way (a front with slight kinks), from left to right
  */
 const frontOf = (f: WaldseeFace & OnWall): Front | null => {
   const id = f.wall?.id;
@@ -268,7 +268,8 @@ export const waldseeGround = (tx: number, tz: number): WaldseeGround => {
   if (alley(tx, tz)) return 'street';
   if (c >= 6 && (WALDSEE_REPLACED.includes(c - 6) || BUILT.has(c - 6))) return 'street';
   // (a house taken away south of the lake, along the Wurzacher Strasse, leaves the street paved, not water)
-  if (takenAway(c) && tz >= 62) return 'street';
+  // (and so does one west of the lake as drawn, see LAKE: no pond lies inland behind the shore path)
+  if (takenAway(c) && (tz >= 62 || tx < 78)) return 'street';
   if (takenAway(c) || drowned(tx, tz)) return 'water';
   // (a house tile is a low block hidden inside the real building that stands there, see buildWaldseeTown)
   // (a house tile, or a yard behind the houses, is paved: the real buildings stand on it, and where a tile reaches
@@ -297,8 +298,8 @@ const footTiles = (b: (typeof WALDSEE_LOD2)[number]): [number, number][] => {
 export const LAKE_WIN = { x0: 70, x1: 190, z0: -20, z1: 70 };
 /** the lake as drawn: the water of the plan (north of the Wurzacher Strasse) and the Stadtsee of OpenStreetMap, less a
  *  margin round every house that stands (its shore path and a strip of meadow lie there), and the houses hidden for it */
-const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number> }; isWater(tx: number, tz: number): boolean; isIslet(tx: number, tz: number): boolean } = (() => {
-  let data: { water: Uint8Array; islet: Uint8Array; hidden: Set<number> } | null = null;
+const LAKE: { get(): { water: Uint8Array; hidden: Set<number> }; isWater(tx: number, tz: number): boolean } = (() => {
+  let data: { water: Uint8Array; hidden: Set<number> } | null = null;
   const W = LAKE_WIN.x1 - LAKE_WIN.x0, H = LAKE_WIN.z1 - LAKE_WIN.z0;
   const at = (tx: number, tz: number) => (tz - LAKE_WIN.z0) * W + (tx - LAKE_WIN.x0);
   const inside = (tx: number, tz: number) => tx >= LAKE_WIN.x0 && tx < LAKE_WIN.x1 && tz >= LAKE_WIN.z0 && tz < LAKE_WIN.z1;
@@ -334,7 +335,7 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
       if (dx * dx + dz * dz <= 12.25 && inside(x + dx, z + dz)) water[at(x + dx, z + dz)] = 0;
     }
     // little patches of land out in the water (not joined to the shore, no house on them) are flooded: no islands
-    const islet = new Uint8Array(W * H), mark = new Uint8Array(W * H), keep = new Set<number>();
+    const mark = new Uint8Array(W * H), keep = new Set<number>();
     for (const [x, z] of kept) if (inside(x, z)) keep.add(at(x, z));
     for (let i = 0; i < W * H; i++) {
       if (water[i] || mark[i]) continue;
@@ -353,18 +354,15 @@ const LAKE: { get(): { water: Uint8Array; islet: Uint8Array; hidden: Set<number>
       }
       if (!edge && !house && comp.length < 40) for (const c of comp) water[c] = 1;
     }
-    return { water, islet, hidden };
+    return { water, hidden };
   };
   return {
     get: () => (data ??= build()),
     isWater: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().water[at(tx, tz)] === 1,
-    isIslet: (tx: number, tz: number): boolean => inside(tx, tz) && LAKE.get().islet[at(tx, tz)] === 1,
   };
 })();
 /** whether the lake drawn there (see LAKE) covers a tile */
 export const waldseeLake = (tx: number, tz: number): boolean => LAKE.isWater(tx, tz);
-/** whether a tile is a little islet of green out in the lake (no path round it) */
-export const waldseeIslet = (tx: number, tz: number): boolean => LAKE.isIslet(tx, tz);
 /** how far a roof reaches out over its walls, at the eaves and over the gables (tiles) */
 const OVERHANG = 0.35;
 /** how thick a roof is: it lies this much over the walls' tops, with a band as deep along its edges (tiles) */
@@ -400,7 +398,20 @@ const underRoof = (x: number, z: number, not: number): boolean => {
 export const roofsOver = (b: (typeof WALDSEE_LOD2)[number], id: number): { roofs: Map<number[], number[]>; edges: number[][] } => {
   const out = new Map<number[], number[]>(), freeEdges: [number[], number][] = [];
   const roofs = b.filter(([k]) => k === 'r').map(([, q]) => q);
-  const key = (q: number[], i: number) => `${Math.round(q[3 * i] * 20)},${Math.round(q[3 * i + 1] * 20)},${Math.round(q[3 * i + 2] * 20)}`;
+  // (which corners are one: the roofs of the data meet a few centimetres apart at times, so corners closer than
+  // that count as one corner, wherever they lie; `key` names it)
+  const all: [number[], number][] = [];
+  for (const q of roofs) for (let i = 0; i < q.length / 3; i++) all.push([q, i]);
+  const root = all.map((_, k) => k);
+  const find = (k: number): number => (root[k] === k ? k : (root[k] = find(root[k])));
+  for (let a = 0; a < all.length; a++)
+    for (let c = a + 1; c < all.length; c++) {
+      const [qa, ia] = all[a], [qc, ic] = all[c];
+      if (Math.hypot(qa[3 * ia] - qc[3 * ic], qa[3 * ia + 1] - qc[3 * ic + 1], qa[3 * ia + 2] - qc[3 * ic + 2]) < 0.07) root[find(a)] = find(c);
+    }
+  const ids = new Map<number[], number[]>();
+  all.forEach(([q, i], k) => ((ids.get(q) ?? ids.set(q, []).get(q)!)[i] = k));
+  const key = (q: number[], i: number) => String(find(ids.get(q)![i]));
   const edges = new Map<string, number>();
   const edgeKey = (q: number[], i: number, j: number) => [key(q, i), key(q, j)].sort().join('|');
   for (const q of roofs) for (let i = 0, m = q.length / 3; i < m; i++) edges.set(edgeKey(q, i, (i + 1) % m), (edges.get(edgeKey(q, i, (i + 1) % m)) ?? 0) + 1);
@@ -830,9 +841,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       if (normals) geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       else geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, mat);
-        const first = roofPos.length;
       m.castShadow = true;
-        litFlat(roofPos, roofNrm, first, null);
       m.receiveShadow = true;
       disposables.push(geo, mat);
       add(m);
@@ -1298,7 +1307,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       });
       // (how high the wall is at a spot across the run)
       const topU = (u: number) => {
-        const k = Math.max(1, Math.min(joints.length - 1, joints.findIndex(j => j.u > u)));
+        // (past the last joint: the last stretch)
+        const after = joints.findIndex(j => j.u > u), k = Math.max(1, Math.min(joints.length - 1, after < 0 ? joints.length - 1 : after));
         const a = joints[k - 1], b = joints[k];
         return a.top + (b.top - a.top) * Math.max(0, Math.min(1, (u - a.u) / Math.max(1e-6, b.u - a.u)));
       };
@@ -1377,7 +1387,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       // run, to the corner where the next run starts)
       const pos: number[] = [], nrm: number[] = [], uv: number[] = [], idx: number[] = [];
       joints.forEach((j, k) => {
-        const end = k === 0 ? run[0] : k === joints.length - 1 ? run[run.length - 1] : null, sgn = k === 0 ? -1 : 1;
+        const end = k === 0 ? run[0] : k === joints.length - 1 ? run[run.length - 1] : null, sgn = k === 0 ? 1 : -1;
         const x = j.x + j.nx * 0.04 + (end ? -end.nz * 0.04 * sgn : 0), z = j.z + j.nz * 0.04 + (end ? end.nx * 0.04 * sgn : 0);
         pos.push(x, 0, z, x, j.top, z);
         nrm.push(j.nx, 0, j.nz, j.nx, 0, j.nz);
@@ -2163,7 +2173,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       let wl = (s as OnWall).wall, mid = -(wl?.along ?? 0);
       let near: ReturnType<typeof wallFeet>[number] | undefined;
       for (const w of wallFeet()) {
-        if (w.nx * s.dx + w.nz * s.dz < 0.9) continue;
+        if (w.nx * s.dx + w.nz * s.dz < 0.9 || Math.hypot(w.x1 - w.x0, w.z1 - w.z0) < 0.3) continue;
         const d = Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z);
         if (!near || d < Math.hypot((near.x0 + near.x1) / 2 - s.x, (near.z0 + near.z1) / 2 - s.z)) near = w;
       }
@@ -2783,7 +2793,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         m.rotation.y = faceYaw(face);
         add(m);
         };
-        const pieces = wall?.id === undefined ? [] : wallFeet().filter(w => w.id === wall.id && w.nx * s.dx + w.nz * s.dz >= 0.5);
+        // (pieces of some length: not a sliver at a corner)
+        const pieces = wall?.id === undefined ? [] : wallFeet().filter(w => w.id === wall.id && w.nx * s.dx + w.nz * s.dz >= 0.5 && Math.hypot(w.x1 - w.x0, w.z1 - w.z0) >= 0.3);
         if (!pieces.length) front(s, wall?.width ?? span, wall?.eave ?? 3.6, true);
         // (the piece the shop snapped to is the one whose middle is nearest the snapped point)
         const near = pieces.reduce((best, w) => (Math.hypot((w.x0 + w.x1) / 2 - s.x, (w.z0 + w.z1) / 2 - s.z) < Math.hypot((best.x0 + best.x1) / 2 - s.x, (best.z0 + best.z1) / 2 - s.z) ? w : best), pieces[0]);
@@ -3240,10 +3251,6 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     };
     for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) {
       if (water(tx, tz)) continue;
-      if (waldseeIslet(tx, tz)) {
-        slab(tx + 0.5, tz + 0.5, 1.02, 1.02, MEADOW_TOP, MEADOW[(tx * 7 + tz * 3) % 3]);
-        continue;
-      }
       const x = tx + 0.5, z = tz + 0.5, d = near(tx, tz), k = (tx * 7 + tz * 3) % 3;
       // (the green of the plan by the lake: laid flat, ground that was water as well)
       const g = tx < MAP_W && tz >= 0 ? waldseeGround(tx, tz) : 'street';

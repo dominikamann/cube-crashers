@@ -40,6 +40,7 @@ import { placeStartKarts } from './vehicles';
 import { placeHiddenHeart } from './heart';
 import { planWildBoss, releaseWildBoss } from './wild-boss';
 import { HORDE_COMPS, hordeMembers, spawnHorde, type HordeComp } from './hordes';
+import { spreadWitchlings } from './witch';
 
 const eliteBonus = (s: SimState) => floorDef(s.map.id)?.eliteBonus ?? 0;
 
@@ -145,6 +146,8 @@ export function setupFloor(s: SimState): void {
     // (the Town has its own boss, whatever the run's floors have, and she appears at the fire beside the fountain)
     const town = !rushBoss && s.map.id === 'waldsee';
     spawnBoss(s, rushBoss ?? (town ? undefined : s.run.bosses?.[s.run.floor]) ?? def!.boss!, town ? WALDSEE_FIRE : undefined);
+    // (and little witches walk its streets, to be squashed as well before the elevator opens)
+    if (town) spreadWitchlings(s, WALDSEE_FIRE);
     // (the Boss Rush has nothing but crates and the shop to arm the team; a boss floor of the run is frugal)
     placeStartCrates(s, rushBoss ? undefined : DIFFICULTY[s.difficulty].crates.start);
     placeStartKarts(s);
