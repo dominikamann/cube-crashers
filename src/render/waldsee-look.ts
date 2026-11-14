@@ -1073,16 +1073,107 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       continue;
     }
     if (s.kind === 'nemo') {
-      // the kebab shop: a grey ground floor with three round arches, its name in red, a spit turning in the window
-      onFace(s, 0, 0.04, 1.3, w + 0.2, 2.6, 0.05, 0x8e9299);
-      for (let k = -1; k <= 1; k++) {
-        onFace(s, k * (w / 3), 0.07, 0.95, w / 3 - 0.3, 1.9, 0.05, 0x2f2a28);
-        onFace(s, k * (w / 3), 0.07, 2.0, (w / 3 - 0.3) * 0.7, 0.24, 0.05, 0x2f2a28);
+      // the kebab shop "Memo Kebap" (no photo found: built from what is known): one textured plane flush on the
+      // real wall, pale plaster with windows above, a grey ground floor with round-arched windows and the door at
+      // one end, the name in red on a white board over them, and the spit turning in the lit middle window
+      const wall = (s as OnWall).wall, wB = wall?.width ?? w + 1, H = wall?.eave ?? 5.4, S = 80;
+      const cw = Math.round(wB * S), ch = Math.round(H * S);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      const g = canvas.getContext('2d')!;
+      const px = (u: number) => (u + wB / 2) * S;
+      const py = (y: number) => (H - y) * S;
+      g.fillStyle = '#e9e0cc';
+      g.fillRect(0, 0, cw, ch);
+      const shadow = g.createLinearGradient(0, 0, 0, 0.5 * S);
+      shadow.addColorStop(0, 'rgba(66,58,44,0.28)');
+      shadow.addColorStop(1, 'rgba(66,58,44,0)');
+      g.fillStyle = shadow;
+      g.fillRect(0, 0, cw, 0.5 * S);
+      // the ground floor: grey render up to a cornice
+      const gh = Math.min(2.7, H - 1.5);
+      g.fillStyle = '#8e9299';
+      g.fillRect(0, py(gh), cw, gh * S);
+      g.fillStyle = '#6f7379';
+      g.fillRect(0, py(0.2), cw, 0.2 * S);
+      g.fillStyle = '#d4cdbd';
+      g.fillRect(0, py(gh + 0.06), cw, 0.1 * S);
+      // upper storeys: white-framed windows, one per bay, about two tiles a storey
+      const storeys = Math.max(1, Math.round((H - gh) / 2));
+      const sh = (H - gh) / storeys, nUp = Math.max(1, Math.round(wB / 1.5));
+      for (let st = 0; st < storeys; st++) for (let k = 0; k < nUp; k++) {
+        const u = -wB / 2 + (k + 0.5) * (wB / nUp), yc = gh + (st + 0.5) * sh, ww = 0.6, wh = Math.min(0.9, sh - 0.5);
+        g.fillStyle = '#fbf8f0';
+        g.fillRect(px(u - ww / 2), py(yc + wh / 2), ww * S, wh * S);
+        g.fillStyle = '#4d626d';
+        g.fillRect(px(u - ww / 2 + 0.05), py(yc + wh / 2 - 0.05), (ww - 0.1) * S, (wh - 0.1) * S);
+        g.fillStyle = '#fbf8f0';
+        g.fillRect(px(u - 0.025), py(yc + wh / 2 - 0.05), 0.05 * S, (wh - 0.1) * S);
+        g.fillStyle = '#d9cfba';
+        g.fillRect(px(u - ww / 2 - 0.05), py(yc - wh / 2 - 0.04), (ww + 0.1) * S, 0.06 * S);
       }
-      onFace(s, w / 3, 0.2, 1.1, 0.16, 0.9, 0.16, 0xb5653a);
-      onFace(s, w / 3, 0.2, 1.1, 0.04, 1.3, 0.04, 0xd0d4e0);
-      onFace(s, w / 3, 0.12, 1.1, 0.5, 1.0, 0.03, 0xffb066, true);
-      sign(s, s.text, 2.95, Math.min(2.2, w + 0.4), { back: '#f4f1ea', ink: '#c0281f', rim: '#c0281f' }, 'bold 84px "Helvetica Neue", Arial, sans-serif');
+      // round-arched windows in dark glass (a door in the last bay when the wall is wide enough), the middle one lit
+      const bays = wB >= 4.2 ? 4 : 3, bw = (wB - 0.4) / bays;
+      for (let k = 0; k < bays; k++) {
+        const u = -wB / 2 + 0.2 + (k + 0.5) * bw, ww = bw - 0.3, door = bays === 4 && k === 3;
+        const top = door ? 2.25 : 2.0, bot = door ? 0.2 : 0.75;
+        const arch = (inset: number, fill: string | CanvasGradient) => {
+          g.fillStyle = fill;
+          g.beginPath();
+          g.moveTo(px(u - ww / 2 + inset), py(bot));
+          g.lineTo(px(u - ww / 2 + inset), py(top - ww / 2));
+          g.arc(px(u), py(top - ww / 2), (ww / 2 - inset) * S, Math.PI, 0);
+          g.lineTo(px(u + ww / 2 - inset), py(bot));
+          g.closePath();
+          g.fill();
+        };
+        arch(0, '#d9d5cc');
+        const glass = g.createLinearGradient(0, py(top), 0, py(bot));
+        const lit = k === 1 || door;
+        glass.addColorStop(0, lit ? '#6b4a2a' : '#2f2a28');
+        glass.addColorStop(1, lit ? '#e49a50' : '#3a3532');
+        arch(0.06, glass);
+        g.fillStyle = '#d9d5cc';
+        if (door) g.fillRect(px(u - 0.02), py(top - ww / 2), 0.04 * S, (top - ww / 2 - bot) * S);
+        else g.fillRect(px(u - ww / 2), py(bot + 0.06), ww * S, 0.08 * S);
+        if (k === 1) {
+          // the spit: a brown cone of meat on a pole
+          g.fillStyle = '#d0d4e0';
+          g.fillRect(px(u - 0.015), py(bot + 1.15), 0.03 * S, 1.0 * S);
+          g.fillStyle = '#b5653a';
+          g.beginPath();
+          g.moveTo(px(u - 0.2), py(bot + 0.2));
+          g.lineTo(px(u + 0.2), py(bot + 0.2));
+          g.lineTo(px(u + 0.08), py(bot + 0.95));
+          g.lineTo(px(u - 0.08), py(bot + 0.95));
+          g.closePath();
+          g.fill();
+        }
+      }
+      // the name in red on a white board over the arches
+      const bwid = Math.min(wB - 0.4, 2.8);
+      g.fillStyle = '#f4f1ea';
+      g.fillRect(px(-bwid / 2), py(gh - 0.05), bwid * S, 0.5 * S);
+      g.strokeStyle = '#c0281f';
+      g.lineWidth = 4;
+      g.strokeRect(px(-bwid / 2) + 4, py(gh - 0.05) + 4, bwid * S - 8, 0.5 * S - 8);
+      g.fillStyle = '#c0281f';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = `bold ${Math.round(0.34 * S)}px "Helvetica Neue", Arial, sans-serif`;
+      g.fillText('Memo Kebap', cw / 2, py(gh - 0.3));
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      const geo = new THREE.PlaneGeometry(wB, H);
+      const mat = new THREE.MeshLambertMaterial({ map: tex });
+      disposables.push(tex, geo, mat);
+      const m = new THREE.Mesh(geo, mat);
+      const [fx, fz] = on(s, -(wall?.along ?? 0), 0.05);
+      m.position.set(fx, H / 2, fz);
+      m.rotation.y = faceYaw(s);
+      add(m);
       continue;
     }
     if (s.kind === 'flasche' || s.kind === 'nkd' || s.kind === 'brille' || s.kind === 'empire') {
