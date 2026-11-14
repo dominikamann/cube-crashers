@@ -2180,8 +2180,8 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     sign(s, s.text, 2.9, Math.min(2.8, w + 0.4), { back: '#e9ecef', ink: '#1f3b63', rim: '#1f3b63' }, 'bold 80px "Helvetica Neue", Arial, sans-serif');
   }
 
-  // ---- where one can walk up to a wall of the plan that no real building stands on (a gap between two houses
-  // a little way in, a yard): a fence of upright boards one cannot see through
+  // ---- across every gap between two houses that one can look into from the plan but not walk through (worked out
+  // by tools/waldsee/fences.py, a little way in from the fronts): a fence of upright boards one cannot see through
   {
     const wood = [0x7a5638, 0x6b4a32, 0x86603e];
     // (how far from (ox, oz) along (dx, dz) to the foot of a real wall one sees)
