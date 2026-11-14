@@ -110,3 +110,17 @@ describe('the barriers of the Town', () => {
         }
   });
 });
+
+describe('the Town and the view', () => {
+  it('is never a game between the floors, nor Die Hex\'s Boss Rush map, when first person is off', async () => {
+    const { BOSS_RUSH } = await import('../../src/sim/config/floors');
+    for (let seed = 1; seed <= 60; seed++) {
+      expect(createSim(floor01, seed, { mode: 'run', noTown: true }).run.between).not.toContain('town');
+    }
+    const rush = createSim(floor01, 3, { mode: 'bossrush', noTown: true }).run.floors;
+    expect(rush).not.toContain('waldsee');
+    expect(rush).toHaveLength(BOSS_RUSH.length);
+    // (with first person on, the Town still comes in most runs)
+    expect(Array.from({ length: 60 }, (_, i) => createSim(floor01, i + 1, { mode: 'run' }).run.between?.includes('town')).filter(Boolean).length).toBeGreaterThan(30);
+  });
+});

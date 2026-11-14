@@ -2216,7 +2216,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     }
   }
 
-  // ---- AmannLabs on the cobbles of the police lane: the mark and the name painted on the ground, along the lane
+  // ---- AmannLabs on the cobbles of the yard left of the police: the mark and the name painted on the ground
   {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -2249,12 +2249,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       tex.needsUpdate = true;
     };
     img.src = markUrl;
-    const geo = new THREE.PlaneGeometry(4.2, 1.05);
+    const geo = new THREE.PlaneGeometry(6, 1.5);
     geo.rotateX(-Math.PI / 2);
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false });
     disposables.push(tex, geo, mat);
     const m = new THREE.Mesh(geo, mat);
-    m.position.set(77.2, 0.02, 50.1);
+    m.position.set(66, 0.02, 38.5);
     add(m);
   }
 

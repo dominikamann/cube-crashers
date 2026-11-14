@@ -316,9 +316,12 @@ export class HostSession {
     this.vote = null;
     this.running(true);
     // (the Boss Brawl is in the Mega Block Arena, or on the map the host picked; a Single floor is the picked floor)
-    const mapId = (mode === 'brawl' || mode === 'quick') && Object.hasOwn(FLOORS, pickedMap) ? pickedMap : undefined;
+    // (the Town is walked in first person only: not with the view fixed from above)
+    const picked = pickedMap === 'waldsee' && this.viewMode === 'top' ? 'arena' : pickedMap;
+    const mapId = (mode === 'brawl' || mode === 'quick') && Object.hasOwn(FLOORS, picked) ? picked : undefined;
     this.sim = createSim(mapId ? FLOORS[mapId].map : floor01, seed, {
       mode,
+      noTown: this.viewMode === 'top',
       unlocked,
       difficulty,
       rushMaps,
@@ -443,6 +446,7 @@ export class ClientSession {
         this.vote = null;
         this.view = createSim((m.versus || m.mode === 'brawl' || m.mode === 'quick') && m.mapId ? FLOORS[m.mapId].map : m.mode === 'brawl' ? FLOORS.arena.map : floor01, m.seed, {
           mode: m.versus ? 'versus' : m.mode && ['quick', 'brawl', 'bossrush', 'endless'].includes(m.mode) ? m.mode : 'run',
+          noTown: m.view === 'top',
           versus: m.versus,
           rushMaps: Array.isArray(m.maps) ? m.maps.filter((x): x is string => typeof x === 'string') : undefined,
           unlocked: m.unlocked ?? [],

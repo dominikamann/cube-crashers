@@ -837,10 +837,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   /** the Boss Brawl's map (the arena, random, then every other floor) or the Boss Rush's (their own floors first) */
   const brawlMapChip = (parent: HTMLElement, redraw: () => void, key: 'brawlMap' | 'rushMap' = 'brawlMap') =>
     mapPicker(parent, redraw, key, key === 'rushMap' ? [RUSH_OWN, MAP_ROTATION, ...BRAWL_MAPS] : [BRAWL_MAPS[0], MAP_ROTATION, ...BRAWL_MAPS.slice(1)]);
+  /** the maps of a Single floor one may pick: the Town is walked in first person only, so not where a LAN host has
+   * fixed the view from above */
+  const quickMaps = (lan?: LanActions) => (lan?.viewMode() === 'top' ? QUICK_MAPS.filter(id => id !== 'waldsee') : QUICK_MAPS);
   /** the map of a Single floor */
-  const quickMapChip = (parent: HTMLElement, redraw: () => void) => {
-    if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
-    mapPicker(parent, redraw, 'quickMap', QUICK_MAPS);
+  const quickMapChip = (parent: HTMLElement, redraw: () => void, lan?: LanActions) => {
+    const maps = quickMaps(lan);
+    if (!maps.includes(settings.quickMap)) settings.quickMap = maps[0];
+    mapPicker(parent, redraw, 'quickMap', maps);
   };
 
   /** the versus match the settings describe (the map rotation picks a random arena) */
@@ -886,8 +890,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         body.append(group);
       };
       if (mode === 'quick') {
-        if (!QUICK_MAPS.includes(settings.quickMap)) settings.quickMap = QUICK_MAPS[0];
-        choose(t('setup.map'), QUICK_MAPS.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : ''), value: id })), settings.quickMap, v => (settings.quickMap = v), true);
+        const maps = quickMaps(lan);
+        if (!maps.includes(settings.quickMap)) settings.quickMap = maps[0];
+        choose(t('setup.map'), maps.map(id => ({ label: t(FLOORS[id].name as 'floor.plaza') + (FLOORS[id].kind === 'boss' ? ' \u2620' : ''), value: id })), settings.quickMap, v => (settings.quickMap = v), true);
       }
       if (mode === 'versus') {
         choose(t('setup.match'), [{ label: t('setup.pick'), value: false }, { label: t('versus.discovery'), value: true }], settings.versusDiscovery, v => (settings.versusDiscovery = v));
@@ -1202,7 +1207,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
             chip(botsRow, '+', false, () => stepTo(at + 1));
           } else {
-            if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
+            if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), lan);
             if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server));
             if (settings.lanGame === 'bossrush') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'rushMap');
             const diffRow = rowOf(t('settings.difficulty'));

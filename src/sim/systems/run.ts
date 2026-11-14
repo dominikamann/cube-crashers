@@ -42,8 +42,8 @@ export const INTERMISSIONS: Between[] = ['race', 'lane', 'maze', 'shaft', 'town'
  * The games between the floors of a run: a different one after every floor, never the same twice (as long as
  * there are enough of them), in an order the seed picks, so every run is a little different.
  */
-export function betweenOf(seed: number, floors: number): Between[] {
-  const pool = [...INTERMISSIONS];
+export function betweenOf(seed: number, floors: number, without: Between[] = []): Between[] {
+  const pool = INTERMISSIONS.filter(g => !without.includes(g));
   // a shuffle of its own from the seed, so the run's other random numbers stay as they were
   let x = (Math.imul(seed | 0, 0x9e3779b1) ^ 0x5bd1e995) >>> 0;
   for (let i = pool.length - 1; i > 0; i--) {
