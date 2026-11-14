@@ -338,7 +338,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     WALDSEE_LOD2.forEach((b, bi) => {
       let cx = 0, cz = 0, n = 0;
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
-      const tx = Math.floor(cx / n), tz = Math.floor(cz / n), c = codeAt(tx, tz);
+      const tx = Math.floor(cx / n), tz = Math.floor(cz / n);
       if (!shown(b)) return;
       const h = houseAt(tx, tz);
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
