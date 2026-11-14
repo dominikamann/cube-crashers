@@ -3,15 +3,18 @@ import { ClientSession, HostSession } from '../../src/net/session';
 import { createMemoryHub } from '../../src/net/transport';
 import { DedicatedServer, RESULT_SECONDS } from '../../src/server/dedicated';
 import { defaultConfig, serverIdentity, type ServerConfig } from '../../src/server/config';
-import { DISCOVERY_MAPS } from '../../src/sim/systems/versus';
+import { BRAWL_MAPS, QUICK_MAPS, VERSUS_MAPS } from '../../src/maps';
+import { BOSS_RUSH } from '../../src/sim/config/floors';
+import { openShop } from '../../src/sim/systems/shop';
 import { DT } from '../../src/sim/types';
 
-function setup(cfg: Partial<ServerConfig> = {}, clients = 1) {
+function setup(cfg: Partial<ServerConfig> = {}, clients = 1, seed?: number) {
   const hub = createMemoryHub();
   let now = 0;
   const config = { ...defaultConfig(), ...cfg };
   const host = new HostSession(hub.host(), { name: config.name, now: () => now, dedicated: serverIdentity(config) });
-  const server = new DedicatedServer(host, config, { now: () => now });
+  const lines: string[] = [];
+  const server = new DedicatedServer(host, config, { now: () => now, seed, log: l => lines.push(l) });
   const cs = Array.from({ length: clients }, (_, i) => new ClientSession(hub.client(), { name: `C${i}` }));
   hub.flush();
   /** run the server for `seconds` of game time */
@@ -22,7 +25,7 @@ function setup(cfg: Partial<ServerConfig> = {}, clients = 1) {
       hub.flush();
     }
   };
-  return { hub, host, server, cs, run };
+  return { hub, host, server, cs, run, lines };
 }
 
 describe('the dedicated server', () => {
@@ -106,10 +109,10 @@ describe('the dedicated server', () => {
     }
   });
 
-  it('gun game moves on to the next map each match', () => {
+  it('gun game moves on to another map each match: any arena of the game, never the same twice in a row', () => {
     const { host, cs, run } = setup({ mode: 'gungame' });
     const maps: string[] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 12; i++) {
       cs[0].setReady(true);
       run(1);
       maps.push(host.sim!.map.id);
@@ -117,7 +120,39 @@ describe('the dedicated server', () => {
       host.sim!.phase = 'won';
       run(RESULT_SECONDS + 1);
     }
-    expect(maps).toEqual([DISCOVERY_MAPS[0], DISCOVERY_MAPS[1], DISCOVERY_MAPS[2]]);
+    for (let i = 0; i < maps.length; i++) {
+      expect(VERSUS_MAPS).toContain(maps[i]);
+      if (i > 0) expect(maps[i]).not.toBe(maps[i - 1]);
+    }
+    expect(new Set(maps).size).toBeGreaterThan(3);
+  });
+
+  it('the rotations reach every arena, the boss floors and the Town too; with the view from above never the Town', () => {
+    for (const mode of ['discovery', 'score'] as const) {
+      const all = setup({ mode, bots: 2 }, 1, 7);
+      const top = setup({ mode, bots: 2, view: 'top' }, 1, 7);
+      const seen = new Set<string>(), seenTop = new Set<string>();
+      for (let i = 0; i < 80; i++) {
+        for (const [g, set] of [[all, seen], [top, seenTop]] as const) {
+          g.cs[0].setReady(true);
+          g.run(0.1);
+          set.add(g.host.sim!.map.id);
+          g.host.sim!.phase = 'won';
+          g.run(RESULT_SECONDS + 0.1);
+        }
+      }
+      expect([...seen].sort(), mode).toEqual([...VERSUS_MAPS].sort());
+      expect([...seenTop].sort(), mode).toEqual(VERSUS_MAPS.filter(m => m !== 'waldsee').sort());
+    }
+  });
+
+  it('versus in the Town: a fixed map can be any arena of the game', () => {
+    const { host, cs, run } = setup({ mode: 'capture', map: 'waldsee' });
+    cs[0].setReady(true);
+    run(1);
+    expect(host.sim!.map.id).toBe('waldsee');
+    expect(host.sim!.versus?.rule).toBe('capture');
+    expect(cs[0].view!.map.id).toBe('waldsee');
   });
 
   it('a fixed map stays', () => {
@@ -139,6 +174,199 @@ describe('the dedicated server', () => {
       // the clients see the same game
       expect(cs[0].view!.run.mode, mode).toBe(run_);
       expect(cs[0].view!.map.id, mode).toBe(host.sim!.map.id);
+    }
+  });
+
+  it('a Single floor: the Town, with the witch at her fire, for the server and the clients alike', () => {
+    const { host, cs, run, lines } = setup({ mode: 'quick', map: 'waldsee', bots: 4 }, 2);
+    expect(cs[0].server?.mode).toBe('quick');
+    cs[0].setReady(true);
+    cs[1].setReady(true);
+    run(1);
+    expect(host.sim!.run.mode).toBe('quick');
+    expect(host.sim!.map.id).toBe('waldsee');
+    expect(host.sim!.players).toHaveLength(2);
+    expect(cs[0].view!.run.mode).toBe('quick');
+    expect(cs[0].view!.map.id).toBe('waldsee');
+    expect(lines).toContain('quick on waldsee started with 2 player(s)');
+    // past the opening countdown the Schrättele is there
+    run(8);
+    expect(host.sim!.boss?.kind).toBe('witch');
+  });
+
+  it('a Single floor that is won ends the match: results, then the lobby, then the next one', () => {
+    const { host, cs, run } = setup({ mode: 'quick', map: 'floor01' });
+    cs[0].setReady(true);
+    run(8);
+    // the nests are gone and the elevator reached
+    const s = host.sim!;
+    s.nests = [];
+    s.elevatorOpen = true;
+    s.players[0].pos = { ...s.map.elevator };
+    run(1);
+    expect(host.sim!.phase).toBe('won');
+    expect(cs[0].view!.phase).toBe('won');
+    run(RESULT_SECONDS + 1);
+    expect(host.sim).toBeNull();
+    expect(cs[0].status).toBe('lobby');
+    cs[0].setReady(true);
+    run(1);
+    expect(host.sim!.map.id).toBe('floor01');
+    expect(cs[0].status).toBe('playing');
+  });
+
+  it('a Single floor without a map plays another floor each time, in the end every one of them', () => {
+    const all = setup({ mode: 'quick' }, 1, 11);
+    const top = setup({ mode: 'quick', view: 'top' }, 1, 11);
+    const maps: string[] = [], mapsTop: string[] = [];
+    for (let i = 0; i < 120; i++) {
+      for (const [g, list] of [[all, maps], [top, mapsTop]] as const) {
+        g.cs[0].setReady(true);
+        g.run(0.1);
+        list.push(g.host.sim!.map.id);
+        expect(g.cs[0].view!.map.id).toBe(g.host.sim!.map.id);
+        g.host.sim!.phase = 'lost';
+        g.run(RESULT_SECONDS + 0.1);
+      }
+    }
+    for (let i = 1; i < maps.length; i++) expect(maps[i]).not.toBe(maps[i - 1]);
+    expect([...new Set(maps)].sort()).toEqual([...QUICK_MAPS].sort());
+    expect([...new Set(mapsTop)].sort()).toEqual(QUICK_MAPS.filter(m => m !== 'waldsee').sort());
+  });
+
+  it('a Boss Brawl is in the arena unless a map is set: a chosen one, or a random one each time', () => {
+    const start = (cfg: Partial<ServerConfig>, seed?: number) => {
+      const g = setup({ mode: 'brawl', ...cfg }, 1, seed);
+      g.cs[0].setReady(true);
+      g.run(1);
+      return g;
+    };
+    expect(start({}).host.sim!.map.id).toBe('arena');
+    const town = start({ map: 'waldsee' });
+    expect(town.host.sim!.run.mode).toBe('brawl');
+    expect(town.host.sim!.map.id).toBe('waldsee');
+    expect(town.cs[0].view!.map.id).toBe('waldsee');
+    const seen = new Set<string>(), seenTop = new Set<string>();
+    for (let seed = 1; seed < 60; seed++) {
+      seen.add(start({ map: 'random' }, seed * 7919).host.sim!.map.id);
+      seenTop.add(start({ map: 'random', view: 'top' }, seed * 7919).host.sim!.map.id);
+    }
+    for (const m of seen) expect(BRAWL_MAPS).toContain(m);
+    expect(seen.size).toBeGreaterThan(5);
+    expect(seenTop.has('waldsee')).toBe(false);
+  });
+
+  it('a Boss Rush is on the bosses own floors unless a map is set: one for all of them, or a random one each', () => {
+    const start = (cfg: Partial<ServerConfig>) => {
+      const g = setup({ mode: 'bossrush', ...cfg }, 1, 5);
+      g.cs[0].setReady(true);
+      g.run(1);
+      return g;
+    };
+    const own = BOSS_RUSH.map(b => b.map);
+    expect(start({}).host.sim!.run.floors).toEqual(own);
+    expect(start({ map: 'own' }).host.sim!.run.floors).toEqual(own);
+    const jungle = start({ map: 'jungle' });
+    expect(jungle.host.sim!.run.floors).toEqual(own.map(() => 'jungle'));
+    expect(jungle.host.sim!.map.id).toBe('jungle');
+    expect(jungle.cs[0].view!.run.floors).toEqual(jungle.host.sim!.run.floors);
+    const random = start({ map: 'random' });
+    expect(random.host.sim!.run.floors).toHaveLength(own.length);
+    for (const m of random.host.sim!.run.floors) expect(BRAWL_MAPS).toContain(m);
+    expect(new Set(random.host.sim!.run.floors).size).toBeGreaterThan(1);
+    expect(random.cs[0].view!.run.floors).toEqual(random.host.sim!.run.floors);
+    expect(random.lines).toContain('bossrush on random maps started with 1 player(s)');
+    // with the view from above the Schrättele comes to the arena, and no random map is her town
+    const top = start({ view: 'top' });
+    expect(top.host.sim!.run.floors).toEqual(own.map(m => (m === 'waldsee' ? 'arena' : m)));
+    expect(top.cs[0].view!.run.floors).toEqual(top.host.sim!.run.floors);
+    expect(start({ map: 'random', view: 'top' }).host.sim!.run.floors).not.toContain('waldsee');
+  });
+
+  it('a Tower Run with the view from above never goes through the Town', () => {
+    for (let seed = 1; seed < 12; seed++) {
+      const { host, cs, run } = setup({ mode: 'coop', view: 'top' }, 1, seed * 104729);
+      cs[0].setReady(true);
+      run(1);
+      expect(host.sim!.run.between).not.toContain('town');
+      expect(cs[0].view!.run.between).toEqual(host.sim!.run.between);
+    }
+  });
+
+  it('a Tower Run goes on by itself between the floors: the game in between, the shop, the next floor', () => {
+    const { host, cs, run } = setup({ mode: 'coop' });
+    cs[0].setReady(true);
+    run(8);
+    const s = host.sim!;
+    s.nests = [];
+    s.elevatorOpen = true;
+    s.players[0].pos = { ...s.map.elevator };
+    run(1);
+    // off the first floor and into the game between the floors: nobody had to press anything on the server
+    expect(s.phase).toBe('playing');
+    expect(s.run.stage !== 'floor' || s.map.id !== 'floor01').toBe(true);
+    // the shop closes when its time is up, even when nobody says ready
+    s.run.side = false;
+    openShop(s);
+    s.run.stageUntil = s.tick + 30;
+    run(2);
+    expect(s.run.stage).toBe('floor');
+    expect(s.run.floor).toBe(1);
+    expect(cs[0].view!.run.floor).toBe(1);
+  });
+
+  it('three players meet the boss of a floor twice on a server too', () => {
+    const { host, cs, run } = setup({ mode: 'quick', map: 'arena' }, 3);
+    for (const c of cs) c.setReady(true);
+    run(8);
+    expect(host.sim!.bosses).toHaveLength(2);
+    expect(cs[0].view!.bosses).toHaveLength(2);
+  });
+
+  it('what the players have unlocked counts for the co-op game, and goes with a player who leaves', () => {
+    const hub = createMemoryHub();
+    const config = { ...defaultConfig(), mode: 'coop' as const };
+    const host = new HostSession(hub.host(), { name: config.name, dedicated: serverIdentity(config) });
+    const a = new ClientSession(hub.client(), { name: 'A', unlocked: ['hoverboard'] });
+    const b = new ClientSession(hub.client(), { name: 'B', unlocked: ['bomb'] });
+    hub.flush();
+    host.start(1);
+    expect(host.sim!.unlocks.vehicles).toContain('hoverboard');
+    expect(host.sim!.unlocks.weapons).toContain('bomb');
+    host.endRun();
+    a.leave();
+    hub.flush();
+    host.start(2);
+    hub.flush();
+    expect(host.sim!.unlocks.vehicles).not.toContain('hoverboard');
+    expect(host.sim!.unlocks.weapons).toContain('bomb');
+    expect(b.view!.unlocks).toEqual(host.sim!.unlocks);
+  });
+
+  it('who joins during a match waits for the next; when the last one playing leaves, the match ends for those who wait', () => {
+    for (const mode of ['coop', 'quick', 'score'] as const) {
+      const { hub, host, cs, run } = setup({ mode, countdown: 10 });
+      cs[0].setReady(true);
+      run(1);
+      const first = host.sim;
+      expect(first, mode).not.toBeNull();
+      const late = new ClientSession(hub.client(), { name: 'Late' });
+      hub.flush();
+      run(1);
+      expect(late.status, mode).toBe('lobby');
+      expect(late.server?.running, mode).toBe(true);
+      expect(host.sim, mode).toBe(first);
+      cs[0].leave();
+      hub.flush();
+      run(0.5);
+      expect(host.sim, mode).toBeNull();
+      expect(late.server?.running, mode).toBe(false);
+      late.setReady(true);
+      hub.flush();
+      run(0.5);
+      expect(host.sim, mode).not.toBeNull();
+      expect(host.sim!.players.some(p => p.id === late.playerId), mode).toBe(true);
+      expect(late.status, mode).toBe('playing');
     }
   });
 

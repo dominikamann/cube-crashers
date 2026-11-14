@@ -3,7 +3,7 @@ import { FLOORS } from '../../src/sim/config/floors';
 import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
 import { createSim, stepSim } from '../../src/sim/sim';
 import type { SimState, VersusRule } from '../../src/sim/types';
-import { BRAWL_MAPS, VERSUS_MAPS, brawlMapFor, rushMapsFor, versusMapFor } from '../../src/ui/screens';
+import { BRAWL_MAPS, VERSUS_MAPS, brawlMapFor, rushMapsFor, versusMapFor } from '../../src/maps';
 
 const run = (s: SimState, ticks: number) => {
   for (let i = 0; i < ticks && s.phase === 'playing'; i++) stepSim(s, []);

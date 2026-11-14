@@ -421,7 +421,8 @@ browser; in the browser the list only has the servers that [take browser players
 
 On a server you land in its lobby. The next match starts after a countdown, or right away once everyone
 clicked **I am ready**. After a match the results show for a few seconds, then everyone is back in the lobby
-for the next one (Gun Game and the other rules move on to a new arena each time).
+for the next one (Gun Game and the other rules move on to a new arena each time, a Single floor to a new
+floor). Who joins while a match is running waits in the lobby for the next one.
 
 ### Run your own server
 
@@ -443,16 +444,30 @@ node cube-crashers-server.mjs --name "My Server" --mode discovery
 
 **From the source code**: `npm install`, then `npm run server -- --mode score --teams`.
 
+A server runs every game a LAN host can start, on the same maps:
+
+```bash
+# the Town as a Single floor: the Schrättele at her fire (first person)
+node cube-crashers-server.mjs --mode quick --map waldsee
+# a Single floor, another one each match: every floor, the Town, the Kart Rally, Lane Defense, the Glitch Maze
+node cube-crashers-server.mjs --mode quick
+# the Boss Brawl on a random map each time, the Boss Rush with every boss in the jungle
+node cube-crashers-server.mjs --mode brawl --map random
+node cube-crashers-server.mjs --mode bossrush --map jungle
+# Capture the Cube in the Town
+docker run -d -p 47800:47800 ghcr.io/dominikamann/cube-crashers-server --mode capture --map waldsee
+```
+
 | Option | What it does | Default |
 |---|---|---|
 | `--name <text>` | Name in the server list | Cube Crashers Server |
 | `--port <number>` | Port the server listens on | 47800 |
-| `--mode <mode>` | `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`, `coop` (the Tower Run), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
-| `--map <arena>` | Always this arena: `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop` | a new one each match |
+| `--mode <mode>` | Versus: `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`. Co-op: `coop` (the Tower Run), `quick` (a Single floor), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
+| `--map <map>` | The map; which ones fit depends on the mode, see [below](#maps) | see below |
 | `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |
-| `--difficulty <level>` | Co-op floors, and how well the versus bots play: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
-| `--view <view>` | `both`, `fp` (first person only) or `top` (from above only) | both |
+| `--difficulty <level>` | Co-op games, and how well the versus bots play: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
+| `--view <view>` | `both`, `fp` (first person only) or `top` (from above only; then without the Town) | both |
 | `--countdown <seconds>` | Wait this long for players before a match | 30 |
 | `--monsters` | Monster hordes join versus matches | off |
 | `--web` | Players from the browser version may join (see [below](#let-players-from-the-browser-join)) | off |
@@ -464,6 +479,23 @@ A config file looks like this:
 ```json
 { "name": "Gun Club", "mode": "gungame", "bots": 6, "view": "fp" }
 ```
+
+#### Maps
+
+`--map` takes the maps the game itself offers for the mode. A map that does not fit is an error that lists
+the ones that do.
+
+| Mode | `--map` | Default |
+|---|---|---|
+| versus (`discovery`, `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`) | `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` | `random`: a new arena each match, never the same twice in a row |
+| `quick` (Single floor) | `floor01`, `candy`, `arena`, `neon`, `highway`, `rooftop`, `jungle`, `servers`, `underwater`, `waldsee`, `race` (Kart Rally), `lane` (Lane Defense), `maze` (Glitch Maze), or `random` | `random`: a new floor each match |
+| `brawl` (Boss Brawl) | `arena`, `floor01`, `candy`, `neon`, `highway`, `rooftop`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` (another one each match) | `arena` |
+| `bossrush` | `own` (each boss on its own floor), `random` (a random map for each boss), or one of the Boss Brawl's maps for all of them | `own` |
+| `coop`, `endless` | none: they bring their own floors | |
+
+`waldsee` is **the Town**. It is walked in first person only: with `--view top` the rotations leave it out,
+the Schrättele's Boss Rush fight moves to the arena, a Tower Run does not go through it, and
+`--map waldsee` is refused when the server starts.
 
 **Keep it up to date:** players can only join a server that runs the same version as their game (the list
 says *other version* otherwise). With Docker: `docker pull ghcr.io/dominikamann/cube-crashers-server` and

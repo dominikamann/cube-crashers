@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { defaultConfig, parseConfig } from '../../src/server/config';
+import { BRAWL_MAPS, QUICK_MAPS, VERSUS_MAPS } from '../../src/maps';
+import { SERVER_MODES } from '../../src/net/protocol';
+import { defaultConfig, HELP, mapChoices, parseConfig } from '../../src/server/config';
 
 describe('dedicated server settings', () => {
   it('has sensible defaults: Discovery on port 47800, bots fill up to 4', () => {
@@ -27,7 +29,7 @@ describe('dedicated server settings', () => {
   });
 
   it('says clearly what is wrong', () => {
-    expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, brawl, bossrush, endless, discovery, gungame/);
+    expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, quick, brawl, bossrush, endless, discovery, gungame/);
     expect(() => parseConfig(['--map', 'mars'], {}, null)).toThrow(/map.*neon/);
     expect(() => parseConfig(['--port', '99999'], {}, null)).toThrow(/port/);
     expect(() => parseConfig(['--bots', '12'], {}, null)).toThrow(/bots.*0.*10/);
@@ -35,7 +37,56 @@ describe('dedicated server settings', () => {
     expect(() => parseConfig(['--frobnicate'], {}, null)).toThrow(/frobnicate/);
   });
 
-  it('only arenas fit versus; co-op always runs the tower', () => {
-    expect(() => parseConfig(['--mode', 'score', '--map', 'race'], {}, null)).toThrow(/map/);
+  it('only arenas fit versus: every arena of the game, the boss floors and the Town too', () => {
+    expect(() => parseConfig(['--mode', 'score', '--map', 'race'], {}, null)).toThrow(/map for mode score must be one of: random, neon, .*waldsee/);
+    for (const mode of ['discovery', 'gungame', 'coinop', 'score', 'king', 'rounds', 'capture'] as const) {
+      expect(mapChoices(mode)).toEqual(['random', ...VERSUS_MAPS]);
+      for (const map of VERSUS_MAPS) expect(parseConfig(['--mode', mode, '--map', map], {}, null)).toMatchObject({ mode, map });
+    }
+    expect(parseConfig(['--mode', 'king', '--map', 'random'], {}, null).map).toBe('random');
+    expect(() => parseConfig(['--mode', 'king', '--map', 'own'], {}, null)).toThrow(/map/);
+  });
+
+  it('a Single floor takes any floor a LAN host can pick: the Town and the games between the floors too', () => {
+    expect(parseConfig(['--mode', 'quick'], {}, null)).toMatchObject({ mode: 'quick', map: null });
+    expect(mapChoices('quick')).toEqual(['random', ...QUICK_MAPS]);
+    for (const map of ['waldsee', 'race', 'lane', 'maze', 'underwater', 'random']) expect(parseConfig(['--mode', 'quick', '--map', map], {}, null).map).toBe(map);
+    expect(() => parseConfig(['--mode', 'quick', '--map', 'shaft'], {}, null)).toThrow(/map for mode quick must be one of: random, floor01, .*maze/);
+    expect(parseConfig([], { CC_MODE: 'quick', CC_MAP: 'waldsee' }, null)).toMatchObject({ mode: 'quick', map: 'waldsee' });
+    expect(parseConfig([], {}, { mode: 'quick', map: 'lane' })).toMatchObject({ mode: 'quick', map: 'lane' });
+  });
+
+  it('a Boss Brawl takes a map or random, a Boss Rush also its own floors', () => {
+    expect(mapChoices('brawl')).toEqual(['random', ...BRAWL_MAPS]);
+    expect(mapChoices('bossrush')).toEqual(['own', 'random', ...BRAWL_MAPS]);
+    expect(parseConfig(['--mode', 'brawl', '--map', 'waldsee'], {}, null).map).toBe('waldsee');
+    expect(parseConfig(['--mode', 'brawl', '--map=random'], {}, null).map).toBe('random');
+    expect(() => parseConfig(['--mode', 'brawl', '--map', 'own'], {}, null)).toThrow(/map for mode brawl must be one of: random, arena/);
+    expect(() => parseConfig(['--mode', 'brawl', '--map', 'race'], {}, null)).toThrow(/map/);
+    for (const map of ['own', 'random', 'jungle', 'waldsee']) expect(parseConfig(['--mode', 'bossrush', '--map', map], {}, null).map).toBe(map);
+    expect(() => parseConfig(['--mode', 'bossrush', '--map', 'maze'], {}, null)).toThrow(/map for mode bossrush must be one of: own, random, arena/);
+  });
+
+  it('the Tower Run and Endless bring their own floors: a map left in the settings is no error', () => {
+    expect(mapChoices('coop')).toBeNull();
+    expect(mapChoices('endless')).toBeNull();
+    expect(parseConfig(['--mode', 'coop'], {}, { map: 'neon' })).toMatchObject({ mode: 'coop', map: 'neon' });
+  });
+
+  it('the Town is first person only: with the view from above it is refused by name, and left out of what is allowed', () => {
+    for (const mode of ['quick', 'brawl', 'bossrush', 'score', 'discovery'] as const) {
+      expect(() => parseConfig(['--mode', mode, '--map', 'waldsee', '--view', 'top'], {}, null), mode).toThrow(/waldsee \(the Town\).*first person only.*view top/);
+      expect(mapChoices(mode, 'top'), mode).not.toContain('waldsee');
+      expect(mapChoices(mode, 'fp'), mode).toContain('waldsee');
+      expect(parseConfig(['--mode', mode, '--map', 'waldsee', '--view', 'fp'], {}, null).map).toBe('waldsee');
+    }
+    // (whichever comes first on the command line)
+    expect(() => parseConfig(['--view', 'top', '--map', 'waldsee'], {}, null)).toThrow(/Town/);
+    expect(() => parseConfig(['--mode', 'score', '--map', 'mars', '--view', 'top'], {}, null)).toThrow(/must be one of: random, neon/);
+  });
+
+  it('the help names every mode and every map', () => {
+    for (const mode of SERVER_MODES) expect(HELP).toContain(mode);
+    for (const map of [...VERSUS_MAPS, ...QUICK_MAPS, ...BRAWL_MAPS, 'own', 'random']) expect(HELP).toContain(map);
   });
 });

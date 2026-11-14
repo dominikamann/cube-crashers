@@ -2,7 +2,9 @@ import { COOP_MODES, isCoop } from '../net/protocol';
 import { createVersusBot } from '../bots/versus';
 import type { VersusOption } from '../net/protocol';
 import type { HostSession } from '../net/session';
-import { discovery, DISCOVERY_MAPS } from '../sim/systems/versus';
+import { BRAWL_MAPS, MAP_ROTATION, RUSH_OWN, brawlMapFor, quickMapFor, rushMapsFor, versusMapFor } from '../maps';
+import { BOSS_RUSH } from '../sim/config/floors';
+import { discovery } from '../sim/systems/versus';
 import type { Command, SimState } from '../sim/types';
 import type { ServerConfig } from './config';
 
@@ -20,19 +22,31 @@ export class DedicatedServer {
   private bots: ((s: SimState) => Command[])[] = [];
   private step = 0;
   private seed: number;
+  /** the map of the match before: a rotation never plays it twice in a row */
+  private lastMap: string | null = null;
+  /** the dice for the maps: their own row of numbers, so the seeds of the matches stay as they were */
+  private dice: number;
   private now: () => number;
   private log: (line: string) => void;
 
   constructor(private host: HostSession, private cfg: ServerConfig, opts: { now?: () => number; seed?: number; log?: (line: string) => void } = {}) {
     this.now = opts.now ?? (() => Date.now());
     this.seed = opts.seed ?? (this.now() % 2147483647 || 1);
+    this.dice = this.seed;
     this.log = opts.log ?? (() => {});
     host.viewMode = cfg.view;
     host.difficulty = cfg.difficulty;
     host.setAutoFill(isCoop(cfg.mode) ? 0 : cfg.bots);
     if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
-    if (isCoop(cfg.mode) && (cfg.map || cfg.monsters || cfg.teams)) this.log('note: --map, --monsters and --teams are for versus; the co-op games bring their own maps');
+    if (isCoop(cfg.mode) && (cfg.monsters || cfg.teams)) this.log('note: --monsters and --teams are for versus');
+    if ((cfg.mode === 'coop' || cfg.mode === 'endless') && cfg.map) this.log(`note: --map does nothing in ${cfg.mode}, which brings its own floors`);
   }
+
+  /** 0..1, like Math.random, but from the server's seed */
+  private random = (): number => {
+    this.dice = (this.dice * 16807) % 2147483647 || 1;
+    return (this.dice - 1) / 2147483646;
+  };
 
   private humans(): number {
     return this.host.lobby.filter(p => !p.bot).length;
@@ -55,12 +69,14 @@ export class DedicatedServer {
   /** the next match's arena and rule */
   private next(): VersusOption {
     const i = this.step++;
-    const map = this.cfg.map ?? DISCOVERY_MAPS[i % DISCOVERY_MAPS.length];
+    // like a LAN host's "rotation": any arena of the game but the one just played (not the Town with the view from above)
+    const map = versusMapFor(this.cfg.map ?? MAP_ROTATION, this.lastMap, this.random, this.cfg.view === 'top');
+    this.lastMap = map;
     switch (this.cfg.mode) {
       case 'discovery': {
         // every rule in turn; a fixed arena and monster hordes still hold
         const d = discovery(i);
-        return { ...d, map: this.cfg.map ?? d.map, chaos: d.chaos || this.cfg.monsters };
+        return { ...d, map, chaos: d.chaos || this.cfg.monsters };
       }
       case 'gungame':
         return { mode: 'ffa', rule: 'gungame', map };
@@ -75,10 +91,18 @@ export class DedicatedServer {
     this.startsAt = null;
     this.overSince = null;
     this.seed = (this.seed * 48271) % 2147483647 || 1;
-    if (isCoop(this.cfg.mode)) {
-      this.host.start(this.seed, this.cfg.difficulty, COOP_MODES[this.cfg.mode]!);
+    const run = COOP_MODES[this.cfg.mode];
+    if (run) {
+      // the maps a LAN host picks in its lobby: the Boss Brawl's (the arena unless set), a Single floor's (a new one
+      // each time unless set), the Boss Rush's (the bosses' own floors unless set)
+      const noTown = this.cfg.view === 'top';
+      const map = run === 'brawl' ? brawlMapFor(this.cfg.map ?? BRAWL_MAPS[0], this.random, noTown) : run === 'quick' ? quickMapFor(this.cfg.map ?? MAP_ROTATION, this.lastMap, this.random, noTown) : undefined;
+      const rush = run === 'bossrush' ? rushMapsFor(this.cfg.map ?? RUSH_OWN, BOSS_RUSH.length, this.random, noTown) : undefined;
+      if (map) this.lastMap = map;
+      this.host.start(this.seed, this.cfg.difficulty, run, map, rush);
       this.bots = [];
-      this.log(`${this.cfg.mode} started with ${this.humans()} player(s)`);
+      const where = map ?? (rush ? (this.cfg.map === MAP_ROTATION ? 'random maps' : rush[0]) : null);
+      this.log(`${this.cfg.mode}${where ? ` on ${where}` : ''} started with ${this.humans()} player(s)`);
     } else {
       const option = this.next();
       this.host.startVersus(option, this.seed);
@@ -91,6 +115,12 @@ export class DedicatedServer {
   private play(s: SimState): void {
     if (this.humans() === 0) {
       this.log('everybody left: back to the lobby');
+      return this.backToLobby();
+    }
+    // whoever joined during the match waits in the lobby: once the last one playing has left, the match is
+    // nobody's any more (a co-op game without players would never end), so the ones waiting get theirs
+    if (!this.host.lobby.some(p => !p.bot && s.players.some(q => q.id === p.id))) {
+      this.log('everybody in the match left: back to the lobby for those who wait');
       return this.backToLobby();
     }
     // the match is over and its last snapshot went out with the final step: just wait out the results
