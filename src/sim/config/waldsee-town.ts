@@ -455,8 +455,9 @@ export const WALDSEE_SIGNS: (WaldseeFace & { text: string; kind: 'flasche' | 'nk
 ];
 /** where a street ends: a barrier across it at `at`, the street going on in direction `dir` behind it, `half` wide to each side */
 export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; half: number; lake: boolean }[] = [
-  // (from the end of the Czardas slanting back to the house across, so the yard by the police stays open)
-  { at: [59.95, 38.00], dir: [-0.488, -0.873], half: 5.33, lake: false },
+  // (from the end of the Czardas slanting back to the house across, so the yard by the police stays open: from the
+  // Czardas' wall at (54.7, 40.9) to the south wall of the house at (69.7, 32.5))
+  { at: [62.24, 36.72], dir: [-0.488, -0.873], half: 8.6, lake: false },
   { at: [7.68, 48.46], dir: [-0.426, -0.905], half: 6.88, lake: false },
   { at: [32.16, 90.56], dir: [0.714, 0.7], half: 6.88, lake: false },
   { at: [12.9, 71.32], dir: [-0.899, 0.437], half: 6.88, lake: false },
