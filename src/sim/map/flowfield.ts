@@ -1,11 +1,13 @@
 import type { Vec2 } from '../types';
-import type { Blocks, FloorMap } from './tilemap';
+import { solidTiles, type Blocks, type FloorMap } from './tilemap';
 
 /** Walking distance (in tiles, 4-connected) from every tile to the nearest target; -1 where unreachable. */
 /** `solid`: extra tiles to go round (tower tiles, for bots: players cannot walk through towers) */
 export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks, solid?: ReadonlySet<number>): Int16Array {
   const field = new Int16Array(m.w * m.h).fill(-1);
   const queue: number[] = [];
+  // (a tile whose middle is inside a house of the Town is no way either: a sliver before a slanted front)
+  const houses = solidTiles(m);
   const seed = (tx: number, tz: number) => {
     if (tx < 0 || tz < 0 || tx >= m.w || tz >= m.h) return;
     const i = tz * m.w + tx;
@@ -41,7 +43,7 @@ export function buildFlowField(m: FloorMap, targets: Vec2[], blocks: Blocks, sol
     if (tz > 0) visit(i - m.w);
     if (tz < m.h - 1) visit(i + m.w);
     function visit(j: number) {
-      if (field[j] !== -1 || blocks(m.tiles[j]) || solid?.has(j)) return;
+      if (field[j] !== -1 || blocks(m.tiles[j]) || solid?.has(j) || houses?.[j]) return;
       field[j] = next;
       queue.push(j);
     }
@@ -58,14 +60,17 @@ const NEIGHBOURS = [
 export function flowDir(m: FloorMap, field: Int16Array, pos: Vec2): Vec2 {
   const tx = Math.floor(pos.x), tz = Math.floor(pos.z);
   const at = (x: number, z: number) => (x < 0 || z < 0 || x >= m.w || z >= m.h ? -1 : field[z * m.w + x]);
-  const here = at(tx, tz);
+  let here = at(tx, tz);
+  // (on a sliver before a house of the Town, where the field has no value: out to the best tile beside it)
+  const stranded = here < 0 && m.solids !== undefined;
+  if (stranded) here = 0x7fff;
   if (here < 0) return { x: 0, z: 0 };
   let best = here, bx = tx, bz = tz;
   for (const [ox, oz] of NEIGHBOURS) {
     const v = at(tx + ox, tz + oz);
     if (v < 0 || v >= best) continue;
     // no cutting corners: a diagonal step needs both straight neighbours to be walkable
-    if (ox !== 0 && oz !== 0 && (at(tx + ox, tz) < 0 || at(tx, tz + oz) < 0)) continue;
+    if (!stranded && ox !== 0 && oz !== 0 && (at(tx + ox, tz) < 0 || at(tx, tz + oz) < 0)) continue;
     best = v;
     bx = tx + ox;
     bz = tz + oz;

@@ -12,3 +12,15 @@ curl -H "User-Agent: cube-crashers (hello@amannlabs.eu)" --data-urlencode \
   https://overpass-api.de/api/interpreter -o osm2.json
 python3 town.py   # writes grid2.json and prints the plan
 ```
+
+## The real walls
+
+`solids.gen.ts` gives the sim the outlines of the real buildings (`src/sim/config/waldsee-solids.ts`), so that one
+stops at a slanted front where it really is, and makes the wall tiles a front covers only in part floor again. It
+needs the render code's `shown()`, so it runs under vitest; afterwards the board fences are worked out again:
+
+```sh
+npx vitest run --config tools/waldsee/vitest.config.ts                    # prints what it would do
+WALDSEE_WRITE=1 npx vitest run --config tools/waldsee/vitest.config.ts    # writes the solids and the plan
+python3 -I fences.py ../.. --write                                        # the fences for the new plan
+```

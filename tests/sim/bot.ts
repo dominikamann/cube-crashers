@@ -29,9 +29,16 @@ export function createBot(): (s: SimState) => Command[] {
   let fieldKey = '';
   let field: Int16Array | null = null;
   let crateId = -1;
+  // which way round it circles a boss, and whether its last step round it got nowhere (a wall: the other way then)
+  let circle = 1;
+  let circling = false;
+  let lastPos: Vec2 | null = null;
 
   return s => {
     const p = s.players[0];
+    if (circling && lastPos && d(lastPos, p.pos) < 0.01) circle = -circle;
+    circling = false;
+    lastPos = { ...p.pos };
     if (s.run.stage === 'shop') {
       // what keeps it alive first (a heal when hurt, a life when few are left), then whatever else is affordable
       const shop = s.run.shop!;
@@ -139,7 +146,8 @@ export function createBot(): (s: SimState) => Command[] {
       if (r > 8) move = flowDir(s.map, buildFlowField(s.map, [boss.pos], BLOCKS_ENEMY, towerTiles(s)), p.pos);
       else {
         const pull = (6 - r) * 0.6;
-        move = { x: -rz / r + (rx / r) * pull, z: rx / r + (rz / r) * pull };
+        move = { x: (-rz / r) * circle + (rx / r) * pull, z: (rx / r) * circle + (rz / r) * pull };
+        circling = true;
       }
     } else {
       move = d(goal, p.pos) < 1.2 ? { x: goal.x - p.pos.x, z: goal.z - p.pos.z } : flowDir(s.map, field, p.pos);
