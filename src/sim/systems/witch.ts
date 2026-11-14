@@ -540,6 +540,31 @@ export function spreadWitchlings(s: SimState, fire: Vec2): void {
 /** whether one of the little witches that walk the Town is still about (not the ones dancing with the witch) */
 export const witchlingsLeft = (s: SimState): boolean => s.enemies.some(e => e.kind === 'witchling' && e.hordeId !== null && e.hp > 0);
 
+/** how near a player a little witch must be to be heard, and how long it is from one cackle to the next (ticks) */
+export const CACKLE = { near: 14, everyTicks: 4 * TICK_RATE, spreadTicks: 4 * TICK_RATE };
+
+/**
+ * The little witches are heard before they are seen: every few seconds the one nearest to a player cackles (those
+ * out in the streets and those dancing round the fire alike). The shriek of one that sees someone and comes for them
+ * is the hordes' business (see hordes.ts).
+ */
+export function witchVoices(s: SimState): void {
+  if (s.tick % 15 !== 0 || s.tick < (s.witchCackleAt ?? 0)) return;
+  const players = s.players.filter(p => p.downUntil === null);
+  let best: Enemy | null = null, bestD = CACKLE.near;
+  for (const e of s.enemies) {
+    if (e.kind !== 'witchling' || e.hp <= 0) continue;
+    for (const p of players) {
+      const d = dist(e.pos, p.pos);
+      if (d < bestD) ((bestD = d), (best = e));
+    }
+  }
+  if (!best) return;
+  // (not in step: how long it is to the next one goes by who cackled and when)
+  s.witchCackleAt = s.tick + CACKLE.everyTicks + ((best.id * 37 + s.tick) % CACKLE.spreadTicks);
+  s.events.push({ type: 'witchCackle', pos: { ...best.pos }, shriek: false });
+}
+
 /** the witch is beaten: the elevator opens once the last little witch out in the Town is squashed too */
 export function awaitWitchlings(s: SimState): void {
   if (!s.witchlingsWait || witchlingsLeft(s)) return;

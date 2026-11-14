@@ -66,9 +66,9 @@ describe('the Town as the game between two floors', () => {
     expect(s.map.id).not.toBe('waldsee');
   });
 
-  it('has no karts, no build pads, no ladders, and one small logo on the floor, plus the AmannLabs shop sign as its egg', () => {
+  it('has no karts but the police car, no build pads, no ladders, and one small logo on the floor, plus the AmannLabs shop sign as its egg', () => {
     const m = FLOORS.waldsee.map;
-    expect(m.vehicleSpots).toHaveLength(0);
+    expect(m.vehicleSpots).toEqual([{ x: 63.5, z: 46.5 }]);
     expect(m.pads).toHaveLength(0);
     expect(ladders(m)).toHaveLength(0);
     expect(logoSpots(m)).toEqual([{ kind: 'floor', tx: 64, tz: 37.9, w: 4, h: 1, yaw: 0.231 }, { kind: 'wall', tx: 24, tz: 49, w: 4, along: 'x', facing: { x: 0, z: 1 } }]);

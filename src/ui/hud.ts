@@ -18,7 +18,7 @@ import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
-import { KART } from '../sim/systems/vehicles';
+import { KART, VEHICLES } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
 import { bossHp } from '../sim/systems/boss';
@@ -348,7 +348,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         // race karts never run dry
         (fuelFill.parentElement!.previousElementSibling as HTMLElement).style.display = kart.locked ? 'none' : '';
         fuelFill.parentElement!.style.display = kart.locked ? 'none' : '';
-        kartFill.style.width = `${Math.max(0, kart.hp / KART.hp) * 100}%`;
+        kartFill.style.width = `${Math.max(0, kart.hp / VEHICLES[kart.kind].hp) * 100}%`;
       }
 
       jetBox.style.display = p.jetpack ? '' : 'none';

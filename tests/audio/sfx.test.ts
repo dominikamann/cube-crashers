@@ -82,6 +82,8 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   powerupSpawned: { type: 'powerupSpawned', kind: 'heart', pos: p },
   powerupPicked: { type: 'powerupPicked', kind: 'heart', playerId: 0 },
   kartEnter: { type: 'kartEnter', playerId: 0 },
+  siren: { type: 'siren', pos: p },
+  witchCackle: { type: 'witchCackle', pos: p, shriek: false },
   kartRam: { type: 'kartRam', pos: p },
   kartJump: { type: 'kartJump', pos: p },
   kartLand: { type: 'kartLand', pos: p },

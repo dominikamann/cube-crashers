@@ -82,6 +82,9 @@ export function updateHordes(s: SimState): void {
     if ((s.tick + h.id) % 10 === 0) {
       if (!h.aggro) {
         h.aggro = list.some(e => players.some(p => dist(p.pos, e.pos) <= AGGRO_RADIUS && hasLos(s.map, e.pos, p.pos)));
+        // (a little witch that sees someone shrieks as she comes for them)
+        const witch = h.aggro ? list.find(e => e.kind === 'witchling') : undefined;
+        if (witch) s.events.push({ type: 'witchCackle', pos: { ...witch.pos }, shriek: true });
       } else {
         const c = centroid(list);
         if (players.every(p => dist(p.pos, c) > DEAGGRO_RADIUS)) {

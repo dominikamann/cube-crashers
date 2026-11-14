@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { WALDSEE_FENCE_RUNS, WALDSEE_LAKES, WALDSEE_LOD2 } from './waldsee-lod2';
 import markUrl from './amannlabs-mark.png';
 import {
-  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_CARS, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FENCES_LEFT_OUT, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARKS, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
+  WALDSEE_BARRIERS, WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_BUILT, WALDSEE_CZARDAS, WALDSEE_CZARDAS_SIDE, WALDSEE_ALLEY, WALDSEE_DROWNED, WALDSEE_EXTRA_FENCES, WALDSEE_FENCES_LEFT_OUT, WALDSEE_FOUNTAIN, WALDSEE_HIDDEN, WALDSEE_HOUSES, WALDSEE_REPLACED, WALDSEE_ROOFS, WALDSEE_SHARKS, WALDSEE_SIGNS, WALDSEE_TABLES, WALDSEE_TILES,
   WALDSEE_SHORE_TREES, WALDSEE_TREES, type WaldseeFace, type WaldseeHouse,
 } from '../sim/config/waldsee-town';
 
@@ -1003,22 +1003,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       }
   }
 
-  // ---- parked cars: the police car, silver and blue with a yellow band, blue lights on the roof
-  for (const car of WALDSEE_CARS) {
-    const x = car.at[0] + 0.5, z = car.at[1] + 1;
-    box(x, 0.42, z, 0.92, 0.44, 1.9, 0xdfe3e8);
-    box(x, 0.42, z, 0.94, 0.2, 1.5, 0x2f5fbf);
-    box(x, 0.3, z, 0.95, 0.07, 1.92, 0xe8e23a);
-    box(x, 0.84, z + 0.08, 0.84, 0.4, 1.0, 0xdfe3e8);
-    box(x, 0.86, z + 0.08, 0.86, 0.26, 0.9, 0x2a3440);
-    box(x, 1.02, z + 0.08, 0.86, 0.06, 1.02, 0xdfe3e8);
-    for (const sx of [-1, 1]) for (const sz of [-0.62, 0.62]) box(x + sx * 0.44, 0.2, z + sz, 0.14, 0.4, 0.4, 0x1c1e24);
-    for (const sx of [-1, 1]) {
-      lamp(x + sx * 0.22, 1.12, z + 0.08, 0.3, 0.12, 0.16, 0x3f8cff);
-      lamp(x + sx * 0.32, 0.5, z - 0.96, 0.18, 0.1, 0.04, 0xfff3c0);
-      lamp(x + sx * 0.32, 0.5, z + 0.96, 0.18, 0.1, 0.04, 0xff3b3b);
-    }
-  }
+  // (the police car in front of the station is one to drive: a vehicle of the game, see actors.ts)
 
   // ---- tables: small round ones with chairs, and in the beer garden of the Hasen long ones with benches
   for (const place of WALDSEE_TABLES) {

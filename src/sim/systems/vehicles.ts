@@ -39,7 +39,12 @@ export const VEHICLES: Record<VehicleKind, { speed: number; accel: number; hp: n
   hoverboard: { speed: KART.speed * 1.3, accel: 36, hp: 60, ramDamage: 0, radius: 0.6, jumps: false, hovers: true },
   // rare and magic: fast, leaps off ramps, spears monsters with its horn, never runs out of steam
   unicorn: { speed: KART.speed * 1.2, accel: 34, hp: 120, ramDamage: 60, radius: 0.7, jumps: true, hovers: false },
+  // the police car of the Town: a kart with a roof, a little tougher; its blue lights and its siren go while it is driven
+  police: { speed: KART.speed, accel: KART.accel, hp: 150, ramDamage: KART.ramDamage, radius: KART.radius, jumps: false, hovers: false },
 };
+
+/** the police car's siren: it sounds again every so many ticks while someone drives the car */
+export const SIREN_TICKS = 96;
 
 /** a unicorn turns up on its own now and then: every `checkTicks` the game rolls `chance` */
 export const UNICORN = { checkTicks: 60 * 60, chance: 0.2 };
@@ -70,7 +75,8 @@ export function placeStartKarts(s: SimState): void {
   for (let n = 0; n < KART.startKarts && spots.length > 0; n++) {
     const [spot] = spots.splice(Math.floor(s.rng.next() * spots.length), 1);
     // the first is always a kart; the second may be something unlocked
-    const kind = n > 0 && extras.length > 0 && s.rng.next() < 0.6 ? s.rng.pick(extras) : 'kart';
+    // (in the Town it is the police car, parked in front of the station)
+    const kind = s.map.id === 'waldsee' ? 'police' : n > 0 && extras.length > 0 && s.rng.next() < 0.6 ? s.rng.pick(extras) : 'kart';
     addVehicle(s, kind, s.map.vehicleSpots[spot], spot);
   }
 }
@@ -141,6 +147,14 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   if (hit.hitZ) v.vel.z = 0;
   const speed = Math.hypot(v.vel.x, v.vel.z);
   if (driver && speed > 1 && !v.locked && v.kind !== 'unicorn') v.fuel--;
+  // (the police car's siren, from the moment someone gets in)
+  if (v.kind === 'police') {
+    if (!driver) v.sirenAt = undefined;
+    else if (s.tick >= (v.sirenAt ?? 0)) {
+      v.sirenAt = s.tick + SIREN_TICKS;
+      s.events.push({ type: 'siren', pos: { ...v.pos } });
+    }
+  }
 
   if (v.air > 0) {
     v.air--;
@@ -177,7 +191,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
-    if (v.kind === 'kart' && s.run.stage !== 'race') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
+    if ((v.kind === 'kart' || v.kind === 'police') && s.run.stage !== 'race') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
     if (v.kind === 'unicorn') v.hp -= KART.ramCostSmall;
     damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
@@ -249,7 +263,8 @@ function maybeUnicorn(s: SimState): void {
   s.nextUnicornAt ??= s.tick + UNICORN.checkTicks;
   if (s.tick < s.nextUnicornAt) return;
   s.nextUnicornAt = s.tick + UNICORN.checkTicks;
-  if (s.run.stage !== 'floor' || s.vehicles.some(v => v.kind === 'unicorn') || s.rng.next() >= UNICORN.chance) return;
+  // (none in the Town: its one place to park is the police car's)
+  if (s.run.stage !== 'floor' || s.map.id === 'waldsee' || s.vehicles.some(v => v.kind === 'unicorn') || s.rng.next() >= UNICORN.chance) return;
   const free = s.map.vehicleSpots.map((pos, spot) => ({ pos, spot })).filter(x => !s.vehicles.some(v => dist(v.pos, x.pos) < 2));
   if (free.length === 0) return;
   const at = s.rng.pick(free);

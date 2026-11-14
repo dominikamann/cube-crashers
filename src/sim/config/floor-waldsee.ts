@@ -1,6 +1,7 @@
 import { GridBuilder } from '../map/builder';
 import { parseMap, type FloorMap } from '../map/tilemap';
 import { WALDSEE_SOLIDS } from './waldsee-solids';
+import { WALDSEE_CARS } from './waldsee-town';
 
 /**
  * "The Town": the Hochstatt of Bad Waldsee with the Czardas and the Federle-Brunnen, and the round one can walk
@@ -146,6 +147,9 @@ BASE.forEach((row, z) => [...row].forEach((ch, x) => (b.grid[z][x] = ch)));
 
 // (out by the elevator before the barrier of the police lane, where one looks out over the lake)
 b.put('S', [61, 58]).put('E', [81, 48]);
+// (the police car is one to drive: it stands a tile out from the station's wall, with room to pull away, and the two
+// tiles where it used to be parked for good are open floor)
+for (const car of WALDSEE_CARS) b.put('.', car.at, [car.at[0], car.at[1] + 1]).put('V', [car.at[0] - 1, car.at[1]]);
 b.put('*', [33, 52], [65, 53], [73, 71], [17, 70], [50, 51], [59, 67], [9, 53]);
 b.put('c', [30, 51], [65, 62], [16, 66], [26, 83], [59, 43]);
 b.put('w', [80, 71], [10, 53], [29, 86], [48, 46], [55, 73], [83, 47], [30, 62], [65, 56], [16, 70], [66, 40], [45, 61], [34, 49], [21, 53], [67, 72], [19, 78], [12, 60], [54, 56], [58, 46], [73, 50], [59, 64], [21, 62], [24, 78], [37, 57], [44, 53], [28, 55], [64, 49]);

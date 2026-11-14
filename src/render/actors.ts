@@ -256,6 +256,32 @@ function makeKart(kind: VehicleKind = 'kart', id = 0) {
     root.add(body);
     return { root, body, yaw: 0, legs, tail };
   }
+  if (kind === 'police') {
+    // the police car of the Town: silver and blue with a yellow band, a dark-windowed cabin, two blue lights on the
+    // roof that flash in turn while it is driven (see updateKart)
+    const silver = lambert(0xdfe3e8), dark = lambert(0x1c1e24);
+    body.add(box(0.92, 0.44, 1.9, silver, 0, 0.42, 0), box(0.94, 0.2, 1.5, lambert(0x2f5fbf), 0, 0.42, 0), box(0.95, 0.07, 1.92, lambert(0xe8e23a), 0, 0.3, 0));
+    body.add(box(0.84, 0.4, 1.0, silver, 0, 0.84, 0.08), box(0.86, 0.26, 0.9, lambert(0x2a3440), 0, 0.86, 0.08), box(0.86, 0.06, 1.02, silver, 0, 1.02, 0.08));
+    const wheels: THREE.Group[] = [];
+    for (const x of [-0.44, 0.44]) for (const z of [-0.62, 0.62]) {
+      const w = new THREE.Group();
+      w.add(box(0.14, 0.4, 0.4, dark, 0, 0, 0), box(0.16, 0.16, 0.16, lambert(0x8a90a4), 0, 0, 0));
+      w.position.set(x, 0.2, z);
+      body.add(w);
+      wheels.push(w);
+    }
+    const beacons: THREE.Mesh[] = [];
+    for (const x of [-0.22, 0.22]) {
+      body.add(box(0.3, 0.12, 0.16, lambert(0x24499a), x, 1.12, 0.08));
+      const lit = box(0.32, 0.14, 0.18, glowMat(0x4f9bff, 4), x, 1.12, 0.08);
+      lit.visible = false;
+      body.add(lit);
+      beacons.push(lit);
+      body.add(box(0.18, 0.1, 0.04, glowMat(0xfff3c0, 2), x * 1.45, 0.5, -0.96), box(0.18, 0.1, 0.04, glowMat(0xff3b3b, 1.6), x * 1.45, 0.5, 0.96));
+    }
+    root.add(body);
+    return { root, body, yaw: 0, wheels, beacons };
+  }
   if (kind === 'hoverboard') {
     // a hoverboard: a tapered deck with grip stripes, glowing rails underneath, two fins and a thruster at the back
     const deck = lambert(0x2bd4d4), dark = lambert(0x1c3a52);
@@ -553,6 +579,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     // blink while invulnerable (not during the dash itself)
     const blinking = !down && s.tick < p.invulnUntil && p.dashTicks === 0;
     v.root.visible = !blinking || Math.floor(time * 12) % 2 === 0;
+    // (in the police car one sits inside, behind its dark windows)
+    if (driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'police') v.root.visible = false;
 
     if (v.swordT < 1) {
       v.swordT = Math.min(1, v.swordT + frameDt / 0.2);
@@ -653,6 +681,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       Object.assign(v, { roll, at: time });
       for (const w of v.wheels) w.rotation.x = -roll;
     }
+    // the police car's blue lights: one, then the other, while someone drives it
+    if ('beacons' in v && v.beacons) v.beacons.forEach((b, i) => (b.visible = k.driverId !== null && Math.floor(time * 5) % 2 === i));
     const hover = k.kind === 'hoverboard' ? 0.25 + Math.sin(time * 4 + k.id) * 0.08 : 0;
     v.body.position.y = hover + (k.driverId === null ? Math.sin(time * 3 + k.id) * 0.03 : Math.sin(time * 40) * 0.015 * Math.min(1, speed / 6));
     setGlow(v.root, theme.glow);

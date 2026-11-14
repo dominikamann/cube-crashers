@@ -70,6 +70,9 @@ export type SoundId =
   | 'fireCrackle'
   | 'fireWhoosh'
   | 'witchPress'
+  | 'witchGiggle'
+  | 'witchShriek'
+  | 'siren'
   | 'maskTurn'
   | 'gameWon'
   | 'gameLost'
@@ -358,6 +361,27 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 400, attack: 0.002, sustain: 0.05, decay: 0.2, volume: 0.25, lowpass: 700 },
     { wave: 'sawtooth', freq: 160, freqEnd: 95, attack: 0.05, sustain: 0.25, decay: 0.3, volume: 0.08, vibrato: { rate: 9, depth: 6 }, lowpass: 600, at: 0.08 },
   ],
+  // a little witch near by: a nasty giggle, quick and thin, that climbs and tips over into a croak at its end
+  witchGiggle: [
+    ...[1500, 1640, 1780, 1700, 1860, 1620, 1380].map((freq, i): SynthParams => ({ wave: 'square', freq, freqEnd: freq * (i < 5 ? 1.08 : 0.7), attack: 0.004, sustain: 0.028, decay: 0.035, volume: 0.05, vibrato: { rate: 41, depth: 90 }, lowpass: 3400, at: i * 0.072 })),
+    ...[750, 820, 890, 850, 930, 810, 690].map((freq, i): SynthParams => ({ wave: 'sawtooth', freq, freqEnd: freq * (i < 5 ? 1.06 : 0.6), attack: 0.004, sustain: 0.028, decay: 0.035, volume: 0.03, lowpass: 1900, at: i * 0.072 })),
+    { wave: 'sawtooth', freq: 240, freqEnd: 150, attack: 0.01, sustain: 0.08, decay: 0.12, volume: 0.045, vibrato: { rate: 23, depth: 30 }, lowpass: 900, at: 0.5 },
+    { wave: 'noise', freq: 2600, attack: 0.02, sustain: 0.42, decay: 0.12, volume: 0.03, lowpass: 4200 },
+  ],
+  // a little witch sees someone and comes for them: a shriek that shoots up, shrill and ragged, and breaks off
+  witchShriek: [
+    { wave: 'square', freq: 980, freqEnd: 2500, attack: 0.02, sustain: 0.3, decay: 0.16, volume: 0.07, vibrato: { rate: 27, depth: 170 }, lowpass: 4200 },
+    { wave: 'sawtooth', freq: 1470, freqEnd: 3300, attack: 0.03, sustain: 0.26, decay: 0.14, volume: 0.04, vibrato: { rate: 33, depth: 240 }, lowpass: 5200 },
+    { wave: 'noise', freq: 3200, attack: 0.03, sustain: 0.28, decay: 0.16, volume: 0.07, lowpass: 6000 },
+    { wave: 'square', freq: 1900, freqEnd: 900, attack: 0.005, sustain: 0.03, decay: 0.09, volume: 0.05, lowpass: 3000, at: 0.44 },
+  ],
+  // the police car's siren: the two tones of the horn, high and low and again, as long as it is till the next one
+  siren: [
+    ...[585, 435, 585, 435].flatMap((freq, i): SynthParams[] => [
+      { wave: 'square', freq, attack: 0.02, sustain: 0.33, decay: 0.05, volume: 0.05, lowpass: 1500, at: i * 0.4 },
+      { wave: 'sawtooth', freq: freq * 2, attack: 0.02, sustain: 0.33, decay: 0.05, volume: 0.022, lowpass: 2400, at: i * 0.4 },
+    ]),
+  ],
   // the wooden mask turns round: a slow creak of wood
   maskTurn: [
     { wave: 'sawtooth', freq: 140, freqEnd: 105, attack: 0.03, sustain: 0.4, decay: 0.15, volume: 0.12, vibrato: { rate: 23, depth: 18 }, lowpass: 1100 },
@@ -400,6 +424,8 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'enemyShot',
   'rare_slushMachine',
   'rare_leafBlower',
+  'witchGiggle',
+  'witchShriek',
 ]);
 
 export const MAX_COIN_STREAK_STEPS = 12;
@@ -510,6 +536,10 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('powerupPicked');
     case 'kartEnter':
       return one('kartEnter');
+    case 'siren':
+      return one('siren');
+    case 'witchCackle':
+      return one(e.shriek ? 'witchShriek' : 'witchGiggle');
     case 'kartRam':
       return one('kartRam');
     case 'kartJump':

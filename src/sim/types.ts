@@ -48,7 +48,7 @@ export type WeaponKind =
 export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
-export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn';
+export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn' | 'police';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
 export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch';
 export type VersusMode = 'ffa' | 'team';
@@ -487,6 +487,8 @@ export interface Vehicle {
   locked?: boolean;
   /** versus: when each rival it rammed can be rammed again (by player id) */
   rammedUntil?: Record<number, number>;
+  /** the police car: when its siren sounds next while it is driven */
+  sirenAt?: number;
 }
 
 export interface Powerup {
@@ -690,6 +692,10 @@ export type SimEvent =
   | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
   | { type: 'powerupPicked'; kind: PowerupKind; playerId: number }
   | { type: 'kartEnter'; playerId: number }
+  /** a little witch near a player cackles, or shrieks as she sees someone and comes for them */
+  | { type: 'witchCackle'; pos: Vec2; shriek: boolean }
+  /** the police car's siren, again and again while it is driven */
+  | { type: 'siren'; pos: Vec2 }
   | { type: 'unicornAppeared'; pos: Vec2 }
   | { type: 'kartRam'; pos: Vec2 }
   | { type: 'kartJump'; pos: Vec2 }
@@ -805,6 +811,8 @@ export interface SimState {
   elevatorOpen: boolean;
   /** the Town: the witch is beaten, and the elevator waits for the little witches still out in the streets */
   witchlingsWait?: boolean;
+  /** when one of the little witches near a player cackles next (see witchVoices) */
+  witchCackleAt?: number;
   score: number;
   stats: RunStats;
   /** a versus match (PvP), or null in the co-op modes */

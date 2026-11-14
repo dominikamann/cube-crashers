@@ -13,7 +13,7 @@ import { updateLane } from './systems/lane';
 import { updateMaze } from './systems/maze';
 import { setupVersus, updateVersus } from './systems/versus';
 import { moveBoss, updateBoss } from './systems/boss';
-import { awaitWitchlings } from './systems/witch';
+import { awaitWitchlings, witchVoices } from './systems/witch';
 import { removeDead, updateAreas, updateMines, updateProjectiles } from './systems/combat';
 import { updateCoins } from './systems/coins';
 import { updateEnemies } from './systems/enemies';
@@ -298,6 +298,7 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateAreas(s);
   updateBoss(s, intents);
   awaitWitchlings(s);
+  witchVoices(s);
   updateEggs(s);
   updateWebs(s);
   updateMiniDominik(s);

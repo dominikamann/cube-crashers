@@ -267,7 +267,9 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
 - **The Town:** the old town of Bad Waldsee, the Hochstatt with the Federle fountain, the café terrace, the
   ice-cream parlour, the inn, the police station and the lane down to the Stadtsee, built from the real
   buildings. You walk it in first person. **The Schrättele** waits there by her bonfire, and little Schrättele walk the
-  streets until they see you: beat her and squash them all, then the elevator opens.
+  streets until they see you: beat her and squash them all, then the elevator opens. You hear the little ones
+  cackle before you see them, and shriek when they come for you. The **police car** in front of the station is
+  yours to drive like a kart, blue lights flashing and siren wailing.
   Streets that lead out of the town are closed by barriers, with the street going on behind them. When the LAN
   host fixes the view from above, the Town is left out (it is made for first person only). It is also under
   **Single floor**.
