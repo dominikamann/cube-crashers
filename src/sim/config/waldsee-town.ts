@@ -483,8 +483,8 @@ export const WALDSEE_BARRIERS: { at: [number, number]; dir: [number, number]; ha
   // (the lane left of the clothes shop, at its mouth)
   { at: [18.60, 80.60], dir: [-0.6, 0.8], half: 1.9, lake: false },
 ];
-/** trees on the meadows by the lake and on its far side (tiles); nobody gets there */
-export const WALDSEE_SHORE_TREES: [number, number][] = [[91, 40], [90, 42], [89, 44]];
+/** trees on the strip of meadow behind the barrier at the lake, clear of the shore path (tiles); nobody gets there */
+export const WALDSEE_SHORE_TREES: [number, number][] = [[88, 48], [90, 50], [91, 53]];
 /** houses that stand in the water at the lake's edge and are taken away: the lake is open there (house numbers) */
 export const WALDSEE_HIDDEN: number[] = [22, 23, 125, 118, 117, 5, 6, 116, 14, 2, 13, 26, 95, 97, 98, 104, 105, 121, 124, 123, 122, 96, 32, 108, 100, 43, 107, 106, 19, 109, 102, 30, 110, 119, 101, 103];
 /** lone grass tongues out in the water that are drowned, so the shore ends cleanly (tiles) */

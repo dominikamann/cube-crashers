@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WALDSEE_LOD2 } from '../../src/render/waldsee-lod2';
 import { LAKE_WIN, shown, waldseeIslet, waldseeLake } from '../../src/render/waldsee-look';
-import { WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_SHARK } from '../../src/sim/config/waldsee-town';
+import { WALDSEE_BOAT, WALDSEE_BOAT2, WALDSEE_SHARK, WALDSEE_SHORE_TREES } from '../../src/sim/config/waldsee-town';
 
 /** the distance (tiles) from a point to the nearest water tile of the lake as drawn (to the tile's edge) */
 const toWater = (x: number, z: number, reach: number): number => {
@@ -19,6 +19,10 @@ describe('the Stadtsee and its shore path', () => {
     let n = 0;
     for (let tz = LAKE_WIN.z0; tz < LAKE_WIN.z1; tz++) for (let tx = LAKE_WIN.x0; tx < LAKE_WIN.x1; tx++) if (waldseeLake(tx, tz)) n++;
     expect(n).toBeGreaterThan(1500);
+  });
+
+  it('has its shore trees on land, not in the water', () => {
+    for (const [x, z] of WALDSEE_SHORE_TREES) expect(waldseeLake(x, z), `tree at ${x},${z}`).toBe(false);
   });
 
   it('has no island out in the water: a patch of land cut off from the shore is lake', () => {
