@@ -26,9 +26,28 @@ const MAP_W = WALDSEE_TILES[0].length / 2, MAP_H = WALDSEE_TILES.length;
 const BUILT = new Map(WALDSEE_BUILT.map(b => [b.house, b]));
 /** where a front lies on a house built new: on the edge of its block, the way the front looks */
 /** the feet of the real walls: each a stretch on the ground with the way it looks out */
+/**
+ * Whether a real building stands in the game: not the AmannLabs lot (built on its own), and not one whose middle is
+ * on the lake side of the police lane (its meadow, gravel or water) north of the Wurzacher Strasse, nor out beyond
+ * the shore there: the view down the lane is open water. The houses of the Wurzacher Strasse stand.
+ */
+const shown = (b: (typeof WALDSEE_LOD2)[number]): boolean => {
+  let cx = 0, cz = 0, n = 0;
+  for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
+  cx /= n;
+  cz /= n;
+  const tx = Math.floor(cx), tz = Math.floor(cz), c = codeAt(tx, tz);
+  if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return false;
+  const north = cz < 62;
+  const g = waldseeGround(tx, tz);
+  if (north && tx >= 0 && tz >= 0 && tx < MAP_W && tz < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz))) return false;
+  const lake = WALDSEE_BARRIERS.find(x => x.lake);
+  return !(lake && cx > lake.at[0] && cz < lake.at[1] + 6);
+};
 const WALL_FEET: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = (() => {
   const out: { x0: number; z0: number; x1: number; z1: number; nx: number; nz: number }[] = [];
   for (const b of WALDSEE_LOD2) {
+    if (!shown(b)) continue;
     let cx = 0, cz = 0, n = 0;
     for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
     cx /= n;
@@ -320,17 +339,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       let cx = 0, cz = 0, n = 0;
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n), c = codeAt(tx, tz);
-      if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return;
-      // (whole buildings or none: one whose middle is on the lake side of the police lane, on its meadow or gravel,
-      // or out beyond its shore, is left out, so the view down the lane is open water)
-      const lake = WALDSEE_BARRIERS.find(b => b.lake);
-      {
-        const g = waldseeGround(tx, tz);
-        if (tx >= 0 && tz >= 0 && tx < MAP_W && tz < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz))) return;
-      }
-      // (and out beyond the shore, north of the lane: the houses of the Wurzacher Strasse further south stay, so one
-      // looks down it to the gate)
-      if (lake && cx / n > lake.at[0] && cz / n < lake.at[1] + 6) return;
+      if (!shown(b)) return;
       const h = houseAt(tx, tz);
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
       const shutters = h?.shut ?? '';
