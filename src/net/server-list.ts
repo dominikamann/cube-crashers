@@ -69,7 +69,11 @@ const humans = (r: ServerRow) => (r.info ? r.info.players - r.info.bots : 0);
 
 const ORDER: Record<ServerRow['status'], number> = { online: 0, checking: 1, incompatible: 2, offline: 3 };
 
-/** own servers and the shared list together, playable ones first (most real players, then lowest ping) */
+/**
+ * own servers and the shared list together, by a rule that only moves a server when something really changed:
+ * playable ones first, among them those with the most real players, and otherwise in the order of the list (the
+ * ping is not part of it: it wavers by a millisecond or two from one look to the next, and the rows swapped places)
+ */
 export function rankServers(entries: ServerListEntry[], probes: Map<string, Probe>, protocol: number, own: string[]): ServerRow[] {
   const rows = new Map<string, ServerRow>();
   for (const address of own) rows.set(address, { address, name: address, own: true, status: 'checking' });
@@ -93,7 +97,7 @@ export function rankServers(entries: ServerListEntry[], probes: Map<string, Prob
   const list = [...rows.values()];
   return list
     .map((r, i) => ({ r, i }))
-    .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || humans(b.r) - humans(a.r) || (a.r.ping ?? 0) - (b.r.ping ?? 0) || a.i - b.i)
+    .sort((a, b) => ORDER[a.r.status] - ORDER[b.r.status] || humans(b.r) - humans(a.r) || a.i - b.i)
     .map(x => x.r);
 }
 
