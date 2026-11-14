@@ -74,6 +74,13 @@ describe('Boss Brawl', () => {
     void events;
     expect(s.enemies.some(e => e.kind === 'shark')).toBe(true);
   });
+
+  it('but they do not pile up: left alone, no more than a few are out at a time', () => {
+    const s = brawl(5);
+    for (const p of s.players) p.invulnUntil = 1e9;
+    run(s, BRAWL.sharkEveryTicks * 8);
+    expect(s.enemies.filter(e => e.kind === 'shark').length).toBeLessThanOrEqual(BRAWL.sharks);
+  });
 });
 
 describe('the Rhino', () => {

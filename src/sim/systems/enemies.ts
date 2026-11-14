@@ -177,7 +177,15 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
       e.dir = { x: e.dir.x * c - e.dir.z * sn, z: e.dir.x * sn + e.dir.z * c };
     }
   }
-  const hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, e.radius, BLOCKS_ENEMY);
+  const fromX = e.pos.x, fromZ = e.pos.z;
+  let hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, e.radius, BLOCKS_ENEMY);
+  // a boss wider than the way it stands in charges as it walks there: squeezed. Otherwise the wall beside it
+  // would end every charge on its first step, and it would wind up and reel on the spot for good
+  if ((hit.hitX || hit.hitZ) && e.radius > SQUEEZE_RADIUS && isBossBody(s, e)) {
+    e.pos.x = fromX;
+    e.pos.z = fromZ;
+    hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, SQUEEZE_RADIUS, BLOCKS_ENEMY);
+  }
   e.chargeLeft -= step;
   // (a small spider that has pounced sometimes leaves a small web where it lands)
   const landed = () => {

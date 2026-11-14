@@ -34,3 +34,22 @@ describe('big bosses do not get stuck on the way to the players', () => {
         expect(closest(map, kind, 3)).toBeLessThan(5);
       }, 60_000);
 });
+
+describe('a boss wider than the way it stands in', () => {
+  it('charges on along it: the wall beside it does not end the charge on its first step', () => {
+    // (the race track is two tiles wide: narrower than the Rhino)
+    const s = createSim(FLOORS.race.map, 1, { mode: 'quick', players: 1 });
+    s.enemies = [];
+    s.nests = [];
+    s.boss = null;
+    s.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+    spawnBoss(s, 'rhino');
+    const rhino = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    s.players[0].invulnUntil = 1e9;
+    s.players[0].pos = { x: 20.5, z: 2.5 };
+    Object.assign(rhino, { pos: { x: 31.5, z: 2.5 }, state: 'charge', dir: { x: -1, z: 0 }, chargeLeft: 12 });
+    for (let i = 0; i < 10; i++) stepSim(s, []);
+    expect(rhino.state).toBe('charge');
+    expect(rhino.pos.x).toBeLessThan(30);
+  });
+});

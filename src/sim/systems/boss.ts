@@ -277,6 +277,8 @@ export const BRAWL = {
   dominikChance: 0.25,
   breakTicks: 4 * TICK_RATE,
   sharkEveryTicks: 20 * TICK_RATE,
+  /** no more than this many stray sharks at a time: left alone they do not pile up */
+  sharks: 2,
 };
 
 export function startBrawl(s: SimState): void {
@@ -302,7 +304,7 @@ function updateBrawl(s: SimState): void {
     // a shark that lost its way: it swims in from the edge and goes for whoever is nearest
     br.nextSharkAt = s.tick + BRAWL.sharkEveryTicks;
     const entries = s.map.waypoints.filter(w => s.players.every(p => dist(w, p.pos) > 8));
-    if (entries.length > 0 && s.enemies.length < ENEMY_CAP) spawnHorde(s, s.rng.pick(entries), [{ kind: 'shark', count: 1 }], { rush: true });
+    if (entries.length > 0 && s.enemies.length < ENEMY_CAP && s.enemies.filter(e => e.kind === 'shark' && e.hp > 0).length < BRAWL.sharks) spawnHorde(s, s.rng.pick(entries), [{ kind: 'shark', count: 1 }], { rush: true });
   }
   if (s.bosses.length > 0 || s.tick < br.nextAt) return;
   if (br.queue.length === 0) {
