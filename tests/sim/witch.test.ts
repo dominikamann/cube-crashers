@@ -65,6 +65,21 @@ describe('the witch', () => {
     expect(picked).toContain('witch');
   });
 
+  it('a run that goes through the Town does not meet her on one of its floors as well', () => {
+    let withTown = 0, without = 0;
+    for (let seed = 1; seed < 200; seed++) {
+      const s = createSim(floor01, seed, { mode: 'run' });
+      const town = s.run.between!.includes('town');
+      if (town) withTown++;
+      else if (s.run.bosses!.includes('witch')) without++;
+      if (town) expect(s.run.bosses, `seed ${seed}`).not.toContain('witch');
+      expect(s.run.bosses).toEqual(createSim(floor01, seed, { mode: 'run' }).run.bosses);
+    }
+    expect(withTown).toBeGreaterThan(0);
+    // (without the Town she is still one of the floors' bosses)
+    expect(without).toBeGreaterThan(0);
+  });
+
   it('on any other map she lights her own fire on open floor the players can reach, clear of the elevator, and fights there', () => {
     for (const map of ['arena', 'rooftop', 'floor01', 'servers', 'jungle'] as const) {
       const s = createSim(FLOORS[map].map, 3, { mode: 'quick' });

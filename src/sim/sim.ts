@@ -180,7 +180,8 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     flow: null,
   };
   initRun(s, mode, floors, opts.between);
-  if (mode === 'run') s.run.bosses = runBosses(seed, floors);
+  // (a run that goes through the Town meets Die Hex there: not on one of its floors as well)
+  if (mode === 'run') s.run.bosses = runBosses(seed, floors, s.run.between?.includes('town') ? ['witch'] : []);
   for (let i = 0; i < Math.max(1, opts.players ?? 1); i++) {
     const p = addPlayer(s, opts.ids?.[i] ?? i, opts.names?.[i]);
     if (opts.colors?.[i] !== undefined) p.color = opts.colors[i];

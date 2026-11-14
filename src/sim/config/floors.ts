@@ -76,9 +76,12 @@ export const RUN_BOSSES: Record<string, BossKind[]> = {
   [floorRooftop.id]: ['worm', 'rex', 'spider', 'witch'],
 };
 
-/** the boss of each floor of one run (none on a floor without one), by the seed; no boss comes twice */
-export function runBosses(seed: number, floors: string[]): (BossKind | null)[] {
-  const taken: BossKind[] = [];
+/**
+ * the boss of each floor of one run (none on a floor without one), by the seed; no boss comes twice, and none of
+ * `besides` (the bosses the run meets elsewhere: Die Hex when the run goes through the Town)
+ */
+export function runBosses(seed: number, floors: string[], besides: BossKind[] = []): (BossKind | null)[] {
+  const taken: BossKind[] = [...besides];
   let nth = 0;
   return floors.map(id => {
     const own = FLOORS[id]?.boss;
