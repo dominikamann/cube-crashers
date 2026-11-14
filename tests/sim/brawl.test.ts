@@ -75,6 +75,14 @@ describe('Boss Brawl', () => {
     expect(s.enemies.some(e => e.kind === 'shark')).toBe(true);
   });
 
+  it('in the Town it is a little Schrättele instead', () => {
+    const s = createSim(FLOORS.waldsee.map, 5, { mode: 'brawl', players: 1 });
+    for (const p of s.players) p.invulnUntil = 1e9;
+    run(s, BRAWL.sharkEveryTicks * 3 + 10);
+    expect(s.enemies.some(e => e.kind === 'shark')).toBe(false);
+    expect(s.enemies.some(e => e.kind === 'witchling')).toBe(true);
+  });
+
   it('but they do not pile up: left alone, no more than a few are out at a time', () => {
     const s = brawl(5);
     for (const p of s.players) p.invulnUntil = 1e9;

@@ -301,10 +301,12 @@ function updateBrawl(s: SimState): void {
   const br = s.brawl;
   if (!br || !s.bosses || s.elevatorOpen) return;
   if (s.tick >= br.nextSharkAt) {
-    // a shark that lost its way: it swims in from the edge and goes for whoever is nearest
+    // a shark that lost its way: it swims in from the edge and goes for whoever is nearest. (In the Town it is
+    // a little Schrättele: they are at home in its streets)
     br.nextSharkAt = s.tick + BRAWL.sharkEveryTicks;
+    const stray = s.map.id === 'waldsee' ? 'witchling' : 'shark';
     const entries = s.map.waypoints.filter(w => s.players.every(p => dist(w, p.pos) > 8));
-    if (entries.length > 0 && s.enemies.length < ENEMY_CAP && s.enemies.filter(e => e.kind === 'shark' && e.hp > 0).length < BRAWL.sharks) spawnHorde(s, s.rng.pick(entries), [{ kind: 'shark', count: 1 }], { rush: true });
+    if (entries.length > 0 && s.enemies.length < ENEMY_CAP && s.enemies.filter(e => e.kind === stray && e.hp > 0).length < BRAWL.sharks) spawnHorde(s, s.rng.pick(entries), [{ kind: stray, count: 1 }], { rush: true });
   }
   if (s.bosses.length > 0 || s.tick < br.nextAt) return;
   if (br.queue.length === 0) {
