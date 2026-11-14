@@ -787,7 +787,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
     // (the street behind a barrier is painted on the floor, not a block of its own)
     const beds = layer((t, c) => t === Tile.Wall && waldseeGround(c.tx, c.tz) !== 'house' && waldseeGround(c.tx, c.tz) !== 'street', ground, wallH, -0.4, false, wallGeo);
     beds.list.forEach((c, i) => beds.mesh.setColorAt(i, new THREE.Color(waldseeBlockColor(c.tx, c.tz))));
-    beds.mesh.instanceColor!.needsUpdate = true;
+    if (beds.mesh.instanceColor) beds.mesh.instanceColor.needsUpdate = true;
     buildWaldseeTown(addToScene, disposables);
   }
 
@@ -1101,7 +1101,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         }
         col.needsUpdate = true;
         walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : theme.wallA)));
-        walls.mesh.instanceColor!.needsUpdate = true;
+        if (walls.mesh.instanceColor) walls.mesh.instanceColor.needsUpdate = true;
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
         if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;
         // (round the Town lies the lake: where the map ends there is water, into the haze)
