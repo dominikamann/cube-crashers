@@ -56,7 +56,7 @@ export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | '
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
 export type CoinOpRule = 'turbo' | 'moon' | 'rapid' | 'swords' | 'boom' | 'double';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
-export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter' | 'thunderHammer';
+export type RareKind = 'slushMachine' | 'bubblegumBazooka' | 'leafBlower' | 'pizzaCutter' | 'thunderHammer' | 'missileLauncher';
 export type PowerupKind = 'magnet' | 'rapid' | 'bomb' | 'frost' | 'heart';
 export type DamageSource = WeaponKind | RareKind | TowerKind | 'stomp' | 'dash' | 'kart' | 'explosion' | 'bomb';
 /** quick messages: help, a ping at the crosshair, nest here, need coins, nice, good game */
@@ -202,6 +202,8 @@ export interface Player {
   lastStompAt?: number;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
+  /** the Lock-On Launcher in hand: what is near the crosshair (a rival's or a monster's id) and for how many ticks; locked at RARE.missile.lockTicks */
+  lock?: { id: number; rival: boolean; ticks: number };
   /** downed in a team game: can be helped up until this tick */
   reviveUntil: number | null;
   /** ticks a teammate has been helping */
@@ -269,7 +271,7 @@ export interface LandEffect {
 export interface Projectile {
   id: number;
   kind: DamageSource;
-  behavior: 'bolt' | 'lob' | 'boomerang' | 'saw';
+  behavior: 'bolt' | 'lob' | 'boomerang' | 'saw' | 'missile';
   /** fired by an enemy: hits players instead of enemies */
   hostile?: boolean;
   pos: Vec2;
@@ -296,6 +298,8 @@ export interface Projectile {
   arc?: { x: number; z: number; lift: number; end: number; reach: number };
   /** saw: wall bounces left */
   bounces?: number;
+  /** missile: whom it follows (a rival's or a monster's id) */
+  seek?: { id: number; rival: boolean };
 }
 
 export interface Area {

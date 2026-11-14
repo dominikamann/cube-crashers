@@ -116,7 +116,16 @@ export function dropEliteCrate(s: SimState, pos: Vec2): void {
     if (s.eliteCrates <= 0) return;
     s.eliteCrates--;
   }
-  s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, pos) } });
+  s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, pos) }, ...hiddenPrize(s, RARE.missileCrate.elite) });
+}
+
+/**
+ * Now and then a crate hides the Lock-On Launcher (see RARE.missileCrate): as a golden card among its cards.
+ * (Its dice are the crate's number and the tick, not the game's: the game's own rolls stay what they were.)
+ */
+export function hiddenPrize(s: SimState, chance: number): { prize?: 'missileLauncher' } {
+  const roll = ((Math.imul(s.nextId, 0x9e3779b1) ^ Math.imul(s.tick + 1, 0x85ebca6b)) >>> 0) / 0x100000000;
+  return roll < chance ? { prize: 'missileLauncher' } : {};
 }
 
 export function updateOffers(s: SimState): void {

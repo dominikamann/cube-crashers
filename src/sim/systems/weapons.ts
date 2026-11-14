@@ -213,7 +213,8 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
     if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
     if (p.rareSelected && p.rare) {
       const kind = p.rare.kind;
-      if (fireRare(s, p) && s.tick % 6 === 0) s.events.push({ type: 'rareFired', kind, playerId: p.id, pos: { ...p.pos } });
+      // (a stream says so now and then; a single shot each time)
+      if (fireRare(s, p) && (kind === 'missileLauncher' || s.tick % 6 === 0)) s.events.push({ type: 'rareFired', kind, playerId: p.id, pos: { ...p.pos } });
       continue;
     }
     const w = p.weapons[p.selected];

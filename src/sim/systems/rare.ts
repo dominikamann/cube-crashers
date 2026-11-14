@@ -7,6 +7,7 @@ import { BLOCKS_WALKER, hasLos, isFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type Enemy, type Player, type SimState, type Vec2 } from '../types';
 import { dist, targets } from '../util';
 import { damageEnemy, damageMany, explode, wormShare } from './combat';
+import { fireMissile, updateLocks } from './missile';
 
 /** In the air from a jump or on a jetpack: no contact, glitch or ground blast damage. */
 export function airborne(p: Player): boolean {
@@ -66,6 +67,7 @@ export function updateJetpacks(s: SimState): void {
 
 /** Rare weapon timers and the gum bubbles they leave behind. */
 export function updateRare(s: SimState): void {
+  updateLocks(s);
   for (const p of s.players) {
     if (!p.rare) continue;
     if (p.rare.cooldown > 0) p.rare.cooldown--;
@@ -162,6 +164,8 @@ export function fireRare(s: SimState, p: Player): boolean {
       if (next.length > 0) s.events.push({ type: 'teslaChain', points: [at, ...next.map(e => ({ ...e.pos }))] });
       return true;
     }
+    case 'missileLauncher':
+      return fireMissile(s, p);
     case 'pizzaCutter': {
       const c = RARE.pizza;
       r.cooldown = c.cooldownTicks;

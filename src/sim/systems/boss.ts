@@ -1,4 +1,6 @@
 import { clearSpot } from './ground';
+import { RARE } from '../config/rare';
+import { hiddenPrize } from './offers';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFloor, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { AGGRO_RADIUS, BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
 import { damagePlayer } from './player';
@@ -808,7 +810,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     if (b.wild) {
       // a wild boss (Tower Run, versus chaos): nothing ends with it, and it leaves a crate behind (not in the
       // Gun Game, where weapons come from kills)
-      if (s.versus?.rule !== 'gungame') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) } });
+      if (s.versus?.rule !== 'gungame') s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, b.lastPos) }, ...hiddenPrize(s, RARE.missileCrate.wild) });
       return;
     }
     // (in the Town the little witches out in the streets have to be squashed as well: the elevator waits)

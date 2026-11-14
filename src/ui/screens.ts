@@ -353,22 +353,27 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
    * server's lobby and in a LAN lobby. The server list adds who is there (`seats`: places taken, people and bots
    * among them) and the ping.
    */
-  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
+  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean; fixed?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
     const row = document.createElement('div');
     row.className = 'badges';
     const add = (kind: string, label_: string) => text(row, 'span', `badge ${kind}`, label_);
     add('mode', modeName(g.mode));
     if (g.rule && g.rule !== g.mode) add('rule', t(`versus.${g.rule}` as 'versus.score'));
-    if (g.map) add('map', g.map === MAP_ROTATION ? t('setup.random') : FLOORS[g.map] ? t(FLOORS[g.map].name as 'floor.plaza') : g.map);
+    if (g.map) {
+      // (a server says whether it stays on its map, a lock, or picks another for the next match, the arrows)
+      const name = g.map === MAP_ROTATION ? t('setup.random') : FLOORS[g.map] ? t(FLOORS[g.map].name as 'floor.plaza') : g.map;
+      const el = add('map', g.map === MAP_ROTATION || g.fixed === undefined ? name : `${g.fixed ? '🔒' : '🔀'} ${name}`);
+      if (g.map !== MAP_ROTATION && g.fixed !== undefined) el.title = t(g.fixed ? 'badge.mapFixed' : 'badge.mapTurns');
+    }
     if (g.difficulty && (g.mode === 'lan' || isCoop(g.mode))) add('diff', t(`difficulty.${g.difficulty}` as 'difficulty.medium'));
     // (not on a server that takes turns between the rules: there teams come and go)
     if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
     if (g.seats) {
       const humans = g.seats.players - g.seats.bots;
-      add('seats', t('online.players', { n: g.seats.players, max: g.seats.max }));
       add(humans > 0 ? 'humans here' : 'humans', t('online.humans', { n: humans }));
       if (g.seats.bots > 0) add('bots', t('online.bots', { n: g.seats.bots }));
+      add('seats', t('online.players', { n: g.seats.players, max: g.seats.max }));
     }
     if (g.ping !== undefined) add(g.ping < 80 ? 'ping' : g.ping < 160 ? 'ping slow' : 'ping bad', t('online.ping', { ms: g.ping }));
     if (g.running) add('live', t('online.running'));

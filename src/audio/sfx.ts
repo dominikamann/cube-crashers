@@ -80,7 +80,9 @@ export type SoundId =
   | 'maskTurn'
   | 'gameWon'
   | 'gameLost'
-  | 'uiClick';
+  | 'uiClick'
+  | 'lockOn'
+  | 'lockWarn';
 
 const notes = (wave: SynthParams['wave'], freqs: number[], gap: number, volume: number, decay = 0.1, sustain = 0.04): SynthParams[] =>
   freqs.map((freq, i) => ({ wave, freq, attack: 0.003, sustain, decay, volume, at: i * gap }));
@@ -249,6 +251,10 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   rare_bubblegumBazooka: [{ wave: 'sine', freq: 200, freqEnd: 520, attack: 0.01, sustain: 0.1, decay: 0.15, volume: 0.25 }],
   rare_leafBlower: [{ wave: 'noise', freq: 500, attack: 0.02, sustain: 0.08, decay: 0.05, volume: 0.1, lowpass: 900 }],
   rare_pizzaCutter: [{ wave: 'sawtooth', freq: 900, freqEnd: 1300, attack: 0.005, sustain: 0.12, decay: 0.12, volume: 0.07, vibrato: { rate: 45, depth: 60 }, lowpass: 3500 }],
+  rare_missileLauncher: [
+    { wave: 'noise', freq: 1800, freqEnd: 500, attack: 0.01, sustain: 0.18, decay: 0.3, volume: 0.16, lowpass: 2600 },
+    { wave: 'sawtooth', freq: 180, freqEnd: 520, attack: 0.01, sustain: 0.12, decay: 0.2, volume: 0.08, lowpass: 1800 },
+  ],
   rareExpired: notes('triangle', [784, 587, 440], 0.08, 0.1, 0.12, 0.04),
   bubblePop: [
     { wave: 'sine', freq: 700, freqEnd: 120, attack: 0.001, sustain: 0.03, decay: 0.12, volume: 0.3 },
@@ -434,6 +440,9 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   ],
   gameWon: notes('square', [523, 659, 784, 1047, 784, 1047, 1319], 0.12, 0.11, 0.25, 0.06),
   gameLost: notes('sawtooth', [523, 466, 415, 392], 0.25, 0.1, 0.3, 0.12).map(n => ({ ...n, lowpass: 1800 })),
+  // the Lock-On Launcher has its target; and for whoever a missile is after
+  lockOn: notes('square', [1320, 1760], 0.05, 0.07, 0.05, 0.02),
+  lockWarn: notes('sawtooth', [880, 660, 880, 660], 0.07, 0.08, 0.05, 0.03),
   uiClick: [{ wave: 'square', freq: 1200, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
 };
 

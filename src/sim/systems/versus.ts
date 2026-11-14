@@ -5,7 +5,8 @@ import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { addPlayer, removePlayer, syncCredits } from './coop';
-import { cardPositions, placeStartCrates } from './offers';
+import { cardPositions, hiddenPrize, placeStartCrates } from './offers';
+import { RARE } from '../config/rare';
 import { placeStartJetpack } from './rare';
 import { placeStartKarts } from './vehicles';
 import { spawnHorde } from './hordes';
@@ -520,7 +521,7 @@ export function updateVersus(s: SimState): void {
   if (s.tick >= v.nextCrateAt && v.rule !== 'gungame') {
     v.nextCrateAt = s.tick + VERSUS.crateEveryTicks;
     const free = s.map.crateSpots.filter(c => spotClear(s, c));
-    if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) } });
+    if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) }, ...hiddenPrize(s, RARE.missileCrate.versus) });
   }
 
   // chaos: monster hordes join the fight

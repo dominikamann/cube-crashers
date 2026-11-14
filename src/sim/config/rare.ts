@@ -28,6 +28,14 @@ export const RARE = {
   /** the Thunder Hammer: a smash in front of you, and lightning that jumps on to the nearest others */
   hammer: { cooldownTicks: 36, reach: 1.8, radius: 2.4, damage: 70, chain: 3, chainRange: 6, chainDamage: 35 },
   pizza: { cooldownTicks: 72, speed: 13, lifeTicks: 240, bounces: 6, damage: 12, rehitTicks: 20 },
+  /**
+   * the Lock-On Launcher: a target within `range` and `halfConeDeg` of the crosshair is locked after `lockTicks`;
+   * the missile flies at `speed`, turns `turn` radians a second and blows up with `damage` in `radius` (a rival
+   * it was after and reached takes `direct` on top, which with the blast is more than a full health bar)
+   */
+  missile: { cooldownTicks: 150, range: 22, halfConeDeg: 9, lockTicks: 42, speed: 13, turn: 3.2, lifeTicks: 360, radius: 2.4, damage: 150, direct: 60 },
+  /** where the launcher hides: in this share of the crates of a versus match and of fallen elites, and of the crates a wild boss leaves */
+  missileCrate: { versus: 0.06, elite: 0.05, wild: 0.5 },
 };
 
 export const ALL_RARE: RareKind[] = ['slushMachine', 'bubblegumBazooka', 'leafBlower', 'pizzaCutter'];

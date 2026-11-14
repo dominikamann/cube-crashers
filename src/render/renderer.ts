@@ -8,6 +8,7 @@ import { createActors } from './actors';
 import { createEntities } from './entities';
 import { createFx } from './fx';
 import { createPickups } from './pickups';
+import { createLockOn } from './lock-on';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
@@ -223,6 +224,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const healthBars = createHealthBars(scene);
   const fx = createFx(scene);
   const pickups = createPickups(scene);
+  const lockOn = createLockOn(scene);
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -298,6 +300,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
       pickups.update(s, theme, time);
       fx.update(s, events, theme, frameDt, time);
+      lockOn.update(s, views.map(v => v.id), time, frameDt);
       healthBars.update(s);
       // a Disco Ball near one of the players on this screen colours the light of the scene, on its beat
       const glow = fx.discoLight();

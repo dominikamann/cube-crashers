@@ -12,6 +12,7 @@ import { dist, targets, allBosses } from '../util';
 import { spawnEnemy } from './enemies';
 import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
+import { stepMissile } from './missile';
 import { aimShot, atHeightOf, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
 import { witchHit } from './witch';
@@ -247,6 +248,11 @@ export function updateProjectiles(s: SimState): void {
         continue;
       }
       keep.push(p);
+      continue;
+    }
+
+    if (p.behavior === 'missile') {
+      if (stepMissile(s, p)) keep.push(p);
       continue;
     }
 

@@ -2,6 +2,7 @@ import type { GameInfo, VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
+import { RARE } from './sim/config/rare';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
@@ -413,6 +414,8 @@ function startGame() {
   // the board of who stands where, while Tab is held
   const scoreboard = createScoreboard(app);
   let boardHeld = false;
+  /** the Lock-On Launcher on this screen: whether its lock was there last frame, and how many missiles were after this player */
+  let hadLock = false, wasChased = 0;
   /** the same from a controller: its left trigger is held */
   let padBoardHeld = false;
   // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
@@ -657,6 +660,14 @@ function startGame() {
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
+        // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after this player
+        const mine = s.players.find(p => p.id === localId());
+        const hasLock = mode === 'playing' && !!mine?.lock && mine.lock.ticks >= RARE.missile.lockTicks;
+        if (hasLock && !hadLock) audio.mixer.play('lockOn');
+        hadLock = hasLock;
+        const chased = mode === 'playing' ? s.projectiles.filter(p => p.behavior === 'missile' && p.seek?.rival && p.seek.id === localId()).length : 0;
+        if (chased > wasChased) audio.mixer.play('lockWarn');
+        wasChased = chased;
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         for (const e of frameEvents) {
@@ -1476,6 +1487,17 @@ function applyDemo(sim: SimState) {
     sim.players[0].jetFuel = 300;
     sim.players[0].rare = { kind: (params.get('kind') as RareKind) ?? 'slushMachine', until: sim.tick + 3600, cooldown: 0 };
     sim.players[0].rareSelected = true;
+    // (&dummy=1: a few monsters that stand still up the screen from the player, to aim at in peace)
+    if (params.has('dummy')) {
+      sim.enemies = [];
+      sim.nests = [];
+      sim.alarm.nextAt = Number.MAX_SAFE_INTEGER;
+      sim.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
+      void import('./sim/systems/enemies').then(m => {
+        const p = sim.players[0].pos;
+        for (const [dx, dz, kind] of [[0, -6, 'tank'], [-4, -7, 'rammer'], [4, -5, 'shooter']] as const) m.spawnEnemy(sim, kind, { x: p.x + dx, z: p.z + dz }).speed = 0;
+      });
+    }
   }
   const floorParam = Number(params.get('floor'));
   if (floorParam > 0 && sim.run.mode === 'run') void import('./sim/systems/run').then(m => m.enterFloor(sim, Math.min(floorParam, sim.run.floors.length - 1)));

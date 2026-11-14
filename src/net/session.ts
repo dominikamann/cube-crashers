@@ -157,10 +157,12 @@ export class HostSession {
   }
 
   /** dedicated server: where the next match is played, and by which rule if the server takes turns (see ServerStatus) */
-  setNext(map: string | undefined, rule?: string): void {
+  setNext(map: string | undefined, rule?: string, fixed = false): void {
     if (!this.server || (this.server.map === map && this.server.rule === rule)) return;
     this.server.map = map;
     this.server.rule = rule;
+    if (map) this.server.fixed = fixed;
+    else delete this.server.fixed;
     this.broadcastLobby();
   }
 
@@ -323,6 +325,7 @@ export class HostSession {
         // (for the list's badges: where and by which rule the next match is, how hard a co-op server is, a fixed view)
         ...(this.server?.map ? { map: this.server.map } : {}),
         ...(this.server?.rule ? { rule: this.server.rule } : {}),
+        ...(this.server?.fixed !== undefined ? { fixed: this.server.fixed } : {}),
         ...(this.server && isCoop(this.server.mode) ? { difficulty: this.difficulty } : {}),
         ...(this.server && this.viewMode !== 'both' ? { view: this.viewMode } : {}),
       });

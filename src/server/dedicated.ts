@@ -111,8 +111,10 @@ export class DedicatedServer {
         this.plan = { map, rush };
       } else this.plan = { versus: this.next() };
     }
-    if ('versus' in this.plan) this.host.setNext(this.plan.versus.map, this.cfg.mode === 'discovery' ? this.plan.versus.rule : undefined);
-    else this.host.setNext(this.plan.map ?? (this.plan.rush ? (this.cfg.map === MAP_ROTATION ? MAP_ROTATION : this.plan.rush[0]) : undefined));
+    // (the list shows whether the server stays on this map or picks another for the next match)
+    const fixed = COOP_MODES[this.cfg.mode] === 'brawl' ? (this.cfg.map ?? BRAWL_MAPS[0]) !== MAP_ROTATION : !!this.cfg.map && this.cfg.map !== MAP_ROTATION && this.cfg.map !== RUSH_OWN;
+    if ('versus' in this.plan) this.host.setNext(this.plan.versus.map, this.cfg.mode === 'discovery' ? this.plan.versus.rule : undefined, fixed);
+    else this.host.setNext(this.plan.map ?? (this.plan.rush ? (this.cfg.map === MAP_ROTATION ? MAP_ROTATION : this.plan.rush[0]) : undefined), undefined, fixed);
   }
 
   private start(): void {

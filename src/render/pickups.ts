@@ -36,6 +36,7 @@ export const RARE_GLYPH: Record<RareKind, string> = {
   leafBlower: '🍃',
   pizzaCutter: '🍕',
   thunderHammer: '🔨',
+  missileLauncher: '🚀',
 };
 
 const RARE_LABEL: Record<RareKind, string> = {
@@ -44,6 +45,7 @@ const RARE_LABEL: Record<RareKind, string> = {
   leafBlower: 'BLOWER',
   pizzaCutter: 'PIZZA',
   thunderHammer: 'HAMMER',
+  missileLauncher: 'LOCK-ON',
 };
 
 export const POWERUP_GLYPH: Record<PowerupKind, string> = {

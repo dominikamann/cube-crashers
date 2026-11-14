@@ -742,6 +742,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           hostile.add(p.pos.x, 0.7, p.pos.z, time * 8, pal.blinkWarnings ? 1.35 : 1, undefined, time * 6);
           continue;
         }
+        // (a missile has its own look, see lock-on.ts)
+        if (p.behavior === 'missile') continue;
         if (p.behavior === 'saw') {
           saws.add(p.pos.x, 0.5 + up, p.pos.z, time * 25);
           for (let i = 0; i < 4; i++) {

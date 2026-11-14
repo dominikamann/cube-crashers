@@ -28,7 +28,7 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 15: the Disco Ball tells whom its beams hit (for its show and its music); little witches on brooms; a boss comes twice for a big team.
  * 16: a dedicated server can run a Single floor (its mode 'quick' in the server list and the lobby).
  */
-export const PROTOCOL_VERSION = 16;
+export const PROTOCOL_VERSION = 17;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
@@ -59,6 +59,8 @@ export interface ServerStatus {
   map?: string;
   /** a server that takes turns between the versus rules: the rule of that match */
   rule?: string;
+  /** with a map: whether the server always plays on it (true) or picks another for the next match (false) */
+  fixed?: boolean;
 }
 
 /** what a LAN host is about to start, as it shows in its lobby: the game, and where and by which rule if that is set */
@@ -78,6 +80,7 @@ export interface ServerInfo {
   /** what the list shows as badges beside the mode (newer servers send them; see ServerStatus for map and rule) */
   map?: string;
   rule?: string;
+  fixed?: boolean;
   difficulty?: string;
   view?: ViewMode;
   name: string;
@@ -206,7 +209,7 @@ export function parseMessage(raw: string): Message | null {
       // the probe has no fields; the answer has all of them
       if (m.name === undefined) return { type: 'info' };
       if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !(m.bots === undefined || isNum(m.bots)) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean' || !optText(m.map) || !optText(m.rule) || !optText(m.difficulty) || !optView(m.view)) return null;
-      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing, ...(m.map ? { map: m.map as string } : {}), ...(m.rule ? { rule: m.rule as string } : {}), ...(m.difficulty ? { difficulty: m.difficulty as string } : {}), ...(m.view ? { view: m.view as ViewMode } : {}) };
+      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing, ...(m.map ? { map: m.map as string } : {}), ...(m.rule ? { rule: m.rule as string } : {}), ...(typeof m.fixed === 'boolean' ? { fixed: m.fixed } : {}), ...(m.difficulty ? { difficulty: m.difficulty as string } : {}), ...(m.view ? { view: m.view as ViewMode } : {}) };
     case 'leave':
       return { type: 'leave' };
     case 'welcome':

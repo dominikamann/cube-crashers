@@ -538,3 +538,24 @@ describe('the dedicated server', () => {
     expect(c.game).toEqual({ mode: 'capture', map: 'random', teams: true, view: 'fp' });
   });
 });
+
+describe('the map a server announces', () => {
+  it('says whether the server stays on it or picks another for the next match', () => {
+    // (a versus server without --map goes through the arenas; with one it stays)
+    const turns = setup({ mode: 'score' });
+    turns.run(0.1);
+    expect(turns.cs[0].server?.map).toBeDefined();
+    expect(turns.cs[0].server?.fixed).toBe(false);
+    const stays = setup({ mode: 'score', map: 'neon' });
+    stays.run(0.1);
+    expect(stays.cs[0].server).toMatchObject({ map: 'neon', fixed: true });
+    // the Boss Brawl is in the Mega Block Arena unless told otherwise
+    const brawl = setup({ mode: 'brawl' });
+    brawl.run(0.1);
+    expect(brawl.cs[0].server?.fixed).toBe(true);
+    // a Tower Run brings its own floors: no map, nothing to say
+    const run = setup({ mode: 'coop' });
+    run.run(0.1);
+    expect(run.cs[0].server?.fixed).toBeUndefined();
+  });
+});
