@@ -682,7 +682,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           addToScene(ring);
           logoMark = { mesh, mat, ring, ringMat, words: wordsMesh, wordsMat, spot, glow: 0 };
         }
-        for (const spot of spots) if (spot.kind === 'wall') addToScene(wallLogo(img, spot));
+        for (const spot of spots) if (spot.kind === 'wall' && map.id !== 'waldsee') addToScene(wallLogo(img, spot));
       })
       .catch(() => {});
   }
