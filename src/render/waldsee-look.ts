@@ -1182,11 +1182,12 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         }
         if (o.door !== undefined) onFace(f, alongOf(o.door + 0.68), 0.1, 1.2, 0.1, 0.22, 0.08, 0xffcf7a, true);
       };
-      // (the west wall: the door at its south end, the shopfronts next to it; the south wall: shopfronts at the corner)
+      // (the west wall: the door at its south end, the shopfronts next to it; the south wall: plain windows only, no
+      // shopfront and no awning)
       const south = onBlock({ x: 73, z: 69.7, dx: 0, dz: 1, len: 1 });
       const wW = (s as OnWall).wall?.width ?? 5;
       facade(s, { shop: [0.25, wW - 1.7], door: wW - 0.85 });
-      facade(south, { shop: [0.25, 5.4] });
+      facade(south, { shop: [0, 0] });
       continue;
     }
     if (s.kind === 'bank') {
