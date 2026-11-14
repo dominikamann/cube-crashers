@@ -430,7 +430,6 @@ export const WALDSEE_CARS: { kind: 'police'; at: [number, number] }[] = [{ kind:
 export const WALDSEE_TABLES: { name: string; at: [number, number][] }[] = [
   { name: "Czardas", at: [[50, 45], [53, 45], [56, 45], [50, 48], [56, 48]] },
   { name: "Eisdiele", at: [[64, 63], [64, 65], [64, 67], [65, 68], [67, 68]] },
-  { name: "Memo", at: [[30, 90], [30, 88], [28, 90]] },
 ];
 /** the front of the Czardas toward the square */
 export const WALDSEE_CZARDAS: WaldseeFace = {"x": 54.5, "z": 44, "dx": 0, "dz": 1, "len": 1};
