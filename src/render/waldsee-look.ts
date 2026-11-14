@@ -321,21 +321,27 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
       for (const [, q] of b) for (let i = 0; i < q.length; i += 3) ((cx += q[i]), (cz += q[i + 2]), n++);
       const tx = Math.floor(cx / n), tz = Math.floor(cz / n), c = codeAt(tx, tz);
       if (c >= 6 && WALDSEE_REPLACED.includes(c - 6)) return;
-      // (whole buildings or none: one that stands anywhere on the lake side of the police lane, on its meadow or
-      // gravel, or out beyond its shore, is left out, so the view down the lane is open water as far as one sees)
+      // (whole buildings or none: one whose middle is on the lake side of the police lane, on its meadow or gravel,
+      // or out beyond its shore, is left out, so the view down the lane is open water)
       const lake = WALDSEE_BARRIERS.find(b => b.lake);
-      for (const [k, q] of b)
-        for (let i = 0; i < q.length; i += 3) {
-          if (k !== 'w' || q[i + 1] > 0.3) continue;
-          const x = Math.floor(q[i]), z = Math.floor(q[i + 2]), g = waldseeGround(x, z);
-          if (x >= 0 && z >= 0 && x < MAP_W && z < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || takenAway(codeAt(x, z)) || drowned(x, z))) return;
-        }
+      {
+        const g = waldseeGround(tx, tz);
+        if (tx >= 0 && tz >= 0 && tx < MAP_W && tz < MAP_H && (g === 'water' || g === 'meadow' || g === 'gravel' || drowned(tx, tz))) return;
+      }
       // (and out beyond the shore, north of the lane: the houses of the Wurzacher Strasse further south stay, so one
       // looks down it to the gate)
       if (lake && cx / n > lake.at[0] && cz / n < lake.at[1] + 6) return;
       const h = houseAt(tx, tz);
       const plaster = h ? parseInt(h.col, 16) : PALE[bi % PALE.length], tiles = h ? parseInt(h.roof, 16) : TILES[bi % TILES.length];
       const shutters = h?.shut ?? '';
+      // (its eaves: the lowest point of its roofs; as many storeys of about two tiles as fit under them)
+      let eaves = Infinity;
+      for (const [k, q] of b) if (k === 'r') for (let i = 1; i < q.length; i += 3) eaves = Math.min(eaves, q[i]);
+      if (!isFinite(eaves)) {
+        eaves = 0;
+        for (const [, q] of b) for (let i = 1; i < q.length; i += 3) eaves = Math.max(eaves, q[i]);
+      }
+      const storeys = Math.max(1, Math.round(eaves / 2)), storey = eaves / storeys;
       for (const [k, q] of b) {
         const pts: THREE.Vector3[] = [];
         for (let i = 0; i < q.length; i += 3) pts.push(new THREE.Vector3(q[i], q[i + 1] - 0.4 + 0.4 * Math.min(1, q[i + 1]), q[i + 2]));
@@ -357,14 +363,31 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
         const wall = k === 'w';
         col.setHex(wall ? plaster : tiles);
         if (!wall) col.multiplyScalar(0.9 + 0.12 * Math.max(0, nrm.y));
-        for (const t of tris)
-          for (const i of t) {
-            const p = pts[i];
-            (wall ? walls(shutters).pos : roofPos).push(p.x, p.y, p.z);
-            (wall ? walls(shutters).col : roofCol).push(col.r, col.g, col.b);
-            // (a window to every tile along the wall and every storey up it)
-            if (wall) walls(shutters).uv.push((p.x * -nrm.z + p.z * nrm.x) / 2, (p.y + 0.4) / 2);
+        // (along the wall: as many windows as fit two tiles apart, spread evenly from end to end)
+        let a0 = Infinity, a1 = -Infinity;
+        for (const p of pts) ((a0 = Math.min(a0, p.dot(u))), (a1 = Math.max(a1, p.dot(u))));
+        const across = Math.max(1, Math.round((a1 - a0) / 2)) / Math.max(0.01, a1 - a0);
+        const put = (p: THREE.Vector3, gable: boolean) => {
+          (wall ? walls(shutters).pos : roofPos).push(p.x, p.y, p.z);
+          (wall ? walls(shutters).col : roofCol).push(col.r, col.g, col.b);
+          // (the gable over the eaves is plain plaster: a corner of the texture where there is no window)
+          if (wall) walls(shutters).uv.push(gable ? 0.03 : (p.dot(u) - a0) * across, gable ? 0.97 : Math.min(storeys, (p.y + 0.4) / storey));
+        };
+        for (const t of tris) {
+          const tri = t.map(i => pts[i]);
+          if (!wall || Math.max(...tri.map(p => p.y)) <= eaves + 0.05) for (const p of tri) put(p, false);
+          else if (Math.min(...tri.map(p => p.y)) >= eaves - 0.05) for (const p of tri) put(p, true);
+          else {
+            // (a triangle across the eaves: cut there, windows below, plaster above)
+            const cut = (pa: THREE.Vector3, pb: THREE.Vector3) => pa.clone().lerp(pb, (eaves - pa.y) / (pb.y - pa.y));
+            const below = tri.filter(p => p.y <= eaves), above = tri.filter(p => p.y > eaves);
+            const lone = below.length === 1 ? below[0] : above[0], pair = below.length === 1 ? above : below;
+            const c0 = cut(lone, pair[0]), c1 = cut(lone, pair[1]);
+            const low = below.length === 1, single = [lone, c0, c1], quad = [c0, pair[0], pair[1], c1];
+            for (const p of single) put(p, !low);
+            for (const p of [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]) put(p, low);
           }
+        }
       }
     });
     const mesh = (pos: number[], colours: number[], mat: THREE.Material, uv?: number[]) => {
