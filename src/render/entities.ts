@@ -12,6 +12,8 @@ import { TICK_RATE } from '../sim/types';
 import { palette } from './palette';
 import { allBosses } from '../sim/util';
 import { ridesBroom } from '../sim/systems/enemies';
+import { SHOT_HEIGHT } from '../sim/systems/shot-height';
+import { WITCH } from '../sim/systems/witch';
 import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
 import { createWitchFigures, WITCH_LOOK, type WitchPose } from './witch-figure';
@@ -435,8 +437,28 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           walk.stride += (stepped / 1.3) * Math.PI * 2;
           walk.moving = stepped > 1e-4 ? 0.12 : Math.max(0, walk.moving - frameDt);
           let act: WitchPose['act'] = dancing ? 'dance' : 'walk', t = 0, air = 0, ready = false, lift = 1.6;
-          const m = w?.move;
-          if (w && !dancing) {
+          const m = w?.move, f = w?.flight;
+          // on her broom to the fire: astride it on the floor, drawn back and rising a little; then up and over
+          // everything in her way, flat along the stick, and down by the fire
+          let rode = -1;
+          if (w && f && !(witchBoss!.leap && !f.land)) {
+            act = 'ride';
+            const L = witchBoss!.leap;
+            if (L && f.land) {
+              const k = Math.max(0, Math.min(1, (s.tick - L.start) / Math.max(1, L.land - L.start)));
+              t = Math.min(1, Math.sin(Math.PI * k) * 1.6);
+              // (over the roofs and walls under her and just ahead of her)
+              let top = 0;
+              for (const ahead of [0, 1, 2.2]) top = Math.max(top, groundAt(e.pos.x + e.dir.x * ahead, e.pos.z + e.dir.z * ahead) + 0.25);
+              walk.fly += (top - walk.fly) * Math.min(1, frameDt * (top > walk.fly ? 14 : 4));
+              rode = Math.max(Math.min(1, Math.sin(Math.PI * k) * 1.8) * SHOT_HEIGHT.fly, walk.fly * Math.min(1, Math.sin(Math.PI * k) * 4));
+            } else {
+              const k = Math.max(0, Math.min(1, 1 - (f.up - s.tick) / WITCH.mountTicks));
+              ready = true;
+              walk.fly = 0;
+              rode = 0.3 * k * k + 0.04 * Math.sin(time * 9 + e.id) * k;
+            }
+          } else if (w && !dancing) {
             if (w.press) act = 'press';
             else if (witchBoss!.leap) {
               const L = witchBoss!.leap;
@@ -461,10 +483,10 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           }
           const turned = w?.face === 'glare' ? Math.max(0, Math.min(1, (s.tick - (w.turnedAt ?? 0)) / 40)) : 0;
           witches.add({
-            id: e.id, x: e.pos.x, y: air * lift + fly * scale, z: e.pos.z, yaw: Math.atan2(e.dir.x, e.dir.z), scale,
+            id: e.id, x: e.pos.x, y: rode >= 0 ? rode : air * lift + fly * scale, z: e.pos.z, yaw: Math.atan2(e.dir.x, e.dir.z), scale,
             act, t, ready, air, stride: walk.stride, moving: walk.moving > 0, face: turned * turned * (3 - 2 * turned),
             // (the broom's twigs burn while she dances, sweeps and throws, and for good once she glares; the small ones' always)
-            burning: !w || dancing || act === 'sweep' || act === 'throw' || w.face === 'glare',
+            burning: !w || dancing || act === 'sweep' || act === 'throw' || act === 'ride' || w.face === 'glare',
             time: time + e.id * 0.37,
             tint: (flashUntil.get(e.id) ?? 0) > time ? FLASH : undefined,
           });
