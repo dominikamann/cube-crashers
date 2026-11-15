@@ -296,10 +296,39 @@ body.split .build .card { width: 96px; }
 .lobby-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 3px solid var(--shadow); padding: 10px 12px; }
 .lobby-row i { width: 18px; height: 18px; border: 2px solid var(--shadow); }
 .blinking { animation: blink 1s steps(2) infinite; }
-.ranking { border-collapse: collapse; font-size: 11px; background: var(--panel); }
 .screen.result { justify-content: safe center; overflow-y: auto; padding-top: clamp(16px, 5vh, 48px); gap: 12px; }
-.ranking th, .ranking td { padding: 6px 10px; font-size: 10px; line-height: 1.5; border-bottom: 2px solid var(--shadow); text-align: left; }
-.ranking th { color: var(--cyan); font-size: 9px; }
+.screen.result h2 { margin-bottom: 6px; }
+/* the table of the result: a solid panel in the look of the buttons, so the scene behind does not show through; the
+   place and the names read from the left, the numbers line up on the right. On a narrow screen it scrolls sideways */
+.ranking-wrap { flex: none; max-width: calc(100vw - 32px); margin: 8px 0 12px; overflow-x: auto; border: 3px solid var(--shadow); box-shadow: 0 6px 0 var(--shadow); background: rgba(16, 12, 44, 0.96); backdrop-filter: blur(6px); }
+.ranking { border-collapse: collapse; font-size: 12px; min-width: min(560px, calc(100vw - 38px)); }
+.ranking th, .ranking td { padding: 11px 16px; font-size: 12px; line-height: 1.4; white-space: nowrap; text-align: right; border-bottom: 2px solid rgba(255, 255, 255, 0.08); }
+.ranking tr:last-child td { border-bottom: 0; }
+.ranking th { padding: 10px 16px 9px; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan); background: rgba(43, 240, 255, 0.07); border-bottom: 2px solid rgba(43, 240, 255, 0.3); }
+.ranking .left { text-align: left; }
+.ranking .rank { width: 1%; text-align: center; color: rgba(255, 255, 255, 0.55); }
+.ranking td i { display: inline-block; vertical-align: -1px; width: 12px; height: 12px; margin-right: 10px; border: 2px solid var(--shadow); }
+.ranking td .you { margin-left: 10px; padding: 3px 6px 2px; vertical-align: 1px; border-radius: 3px; background: rgba(43, 240, 255, 0.2); color: var(--cyan); font-size: 7px; text-shadow: none; }
+/* the winners' rows in gold with a star, the player's own row with a cyan tint */
+.ranking tr.win td { background: rgba(255, 201, 40, 0.13); color: var(--gold); }
+.ranking tr.win td.rank { color: var(--gold); font-size: 14px; }
+.ranking tr.me td { background: rgba(43, 240, 255, 0.09); box-shadow: inset 4px 0 0 var(--cyan); }
+.ranking tr.me td ~ td { box-shadow: none; }
+.ranking tr.win.me td { background: rgba(255, 201, 40, 0.13); box-shadow: inset 4px 0 0 var(--cyan); }
+.ranking tr.win.me td ~ td { box-shadow: none; }
+/* a full house (up to ten players): tighter rows, so the table still fits above the buttons */
+.ranking.many th, .ranking.many td { padding: 7px 14px; font-size: 11px; }
+/* a team match: red and blue apart, each under its own line with the team's score */
+.ranking tr.team th { padding: 8px 16px 7px; font-size: 10px; text-align: left; letter-spacing: 1px; }
+.ranking tr.team0 th { color: #ff7a8a; background: rgba(255, 90, 122, 0.12); border-bottom-color: rgba(255, 90, 122, 0.4); }
+.ranking tr.team1 th { color: #7ab8ff; background: rgba(90, 150, 255, 0.12); border-bottom-color: rgba(90, 150, 255, 0.4); }
+/* a phone: tighter, with the same look */
+@media (max-width: 560px) {
+  .ranking { min-width: 0; }
+  .ranking th, .ranking td { padding: 9px 10px; font-size: 10px; }
+  .ranking th { font-size: 8px; letter-spacing: 0; }
+  .ranking tr.win td.rank { font-size: 12px; }
+}
 
 .tip-box { max-width: 560px; margin: clamp(10px, 2vh, 18px) auto 0; padding: 8px 14px; border: 2px dashed rgba(255, 255, 255, 0.35); border-radius: 6px; background: rgba(0, 0, 0, 0.35); font-size: 9px; line-height: 1.7; text-align: center; cursor: pointer; transition: opacity 0.3s; }
 .tip-box b { color: var(--cyan); margin-right: 8px; }
@@ -423,7 +452,6 @@ body.split .build .card { width: 96px; }
 body.versus .toasts { top: 96px; gap: 6px; }
 body.versus .toast { font-size: clamp(9px, 1.1vw, 13px); opacity: 0.9; }
 body.versus .toast.final { font-size: clamp(11px, 1.5vw, 17px); text-shadow: 2px 2px 0 var(--shadow); animation-duration: 2.6s; }
-.ranking { max-width: calc(100vw - 32px); }
 body.versus .down { top: 130px; transform: translateX(-50%); font-size: 13px; }
 .rush-box { border-color: var(--pink); background: rgba(60, 0, 40, 0.4); }
 
