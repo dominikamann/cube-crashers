@@ -1,5 +1,6 @@
+import { startAmbience, type AmbienceId } from './ambience';
 import { JITTER, SOUNDS, type SoundId } from './sfx';
-import { playSynth, soundDuration } from './synth';
+import { noiseBuffer, playSynth, soundDuration } from './synth';
 
 export const MAX_VOICES_PER_SOUND = 4;
 export const MIN_RESTART_SECONDS = 0.02;
@@ -34,7 +35,11 @@ export interface Mixer {
   setPaused(on: boolean): void;
   /** every effect still ringing falls silent (the game was left): new ones play as before */
   cutEffects(): void;
+  /** how loud a sound that goes on and on is right now (0: off); it starts the first time it is turned up */
+  setAmbience(id: AmbienceId, level: number): void;
   readonly musicBus: GainNode;
+  /** where sounds that run on (the hum of a sword) go: with the effects' volume, but not cut with them */
+  readonly loopBus: GainNode;
   readonly limiter: VoiceLimiter;
 }
 
@@ -67,17 +72,28 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
   const clip = ctx.createWaveShaper();
   clip.curve = softClipCurve();
 
+  const loopBus = ctx.createGain();
+  loopBus.gain.value = 0.8;
   sfxBus.connect(comp);
   musicBus.connect(comp);
+  loopBus.connect(comp);
   comp.connect(clip).connect(ctx.destination);
 
   const limiter = new VoiceLimiter();
   let jitterSeed = 98765;
 
+  // the ambience (the rotor on the helipad) runs on the loop bus with a gain of its own: it steps back with the
+  // music while the game is paused and falls silent with cutEffects
+  const ambience = new Map<AmbienceId, { out: GainNode; level: number }>();
+  const setAmbience = () => {
+    for (const a of ambience.values()) a.out.gain.setTargetAtTime(a.level * (paused ? PAUSED_MUSIC : 1), ctx.currentTime, 0.15);
+  };
+
   let muted = false;
   return {
     setMuted(on) {
       muted = on;
+      loopBus.gain.value = on ? 0 : 0.8 * sfxVolume;
     },
     play(id, pitch = 1, bypassLimiter = false) {
       // a hidden window is silent: sounds started now would all go off at once when it comes back
@@ -99,10 +115,24 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
     setSfxVolume(v) {
       sfxVolume = v;
       sfxBus.gain.value = 0.8 * v;
+      if (!muted) loopBus.gain.value = 0.8 * v;
     },
     setPaused(on) {
       paused = on;
       setMusic();
+      setAmbience();
+    },
+    setAmbience(id, level) {
+      let a = ambience.get(id);
+      if (!a) {
+        if (level <= 0) return;
+        a = { out: startAmbience(ctx, id, noiseBuffer(ctx)), level: 0 };
+        a.out.connect(loopBus);
+        ambience.set(id, a);
+      }
+      if (a.level === level) return;
+      a.level = level;
+      setAmbience();
     },
     cutEffects() {
       // the old bus fades out with everything on it; a fresh one takes the effects from here on
@@ -113,8 +143,11 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
       sfxBus.gain.value = 0.8 * sfxVolume;
       sfxBus.connect(comp);
       limiter.reset();
+      for (const a of ambience.values()) a.level = 0;
+      setAmbience();
     },
     musicBus,
+    loopBus,
     limiter,
   };
 }

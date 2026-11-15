@@ -97,7 +97,7 @@ export function buildDecor(input: DecorContext): Decor {
   const flames: THREE.MeshStandardMaterial[] = [];
   const breathers: THREE.MeshStandardMaterial[] = [];
   /** (the Uplink's big dish is one of them: it turns on its tower, once round in about twenty seconds) */
-  const spinners: { mesh: THREE.Object3D; speed: number }[] = [];
+  const spinners: { mesh: THREE.Object3D; speed: number; axis?: 'z' }[] = [];
   /** lights that come on one after the other: the rings of the dish's signal */
   const pulses: { mat: THREE.MeshStandardMaterial; phase: number }[] = [];
   /** lights that flash short and bright: the strobes of the helicopter */
@@ -494,27 +494,37 @@ export function buildDecor(input: DecorContext): Decor {
       for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) top = Math.max(top, wallTopY(x, z));
       return top;
     };
-    /** something that turns about the y axis through (x, y, z): rotor blades, fans, the beacon; each bar its own mesh at that axis */
-    const spinner = (x: number, y: number, z: number, speed: number) => ({
-      bar(w: number, h: number, d: number, mat: THREE.Material, dy = 0, yaw = 0) {
+    /**
+     * something that turns through (x, y, z): rotor blades, fans, the beacon; each bar its own mesh at that axis.
+     * About the y axis, or about z for a rotor standing on its side (the tail rotor); a bar may be turned by `yaw`
+     * about y or by `roll` about z before it goes on
+     */
+    const spinner = (x: number, y: number, z: number, speed: number, axis?: 'z') => ({
+      bar(w: number, h: number, d: number, mat: THREE.Material, dy = 0, yaw = 0, roll = 0) {
         const g = new THREE.BoxGeometry(w, h, d);
+        if (roll) g.rotateZ(roll);
         if (yaw) g.rotateY(yaw);
         g.translate(0, dy, 0);
         const m = new THREE.Mesh(g, mat);
         m.position.set(x, y, z);
         m.castShadow = true;
         group.add(m);
-        spinners.push({ mesh: m, speed });
+        spinners.push({ mesh: m, speed, axis });
         return this;
       },
     });
-    /** the blur of a rotor going round: a thin dark disc one sees through, the blades flicker through it */
+    /** the blur of a rotor going round: a thin dark disc one sees through, and the pale ring the blade tips run on */
     const blur = (x: number, y: number, z: number, r: number, roll: number) => {
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 48), new THREE.MeshBasicMaterial({ color: 0x1c1f26, transparent: true, opacity: 0.22, depthWrite: false }));
-      m.position.set(x, y, z);
-      m.rotation.x = roll;
-      group.add(m);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 48), new THREE.MeshBasicMaterial({ color: 0x1c1f26, transparent: true, opacity: 0.26, depthWrite: false }));
+      const tips = new THREE.Mesh(new THREE.RingGeometry(r - 0.22, r + 0.04, 64).rotateX(-Math.PI / 2).translate(0, 0.015, 0), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
+      for (const m of [disc, tips]) {
+        m.position.set(x, y, z);
+        m.rotation.x = roll;
+        group.add(m);
+      }
     };
+    /** the ghosts of a blade: fainter, wider copies trailing it, so the rotor is seen to turn even in a still frame */
+    const ghosts = [0.45, 0.22].map(opacity => new THREE.MeshLambertMaterial({ color: 0x1c1f26, transparent: true, opacity, depthWrite: false }));
     // the markings: a yellow ring round the pad, a white one inside it, the big H under the helicopter (its bars come
     // out on either side of the hull), and the walkway's dashed lines
     const ring = (r: number, w: number, color: number, n: number) => {
@@ -532,7 +542,8 @@ export function buildDecor(input: DecorContext): Decor {
     const t0 = HELIPAD.tanks[0], t1 = HELIPAD.tanks[1];
     const fx0 = t0.x0 - 0.5, fx1 = t1.x0 + 2.5, fz0 = t0.z0 - 0.5, fz1 = t0.z0 + 2.5;
     decals.rect((fx0 + fx1) / 2, fz0, fx1 - fx0, 0.12, 0xffc93a).rect((fx0 + fx1) / 2, fz1, fx1 - fx0, 0.12, 0xffc93a).rect(fx0, (fz0 + fz1) / 2, 0.12, fz1 - fz0, 0xffc93a).rect(fx1, (fz0 + fz1) / 2, 0.12, fz1 - fz0, 0xffc93a);
-    for (let i = 0; i < 5; i++) decals.rect(hut.x0 + 1.5 + i * 0.3 - 0.6, hut.z1 + 1.5, 0.1, 1.2, 0xffc93a, 0.6);
+    // (the hatching keeps west of the hut's second tile: the AmannLabs logo hangs on the wall east of it)
+    for (let i = 0; i < 5; i++) decals.rect(hut.x0 + 1.1 + (i - 2) * 0.22, hut.z1 + 1.5, 0.1, 1.2, 0xffc93a, 0.6);
     // the pad's edge lights: green, running round the ring one after the other
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2, x = pad.x + Math.cos(a) * (pad.r + 0.7), z = pad.z + Math.sin(a) * (pad.r + 0.7);
@@ -585,7 +596,11 @@ export function buildDecor(input: DecorContext): Decor {
     // the main rotor: four blades with yellow tips, going round fast, and the blur of them
     const rotorY = hy + 1.33;
     const rotor = spinner(hx, rotorY, hz, 24).bar(0.5, 0.18, 0.5, dark);
-    for (const yaw of [0, Q]) rotor.bar(hl * 3.5, 0.06, 0.38, rubber, 0, yaw).bar(hl * 3.5 + 0.5, 0.04, 0.2, yellow, -0.01, yaw);
+    for (const yaw of [0, Q]) {
+      rotor.bar(hl * 3.5, 0.06, 0.38, rubber, 0, yaw).bar(hl * 3.5 + 0.5, 0.04, 0.2, yellow, -0.01, yaw);
+      // (the rotor turns toward smaller yaws on screen, so the ghosts lie at larger ones, behind the blade)
+      ghosts.forEach((g, i) => rotor.bar(hl * 3.5, 0.05, 0.5 + i * 0.2, g, -0.005, yaw + (i + 1) * 0.16));
+    }
     blur(hx, rotorY, hz, hl * 1.8, 0);
     // the tail boom: on the barriers, with the fin, the stabiliser, the white strobe and the tail rotor at its end
     const tx0 = heli.tailX0, tz = heli.tailZ + 0.5, boomY = lowTop + 0.3, boomL = heli.x0 - tx0;
@@ -594,7 +609,8 @@ export function buildDecor(input: DecorContext): Decor {
     props.box(0.5, 1.0, 0.14, navy, -boomL / 2 + 0.35, boomY + 0.5, 0).box(0.3, 0.08, 1.3, navy, -boomL / 2 + 0.8, boomY + 0.25, 0);
     props.box(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), -boomL / 2 + 0.35, boomY + 1.02, 0);
     const tailY = boomY + 0.75, tailX = tx0 + 0.35, tailZ = tz + 0.12;
-    spinner(tailX, tailY, tailZ, 40).bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.3, 0.08, rubber).bar(1.3, 0.06, 0.08, rubber);
+    const tail = spinner(tailX, tailY, tailZ, 40, 'z').bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.3, 0.08, rubber).bar(1.3, 0.06, 0.08, rubber);
+    ghosts.forEach((g, i) => tail.bar(1.3, 0.08, 0.06, g, 0, 0, (i + 1) * 0.3).bar(0.08, 1.3, 0.06, g, 0, 0, (i + 1) * 0.3));
     blur(tailX, tailY, tailZ + 0.02, 0.66, Q);
     // the rotor wash: dust that comes out from under the hull and runs along the ground away from it on every side,
     // a few scraps of paper and leaves skittering with it, and the exhausts' smoke blown back over the tail; each
@@ -1077,7 +1093,7 @@ export function buildDecor(input: DecorContext): Decor {
       for (const m of breathers) m.emissiveIntensity = (1 + 0.2 * Math.sin(time * 3)) * glow;
       for (const m of flames) m.emissiveIntensity = (1.5 + 0.5 * Math.sin(time * 9) * Math.sin(time * 5.3)) * Math.min(glow, 1.4);
       for (const f of flags) f.mesh.rotation.y = f.yaw + Math.sin(time * 1.8 + f.phase) * 0.18;
-      for (const s of spinners) s.mesh.rotation.y = time * s.speed;
+      for (const s of spinners) s.mesh.rotation[s.axis ?? 'y'] = time * s.speed;
       for (const p of pulses) p.mat.emissiveIntensity = (0.25 + 0.95 * Math.max(0, Math.sin(time * 2.2 - p.phase))) * glow;
       for (const s of strobes) s.mat.emissiveIntensity = ((time / s.period + s.phase) % 1 < 0.07 ? 1 : 0.05) * s.base * glow;
       for (const p of pools) p.begin();

@@ -4,6 +4,9 @@ import type { SynthParams } from './synth';
 export type SoundId =
   | `shot_${WeaponKind}`
   | 'discoZap'
+  | 'swordOn'
+  | 'swordOff'
+  | 'swordClash'
   | 'select'
   | 'enemyHit'
   | 'enemyKilled'
@@ -112,9 +115,15 @@ const siren = (count: number, a: number, b: number, step: number, volume: number
 
 export const SOUNDS: Record<SoundId, SynthParams[]> = {
   shot_pixelBlaster: [{ wave: 'square', freq: 880, freqEnd: 440, attack: 0.002, sustain: 0.03, decay: 0.06, volume: 0.12 }],
+  // the Laser Sword cuts the air: the blade's buzz is pushed up as it swings out and falls back as it slows, two
+  // voices a little apart that beat; under it the air itself, noise through a ringing filter that sweeps up and down
   shot_laserSword: [
-    { wave: 'sawtooth', freq: 300, freqEnd: 900, attack: 0.005, sustain: 0.05, decay: 0.12, volume: 0.12, lowpass: 2500 },
-    { wave: 'noise', freq: 1000, attack: 0.01, sustain: 0.06, decay: 0.12, volume: 0.12, lowpass: 3000 },
+    { wave: 'sawtooth', freq: 118, freqEnd: 250, attack: 0.006, sustain: 0.03, decay: 0.05, volume: 0.075, lowpass: 1500, vibrato: { rate: 31, depth: 4 } },
+    { wave: 'sawtooth', freq: 121, freqEnd: 257, attack: 0.006, sustain: 0.03, decay: 0.05, volume: 0.06, lowpass: 1500 },
+    { wave: 'sawtooth', freq: 250, freqEnd: 92, attack: 0.004, sustain: 0.03, decay: 0.15, volume: 0.075, lowpass: 1300, at: 0.06 },
+    { wave: 'sawtooth', freq: 257, freqEnd: 95, attack: 0.004, sustain: 0.03, decay: 0.15, volume: 0.06, lowpass: 1300, at: 0.06 },
+    { wave: 'noise', freq: 1000, attack: 0.04, sustain: 0.015, decay: 0.03, volume: 0.13, lowpass: 450, lowpassEnd: 3400, resonance: 6 },
+    { wave: 'noise', freq: 1000, attack: 0.004, sustain: 0.02, decay: 0.13, volume: 0.11, lowpass: 3400, lowpassEnd: 500, resonance: 6, at: 0.06 },
   ],
   shot_candyCannon: notes('triangle', [1200, 1400, 1300, 1600, 1500], 0.03, 0.12, 0.05, 0.01),
   shot_hotdogSlinger: [
@@ -156,6 +165,29 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'noise', freq: 600, attack: 0.02, sustain: 0.04, decay: 0.05, volume: 0.1, lowpass: 1800 },
     { wave: 'noise', freq: 2500, attack: 0.001, sustain: 0.02, decay: 0.09, volume: 0.32, lowpass: 5000 },
     { wave: 'square', freq: 140, freqEnd: 60, attack: 0.001, sustain: 0.02, decay: 0.08, volume: 0.14 },
+  ],
+  // the blade lights: a snap at the hilt, a buzz that climbs as the blade runs out and drops back into the hum
+  swordOn: [
+    { wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.008, decay: 0.05, volume: 0.13, lowpass: 7000 },
+    { wave: 'sawtooth', freq: 55, freqEnd: 230, attack: 0.03, sustain: 0.1, decay: 0.04, volume: 0.08, lowpass: 700, lowpassEnd: 2600, vibrato: { rate: 23, depth: 3 } },
+    { wave: 'sawtooth', freq: 57, freqEnd: 237, attack: 0.03, sustain: 0.1, decay: 0.04, volume: 0.065, lowpass: 700, lowpassEnd: 2600 },
+    { wave: 'sawtooth', freq: 230, freqEnd: 84, attack: 0.01, sustain: 0.04, decay: 0.22, volume: 0.07, lowpass: 1800, lowpassEnd: 500, at: 0.12 },
+    { wave: 'noise', freq: 1000, attack: 0.08, sustain: 0.04, decay: 0.1, volume: 0.07, lowpass: 400, lowpassEnd: 3000, resonance: 5 },
+  ],
+  // and goes out: the buzz sinks and thins away into the hilt, with a soft click at its end
+  swordOff: [
+    { wave: 'sawtooth', freq: 200, freqEnd: 42, attack: 0.005, sustain: 0.05, decay: 0.2, volume: 0.08, lowpass: 1800, lowpassEnd: 260 },
+    { wave: 'sawtooth', freq: 206, freqEnd: 44, attack: 0.005, sustain: 0.05, decay: 0.2, volume: 0.06, lowpass: 1800, lowpassEnd: 260 },
+    { wave: 'noise', freq: 1000, attack: 0.01, sustain: 0.04, decay: 0.16, volume: 0.06, lowpass: 2600, lowpassEnd: 300, resonance: 4 },
+    { wave: 'square', freq: 1500, freqEnd: 900, attack: 0.001, sustain: 0.004, decay: 0.025, volume: 0.025, at: 0.19 },
+  ],
+  // the blade meets something: a hard electric crack, a stutter of sparks, a buzz knocked down, and a thin ring
+  swordClash: [
+    { wave: 'noise', freq: 4200, attack: 0.001, sustain: 0.015, decay: 0.07, volume: 0.28, lowpass: 8000 },
+    { wave: 'square', freq: 1800, freqEnd: 650, attack: 0.001, sustain: 0.03, decay: 0.09, volume: 0.05, vibrato: { rate: 70, depth: 520 }, lowpass: 5000 },
+    { wave: 'sawtooth', freq: 330, freqEnd: 105, attack: 0.001, sustain: 0.03, decay: 0.16, volume: 0.12, lowpass: 2200 },
+    { wave: 'triangle', freq: 2350, freqEnd: 2180, attack: 0.001, sustain: 0.01, decay: 0.22, volume: 0.035 },
+    ...[0.035, 0.06, 0.1, 0.13].map((at, i): SynthParams => ({ wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.003, decay: 0.02, volume: 0.09 - i * 0.015, lowpass: 6500 - i * 700, at })),
   ],
   select: [{ wave: 'square', freq: 700, freqEnd: 1000, attack: 0.001, sustain: 0.015, decay: 0.04, volume: 0.07 }],
   enemyHit: [{ wave: 'square', freq: 220, freqEnd: 170, attack: 0.001, sustain: 0.01, decay: 0.03, volume: 0.06 }],
@@ -511,6 +543,8 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'enemyKilled',
   'shot_pixelBlaster',
   'shot_candyCannon',
+  'shot_laserSword',
+  'swordClash',
   'tower_laser',
   'tower_popcorn',
   'playerHit',
@@ -531,6 +565,29 @@ export const MAX_MAZE_STREAK_STEPS = 24;
 const SEMITONE = 1.059;
 
 const WINDUP: Partial<Record<EnemyKind, SoundId>> = { witchling: 'witchShriek', shooter: 'windup_shooter', bomber: 'windup_bomber', rammer: 'windup_rammer', teleporter: 'windup_shooter', croc: 'growl_croc', monkey: 'screech_monkey', trex: 'roar_rex' };
+
+/** how far from where a sword was swung a hit can still be its own (the longest blade, and a little more) */
+const SWORD_HIT_REACH = 4;
+
+/**
+ * The clash of a Laser Sword on what it cut: one for every swing in `events` that hit something near it (a
+ * monster, another player, a vehicle), a little lower the more it hit at once. The game says only that a sword
+ * was swung and, separately, what was hit where: a hit close to the swing that is not the swinger is its own.
+ */
+export function swordClashes(events: readonly SimEvent[]): { id: SoundId; pitch: number }[] {
+  const out: { id: SoundId; pitch: number }[] = [];
+  for (const e of events) {
+    if (e.type !== 'shot' || e.weapon !== 'laserSword') continue;
+    let hits = 0;
+    for (const h of events) {
+      // (a hit on a player or a vehicle says who dealt it: then it must be the swinger)
+      const pos = h.type === 'enemyHit' ? h.pos : (h.type === 'playerHit' || h.type === 'vehicleHit') && (h.by ?? -1) === (e.playerId ?? -2) ? h.pos : null;
+      if (pos && Math.hypot(pos.x - e.pos.x, pos.z - e.pos.z) <= SWORD_HIT_REACH) hits++;
+    }
+    if (hits > 0) out.push({ id: 'swordClash', pitch: Math.max(0.8, 1.05 - 0.05 * hits) });
+  }
+  return out;
+}
 
 export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];

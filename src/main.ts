@@ -6,7 +6,9 @@ import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
-import { soundsForEvent } from './audio/sfx';
+import { soundsForEvent, swordClashes } from './audio/sfx';
+import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
+import { rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
@@ -105,7 +107,9 @@ function startGame() {
   let frameEvents: SimEvent[] = [];
   let lastLobby = '';
   const mouse = { x: innerWidth / 2, y: innerHeight / 3 };
-  let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer } | null = null;
+  let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer; hum: HumVoices } | null = null;
+  /** the Laser Swords of the players on this screen, from frame to frame (see sword-hum.ts) */
+  const swordHum = new SwordHum();
 
   // dev only (?bot=1): the test bot plays, e.g. to record gameplay
   let bot: ((s: SimState) => Command[]) | null = null;
@@ -141,7 +145,7 @@ function startGame() {
     if (!audio) {
       const ctx = new AudioContext();
       const mixer = createMixer(ctx);
-      audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus) };
+      audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus), hum: createHumVoices(ctx, mixer.loopBus) };
       applySettings();
     }
     // silent while the window is minimised or hidden (see the visibilitychange listener)
@@ -648,6 +652,12 @@ function startGame() {
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
+        for (const snd of swordClashes(frameEvents)) audio.mixer.play(snd.id, snd.pitch);
+        // the Laser Sword in a hand on this screen: it lights and goes out, and hums while it is drawn; only while a
+        // match is played and shown (not paused, not in a menu, not over, not in the kill cam)
+        const hum = swordHum.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt);
+        for (const cue of hum.cues) audio.mixer.play(cue);
+        audio.hum.set(hum.voices);
         // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after a player on this screen
         for (const [view, id] of [[0, localId()], [1, 1]] as const) {
           const mine = view === 0 || split ? s.players.find(p => p.id === id) : undefined;
@@ -660,6 +670,8 @@ function startGame() {
         }
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
+        // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
+        audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) : 0);
         for (const e of frameEvents) {
           // the fast track belongs to a boss fight and to the highest alarm
           if (e.type === 'bossSpawn') bossesUp++;
@@ -1164,6 +1176,8 @@ function startGame() {
     // a LAN game keeps running for everyone else
     if (role === 'solo') loop.pause();
     audio?.mixer.setPaused(true);
+    // (the frames go on behind the menu and keep it quiet too; this only does it at once)
+    audio?.hum.silence();
     screens.pause(role !== 'solo', wayOut());
   }
 
@@ -1180,6 +1194,7 @@ function startGame() {
       // nothing of the game rings on in the menu
       audio.mixer.setPaused(false);
       audio.mixer.cutEffects();
+      audio.hum.silence();
       playBase('menu');
     }
   }

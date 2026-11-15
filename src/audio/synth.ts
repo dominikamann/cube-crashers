@@ -10,13 +10,17 @@ export interface SynthParams {
   volume: number;
   vibrato?: { rate: number; depth: number };
   lowpass?: number;
+  /** where the lowpass ends up by the end of the voice (exponential ramp): a filter that sweeps, as in a whoosh */
+  lowpassEnd?: number;
+  /** how sharp the lowpass rings at its edge (its Q): high, a noise sweep gets a pitch of its own */
+  resonance?: number;
   /** start offset within a layered sound, seconds */
   at?: number;
 }
 
 const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 
-function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
+export function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
   let buf = noiseBuffers.get(ctx);
   if (!buf) {
     buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -52,7 +56,9 @@ export function playSynth(ctx: BaseAudioContext, dest: AudioNode, p: SynthParams
   if (p.lowpass) {
     const f = ctx.createBiquadFilter();
     f.type = 'lowpass';
-    f.frequency.value = p.lowpass;
+    f.frequency.setValueAtTime(p.lowpass, t0);
+    if (p.lowpassEnd) f.frequency.exponentialRampToValueAtTime(p.lowpassEnd, end);
+    if (p.resonance) f.Q.value = p.resonance;
     gain.connect(f);
     out = f;
   }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BOLT_MODEL, BONBON, createShots, HOTDOG_MODEL, MAX_PIXELS, shotEnd, slashSweep, voxelGeometry, type ShotFx } from '../../src/render/shots';
+import { bladeOnWalls, BOLT_MODEL, BONBON, createShots, HOTDOG_MODEL, MAX_PIXELS, shotEnd, slashPasses, slashSweep, voxelGeometry, type ShotFx } from '../../src/render/shots';
+import { Tile } from '../../src/sim/map/tilemap';
 import { THEMES } from '../../src/render/theme';
 import { weaponModel } from '../../src/render/viewmodel';
 import { ALL_RARE } from '../../src/sim/config/rare';
@@ -256,5 +257,66 @@ describe('who fired a shot', () => {
     // (an older host says only where from: the nearest player it is, not one far off)
     expect(shooterOf(s, { x: p.pos.x + 0.3, z: p.pos.z })).toBe(p);
     expect(shooterOf(s, { x: p.pos.x + 30, z: p.pos.z + 30 })).toBeUndefined();
+  });
+});
+
+describe('the Laser Sword', () => {
+  it('knows when the edge of its slash passes a spot of the arc', () => {
+    for (const u of [-1, -0.5, 0, 0.3, 1]) expect(slashSweep(slashPasses(u))).toBeCloseTo(u, 6);
+    // (it starts on one side and is fast at first: the middle is passed early)
+    expect(slashPasses(1)).toBe(0);
+    expect(slashPasses(0)).toBeLessThan(0.25);
+  });
+
+  it('finds the face of a wall its blade meets, and none out of its reach', () => {
+    const half = Math.PI / 3;
+    const near = bladeOnWalls(x => x >= 12, 10.5, 5.5, 1, 0, 2.4, half);
+    expect(near.length).toBeGreaterThan(2);
+    for (const w of near) {
+      expect(w.nx).toBe(-1);
+      expect(w.nz).toBe(0);
+      expect(w.x).toBeCloseTo(11.98, 2);
+      expect(Math.abs(w.u)).toBeLessThanOrEqual(1);
+    }
+    // (the middle of the arc reaches it)
+    expect(Math.min(...near.map(w => Math.abs(w.u)))).toBeLessThan(0.2);
+    expect(bladeOnWalls(x => x >= 20, 10.5, 5.5, 1, 0, 2.4, half)).toEqual([]);
+    // (a wall straight ahead along z: its face looks back along z)
+    const ahead = bladeOnWalls((_x, z) => z >= 7, 10.5, 5.5, 0, 1, 2.4, half);
+    expect(ahead.length).toBeGreaterThan(0);
+    expect(ahead.every(w => w.nz === -1 && w.nx === 0)).toBe(true);
+  });
+
+  it('burns a line into a wall it swings at, that is still there after the swing', () => {
+    const lit = (wall: boolean) => {
+      const { scene, step, s, p } = range('laserSword');
+      clearAhead(s, 8);
+      if (wall) for (let dz = -3; dz <= 3; dz++) s.map.tiles[(Math.floor(p.pos.z) + dz) * s.map.w + Math.floor(p.pos.x) + 2] = Tile.Wall;
+      step(1, true);
+      step(30, false);
+      return drawn(scene);
+    };
+    expect(lit(true)).toBeGreaterThan(lit(false));
+  });
+
+  it('flashes and crackles where it cuts a monster', () => {
+    const { scene, step, s, p, calls } = range('laserSword');
+    clearAhead(s, 8);
+    spawnEnemy(s, 'tank', { x: p.pos.x + 1.5, z: p.pos.z }).speed = 0;
+    const events = step(2, true);
+    expect(events.some(e => e.type === 'enemyHit')).toBe(true);
+    expect(calls.flash).toBeGreaterThanOrEqual(2);
+    expect(drawn(scene)).toBeGreaterThan(0);
+  });
+
+  it('lights the floor round a drawn sword, not on low graphics', () => {
+    const lights = (low: boolean) => {
+      const { scene, shots, s } = range('laserSword');
+      shots.setLow(low);
+      for (let i = 0; i < 20; i++) shots.update(s, [], THEMES.day, DT, i * DT);
+      return scene.children.filter(o => o.visible && (o as THREE.InstancedMesh).geometry.type === 'CircleGeometry' && ((o as THREE.InstancedMesh).material as THREE.Material).blending === THREE.AdditiveBlending).length;
+    };
+    expect(lights(false)).toBe(1);
+    expect(lights(true)).toBe(0);
   });
 });
