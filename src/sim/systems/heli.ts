@@ -23,8 +23,8 @@ export const HELI = {
   low: 0.7,
   reach: 2.4,
   /** its circle over the players: how wide, how fast round (radians a second), and how fast its middle follows them */
-  circle: 8,
-  spin: 0.85,
+  circle: 5.5,
+  spin: 1.1,
   follow: 2.5,
   /** how fast it flies at most, and how fast it turns (radians a second) up in the air and hovering low */
   speed: 12,
@@ -38,9 +38,11 @@ export const HELI = {
   riseTicks: 60,
   /** hurt into its next phase it climbs away after this long */
   breakOffTicks: 50,
-  /** where it comes down: this far from the player it picked, and this far from another helicopter's spot */
+  /** where it comes down: this far from the player it picked, this far from another helicopter's spot, and
+   *  with this much room to a glitchy edge if there is such a place (so nobody is blown or lured onto it) */
   landOff: 5,
   landApart: 7,
+  landClear: 4,
   /** a salvo of missiles: how many by phase (and one more per further player), how long the rings warn, how far
    *  apart they land in time, the blast of each, and how far from the player the ones round them land */
   salvo: { 1: 3, 2: 5, 3: 7 } as Record<1 | 2 | 3, number>,
@@ -58,13 +60,13 @@ export const HELI = {
   strafeGap: 5,
   strafeSpeed: 13,
   gunRadius: 1.1,
-  gunDamage: 24,
+  gunDamage: 20,
   /** a swoop: how long it hangs over a player, how fast it follows them, how hard its wash blows there (tiles a
    *  second right under it) and how far; from phase 2 a ring of missiles lands round where the player stood */
   swoopChance: { 1: 0.35, 2: 0.25, 3: 0.3 } as Record<1 | 2 | 3, number>,
-  swoopTicks: 170,
+  swoopTicks: 150,
   swoopSpeed: 5,
-  swoopWash: 5.5,
+  swoopWash: 4.5,
   swoopRadius: 6,
   swoopRing: 6,
   swoopRingRadius: 5.2,
@@ -75,7 +77,7 @@ export const HELI = {
   washTop: 4.2,
   /** a burst of its gun while it hovers low: a line of strikes from its nose, after a short warning */
   gunLine: 6,
-  gunWarn: 45,
+  gunWarn: 55,
   /** how often it attacks, against the other bosses */
   haste: 1,
   /** shot down: the wreck hits the floor after this long, with this blast */
@@ -113,8 +115,11 @@ export function setupHeli(s: SimState, b: BossState, body: Enemy, centre: Vec2, 
   body.fly = 'high';
   if (arrives) body.pos = over(s, { x: centre.x, z: 0 });
   body.dir = unit(body.pos, centre);
+  // (it makes for the players at once: the middle of its circle is where they are)
+  const alive = living(s);
+  const home = alive.length > 0 ? { x: alive.reduce((n, p) => n + p.pos.x, 0) / alive.length, z: alive.reduce((n, p) => n + p.pos.z, 0) / alive.length } : { ...centre };
   const air = HELI.firstAirSeconds + (others * (HELI.airSeconds[1] + HELI.lowSeconds[1])) / 2;
-  b.heli = { home: { ...centre }, angle: -Math.PI / 2 + others * Math.PI, mode: 'circle', at: s.tick, until: s.tick + Math.round(air * TICK_RATE), spot: { ...centre }, run: null, landings: 0, nextRotorAt: s.tick };
+  b.heli = { home, angle: -Math.PI / 2 + others * Math.PI, mode: 'circle', at: s.tick, until: s.tick + Math.round(air * TICK_RATE), spot: { ...centre }, run: null, landings: 0, nextRotorAt: s.tick };
 }
 
 /** How high it is above the floor at `tick`. */
@@ -241,7 +246,7 @@ export function heliRun(s: SimState, p: Player, kind: 'swoop' | 'strafe' = 'swoo
 
 /**
  * Where it comes down: open floor the players can walk to, a few steps from one of them and in their sight, on
- * the side it comes from if there is room; never where another helicopter hovers.
+ * the side it comes from if there is room, away from a glitchy edge; never where another helicopter hovers.
  */
 function landingSpot(s: SimState, b: BossState, me: Enemy, alive: Player[]): Vec2 {
   const p = alive.length > 0 ? s.rng.pick(alive) : null;
@@ -249,12 +254,14 @@ function landingSpot(s: SimState, b: BossState, me: Enemy, alive: Player[]): Vec
   const walk = reachable(s.map, s.map.spawn, BLOCKS_WALKER);
   const taken = allBosses(s).filter(x => x !== b && x.heli && x.heli.mode !== 'circle').map(x => x.heli!.spot);
   const base = Math.atan2(me.pos.z - p.pos.z, me.pos.x - p.pos.x);
-  for (const room of [HELI.radius, 0.9, 0.45])
+  const glitch = (t: Tile) => t === Tile.Hazard;
+  for (const [room, clear] of [[HELI.radius, HELI.landClear], [HELI.radius, 0], [0.9, 0], [0.45, 0]])
     for (const r of [HELI.landOff, HELI.landOff - 1, HELI.landOff + 1, HELI.landOff - 2, HELI.landOff + 2])
       for (let k = 0; k < 12; k++) {
         const a = base + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 6);
         const q = { x: p.pos.x + Math.cos(a) * r, z: p.pos.z + Math.sin(a) * r };
         if (q.x < 1 || q.z < 1 || q.x >= s.map.w - 1 || q.z >= s.map.h - 1 || walk[Math.floor(q.z) * s.map.w + Math.floor(q.x)] !== 1) continue;
+        if (clear > 0 && !isFree(s.map, q, clear, glitch)) continue;
         if (isFree(s.map, q, room, BLOCKS_ENEMY) && hasLos(s.map, q, p.pos) && taken.every(t => dist(t, q) >= HELI.landApart)) return q;
       }
   return nearestFree(s.map, p.pos, 0.45, BLOCKS_ENEMY);
@@ -285,7 +292,7 @@ export function moveHeli(s: SimState, b: BossState): void {
       if (p) r.to = { ...p.pos };
       to = r.to;
       // (it flies there fast and then keeps over them at its own pace)
-      speed = s.tick < r.at + 35 ? HELI.speed : HELI.swoopSpeed;
+      speed = dist(me.pos, to) > 2 ? HELI.speed : HELI.swoopSpeed;
     } else {
       h.angle += HELI.spin * DT;
       to = over(s, { x: h.home.x + Math.cos(h.angle) * HELI.circle, z: h.home.z + Math.sin(h.angle) * HELI.circle });

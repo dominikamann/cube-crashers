@@ -100,8 +100,8 @@ describe('blasts on the Segment Worm', () => {
 
   it('the worm starts with a full bar: its health counts what the segments really have', () => {
     const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
-    // (which boss ends a run goes by the seed: the roof's own one here)
-    s.run.bosses = undefined;
+    // (which boss ends a run goes by the seed: the worm here)
+    s.run.bosses = s.run.floors.map((_, i) => (i === 4 ? 'worm' : null));
     enterFloor(s, 4);
     expect(s.boss?.kind).toBe('worm');
     expect(bossHp(s)).toBeCloseTo(s.boss!.maxHp, 5);

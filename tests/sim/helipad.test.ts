@@ -4,6 +4,7 @@ import { HELIPAD } from '../../src/sim/config/floor-helipad';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, isFree, Tile, tileAt, type FloorMap } from '../../src/sim/map/tilemap';
 import { logoSpots } from '../../src/sim/map/logo-spots';
 import { createSim, stepSim } from '../../src/sim/sim';
+import { spawnBoss } from '../../src/sim/systems/boss';
 import { BRAWL_MAPS, QUICK_MAPS, VERSUS_MAPS } from '../../src/maps';
 import type { Vec2 } from '../../src/sim/types';
 
@@ -29,10 +30,11 @@ const at = (m: FloorMap, p: Vec2) => Math.floor(p.z) * m.w + Math.floor(p.x);
 const m = FLOORS.helipad.map;
 
 describe('the Sky Helipad', () => {
-  it('is a boss floor of its own, the worm\'s, and a final floor of the Tower Run beside the Rooftop', () => {
+  it('is a boss floor of its own, the attack helicopter\'s, and a final floor of the Tower Run beside the Rooftop', () => {
     expect(FLOORS.helipad.kind).toBe('boss');
-    expect(FLOORS.helipad.boss).toBe('worm');
-    expect(RUN_BOSSES.helipad).toEqual(RUN_BOSSES.rooftop);
+    expect(FLOORS.helipad.boss).toBe('heli');
+    // (the Rooftop's bosses, and its own before them)
+    expect(RUN_BOSSES.helipad).toEqual(['heli', ...RUN_BOSSES.rooftop]);
     const last = new Set<string>();
     for (let seed = 1; seed < 80; seed++) last.add(runFloors(seed)[4]);
     expect(last.has('helipad')).toBe(true);
@@ -48,7 +50,7 @@ describe('the Sky Helipad', () => {
       const floors = runFloors(seed);
       if (floors[4] === 'helipad') bosses.add(runBosses(seed, floors)[4]!);
     }
-    expect([...bosses].sort()).toEqual(['rex', 'spider', 'witch', 'worm']);
+    expect([...bosses].sort()).toEqual(['heli', 'rex', 'spider', 'witch', 'worm']);
   });
 
   it('the elevator, every pad, crate, power-up and vehicle spot can be walked to from the spawn', () => {
@@ -68,7 +70,11 @@ describe('the Sky Helipad', () => {
       }
     expect(open / all).toBeGreaterThan(0.9);
     const s = createSim(m, 5, { mode: 'quick', players: 1 });
-    expect(s.boss?.kind).toBe('worm');
+    expect(s.boss?.kind).toBe('heli');
+    // (the worm is one of the bosses a Tower Run can end with here)
+    s.enemies = [];
+    s.boss = null;
+    spawnBoss(s, 'worm');
     for (const id of s.boss!.worms[0]) {
       const seg = s.enemies.find(e => e.id === id)!;
       expect(tileAt(m, seg.pos.x, seg.pos.z)).not.toBe(Tile.Wall);

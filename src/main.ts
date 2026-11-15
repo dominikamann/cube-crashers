@@ -1410,6 +1410,9 @@ function applyDemo(sim: SimState) {
       const p = sim.players[0].pos;
       m.spawnBoss(sim, bossKind as 'rex', params.has('fall') ? { x: p.x, z: p.z - 5 } : undefined);
       if (params.has('fall')) for (const e of sim.enemies) e.hp = 0;
+      // (&hp=0.5: it comes with this share of its health, so its later phases are a moment away; &god=1: nothing hurts the player)
+      if (params.has('hp')) for (const e of sim.enemies) e.hp = e.maxHp * Number(params.get('hp'));
+      if (params.has('god')) sim.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
     });
   }
   // ?demo=dominik: Angry Dominik on show. He stands still in the open and the camera circles him (&act=1: he
