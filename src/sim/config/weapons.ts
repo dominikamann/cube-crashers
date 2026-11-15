@@ -46,7 +46,8 @@ export const FALLOFF = { perTile: PER_TILE, tiles: 1 / PER_TILE };
 /** the share of its damage a shot still does `d` tiles from where it was fired, with full damage up to `reach` */
 export const falloff = (d: number, reach: number): number => (d <= reach ? 1 : Math.max(0, 1 - FALLOFF.perTile * (d - reach)));
 export const SWATTER = { radius: 1.4, radiusPerLevel: 0.1, halfArcDeg: 40 };
-export const CANDY = { speed: 24, range: 7, pellets: 6, spreadDeg: 40 };
+// (full damage up to `range`, half of it on the last stretch to `range + tail`)
+export const CANDY = { speed: 24, range: 7, tail: 1, tailShare: 0.5, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */
 export const HOTDOG = { range: 8, flightTicks: 24, radius: 1.6, impact: 14, durationTicks: 150, intervalTicks: 15, slowTicks: 20 };
 export const BOOMERANG = { speed: 20, distance: 9.5 };

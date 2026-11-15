@@ -20,8 +20,12 @@ import { witchAloft, witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
 
-/** what a shot still does where it is: a Pixel Blaster bolt past its full reach does less with every tile */
-const shotDamage = (p: Projectile): number => (p.behavior === 'bolt' && p.from && p.range !== undefined ? p.damage * falloff(dist(p.from, p.pos), p.range) : p.damage);
+/** what a shot still does where it is: a Pixel Blaster bolt past its full reach does less with every tile, a sweet of the Candy Cannon half */
+const shotDamage = (p: Projectile): number => {
+  if (p.behavior !== 'bolt' || !p.from || p.range === undefined) return p.damage;
+  const d = dist(p.from, p.pos);
+  return p.damage * (p.tail !== undefined ? (d <= p.range ? 1 : p.tail) : falloff(d, p.range));
+};
 
 /** a fast shot that met a wall on its way this tick stops at the first wall, not deeper in: back to where it came to
  * it (true), or nothing in its way (false) */

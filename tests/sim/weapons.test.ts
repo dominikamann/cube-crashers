@@ -341,6 +341,23 @@ describe('reach', () => {
     expect(at(18.5)).toBe(0);
   });
 
+  it('a sweet of the Candy Cannon does all its damage up to 7 tiles and half on the last tile, to 8', () => {
+    const at = (d: number) => {
+      const s = open();
+      const p = s.players[0];
+      p.weapons = held('candyCannon');
+      const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -d));
+      stepSim(s, [aimAt(e.pos), fire]);
+      run(s, 60);
+      return TANK - e.hp;
+    };
+    // (it counts where the sweet meets the tank's side: a tank 8.4 tiles away is hit at about 7.6)
+    const near = at(5), far = at(8.4);
+    expect(far).toBeGreaterThan(0);
+    expect(far / near).toBeCloseTo(0.5, 5);
+    expect(at(9.5)).toBe(0);
+  });
+
   it('the Pixel Rail hits with full damage as far as the first wall, however far that is', () => {
     const s = open();
     const p = s.players[0];

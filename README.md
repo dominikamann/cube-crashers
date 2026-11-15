@@ -686,7 +686,7 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 |---|---|
 | **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels (two at level 3, three at level 5, together three times the damage of level 1). Full damage up to 10 tiles, then 15 % less with every tile: past about 16 tiles a bolt has burnt out. |
 | **Laser Sword** | Wide swing toward the crosshair: a blade of light that hums in the hand, sweeps a trail through the arc and leaves a burn on the walls it touches. |
-| **Candy Cannon** | A spread of wrapped sweets and lollipops, up to 7 tiles: the shotgun. |
+| **Candy Cannon** | A spread of wrapped sweets and lollipops: the shotgun. Full damage up to 7 tiles, half on the last tile to 8. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
 | **Disco Ball** | A mirror ball flies up and shoots a beam of light at each of the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. It hangs there for a few seconds, turning, its coloured lights sweeping the floor, and its own house track plays while it does. |

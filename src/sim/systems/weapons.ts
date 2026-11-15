@@ -93,7 +93,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       const spread = (CANDY.spreadDeg * Math.PI) / 180;
       for (let i = 0; i < pellets; i++) {
         const dir = rotate(p.aim, -spread / 2 + (spread * i) / (pellets - 1));
-        s.projectiles.push(bolt(s, p, w, { ...p.pos }, dir, CANDY.speed, CANDY.range, def.damage));
+        s.projectiles.push({ ...bolt(s, p, w, { ...p.pos }, dir, CANDY.speed, CANDY.range + CANDY.tail, def.damage), from: { ...p.pos }, range: CANDY.range, tail: CANDY.tailShare });
       }
       return true;
     }
