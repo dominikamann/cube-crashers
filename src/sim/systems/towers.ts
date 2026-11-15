@@ -9,6 +9,8 @@ import { dist, nearestEnemy, targets } from '../util';
 import { damageEnemy, isBossBody, wormShare } from './combat';
 
 export const BUILD_RADIUS = 1.2;
+/** how wide a pad's slab is, in tiles: wider than its tile, so its edges reach into the tiles around it */
+export const PAD_SIZE = 1.7;
 
 /** The pad the position is standing on, or null. */
 export function padAt(s: SimState, pos: Vec2): number | null {

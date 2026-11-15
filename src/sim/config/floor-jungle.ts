@@ -29,6 +29,10 @@ b.put('S', [35, 63]).put('E', [35, 67]);
 
 b.put('N', [11, 16], [56, 18], [16, 28], [54, 30], [12, 50], [58, 41]);
 b.autoNestSurroundings();
+// three pads came to lie beside tall grass or the swamp, and a pad is wider than its tile: the one east of the
+// upper right nest goes two tiles up, the one below the upper left nest a tile east, the one above the lower right
+// nest a tile down off the swamp's bank
+b.put('.', [61, 18], [7, 20], [62, 37]).put('p', [61, 16], [8, 20], [62, 38]);
 
 b.put('V', [32, 58], [4, 60], [65, 60]);
 b.put('*', [25, 3], [45, 3], [26, 44], [44, 42], [5, 31], [64, 37]);
