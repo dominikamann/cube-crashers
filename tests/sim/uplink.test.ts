@@ -29,11 +29,12 @@ const at = (m: FloorMap, p: Vec2) => Math.floor(p.z) * m.w + Math.floor(p.x);
 describe('the Uplink Dish', () => {
   const m = FLOORS.uplink.map;
 
-  it('is a boss floor with the worm as its own boss, and the same final bosses as the roof', () => {
+  it('is a boss floor with Angry Dominik as its own boss; a run ends there with the roof\'s bosses', () => {
     expect(FLOORS.uplink.kind).toBe('boss');
-    expect(FLOORS.uplink.boss).toBe('worm');
+    expect(FLOORS.uplink.boss).toBe('dominik');
     expect(RUN_BOSSES.uplink).toEqual(RUN_BOSSES.rooftop);
-    expect(createSim(m, 16).boss?.kind).toBe('worm');
+    // (a Single floor has the floor's own boss)
+    expect(createSim(m, 16).boss?.kind).toBe('dominik');
   });
 
   it('is the last floor of some runs, and does not move in step with the floor before it', () => {
@@ -78,12 +79,12 @@ describe('the Uplink Dish', () => {
     }
   });
 
-  it('a Single floor there plays: nobody starts in a wall, and the worm is there', () => {
+  it('a Single floor there plays: nobody starts in a wall, and Angry Dominik is there', () => {
     const s = createSim(m, 3, { mode: 'quick', players: 4 });
     for (const p of s.players) expect(isFree(s.map, p.pos, 0.3, BLOCKS_WALKER)).toBe(true);
     for (let i = 0; i < 10 * 60 && s.phase === 'playing'; i++) stepSim(s, []);
     expect(s.phase).toBe('playing');
-    expect(s.boss?.kind).toBe('worm');
-    expect(s.enemies.some(e => e.kind === 'wormSegment')).toBe(true);
+    expect(s.boss?.kind).toBe('dominik');
+    expect(s.enemies.some(e => e.id === s.boss?.enemyId)).toBe(true);
   });
 });

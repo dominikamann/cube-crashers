@@ -37,7 +37,8 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorArena.id]: { map: floorArena, theme: 'arena', kind: 'boss', boss: 'megaBlock', name: 'floor.arena', eliteBonus: 0 },
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorHelipad.id]: { map: floorHelipad, theme: 'helipad', kind: 'boss', boss: 'worm', name: 'floor.helipad', eliteBonus: 0 },
-  [floorUplink.id]: { map: floorUplink, theme: 'uplink', kind: 'boss', boss: 'worm', name: 'floor.uplink', eliteBonus: 0 },
+  // (under the big dish Angry Dominik is at home: his lightning and the beams from his eyes belong to a place like this)
+  [floorUplink.id]: { map: floorUplink, theme: 'uplink', kind: 'boss', boss: 'dominik', name: 'floor.uplink', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
   // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight with
@@ -72,8 +73,8 @@ export function runFloors(seed: number): string[] {
 /**
  * The bosses a boss floor of a Tower Run can have, picked by the seed like the worlds: the Mega Block's arena is
  * also where the Rhino has room to charge, and on the roof, the helipad or under the Uplink Dish the run ends with the
- * Segment Worm, King Rex or the Tarantula Queen; the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
- * of each list is the floor's own boss: the one a Single floor has.
+ * Segment Worm, King Rex or the Tarantula Queen; the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik is no boss of a run: he is the end of the Boss Rush, and the Uplink Dish's own boss on a Single floor.) The first
+ * of each list is the floor's own boss, the one a Single floor has; but for the Uplink Dish, see FLOORS.
  */
 export const RUN_BOSSES: Record<string, BossKind[]> = {
   [floorArena.id]: ['megaBlock', 'rhino', 'witch'],
