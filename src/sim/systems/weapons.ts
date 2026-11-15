@@ -160,6 +160,8 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
         if (isBossBody(s, e)) continue;
         const dx = to.x - e.pos.x, dz = to.z - e.pos.z;
         e.knock = { x: dx * MAGNET.pull, z: dz * MAGNET.pull };
+        // (dazed by the pull: slow for a moment where it lands)
+        e.slowUntil = Math.max(e.slowUntil, s.tick + MAGNET.slowTicks);
       }
       // versus: rivals in the cone are yanked toward you
       for (const r of rivals(s, p.id)) {

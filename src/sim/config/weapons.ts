@@ -22,7 +22,7 @@ export const WEAPONS: Record<WeaponKind, WeaponDef> = {
   flySwatter: { cooldown: 0.8, damage: 55 },
   pixelRail: { cooldown: 1.4, damage: 26 },
   bubbleWand: { cooldown: 1.6, damage: 6 },
-  magnetGlove: { cooldown: 2.2, damage: 5 },
+  magnetGlove: { cooldown: 2.2, damage: 10 },
   yoyoLauncher: { cooldown: 0.9, damage: 9 },
 };
 
@@ -60,6 +60,7 @@ export const BOMB = { range: 7, flightTicks: 42, radius: 3 };
 /** a slow soap bubble: the monster it hits floats stuck in it for a while */
 export const BUBBLE_WAND = { speed: 18, range: 9, stuckTicks: 150 };
 /** pulls the monsters in a cone toward the crosshair (set up a bomb); rivals are yanked toward you */
-export const MAGNET = { range: 6.5, halfArcDeg: 50, pull: 9, rivalPull: 1.6 };
+/** (`slowTicks`: the monsters it pulled in are slowed this long afterwards, dazed: time to throw the bomb) */
+export const MAGNET = { range: 6.5, halfArcDeg: 50, pull: 9, rivalPull: 1.6, slowTicks: 90 };
 /** out and straight back on its string, hitting on both ways */
 export const YOYO = { speed: 16, distance: 4.5 };
