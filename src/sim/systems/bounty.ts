@@ -95,15 +95,22 @@ function quadSpot(s: SimState): Vec2 | undefined {
   return [...spots].sort((a, b) => dist(a, mid) - dist(b, mid))[0];
 }
 
-/** Every versus match: Quad Damage comes back at its spot, as long as none lies there. */
+/**
+ * Every versus match: Quad Damage comes back at its spot, as long as none lies there. Is the spot taken just then
+ * (a power-up, a crate, a parked kart), it comes a second later, once the spot is free, not a whole round later.
+ */
 export function updateQuad(s: SimState): void {
   const v = s.versus;
   if (!v) return;
   v.nextQuadAt ??= s.tick + BOUNTY.quadFirstTicks;
   if (s.tick < v.nextQuadAt) return;
-  v.nextQuadAt = s.tick + BOUNTY.quadEveryTicks;
   const at = quadSpot(s);
-  if (!at || s.powerups.some(p => p.kind === 'quad') || !spotClear(s, at)) return;
+  if (at && !s.powerups.some(p => p.kind === 'quad') && !spotClear(s, at)) {
+    v.nextQuadAt = s.tick + TICK_RATE;
+    return;
+  }
+  v.nextQuadAt = s.tick + BOUNTY.quadEveryTicks;
+  if (!at || s.powerups.some(p => p.kind === 'quad')) return;
   s.powerups.push({ id: s.nextId++, kind: 'quad', pos: { ...at }, expiresAt: s.tick + BOUNTY.quadLifeTicks });
   s.events.push({ type: 'powerupSpawned', kind: 'quad', pos: { ...at } });
 }

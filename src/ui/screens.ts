@@ -1130,7 +1130,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           ? ([0, 1] as const).slice().sort((a, b) => teams[b] - teams[a]).map(team => ({ team, rows: r.ranking.filter(row => row.team === team) }))
           : [{ rows: r.ranking }];
         const top = teams ? Math.max(...teams) : r.ranking[0]?.score ?? 0;
-        const winner = (row: RunSummary['ranking'][number]) => r.ranking.length > 1 && (teams ? teams[row.team ?? 0] === top : row.score === top);
+        // (as the match says it: nobody wins with nothing, and two teams level both lose the star)
+        const someone = r.ranking.length > 1 && top > 0 && !(teams && teams[0] === teams[1]);
+        const winner = (row: RunSummary['ranking'][number]) => someone && (teams ? teams[row.team ?? 0] === top : row.score === top);
         let place = 0;
         for (const g of groups) {
           if (g.team !== undefined) {

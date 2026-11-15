@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { PLAYER_RADIUS } from '../sim/config/balance';
 import { RARE } from '../sim/config/rare';
+import { locked } from '../sim/systems/missile';
 import type { SimState, Vec2 } from '../sim/types';
 import { InstancedPool } from './pool';
 
@@ -76,7 +77,7 @@ export function createLockOn(scene: THREE.Scene): LockOn {
         if (!p || !lock) continue;
         const at: { pos: Vec2; radius?: number } | undefined = lock.rival ? s.players.find(x => x.id === lock.id) : s.enemies.find(e => e.id === lock.id);
         if (!at) continue;
-        const k = Math.min(1, lock.ticks / RARE.missile.lockTicks), has = k >= 1;
+        const k = Math.min(1, lock.ticks / RARE.missile.lockTicks), has = locked(p);
         const size = Math.max(1.5, 2 * (at.radius ?? PLAYER_RADIUS) + 0.7);
         // it turns and closes in while it locks, then stands still and blinks
         const scale = size * (has ? 1 + 0.05 * Math.sin(time * 18) : OPEN - (OPEN - 1) * k);

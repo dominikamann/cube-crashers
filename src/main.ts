@@ -2,7 +2,6 @@ import type { GameInfo, VersusOption } from './net/protocol';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
-import { RARE } from './sim/config/rare';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
 import { createMixer, type Mixer } from './audio/mixer';
@@ -13,6 +12,7 @@ import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
 import { createVersusBot } from './bots/versus';
+import { locked } from './sim/systems/missile';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
 import { normalizePad, padBoard, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
@@ -443,7 +443,8 @@ function startGame() {
   const scoreboard = createScoreboard(app);
   let boardHeld = false;
   /** the Lock-On Launcher on this screen: whether its lock was there last frame, and how many missiles were after this player */
-  let hadLock = false, wasChased = 0;
+  /** the Lock-On Launcher, per view: whether its player had a lock, and how many missiles were after them */
+  const hadLock = [false, false], wasChased = [0, 0];
   /** the same from a controller: its left trigger is held */
   let padBoardHeld = false;
   // the kill cam: a recording of the last seconds of a versus match, and the replay being shown
@@ -692,14 +693,16 @@ function startGame() {
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
         for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
-        // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after this player
-        const mine = s.players.find(p => p.id === localId());
-        const hasLock = mode === 'playing' && !!mine?.lock && mine.lock.ticks >= RARE.missile.lockTicks;
-        if (hasLock && !hadLock) audio.mixer.play('lockOn');
-        hadLock = hasLock;
-        const chased = mode === 'playing' ? s.projectiles.filter(p => p.behavior === 'missile' && p.seek?.rival && p.seek.id === localId()).length : 0;
-        if (chased > wasChased) audio.mixer.play('lockWarn');
-        wasChased = chased;
+        // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after a player on this screen
+        for (const [view, id] of [[0, localId()], [1, 1]] as const) {
+          const mine = view === 0 || split ? s.players.find(p => p.id === id) : undefined;
+          const hasLock = mode === 'playing' && !!mine && locked(mine);
+          if (hasLock && !hadLock[view]) audio.mixer.play('lockOn');
+          hadLock[view] = hasLock;
+          const chased = mode === 'playing' && mine ? s.projectiles.filter(p => p.behavior === 'missile' && p.seek?.rival && p.seek.id === id).length : 0;
+          if (chased > wasChased[view]) audio.mixer.play('lockWarn');
+          wasChased[view] = chased;
+        }
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         for (const e of frameEvents) {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { crowned } from '../sim/systems/bounty';
-import type { SimState } from '../sim/types';
+import { TICK_RATE, type SimState } from '../sim/types';
 import { InstancedPool } from './pool';
 
 /** how high over the floor the crown floats, and the colour of Quad Damage */
@@ -40,7 +40,7 @@ export function createMarks(scene: THREE.Scene): Marks {
         if (p.id === leader) crowns.add(p.pos.x, CROWN_Y + 0.06 * Math.sin(time * 3), p.pos.z, time * 1.5);
         if ((p.quadUntil ?? 0) > s.tick) {
           // (it flickers when it is about to run out)
-          const left = (p.quadUntil! - s.tick) / 60, k = left < 3 && Math.floor(time * 8) % 2 === 0 ? 0.5 : 1;
+          const left = (p.quadUntil! - s.tick) / TICK_RATE, k = left < 3 && Math.floor(time * 8) % 2 === 0 ? 0.5 : 1;
           glows.add(p.pos.x, 0.9, p.pos.z, time * 2, (1.9 + 0.2 * Math.sin(time * 10)) * k, QUAD_COLOR);
           glows.add(p.pos.x, 0.9, p.pos.z, -time * 3, 1.3 * k, 0xff7bff);
         }

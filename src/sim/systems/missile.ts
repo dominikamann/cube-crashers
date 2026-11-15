@@ -80,6 +80,9 @@ export function fireMissile(s: SimState, p: Player): boolean {
 export function stepMissile(s: SimState, p: Projectile): boolean {
   const c = RARE.missile;
   const to = p.seek ? sought(s, p.seek) : undefined;
+  // its target fell (or burst) to something else: it flies on straight and is after nobody any more, also not
+  // after the same player once they are back
+  if (p.seek && !to) delete p.seek;
   if (to) {
     // it turns toward its target, but only so fast: a quick step round a corner shakes it off
     const want = Math.atan2(to.pos.z - p.pos.z, to.pos.x - p.pos.x), now = Math.atan2(p.vel.z, p.vel.x);

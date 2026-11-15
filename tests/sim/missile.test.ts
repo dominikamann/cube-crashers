@@ -82,4 +82,19 @@ describe('the Lock-On Launcher', () => {
     const events = run(s, 120);
     expect(events.some(e => e.type === 'pvpKill' && e.victimId === b.id && e.killerId === a.id)).toBe(true);
   });
+
+  it('whose target falls to someone else gives up on them: it does not chase them again after their respawn', () => {
+    const s = createSim(FLOORS.neon.map, 3, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' } });
+    s.countdown = 0;
+    s.enemies = [];
+    s.crates = [];
+    const [a, b] = s.players;
+    s.projectiles.push({ id: s.nextId++, kind: 'missileLauncher', behavior: 'missile', pos: { ...a.pos }, vel: { x: M.speed, z: 0 }, damage: M.damage, pierce: 0, until: s.tick + M.lifeTicks, hitIds: [], ownerId: a.id, launchedAt: s.tick, seek: { id: b.id, rival: true } });
+    // the target is down for a moment (someone else got them), then back
+    b.downUntil = s.tick + 5;
+    stepSim(s, []);
+    b.downUntil = null;
+    stepSim(s, []);
+    expect(s.projectiles.find(x => x.behavior === 'missile')?.seek).toBeUndefined();
+  });
 });

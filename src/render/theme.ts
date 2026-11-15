@@ -165,9 +165,10 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         night: THEMES.night,
       };
     case 'helipad':
-      // high over the city on a clear day: a deep blue sky, thin haze on the horizon, concrete and painted steel
+      // high over the city on a clear day: a deep blue sky, thin haze on the horizon, concrete and painted steel (the
+      // haze starts far out: the whole pad and the sky above it stay clear)
       return {
-        day: { ...THEMES.day, background: 0xaccbec, skyTop: 0x1d3f8c, roadA: 0xa4a9b2, roadB: 0x9a9fa8, wallA: 0x4c5569, wallB: 0x444c5e, hemiGround: 0x6e7684, fillColor: 0xa8c8ff, fillIntensity: 0.5, sunColor: 0xfff2dc, sunIntensity: 1.6, fogNear: 26, fogFar: 56 },
+        day: { ...THEMES.day, background: 0xaccbec, skyTop: 0x1d3f8c, roadA: 0xa4a9b2, roadB: 0x9a9fa8, wallA: 0x4c5569, wallB: 0x444c5e, hemiGround: 0x6e7684, fillColor: 0xa8c8ff, fillIntensity: 0.5, sunColor: 0xfff2dc, sunIntensity: 1.6, fogNear: 40, fogFar: 95 },
         night: THEMES.night,
       };
     case 'uplink': {
@@ -179,8 +180,9 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         skyTop: 0x1c1f5c,
         fillColor: 0x3bd6ff,
         fillIntensity: 0.55,
-        fogNear: 26,
-        fogFar: 60,
+        // (the dusk haze lies beyond the station, not over its far half)
+        fogNear: 38,
+        fogFar: 90,
         hemiSky: 0xb8c4ff,
         hemiGround: 0x3a3f58,
         hemiIntensity: 1.0,

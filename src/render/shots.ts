@@ -182,6 +182,8 @@ export interface SeenShot {
   /** the game's clock when it was seen */
   tick: number;
   tint: number;
+  /** where a thrown one comes down */
+  target?: Vec2;
 }
 
 /**
@@ -535,7 +537,12 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
   return {
     explode(pos, radius) {
       let what: DamageSource | 'mine' | undefined;
-      for (const shot of seen.values()) if (shot.behavior === 'lob' && Math.hypot(shot.x - pos.x, shot.z - pos.z) < 0.6) what = shot.kind;
+      // (what went up here: a thrown one by where it was to come down, which holds however far it got since it
+      // was last seen; with a frame or a snapshot that spans a few ticks its last spot can be a tile short)
+      for (const shot of seen.values()) {
+        const at = shot.target ?? shot;
+        if (shot.behavior === 'lob' && Math.hypot(at.x - pos.x, at.z - pos.z) < 0.6) what = shot.kind;
+      }
       for (const at of mines.values()) if (Math.hypot(at.x - pos.x, at.z - pos.z) < 0.01) what = 'mine';
       if (what === 'hotdogSlinger') {
         splat(pos, radius);
@@ -711,7 +718,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           bolts.add(p.pos.x, y, p.pos.z, yaw, 1.2 * out, tint, dive);
           if (!low && out >= 1) auras.addScaled(p.pos.x, y, p.pos.z, yaw, 0.4, 0.4, 1, dim(tint, 0.2), dive);
         }
-        now.set(p.id, { kind: p.kind, behavior: p.behavior, x: p.pos.x, z: p.pos.z, y, vx: p.vel.x, vz: p.vel.z, until: p.until, tick: s.tick, tint });
+        now.set(p.id, { kind: p.kind, behavior: p.behavior, x: p.pos.x, z: p.pos.z, y, vx: p.vel.x, vz: p.vel.z, until: p.until, tick: s.tick, tint, target: p.target });
       }
       if (!cut) for (const [id, shot] of seen) if (!now.has(id)) end(shot, s);
       seen = now;

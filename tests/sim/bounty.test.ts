@@ -103,4 +103,29 @@ describe('Quad Damage', () => {
     s.tick += BOUNTY.quadTicks + 1;
     expect(quadOf(s, a.id)).toBe(1);
   });
+
+  it('is gone when its holder falls: they do not come back with the rest of it', () => {
+    for (const rule of ['score', 'rounds'] as const) {
+      const s = createSim(FLOORS.neon.map, 3, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule } });
+      const [a, b] = s.players;
+      a.quadUntil = s.tick + BOUNTY.quadTicks;
+      versusDeath(s, a, b.id);
+      expect(quadOf(s, a.id), rule).toBe(1);
+    }
+  });
+
+  it('a spot that is taken just then only puts it off for a moment, not for a whole round', () => {
+    const s = match(2);
+    s.crates = [];
+    for (let i = 0; i < BOUNTY.quadFirstTicks - 1; i++) stepSim(s, []);
+    // something else lies right on the spot when it is due
+    const mid = { x: s.map.w / 2, z: s.map.h / 2 };
+    const spot = [...s.map.powerSpots].sort((p, q) => Math.hypot(p.x - mid.x, p.z - mid.z) - Math.hypot(q.x - mid.x, q.z - mid.z))[0];
+    s.powerups = [{ id: s.nextId++, kind: 'heart', pos: { ...spot }, expiresAt: s.tick + 3 * 60 } as (typeof s.powerups)[number]];
+    for (let i = 0; i < 10; i++) stepSim(s, []);
+    expect(s.powerups.some(p => p.kind === 'quad')).toBe(false);
+    s.powerups = [];
+    for (let i = 0; i < 2 * 60; i++) stepSim(s, []);
+    expect(s.powerups.some(p => p.kind === 'quad')).toBe(true);
+  });
 });

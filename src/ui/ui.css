@@ -325,9 +325,15 @@ body.split .build .card { width: 96px; }
 /* a phone: tighter, with the same look */
 @media (max-width: 560px) {
   .ranking { min-width: 0; }
-  .ranking th, .ranking td { padding: 9px 10px; font-size: 10px; }
+  .ranking-wrap { max-width: calc(100vw - 20px); }
+  .ranking th, .ranking td { padding: 9px 5px; font-size: 10px; }
   .ranking th { font-size: 8px; letter-spacing: 0; }
   .ranking tr.win td.rank { font-size: 12px; }
+  /* a long name is cut short (the rest after "…"), so a versus table fits without scrolling */
+  .ranking td.left { max-width: 32vw; overflow: hidden; text-overflow: ellipsis; }
+  .ranking td i { margin-right: 6px; }
+  .ranking td .you { margin-left: 6px; }
+  .screen.result h2 { max-width: calc(100vw - 24px); font-size: clamp(14px, 5.5vw, 28px); white-space: normal; text-align: center; overflow-wrap: anywhere; }
 }
 
 .tip-box { max-width: 560px; margin: clamp(10px, 2vh, 18px) auto 0; padding: 8px 14px; border: 2px dashed rgba(255, 255, 255, 0.35); border-radius: 6px; background: rgba(0, 0, 0, 0.35); font-size: 9px; line-height: 1.7; text-align: center; cursor: pointer; transition: opacity 0.3s; }

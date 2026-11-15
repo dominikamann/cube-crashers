@@ -27,6 +27,8 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 14: the Medic Station, a tower that heals the players near it.
  * 15: the Disco Ball tells whom its beams hit (for its show and its music); little witches on brooms; a boss comes twice for a big team.
  * 16: a dedicated server can run a Single floor (its mode 'quick' in the server list and the lobby).
+ * 17: the Lock-On Launcher and its missiles, Quad Damage, the crown and runs of kills, the list's badge for a fixed
+ *     map, hits that tell where, how hard and by whom (1.5.0).
  */
 export const PROTOCOL_VERSION = 17;
 export const MAX_MESSAGE_BYTES = 256 * 1024;

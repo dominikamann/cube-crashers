@@ -263,6 +263,7 @@ function startRound(s: SimState): void {
     p.perched = false;
     p.climb = null;
     p.descent = 0;
+    p.quadUntil = undefined;
     p.vehicleId = null;
     p.downUntil = null;
     p.reviveUntil = null;
@@ -419,6 +420,8 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   p.perched = false;
   p.climb = null;
   p.descent = 0;
+  // (Quad Damage goes with the fall: nobody comes back with the rest of it)
+  p.quadUntil = undefined;
   if (v.rule === 'rounds') {
     p.downUntil = Number.MAX_SAFE_INTEGER;
     return;
