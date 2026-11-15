@@ -11,6 +11,7 @@ import { damageEnemy, explode, isBossBody, solidEdge } from './combat';
 import { aloft, held } from './rare';
 import { hpScale } from './coop';
 import { damagePlayer } from './player';
+import { witchAloft } from './witch';
 
 export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hordeId?: number; elite?: boolean } = {}): Enemy {
   const def = ENEMIES[kind];
@@ -334,8 +335,8 @@ function contactDamage(s: SimState, players: Player[]): void {
     if (aloft(s, p) || p.vehicleId !== null || p.perched) continue;
     let strongest = 0, total = 0;
     for (const e of s.enemies) {
-      // (the helicopter touches nobody: its wash keeps them off)
-      if (e.hp <= 0 || e.fly || e.state === 'stunned' || held(s, e)) continue;
+      // (the helicopter touches nobody: its wash keeps them off; nor does the witch up on her broom)
+      if (e.hp <= 0 || e.fly || e.state === 'stunned' || held(s, e) || witchAloft(s, e)) continue;
       // a solid boss bites whoever stands at its edge (players cannot get closer than that)
       if (dist(p.pos, e.pos) >= Math.max(e.radius + PLAYER_RADIUS, isBossBody(s, e) ? solidEdge(s, e) + 0.15 : 0)) continue;
       const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);

@@ -1,5 +1,6 @@
 import type { Player, Projectile, SimState, Vec2 } from '../types';
 import { rivals } from './versus';
+import { witchAloft } from './witch';
 
 /**
  * Shots have a height. A shot starts as high as whoever fired it (on the floor, on a jetpack, on top of a wall)
@@ -106,13 +107,14 @@ export function aimShot(s: SimState, p: Projectile): void {
   }
   // first person: the way along the view (not for a pizza cutter, which rolls along the floor)
   const looked = o?.aimPitch !== undefined && p.behavior !== 'saw' ? lookedWay(lift, o.aimPitch) : null;
-  const low = firstInLine(from, dir, [...s.enemies.filter(e => e.fly !== 'high').map(e => e.pos), ...foes.filter(x => !upInTheAir(x)).map(x => x.pos)]);
+  // (the helicopter flying high is out of everyone's line; the witch on her broom is up in the air as a flyer is)
+  const low = firstInLine(from, dir, [...s.enemies.filter(e => e.fly !== 'high' && !witchAloft(s, e)).map(e => e.pos), ...foes.filter(x => !upInTheAir(x)).map(x => x.pos)]);
   // a shot on its way up that is over the heads of whoever stands in its line is not aimed at them
   const over = looked !== null && looked.slope >= 0 && lift + looked.slope * Math.max(SHOT_HEIGHT.near, low) >= SHOT_HEIGHT.split;
   const aimed = low !== Infinity && !over;
   let reach = aimed ? Math.max(SHOT_HEIGHT.near, low) : SHOT_HEIGHT.reach;
   let end = 0;
-  const high = foes.filter(upInTheAir).map(x => x.pos);
+  const high = [...foes.filter(upInTheAir).map(x => x.pos), ...s.enemies.filter(e => witchAloft(s, e)).map(e => e.pos)];
   const toHigh = high.length ? aimedReach(from, dir, high) : Infinity;
   if (toHigh < Math.min(reach, SHOT_HEIGHT.reach)) {
     reach = toHigh;

@@ -120,6 +120,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   witchPress: { type: 'witchPress', playerId: 0, pos: p },
   witchRelease: { type: 'witchRelease', playerId: 0, broke: true, pos: p },
   witchDance: { type: 'witchDance', pos: p },
+  witchFly: { type: 'witchFly', pos: p, up: true },
   witchDrum: { type: 'witchDrum', pos: p, beat: 3 },
   witchDanceEnd: { type: 'witchDanceEnd', pos: p },
   witchFace: { type: 'witchFace', pos: p },

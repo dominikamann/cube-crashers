@@ -16,7 +16,7 @@ import { stepMissile } from './missile';
 import { quadOf } from './bounty';
 import { aimShot, atHeightOf, shotHeight, SHOT_HEIGHT, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
-import { witchHit } from './witch';
+import { witchAloft, witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
 
@@ -60,12 +60,13 @@ export function dropCoins(s: SimState, pos: Vec2, count: number, value = 1): voi
  * All damage to enemies goes through here. A kill by a player feeds that player's combo;
  * dead enemies are swept by removeDead at the end of the tick.
  */
-export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number): void {
+export function damageEnemy(s: SimState, e: Enemy, amount: number, source: DamageSource, byPlayerId?: number, up = false): void {
   if (e.hp <= 0) return;
   amount *= quadOf(s, byPlayerId);
   // (a shark in mid-leap out of the Town's lake is out of reach: it is over the water and the barrier)
-  // (and so is the helicopter while it flies high)
+  // (and so is the helicopter while it flies high, and the witch on her broom for all but a shot that went `up` to her)
   if (e.leap || e.fly === 'high') return;
+  if (!up && witchAloft(s, e)) return;
   // maze ghosts are only crashed by touching them while powered up
   if (e.kind === 'ghost') return;
   if (isBossBody(s, e)) {
@@ -141,10 +142,10 @@ export function hitMany(s: SimState, hits: Enemy[], base: number, source: Damage
 }
 
 /** A direct hit by a player's weapon: 50 % more when the enemy is within 3 tiles of the shooter (not on a boss: nobody can help standing next to one). */
-export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSource, ownerId: number): void {
+export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSource, ownerId: number, up = false): void {
   const owner = s.players.find(p => p.id === ownerId);
   if (!owner) {
-    damageEnemy(s, e, base, source);
+    damageEnemy(s, e, base, source, undefined, up);
     return;
   }
   const close = !isBossBody(s, e) && dist(owner.pos, e.pos) <= CLOSE_RANGE + e.radius;
@@ -155,7 +156,7 @@ export function hitEnemy(s: SimState, e: Enemy, base: number, source: DamageSour
     const d = Math.hypot(dx, dz);
     if (d > 1e-6 && (dx * e.dir.x + dz * e.dir.z) / d >= Math.cos((SHIELDER.halfArcDeg * Math.PI) / 180)) amount *= SHIELDER.front;
   }
-  damageEnemy(s, e, amount, source, ownerId);
+  damageEnemy(s, e, amount, source, ownerId, up);
 }
 
 /** Damage that lands on several monsters at once; the worm's segments share it (see wormShare). */
@@ -331,7 +332,10 @@ export function updateProjectiles(s: SimState): void {
     for (const e of targets(s)) {
       if (p.hitIds.includes(e.id)) continue;
       if (dist(p.pos, e.pos) > e.radius + HIT_PADDING) continue;
-      hitEnemy(s, e, p.damage, p.kind, p.ownerId);
+      // (the witch on her broom: a shot that went up to her hits her, one along the floor passes under her)
+      const up = witchAloft(s, e);
+      if (up && shotHeight(p) < SHOT_HEIGHT.split) continue;
+      hitEnemy(s, e, p.damage, p.kind, p.ownerId, up);
       p.hitIds.push(e.id);
       // a soap bubble: the monster floats stuck in it (bosses are too big)
       if (p.kind === 'bubbleWand' && e.hp > 0 && !isBossBody(s, e)) {

@@ -28,6 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy, solidEdge, wormShare } from './combat';
 import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
+import { witchAloft } from './witch';
 import { quadOf } from './bounty';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
@@ -133,7 +134,8 @@ function stomp(s: SimState, p: Player): void {
 function pushOutOfBosses(s: SimState, p: Player): void {
   for (const e of s.enemies) {
     // the big boss bodies (Mega Block, the Kraken, King Rex) are solid
-    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id)) || e.hp <= 0 || e.fly === 'high') continue;
+    // (not the helicopter flying high, nor the witch up on her broom: they are over everyone's heads)
+    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id)) || e.hp <= 0 || e.fly === 'high' || witchAloft(s, e)) continue;
     const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz);
     const edge = solidEdge(s, e);

@@ -85,6 +85,7 @@ export type SoundId =
   | 'witchGiggle'
   | 'witchShriek'
   | 'witchLaugh'
+  | 'broomWhoosh'
   | 'siren'
   | 'sharkLeap'
   | 'maskTurn'
@@ -502,6 +503,13 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'square', freq: 452, freqEnd: 190, attack: 0.02, sustain: 0.3, decay: 0.4, volume: 0.035, vibrato: { rate: 27, depth: 60 }, lowpass: 2000, at: 1.14 },
     { wave: 'noise', freq: 1800, attack: 0.05, sustain: 1.5, decay: 0.4, volume: 0.035, lowpass: 2600 },
   ],
+  // the witch shoots up on her broom: a rush of air that swells and sweeps up past, the twigs rattling in it
+  broomWhoosh: [
+    { wave: 'noise', freq: 600, attack: 0.16, sustain: 0.12, decay: 0.38, volume: 0.26, lowpass: 450, lowpassEnd: 3200, resonance: 3 },
+    { wave: 'noise', freq: 2400, attack: 0.1, sustain: 0.1, decay: 0.28, volume: 0.07, lowpass: 1800, lowpassEnd: 5600 },
+    ...[0.07, 0.12, 0.19, 0.25, 0.33, 0.4].map((at, i): SynthParams => ({ wave: 'noise', freq: 3000, attack: 0.001, sustain: 0.005, decay: 0.03, volume: 0.035 + (i % 2) * 0.02, lowpass: 4400 - i * 300, at })),
+    { wave: 'sine', freq: 70, freqEnd: 170, attack: 0.14, sustain: 0.1, decay: 0.3, volume: 0.12 },
+  ],
   // a little witch sees someone and comes for them: a shriek that shoots up, shrill and ragged, and breaks off
   witchShriek: [
     { wave: 'square', freq: 980, freqEnd: 2500, attack: 0.02, sustain: 0.3, decay: 0.16, volume: 0.07, vibrato: { rate: 27, depth: 170 }, lowpass: 4200 },
@@ -857,6 +865,9 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('dash', e.broke ? 1.2 : 0.9);
     case 'witchDance':
       return [{ id: 'witchDrum', pitch: 1 }, { id: 'roar_witch', pitch: 1.15 }];
+    case 'witchFly':
+      // (off she goes with her cackle; she comes down by her fire with a softer rush)
+      return e.up ? [{ id: 'broomWhoosh', pitch: 1 }, { id: 'roar_witch', pitch: 1.05 }] : one('broomWhoosh', 0.75);
     case 'witchDrum':
       // (every third beat a deeper one)
       return one('witchDrum', e.beat % 3 === 0 ? 0.8 : 1 + (e.beat % 2) * 0.12);
