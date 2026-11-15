@@ -9,7 +9,8 @@
 ![Split screen](https://img.shields.io/badge/split%20screen-2%20players-ffcf3a)
 ![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
-[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm_Noncommercial-blue)](LICENSE)
+[![Commercial licensing](https://img.shields.io/badge/commercial-licensing_available-success)](https://amannlabs.eu)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 **A fast voxel action game for one to ten players.** Fight your way up a tower, floor by floor. Hordes of
@@ -104,7 +105,13 @@ with up to nine friends on your LAN or online, together against the monsters or 
   </tr>
 </table>
 
-Free and open source (MIT).
+**Free to play. Community-driven. Independently developed.**
+
+Cube Crashers is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+You may study, modify and share the project for permitted non-commercial purposes under that license.
+Commercial use, distribution and other commercial exploitation require separate written permission
+from the copyright holder. For commercial licensing, publishing or platform enquiries, visit
+[AmannLabs](https://amannlabs.eu).
 
 ---
 
@@ -979,5 +986,33 @@ are made up.
 
 ## License
 
-[MIT](LICENSE) © 2026 [Dominik Amann](https://amannlabs.eu), [amannlabs.eu](https://amannlabs.eu). Third-party assets (the pixel font) are listed in
-[LICENSE-ASSETS.md](LICENSE-ASSETS.md).
+Copyright © 2026 [Dominik Amann](https://amannlabs.eu) – [AmannLabs](https://amannlabs.eu).
+
+The current project version is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+### Non-commercial use
+
+You may use, study, modify and distribute the project for purposes permitted by the PolyForm
+Noncommercial License 1.0.0, subject to all of its terms and notices. This includes personal
+study, private entertainment, hobby projects and non-commercial community forks.
+
+### Commercial use and licensing
+
+The PolyForm Noncommercial License does not grant permission for commercial purposes. Commercial
+use, commercial distribution, resale, paid hosting, bundling into a commercial product, or other
+commercial exploitation requires a separate written license from the applicable copyright holder.
+
+Commercial licensing, publishing and distribution enquiries: **[AmannLabs](https://amannlabs.eu)**.
+
+### Third-party materials
+
+Third-party assets and data remain subject to their own license terms and attribution requirements.
+See [LICENSE-ASSETS.md](LICENSE-ASSETS.md).
+
+### Previously published MIT versions
+
+Files and versions of Cube Crashers that were previously made available under the MIT License
+remain available under the MIT License applicable to those copies. This prospective licensing
+change does not revoke or modify rights already granted for those versions. The repository's
+Git history may therefore contain code that was previously published under MIT. See
+[LICENSE-CHANGE.md](LICENSE-CHANGE.md) for the scope of this change.
