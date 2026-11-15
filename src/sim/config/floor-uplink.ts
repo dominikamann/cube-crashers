@@ -14,8 +14,9 @@ const H = 58;
 const b = new GridBuilder(W, H);
 // the pedestal of the dish (one patch of wall heights, so its blocks are level)
 b.fill(30, 31, 28, 29, '#');
-// the feeder lines: live cable trenches out from the pedestal, a jolt of speed along them
-b.fill(30, 31, 22, 27, '>').fill(30, 31, 30, 36, '>').fill(22, 29, 28, 29, '>').fill(32, 39, 28, 29, '>');
+// the feeder lines: live cable trenches out from the pedestal, a jolt of speed along them (a tile of plain floor
+// lies between a line and every block it runs up to: a lit strip that touches a block looks cut off under it)
+b.fill(30, 31, 22, 26, '>').fill(30, 31, 31, 35, '>').fill(23, 28, 28, 29, '>').fill(33, 38, 28, 29, '>');
 // junction cabinets where three of the lines end (the north one runs out onto the apron)
 b.fill(20, 21, 28, 29, '#').fill(40, 41, 28, 29, '#').fill(30, 31, 37, 38, '#');
 // equipment cabinets: cover on the apron and in the south, generators in the corners by the spawn
