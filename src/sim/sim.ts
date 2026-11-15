@@ -31,7 +31,7 @@ import { updateMiniDominik } from './systems/mini-dominik';
 import { updateVehicles } from './systems/vehicles';
 import { updateOutcome } from './systems/outcome';
 import { updatePlayers } from './systems/player';
-import { sampleStats } from './systems/stats';
+import { aimStats, sampleStats } from './systems/stats';
 import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/towers';
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
@@ -317,5 +317,6 @@ export function stepSim(s: SimState, commands: Command[]): void {
   updateOutcome(s);
   updateVersus(s);
   sampleStats(s);
+  aimStats(s);
   s.tick++;
 }

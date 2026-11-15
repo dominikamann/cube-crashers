@@ -36,6 +36,10 @@ export interface RunLog {
   samples: { t: number; distance: number; idleSeconds: number; kills: number; alarm: number }[];
   /** how smoothly it ran on this machine: frames per second, the share of frames over 33 ms and the longest one */
   frames?: FrameStats;
+  /** the player's aim: shots by weapon, hits on monsters and on rivals, and the share of shots that hit */
+  aim?: { shots: Record<string, number>; hits: number; rivalHits: number; hitShare: number };
+  /** versus: the player's points, the rivals they took down and how often they fell */
+  versus?: { points: number; kills: number; falls: number };
 }
 
 export interface FrameStats {
@@ -105,7 +109,15 @@ export function buildRunLog(s: SimState, note?: RunLog['note'], fallen?: string)
     distance: s.stats.distance,
     idleShare: s.tick > 0 ? s.stats.idleTicks / s.tick : 0,
     samples,
+    ...(s.stats.aim ? { aim: aimOf(s.stats.aim) } : {}),
+    ...(s.versus ? { versus: { points: s.versus.scores[p.id] ?? 0, kills: p.stats.kills, falls: p.stats.downs } } : {}),
   };
+}
+
+/** (a hit counts once for each target it reaches: a shot through two monsters counts twice) */
+function aimOf(a: NonNullable<SimState['stats']['aim']>): NonNullable<RunLog['aim']> {
+  const shots = Object.values(a.shots).reduce((n, k) => n + k, 0);
+  return { shots: { ...a.shots }, hits: a.hits, rivalHits: a.rivalHits, hitShare: shots ? Math.round(((a.hits + a.rivalHits) / shots) * 100) / 100 : 0 };
 }
 
 const STORAGE_KEY = 'cube-crashers.runs';

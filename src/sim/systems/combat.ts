@@ -20,6 +20,15 @@ import { witchAloft, witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
 
+/** how near a shot came to `at` on its way this tick: the whole stretch it flew counts, so a fast shot cannot
+ * jump over someone between two ticks */
+function nearestOnFlight(p: Projectile, at: Vec2): number {
+  const ax = p.pos.x - p.vel.x * DT, az = p.pos.z - p.vel.z * DT;
+  const dx = p.pos.x - ax, dz = p.pos.z - az, len2 = dx * dx + dz * dz;
+  const k = len2 > 0 ? Math.max(0, Math.min(1, ((at.x - ax) * dx + (at.z - az) * dz) / len2)) : 1;
+  return Math.hypot(at.x - (ax + dx * k), at.z - (az + dz * k));
+}
+
 /** a boss's own body: too big to be pulled, bubbled or bumped, and tough against stomps and karts */
 export function isBossBody(s: SimState, e: Enemy): boolean {
   return e.kind === 'megaBlock' || e.kind === 'wormSegment' || e.kind === 'kraken' || allBosses(s).some(b => b.enemyId === e.id);
@@ -322,7 +331,7 @@ export function updateProjectiles(s: SimState): void {
     }
 
     if (p.hostile) {
-      const victim = s.players.find(pl => pl.downUntil === null && !airborne(pl) && dist(pl.pos, p.pos) <= PLAYER_RADIUS + HIT_PADDING);
+      const victim = s.players.find(pl => pl.downUntil === null && !airborne(pl) && nearestOnFlight(p, pl.pos) <= PLAYER_RADIUS + HIT_PADDING);
       if (victim) damagePlayer(s, victim, p.damage, 'shot');
       else keep.push(p);
       continue;
@@ -331,7 +340,7 @@ export function updateProjectiles(s: SimState): void {
     let alive = true;
     for (const e of targets(s)) {
       if (p.hitIds.includes(e.id)) continue;
-      if (dist(p.pos, e.pos) > e.radius + HIT_PADDING) continue;
+      if (nearestOnFlight(p, e.pos) > e.radius + HIT_PADDING) continue;
       // (the witch on her broom: a shot that went up to her hits her, one along the floor passes under her)
       const up = witchAloft(s, e);
       if (up && shotHeight(p) < SHOT_HEIGHT.split) continue;
@@ -357,7 +366,7 @@ export function updateProjectiles(s: SimState): void {
         const mark = -1 - r.id;
         const over = !upInTheAir(r) && jumpLift(s, r) > SHOT_HEIGHT.floor + shotHeight(p);
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || nearestOnFlight(p, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
         damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {

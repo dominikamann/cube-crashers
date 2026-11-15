@@ -19,6 +19,7 @@ roughly 12 KB/s of upload per player when it runs with `--compress`.
 
   ```bash
   docker run -d --name cube-crashers -p 47800:47800 --restart unless-stopped \
+    --log-opt max-size=5m --log-opt max-file=2 \
     ghcr.io/dominikamann/cube-crashers-server --name "My Server" --mode discovery --compress
   ```
 
@@ -126,7 +127,7 @@ grep -v '^ *#' /etc/cube-crashers.conf | while read -r name port options; do
   [ -n "$name" ] || continue
   [ "$(docker inspect -f '{{.Image}}' cc-$name 2>/dev/null)" = "$(docker image inspect -f '{{.Id}}' $IMAGE)" ] && continue
   docker rm -f cc-$name >/dev/null 2>&1
-  eval "docker run -d --name cc-$name --restart unless-stopped -p $port:$port $IMAGE --port $port $options"
+  eval "docker run -d --name cc-$name --restart unless-stopped --log-opt max-size=5m --log-opt max-file=2 -p $port:$port $IMAGE --port $port $options"
 done
 UP
 chmod +x /usr/local/bin/cube-crashers-up

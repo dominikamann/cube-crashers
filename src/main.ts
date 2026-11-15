@@ -1422,6 +1422,8 @@ function startGame() {
       solo.versus.scores[solo.players[0].id] = 5;
       solo.players[0].quadUntil = Number.MAX_SAFE_INTEGER;
     }
+    // dev: &all=1 hands the player every weapon of the game, at level 3
+    if (import.meta.env.DEV && params.has('all')) solo.players[0].weapons = ALL_WEAPONS.map(kind => ({ kind, level: 3, cooldown: 0 }));
     // dev: &view=top keeps the camera above the arena (for recordings)
     if (params.get('view') === 'top') keyboard.setFirstPerson(false, { x: 0, z: -1 });
   } else if (params.has('demo')) newSoloGame(params.get('mode') === 'run' ? 'run' : params.get('mode') === 'brawl' ? 'brawl' : 'quick');

@@ -72,12 +72,16 @@ function fromGame(event) {
 }
 
 // run logs stay on this machine, in the app's user data folder
+const RUN_LOGS_KEPT = 100;
 ipcMain.handle('save-run-log', (event, json) => {
   if (!fromGame(event) || typeof json !== 'string' || json.length > 1_000_000) return;
   JSON.parse(json);
   const dir = path.join(app.getPath('userData'), 'runs');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `run-${new Date().toISOString().replace(/[:.]/g, '-')}.json`), json);
+  // only the newest ones are kept: the folder never grows past a few hundred kilobytes
+  const runs = fs.readdirSync(dir).filter(f => /^run-.*\.json$/.test(f)).sort();
+  for (const old of runs.slice(0, Math.max(0, runs.length - RUN_LOGS_KEPT))) fs.rmSync(path.join(dir, old), { force: true });
 });
 
 // ---------- LAN ----------

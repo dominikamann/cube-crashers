@@ -33,7 +33,8 @@ export function levelMul(level: number): number {
 }
 
 /** `power`: what all its bolts together deal at each level, as a multiple of level 1 (it grows by bolts, not by +20 %) */
-export const BLASTER = { speed: 20, range: 10, power: [1, 1.3, 1.8, 2.3, 3] };
+// (35 tiles a second: in first person a shot lands where one looks; at 20 a rival running across was missed from 3 tiles on)
+export const BLASTER = { speed: 35, range: 10, power: [1, 1.3, 1.8, 2.3, 3] };
 export const SWORD = { radius: 2.2, radiusPerLevel: 0.2, halfArcDeg: 70 };
 /** the fly swatter: a huge slap, but only right in front of you (the knife of this game) */
 /** the pixel rail: an instant beam through everything in a line, stopped only by walls */

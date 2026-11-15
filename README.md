@@ -462,6 +462,7 @@ version.
 
 ```bash
 docker run -d --name cube-crashers -p 47800:47800 --restart unless-stopped \
+  --log-opt max-size=5m --log-opt max-file=2 \
   ghcr.io/dominikamann/cube-crashers-server --name "My Server" --mode gungame
 ```
 

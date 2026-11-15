@@ -45,3 +45,15 @@ export function bestWeapon(stats: PlayerStats): string | null {
   for (const [k, n] of Object.entries(stats.killsBy)) if (best === null || n > stats.killsBy[best]) best = k;
   return best;
 }
+
+/** Counts the first player's shots and hits of this tick, for the run log: how much of what one fires lands. */
+export function aimStats(s: SimState): void {
+  const me = s.players[0]?.id;
+  if (me === undefined) return;
+  const aim = (s.stats.aim ??= { shots: {}, hits: 0, rivalHits: 0 });
+  for (const e of s.events) {
+    if (e.type === 'shot' && e.playerId === me) aim.shots[e.weapon] = (aim.shots[e.weapon] ?? 0) + 1;
+    else if (e.type === 'enemyHit' && e.by === me) aim.hits++;
+    else if (e.type === 'playerHit' && e.by === me && e.playerId !== me) aim.rivalHits++;
+  }
+}

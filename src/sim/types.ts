@@ -661,6 +661,8 @@ export interface RunStats {
   distance: number;
   idleTicks: number;
   samples: RunSample[];
+  /** the first player's aim: shots fired by weapon, and how many hits on monsters and on rivals they made (see aimStats) */
+  aim?: { shots: Record<string, number>; hits: number; rivalHits: number };
 }
 
 export type SimEvent =
