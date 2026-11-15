@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { DISCO } from '../sim/config/weapons';
 import type { SimEvent, SimState, Vec2 } from '../sim/types';
 import { ENEMY_LOOK } from './entities';
+import { jumpLift } from '../sim/systems/versus';
 import { InstancedPool } from './pool';
 
 /** the colours of its light */
@@ -161,8 +162,9 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
           const k = 1 - Math.exp(-dt * 9);
           b.x += (owner.pos.x + owner.aim.x * AHEAD - b.x) * k;
           b.z += (owner.pos.z + owner.aim.z * AHEAD - b.z) * k;
-          // (up on a jetpack it goes up with them, and shoots its beams down from there)
-          b.lift += ((airUp(owner) ? FLY_LIFT : 0) - b.lift) * (1 - Math.exp(-dt * 5));
+          // (up on a jetpack it goes up with them, and shoots its beams and its light down from there)
+          // (and a jump lifts it too: it rises and falls with them, a little behind)
+          b.lift += ((airUp(owner) ? FLY_LIFT : jumpLift(s, owner)) - b.lift) * (1 - Math.exp(-dt * 8));
         }
         const rise = Math.min(1, b.age / RISE);
         const y = b.lift + 1.1 + (HEIGHT - 1.1) * (1 - (1 - rise) ** 2) + 0.07 * Math.sin(b.age * 4);
