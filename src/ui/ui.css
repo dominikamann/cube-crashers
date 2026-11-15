@@ -162,6 +162,9 @@ body.split .build-help { bottom: 86px; font-size: 8px; }
 .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
 .btn.alt { background: var(--gold); }
 .screen.title { justify-content: safe center; gap: clamp(14px, 3vh, 28px); padding: 16px 16px 72px; overflow-y: auto; }
+/* the credits: closer together than the title, and no room kept for the title's menu bar at the bottom */
+.screen.title.credits { gap: clamp(6px, 1.4vh, 14px); padding-bottom: 16px; }
+.screen.title.credits .logo { margin-bottom: clamp(4px, 1vh, 12px); }
 .screen.title .logo { margin-bottom: clamp(16px, 5vh, 48px); }
 .title-main { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .title-main .chips { margin-top: clamp(18px, 3.5vh, 30px); }

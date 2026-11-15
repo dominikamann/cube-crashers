@@ -523,7 +523,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   }
 
   function creditsScreen() {
-    show('title', s => {
+    show('title credits', s => {
       text(s, 'div', 'logo', t('title'));
       text(s, 'p', 'credits-by', t('credits.by'));
       text(s, 'h2', '', t('credits.author'));
