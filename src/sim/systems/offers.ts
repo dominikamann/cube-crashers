@@ -4,7 +4,7 @@ import { ALL_PERKS, PERK_MAX } from '../config/perks';
 import { ALL_RARE, RARE } from '../config/rare';
 import { ALL_WEAPONS, MAX_WEAPON_LEVEL, MAX_WEAPONS } from '../config/weapons';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
-import type { Card, Crate, Player, SimState, Vec2, WeaponKind } from '../types';
+import type { Card, Crate, Player, RareKind, SimState, Vec2, WeaponKind } from '../types';
 import { dist } from '../util';
 
 export const CRATE_PICKUP_RADIUS = 0.8;
@@ -20,6 +20,12 @@ export const START_CRATES = 3;
 export const NEST_CRATE_EVERY = 2;
 
 /** Adds the weapon or raises its level. Returns the level it has afterwards. */
+/** which rare weapon a golden card is, from one roll: each of ALL_RARE as often, the Lock-On Launcher now and then */
+export function goldenCard(roll: number): RareKind {
+  const k = roll * (ALL_RARE.length + RARE.missileCard);
+  return k < ALL_RARE.length ? ALL_RARE[Math.floor(k)] : 'missileLauncher';
+}
+
 export function grantWeapon(p: Player, kind: WeaponKind): number {
   const held = p.weapons.find(w => w.kind === kind);
   if (held) {
@@ -71,7 +77,7 @@ function openCrate(s: SimState, crate: Crate, p: Player): void {
   const cards: Card[] = [];
   while (cards.length < 3 && pool.length > 0) cards.push(...pool.splice(Math.floor(s.rng.next() * pool.length), 1));
   if (crate.prize) cards.unshift({ type: 'rare', rare: crate.prize });
-  else if (s.rng.next() < RARE.cardChance) cards[0] = { type: 'rare', rare: s.rng.pick(ALL_RARE) };
+  else if (s.rng.next() < RARE.cardChance) cards[0] = { type: 'rare', rare: goldenCard(s.rng.next()) };
   s.offers.push({
     id: s.nextId++,
     pos: { ...crate.pos },

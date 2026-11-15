@@ -7,7 +7,7 @@ import { normalizeAddress, playerCount, type ServerRow } from '../net/server-lis
 import { cssColor, playerColor } from '../render/palette';
 import { GRAPHICS_QUALITIES, type GraphicsQuality } from '../render/renderer';
 import { DIFFICULTIES } from '../sim/config/difficulty';
-import { ALL_RARE } from '../sim/config/rare';
+import { EVERY_RARE } from '../sim/config/rare';
 import { FLOORS } from '../sim/config/floors';
 import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, versusMapFor, withoutTown } from '../maps';
 import { TOWERS } from '../sim/config/towers';
@@ -390,7 +390,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   const sourceName = (k: string | null) => {
     if (!k) return '–';
     if (k in WEAPONS) return t(`weapon.${k}` as 'weapon.pixelBlaster');
-    if ((ALL_RARE as readonly string[]).includes(k)) return t(`rare.${k}` as 'rare.slushMachine');
+    if ((EVERY_RARE as readonly string[]).includes(k)) return t(`rare.${k}` as 'rare.slushMachine');
     if (k in TOWERS) return t(`tower.${k}` as 'tower.laser');
     return t(`source.${k}` as 'source.stomp');
   };

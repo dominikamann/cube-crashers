@@ -697,7 +697,7 @@ help standing next to).
 | **Leaf Blower 3000** | Blows hordes away and slams them into walls. Blows coins toward you. |
 | **Pizza Cutter** | A spinning saw that bounces off walls and cuts through everything. |
 | **Thunder Hammer** | Only from Angry Dominik's crate: a smash in front of you, and lightning that jumps on to the nearest monsters. |
-| **Lock-On Launcher** | On no golden card: now and then a crate hides it (in a versus match, from a fallen elite, from a wild boss). Keep a target near the crosshair until the box round it turns red, then fire: the missile follows that target and blows up on it. Without a lock it does not fire. A rival it reaches is out; a quick step round a corner shakes it off. |
+| **Lock-On Launcher** | Rare even among the rare: now and then a golden card, now and then a crate that hides it (in a versus match, from a fallen elite, from a wild boss, and often from the Gunship Vulture). Keep a target near the crosshair until the box round it turns red, then fire: the missile follows that target and blows up on it. Without a lock it does not fire. A rival it reaches is out; a quick step round a corner shakes it off. |
 
 ### Ladders
 
