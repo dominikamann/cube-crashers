@@ -19,6 +19,9 @@ const CUT_TICKS = 30;
 /** how far in front of whoever threw it the ball hangs, and how high */
 const AHEAD = 2.8, HEIGHT = 2.1;
 const RADIUS = 0.4;
+/** how much higher it hangs while its thrower is up on a jetpack (as their shots leave from up there) */
+const FLY_LIFT = 2.5;
+const airUp = (p: { flying: boolean; descent?: number }) => p.flying || (p.descent ?? 0) > 0;
 
 /** Which part of the line from the ball (0) to the target (1) a beam of this age covers; null before it leaves and once it is gone. */
 export function zapSpan(age: number): { from: number; to: number } | null {
@@ -47,6 +50,8 @@ interface Ball {
   /** seconds until it bursts */
   left: number;
   glitter: number;
+  /** how far up it rides with whoever threw it (a jetpack takes it along) */
+  lift: number;
   zaps: Zap[];
 }
 
@@ -129,7 +134,7 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
         // one ball for each player: thrown again while it is still up, it stays and lets new beams go
         let ball = list.find(b => b.ownerId === e.playerId);
         if (!ball) {
-          ball = { ownerId: e.playerId, x: front.x, z: front.z, age: 0, left: 0, glitter: 0, zaps: [] };
+          ball = { ownerId: e.playerId, x: front.x, z: front.z, age: 0, left: 0, glitter: 0, lift: who && airUp(who) ? FLY_LIFT : 0, zaps: [] };
           list.push(ball);
         }
         // (thrown anew: it hangs on for the whole show again; a later burst of the same ball changes nothing)
@@ -156,9 +161,11 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
           const k = 1 - Math.exp(-dt * 9);
           b.x += (owner.pos.x + owner.aim.x * AHEAD - b.x) * k;
           b.z += (owner.pos.z + owner.aim.z * AHEAD - b.z) * k;
+          // (up on a jetpack it goes up with them, and shoots its beams down from there)
+          b.lift += ((airUp(owner) ? FLY_LIFT : 0) - b.lift) * (1 - Math.exp(-dt * 5));
         }
         const rise = Math.min(1, b.age / RISE);
-        const y = 1.1 + (HEIGHT - 1.1) * (1 - (1 - rise) ** 2) + 0.07 * Math.sin(b.age * 4);
+        const y = b.lift + 1.1 + (HEIGHT - 1.1) * (1 - (1 - rise) ** 2) + 0.07 * Math.sin(b.age * 4);
         if (b.left <= 0) {
           // it bursts into glitter
           fx.burst({ x: b.x, z: b.z }, y, 22, [...DISCO_COLORS, 0xffffff], 4.5, 0.1, 0.6);
@@ -228,7 +235,8 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
           if (at) {
             zap.x = at.pos.x;
             zap.z = at.pos.z;
-            zap.y = rival ? (rival.flying ? 3.3 : 0.9) : ENEMY_LOOK[enemy!.kind].h * 0.55;
+            // (into the middle of the body, a big boss's too: its size goes by how wide it stands, not by its kind's look)
+            zap.y = rival ? (airUp(rival) ? 3.3 : 0.9) : Math.max(ENEMY_LOOK[enemy!.kind].h * 0.55, enemy!.radius * 1.3);
           }
           const tint = DISCO_COLORS[(zap.tint + beat) % DISCO_COLORS.length];
           if (!zap.landed && span.to >= 1) {
