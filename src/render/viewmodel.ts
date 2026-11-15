@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RareKind, SimState, WeaponKind } from '../sim/types';
 import { playerColor } from './palette';
+import { bladeStep, showBlade, swordBlade } from './blade';
 import { box, glowMat, lambert } from './pool';
 
 /**
@@ -34,12 +35,12 @@ export function weaponModel(kind: HeldKind): THREE.Group {
   const grip = (y = -0.12, z = 0.02) => box(0.06, 0.13, 0.08, dark, 0, y, z);
   switch (kind) {
     case 'laserSword':
-      // a hilt with rings and a guard, and a blade of light with a bright edge
+      // a hilt with rings, a button and a guard, and the blade of light out of its mouth (see blade.ts)
       g.add(box(0.07, 0.07, 0.22, dark, 0, 0, 0.05), box(0.05, 0.05, 0.04, metal, 0, 0, 0.18));
       for (const z of [0.0, 0.06, 0.12]) g.add(box(0.078, 0.078, 0.02, metal, 0, 0, z));
+      g.add(box(0.025, 0.02, 0.03, glowMat(0xff3b6b, 1.6), 0, 0.042, 0.09));
       g.add(box(0.13, 0.035, 0.035, metal, 0, 0, -0.07), box(0.035, 0.035, 0.035, glowMat(0xff8cf0, 2), 0, 0, -0.075));
-      g.add(box(0.05, 0.022, 0.74, glowMat(0xff2bd6, 2.2), 0, 0, -0.45), box(0.022, 0.05, 0.74, glowMat(0xff2bd6, 2.2), 0, 0, -0.45));
-      g.add(box(0.014, 0.052, 0.76, glowMat(0xffc8f6, 2.6), 0, 0, -0.45));
+      g.add(swordBlade().translateZ(-0.09));
       g.rotation.x = 0.55;
       break;
     case 'flySwatter':
@@ -228,7 +229,7 @@ export function createViewModel(): ViewModel {
   let shown: THREE.Group | null = null;
   let lastKind: Look | null = null;
   // per player: in split screen both views draw a hand, each with its own kick and bob
-  const states = new Map<number, { kick: number; lastCooldown: number; kind: Look | null; lastPos: { x: number; z: number }; walk: number }>();
+  const states = new Map<number, { kick: number; lastCooldown: number; kind: Look | null; lastPos: { x: number; z: number }; walk: number; blade: number; seen: number }>();
 
   return {
     update(s, playerId, time, frameDt) {
@@ -239,14 +240,20 @@ export function createViewModel(): ViewModel {
       const rare = p.rare && p.rareSelected ? p.rare.kind : null;
       const kind: Look = rare ?? w?.kind ?? 'pixelBlaster';
       let st = states.get(p.id);
-      if (!st) states.set(p.id, (st = { kick: 0, lastCooldown: 0, kind: null, lastPos: { ...p.pos }, walk: 0 }));
-      if (kind !== lastKind) {
+      if (!st) states.set(p.id, (st = { kick: 0, lastCooldown: 0, kind: null, lastPos: { ...p.pos }, walk: 0, blade: 0, seen: time }));
+      // the sword's blade runs out of the hilt when it is taken, and back in before another weapon is shown; a hand
+      // that was not shown for a while (its player was down) lights it anew
+      if (time - st.seen > 0.25) st.blade = 0;
+      st.seen = time;
+      st.blade = bladeStep(st.blade, kind === 'laserSword', frameDt);
+      const look: Look = kind !== 'laserSword' && st.blade > 0 ? 'laserSword' : kind;
+      if (look !== lastKind) {
         if (shown) hand.remove(shown);
-        let m = models.get(kind);
-        if (!m) models.set(kind, (m = weaponModel(kind)));
+        let m = models.get(look);
+        if (!m) models.set(look, (m = weaponModel(look)));
         hand.add(m);
         shown = m;
-        lastKind = kind;
+        lastKind = look;
       }
       if (st.kind !== kind) {
         st.kind = kind;
@@ -265,7 +272,9 @@ export function createViewModel(): ViewModel {
       const bob = Math.sin(time * 11) * 0.018 * walk;
       hand.position.set(0.34 + Math.cos(time * 5.5) * 0.01 * walk, -0.31 + bob - kick * 0.03, -0.66 + kick * 0.09);
       hand.rotation.set(kick * 0.25, -0.12, 0);
-      if (kind === 'laserSword') {
+      if (look === 'laserSword') {
+        const blade = (shown!.userData.blade ??= shown!.getObjectByName('blade')) as THREE.Object3D;
+        showBlade(blade, st.blade, time, p.id, w?.level ?? 1);
         // a slash from the right across to the left
         const t = 1 - kick;
         hand.rotation.set(-0.2 * Math.sin(Math.PI * t), 0.9 - t * 1.8 * (kick > 0 ? 1 : 0), -0.6 * Math.sin(Math.PI * t) * (kick > 0 ? 1 : 0));

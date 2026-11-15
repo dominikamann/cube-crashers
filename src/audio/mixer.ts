@@ -35,6 +35,8 @@ export interface Mixer {
   /** every effect still ringing falls silent (the game was left): new ones play as before */
   cutEffects(): void;
   readonly musicBus: GainNode;
+  /** where sounds that run on (the hum of a sword) go: with the effects' volume, but not cut with them */
+  readonly loopBus: GainNode;
   readonly limiter: VoiceLimiter;
 }
 
@@ -67,8 +69,11 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
   const clip = ctx.createWaveShaper();
   clip.curve = softClipCurve();
 
+  const loopBus = ctx.createGain();
+  loopBus.gain.value = 0.8;
   sfxBus.connect(comp);
   musicBus.connect(comp);
+  loopBus.connect(comp);
   comp.connect(clip).connect(ctx.destination);
 
   const limiter = new VoiceLimiter();
@@ -78,6 +83,7 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
   return {
     setMuted(on) {
       muted = on;
+      loopBus.gain.value = on ? 0 : 0.8 * sfxVolume;
     },
     play(id, pitch = 1, bypassLimiter = false) {
       // a hidden window is silent: sounds started now would all go off at once when it comes back
@@ -99,6 +105,7 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
     setSfxVolume(v) {
       sfxVolume = v;
       sfxBus.gain.value = 0.8 * v;
+      if (!muted) loopBus.gain.value = 0.8 * v;
     },
     setPaused(on) {
       paused = on;
@@ -115,6 +122,7 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
       limiter.reset();
     },
     musicBus,
+    loopBus,
     limiter,
   };
 }
