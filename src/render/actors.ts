@@ -10,7 +10,7 @@ import { BUILD_TICKS, UPGRADE_TICKS } from '../sim/config/towers';
 import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
 import { zoneTiles } from '../sim/systems/nests';
-import { KART } from '../sim/systems/vehicles';
+import { KART_PAINT, vehicleHop } from './cockpit';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
 import { box, glowMat, lambert, setGlow } from './pool';
 import { looksFor, type Look } from '../characters';
@@ -30,6 +30,8 @@ export interface Actors {
   playerPos(i?: number): THREE.Vector3;
   /** the model of player `id` (first person hides it for that view) */
   playerModel(id: number): THREE.Object3D | undefined;
+  /** the model of a vehicle, by its id (a first-person driver does not see their own: they look out of it) */
+  vehicleModel(id: number): THREE.Object3D | undefined;
   /** the ground crosshair of view `i` (first person has one in the middle of the screen instead) */
   reticle(i: number): THREE.Object3D | undefined;
   /** a new floor: move the elevator */
@@ -199,9 +201,6 @@ function makeTower(kind: TowerKind): { root: THREE.Group; body: THREE.Group; hea
   outer.add(scaffold, pips);
   return { root: outer, body: root, head, lightColor, scaffold, pips, level: 0 };
 }
-
-/** the paint of each kart, by its id, so a grid of them is colourful */
-const KART_PAINT = [0xe23b3b, 0x3d8bfd, 0x3bd16f, 0xffa23b, 0xb15cff, 0x2bd4d4, 0xff6ab0, 0xf4f4fa];
 
 function makeKart(kind: VehicleKind = 'kart', id = 0) {
   const root = new THREE.Group();
@@ -668,7 +667,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.steering.rotation.y = st.steer * 1.5;
       for (const pivot of v.pivots!) pivot.rotation.y = st.steer * 0.5;
     }
-    const hop = k.air > 0 ? Math.sin(Math.PI * (1 - k.air / KART.airTicks)) * 1.6 : 0;
+    const hop = vehicleHop(k);
     v.root.position.set(k.pos.x, hop, k.pos.z);
     v.root.rotation.y = v.yaw;
     v.body.rotation.x = k.air > 0 ? -0.25 : 0;
@@ -873,6 +872,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     },
     playerPos: (i = 0) => foci[i],
     playerModel: id => players.get(id)?.root,
+    vehicleModel: id => karts.get(id)?.root,
     reticle: i => reticles[i]?.group,
     setMap(m) {
       elevator.position.set(m.elevator.x, 0, m.elevator.z);

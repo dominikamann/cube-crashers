@@ -13,6 +13,7 @@ import { createMarks } from './marks';
 import { blendTheme, THEMES, themeFor } from './theme';
 import { createWorld } from './world';
 import { createViewModel } from './viewmodel';
+import { createCockpit } from './cockpit';
 import { EYE_HEIGHT } from '../input/first-person';
 import { createHealthBars } from './health-bars';
 import { AmbientPass, FinishPass, GlowPass, SmoothScenePass } from './post';
@@ -139,6 +140,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     mouseLook: { x: number; y: number } | null;
     /** first person: where the eyes look, or null for the view from above */
     fp: { yaw: number; pitch: number } | null;
+    /** first person in a vehicle: the one whose cockpit is drawn round this view, or null */
+    riding: number | null;
   }
   const makeView = (id: number, at: { x: number; z: number }): View => ({
     id,
@@ -153,6 +156,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     lookAhead: false,
     mouseLook: null,
     fp: null,
+    riding: null,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -222,6 +226,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const entities = createEntities(scene, overlay);
   const actors = createActors(scene, map);
   const viewModel = createViewModel();
+  const cockpit = createCockpit();
   const healthBars = createHealthBars(scene);
   const fx = createFx(scene);
   const pickups = createPickups(scene);
@@ -297,6 +302,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         v.bloom.threshold = theme.bloomThreshold;
       }
 
+      cockpit.setTheme(theme);
       world.update(s, theme, time, events);
       entities.update(s, theme, time, events, frameDt);
       actors.update(s, events, theme, time, frameDt, views.map(v => v.id));
@@ -360,7 +366,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           ox += v.mouseLook.x * LOOK_AHEAD_MAX;
           oz += v.mouseLook.y * LOOK_AHEAD_MAX;
         }
-        const fov = v.fp === null ? 45 : FP_FOV;
+        // first person in a vehicle: its cockpit goes a frame further; a boost widens the lens
+        const ride = cockpit.update(s, v.id, showroom ? null : v.fp, events, time, frameDt);
+        v.riding = ride.shown ? ride.vehicleId : null;
+        const fov = v.fp === null ? 45 : FP_FOV + ride.fov;
         if (v.camera.fov !== fov) {
           v.camera.fov = fov;
           v.camera.updateProjectionMatrix();
@@ -368,7 +377,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         if (v.fp !== null) {
           // first person: the eyes sit in the head, looking along the view, no lag
           const model = actors.playerModel(v.id);
-          const eyeY = (model?.position.y ?? 0) + EYE_HEIGHT;
+          // (a vehicle that flies off a ramp takes the eyes up with it)
+          const eyeY = (model?.position.y ?? 0) + EYE_HEIGHT + ride.lift;
           const c = Math.cos(v.fp.pitch);
           const fx = -Math.sin(v.fp.yaw) * c, fz = -Math.cos(v.fp.yaw) * c;
           v.camPos.set(p.x, eyeY, p.z);
@@ -415,7 +425,8 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         // (a lobbed weapon keeps it, as the spot where the throw will land)
         const me = s.players.find(pl => pl.id === v.id);
         const lob = me ? ['hotdogSlinger', 'bomb'].includes(me.weapons[me.selected]?.kind ?? '') && !me.rareSelected : false;
-        const hidden = v.fp !== null ? [actors.playerModel(v.id), lob ? undefined : actors.reticle(i)].filter((o): o is THREE.Object3D => !!o) : [];
+        // (nor the vehicle you sit in: its cockpit is drawn round the view instead)
+        const hidden = v.fp !== null ? [actors.playerModel(v.id), lob ? undefined : actors.reticle(i), v.riding !== null ? actors.vehicleModel(v.riding) : undefined].filter((o): o is THREE.Object3D => !!o) : [];
         const shown = hidden.map(o => o.visible);
         for (const o of hidden) o.visible = false;
         if (i === 0 || hidden.length > 0 || hidBefore) renderer.shadowMap.needsUpdate = true;
@@ -428,10 +439,11 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
         // damage numbers and other screen text go on top, untouched by bloom and ambient occlusion
         renderer.autoClear = false;
         renderer.render(overlay, v.camera);
-        // first person: the weapon in your hand on top of everything
+        // first person: the weapon in your hand on top of everything, or the cockpit of what you drive
         if (v.fp !== null) {
           viewModel.update(s, v.id, time, frameDt);
           viewModel.render(renderer, v.camera.aspect);
+          if (v.riding !== null) cockpit.render(renderer, v.id, v.camera.fov, v.camera.aspect);
         }
         renderer.autoClear = true;
       });
