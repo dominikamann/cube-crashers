@@ -1016,10 +1016,3 @@ Commercial licensing, publishing and distribution enquiries: **[AmannLabs](https
 Third-party assets and data remain subject to their own license terms and attribution requirements.
 See [LICENSE-ASSETS.md](LICENSE-ASSETS.md).
 
-### Previously published MIT versions
-
-Files and versions of Cube Crashers that were previously made available under the MIT License
-remain available under the MIT License applicable to those copies. This prospective licensing
-change does not revoke or modify rights already granted for those versions. The repository's
-Git history may therefore contain code that was previously published under MIT. See
-[LICENSE-CHANGE.md](LICENSE-CHANGE.md) for the scope of this change.
