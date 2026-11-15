@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { HOLD_TICKS, JUMP_TICKS } from '../sim/config/balance';
-import { jumpTicks } from '../sim/systems/versus';
+import { HOLD_TICKS } from '../sim/config/balance';
+import { jumpLift } from '../sim/systems/versus';
 import { wallTop } from './world';
 import { CLIMB_TICKS } from '../sim/map/ladders';
 import { perchable } from '../sim/map/perch';
@@ -503,8 +503,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const driving = p.vehicleId !== null;
     const down = p.downUntil !== null;
     // on the moon (coin-op chaos) a jump lasts longer and goes higher
-    const length = jumpTicks(s);
-    const jump = p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
+    const jump = jumpLift(s, p);
     // after a flight: sinking gently onto the floor, or onto the block below (eased, slow at the bottom)
     const sinking = !p.flying && (p.descent ?? 0) > 0;
     const below = sinking && perchable(s.map, p.pos.x, p.pos.z) ? wallTop(s.map, p.pos.x, p.pos.z) : 0;

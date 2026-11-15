@@ -3,6 +3,7 @@ import { FLOORS } from '../../src/sim/config/floors';
 import { createSim } from '../../src/sim/sim';
 import { explode, updateMines, updateProjectiles } from '../../src/sim/systems/combat';
 import { BOMB, MINE } from '../../src/sim/config/weapons';
+import { JUMP_TICKS } from '../../src/sim/config/balance';
 import { stepSim } from '../../src/sim/sim';
 import { shotHeight, SHOT_HEIGHT } from '../../src/sim/systems/shot-height';
 import type { Player, SimState } from '../../src/sim/types';
@@ -52,9 +53,19 @@ describe('shots have a height', () => {
 
   it('a jump takes a rival over a shot on the floor', () => {
     const s = match();
-    s.players[1].air = 1000;
+    // (halfway through the jump: as high as it goes)
+    s.players[1].air = JUMP_TICKS / 2;
     fire(s);
     expect(hurt(s.players[1])).toBe(false);
+  });
+
+  it('only while the feet are above the shot: just off the floor or nearly down again, it hits', () => {
+    for (const air of [JUMP_TICKS - 2, 2]) {
+      const s = match();
+      s.players[1].air = air;
+      fire(s);
+      expect(hurt(s.players[1]), `air ${air}`).toBe(true);
+    }
   });
 
   it('a shot at a rival on the floor passes under a flyer who comes into its way', () => {

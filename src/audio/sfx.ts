@@ -18,6 +18,9 @@ export type SoundId =
   | 'tower_bumper'
   | 'tower_medic'
   | 'playerHit'
+  | 'vehicleHit'
+  | 'hitConfirm'
+  | 'killConfirm'
   | 'playerDown'
   | 'playerRespawn'
   | 'creditLost'
@@ -184,6 +187,14 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   // a soft two-note chime, like a hospital call bell
   tower_medic: notes('sine', [784, 1047], 0.09, 0.05, 0.25),
   playerHit: [{ wave: 'square', freq: 300, freqEnd: 150, attack: 0.001, sustain: 0.02, decay: 0.06, volume: 0.07 }],
+  // a clank on metal (or a unicorn's hide): the vehicle took it
+  vehicleHit: [
+    { wave: 'square', freq: 900, freqEnd: 520, attack: 0.001, sustain: 0.015, decay: 0.08, volume: 0.07 },
+    { wave: 'triangle', freq: 1800, freqEnd: 1500, attack: 0.001, sustain: 0.01, decay: 0.12, volume: 0.05 },
+  ],
+  // the shooter's "got them": a short bright tick when a shot lands on a rival (a lower, fuller one for the kill)
+  hitConfirm: [{ wave: 'square', freq: 1400, freqEnd: 1250, attack: 0.001, sustain: 0.012, decay: 0.04, volume: 0.06 }],
+  killConfirm: notes('square', [1047, 1568], 0.05, 0.03, 0.08),
   playerDown: [{ wave: 'square', freq: 600, freqEnd: 80, attack: 0.005, sustain: 0.3, decay: 0.2, volume: 0.14 }],
   playerRespawn: notes('triangle', [523, 659, 784, 1047], 0.06, 0.15, 0.12),
   creditLost: [
@@ -458,6 +469,8 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'tower_laser',
   'tower_popcorn',
   'playerHit',
+  'vehicleHit',
+  'hitConfirm',
   'explosion',
   'kartRam',
   'enemyShot',
@@ -516,6 +529,8 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
       return one('enemyHit', 0.45);
     case 'playerHit':
       return one('playerHit');
+    case 'vehicleHit':
+      return one('vehicleHit');
     case 'playerDown':
       return one('playerDown');
     case 'playerRespawn':

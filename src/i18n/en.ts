@@ -479,7 +479,12 @@ export const en = {
   'hud.holdAway': 'Get back into the zone! {pct}%',
   'hud.down': 'Back in {s}…',
   'hud.fuel': 'Fuel',
-  'hud.kart': 'Kart',
+  // the vehicle's own health bar is named after what the player is in
+  'hud.vehicle.kart': 'Kart',
+  'hud.vehicle.roller': 'Steamroller',
+  'hud.vehicle.hoverboard': 'Hoverboard',
+  'hud.vehicle.unicorn': 'Unicorn',
+  'hud.vehicle.police': 'Police car',
   'toast.alarm': 'Alarm {level}',
   'toast.overload': 'OVERLOAD!',
   'toast.planted': 'Charge planted – hold the zone!',

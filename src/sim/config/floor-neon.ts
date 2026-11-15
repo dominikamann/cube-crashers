@@ -26,6 +26,9 @@ b.fill(17, 19, 23, 25, '~').fill(50, 52, 44, 46, '~').fill(32, 37, 34, 35, '~');
 
 b.put('N', [11, 11], [59, 11], [11, 44], [59, 44], [26, 26], [44, 26]);
 b.autoNestSurroundings();
+// the pad east of the lower right plaza came to lie beside the boost strip, and a pad is wider than its tile: a tile
+// in, onto the plaza's edge
+b.put('.', [64, 44]).put('p', [63, 44]);
 
 b.put('V', [33, 58], [3, 60], [66, 60]);
 b.put('*', [26, 3], [44, 3], [26, 66], [44, 66], [33, 18], [33, 50]);

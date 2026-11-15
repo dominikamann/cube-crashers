@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { setColorBlindWords, setKeyBindings, t } from '../src/i18n';
 import { DEFAULT_BINDINGS } from '../src/input/bindings';
+import { VEHICLES } from '../src/sim/systems/vehicles';
+import type { VehicleKind } from '../src/sim/types';
 
 describe('t', () => {
   it('returns English strings', () => {
@@ -33,5 +35,15 @@ describe('team names', () => {
     expect(t('versus.team')).toBe('▲ Orange vs Blue ●');
     setColorBlindWords(false);
     expect(t('versus.red')).toBe('Red');
+  });
+});
+
+describe('vehicle names in the HUD', () => {
+  it('name every vehicle\'s health bar after the vehicle, not "Kart"', () => {
+    for (const kind of Object.keys(VEHICLES) as VehicleKind[]) {
+      expect(t(`hud.vehicle.${kind}`)).not.toBe('');
+    }
+    expect(t('hud.vehicle.unicorn')).toBe('Unicorn');
+    expect(t('hud.vehicle.police')).toBe('Police car');
   });
 });

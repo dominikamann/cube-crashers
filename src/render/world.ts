@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
-import { padAt } from '../sim/systems/towers';
+import { PAD_SIZE, padAt } from '../sim/systems/towers';
 import type { SimEvent, SimState } from '../sim/types';
 import { box, glowMat, lambert } from './pool';
 import type { Theme } from './theme';
@@ -964,7 +964,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const padRim = lambert(0xd8dce8);
   const pads = map.pads.map(p => {
     const g = new THREE.Group();
-    const base = box(1.7, 0.08, 1.7, padRim, 0, 0.04, 0);
+    const base = box(PAD_SIZE, 0.08, PAD_SIZE, padRim, 0, 0.04, 0);
     base.receiveShadow = true;
     base.castShadow = false;
     const inner = box(1.5, 0.1, 1.5, padBase, 0, 0.05, 0);

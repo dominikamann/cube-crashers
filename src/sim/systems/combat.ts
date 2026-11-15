@@ -6,7 +6,7 @@ import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
 import { BUBBLE_WAND, HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { pvpDamage, rivals } from './versus';
+import { jumpLift, pvpDamage, rivals } from './versus';
 import { DT, type DamageSource, type Enemy, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, targets, allBosses } from '../util';
 import { spawnEnemy } from './enemies';
@@ -14,7 +14,7 @@ import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
 import { stepMissile } from './missile';
 import { quadOf } from './bounty';
-import { aimShot, atHeightOf, upInTheAir } from './shot-height';
+import { aimShot, atHeightOf, shotHeight, SHOT_HEIGHT, upInTheAir } from './shot-height';
 import { killCategory } from './stats';
 import { witchHit } from './witch';
 
@@ -346,11 +346,13 @@ export function updateProjectiles(s: SimState): void {
     // versus: shots hit rivals (each player once per shot; player marks are negative so they never clash with enemy ids)
     if (alive && s.versus && p.ownerId >= 0) {
       // (a shot hits those at its height: it goes up to a rival on a jetpack it was aimed at and passes over
-      // the others, or runs along the floor under a flyer. A jump takes you over a shot on the floor.)
+      // the others, or runs along the floor under a flyer. A jump takes you over a shot on the floor, but only
+      // while your feet are above it: what flies through you hits you, also just after the take-off.)
       for (const r of rivals(s, p.ownerId)) {
         const mark = -1 - r.id;
+        const over = !upInTheAir(r) && jumpLift(s, r) > SHOT_HEIGHT.floor + shotHeight(p);
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || (r.air > 0 && !upInTheAir(r)) || !atHeightOf(p, r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
+        if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || dist(p.pos, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
         damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {

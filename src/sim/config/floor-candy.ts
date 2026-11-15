@@ -46,6 +46,9 @@ for (const [x0, z0] of [[1, 1], [25, 1], [47, 1], [1, 25], [47, 25], [1, 47], [4
 b.put('S', [35, 61]).put('E', [35, 66]);
 b.put('N', [11, 11], [35, 11], [58, 11], [11, 35], [58, 35], [11, 58], [58, 58]);
 b.autoNestSurroundings();
+// two pads come to lie beside an effect floor, and a pad is wider than its tile: the one under the top-middle nest
+// goes a tile down off the belt, the one under the right nest a tile down off the puddle
+b.put('.', [35, 16], [58, 40]).put('p', [35, 17], [58, 41]);
 
 b.put('V', [30, 52], [40, 52], [20, 35]);
 b.put('*', [30, 33], [39, 33], [30, 37], [39, 37], [35, 19], [35, 27]);

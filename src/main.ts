@@ -331,14 +331,42 @@ function startGame() {
     app.append(d);
     return d;
   });
-  // first person: a crosshair in the middle of each view
+  // first person: a crosshair in the middle of each view, with the marks that flash on it when a shot lands
   const fpCross = hudRoots.map(root => {
     const c = document.createElement('div');
     c.className = 'fp-cross';
     c.style.display = 'none';
+    c.innerHTML = '<svg class="fp-hit" viewBox="0 0 40 40"><path d="M5 5 L14 14 M35 5 L26 14 M5 35 L14 26 M35 35 L26 26"/></svg>';
     root.append(c);
     return c;
   });
+  // a red glow round the edge of a view whose player was just hit
+  const hurtGlow = hudRoots.map(root => {
+    const d = document.createElement('div');
+    d.className = 'hurt-glow';
+    root.append(d);
+    return d;
+  });
+  /** plays a one-off CSS animation (again, if it still runs) */
+  const flash = (el: HTMLElement, cls: string, others: string[] = []) => {
+    el.classList.remove(cls, ...others);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  };
+  /**
+   * What the player of view `view` (player `id`) did and took this frame: a shot of theirs that landed on a rival
+   * or the vehicle one sits in marks the crosshair and ticks (a kill louder), a hit they took glows red round
+   * the edge. Monsters show their own hits: they burst into pixels.
+   */
+  function hitFeedback(view: number, id: number, events: SimEvent[]) {
+    const kill = events.some(e => e.type === 'pvpKill' && e.killerId === id && e.victimId !== id);
+    const hit = kill || events.some(e => (e.type === 'playerHit' || e.type === 'vehicleHit') && e.by === id && !(e.type === 'playerHit' && e.playerId === id));
+    if (hit) {
+      flash(fpCross[view], kill ? 'kill' : 'hit', ['hit', 'kill']);
+      audio?.mixer.play(kill ? 'killConfirm' : 'hitConfirm');
+    }
+    if (events.some(e => e.type === 'playerHit' && e.playerId === id && e.amount >= 5)) flash(hurtGlow[view], 'on');
+  }
   // the browser refuses to capture the mouse while it is outside the window: say how to get it back
   const fpClick = document.createElement('div');
   fpClick.className = 'fp-click';
@@ -638,6 +666,10 @@ function startGame() {
       hud2.setPadMode(useLabel(rawPads().length >= 2 ? 1 : 0));
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
+      if (mode === 'playing' && !replay) {
+        hitFeedback(0, localId(), frameEvents);
+        if (split) hitFeedback(1, 1, frameEvents);
+      }
       scoreboard.update(s, (boardHeld || padBoardHeld) && mode === 'playing' && s.run.stage === 'floor', localId(), s.versus ? t(`versus.${s.versus.rule}` as 'versus.score') : t(s.run.mode === 'brawl' ? 'brawl.title' : s.run.mode === 'bossrush' ? 'bossrush.title' : (`mode.${s.run.mode}` as 'mode.run')));
       markers.setVisible(mode === 'playing' || mode === 'paused');
       if (mode === 'playing') markers.update(s, renderer.project);

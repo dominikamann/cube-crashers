@@ -75,6 +75,12 @@ export function jumpTicks(s: SimState): number {
   return coinOpRule(s) === 'moon' ? Math.round(JUMP_TICKS * VERSUS.moonJump) : JUMP_TICKS;
 }
 
+/** how high a jumping player's feet are: up and down again over the jump, higher on the moon */
+export function jumpLift(s: SimState, p: Player): number {
+  const length = jumpTicks(s);
+  return p.air > 0 ? Math.sin(Math.PI * (1 - Math.min(1, p.air / length))) * 1.3 * (length > JUMP_TICKS ? 1.6 : 1) : 0;
+}
+
 /** a coin-op rule other than the current one */
 function nextCoinOp(s: SimState, current: CoinOpRule | null): CoinOpRule {
   const others = COIN_OP_RULES.filter(r => r !== current);

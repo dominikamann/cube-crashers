@@ -146,9 +146,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const jetBox = el('div', 'kart', left);
   const jetFill = el('i', '', el('div', 'bar jet', jetBox));
   const kartBox = el('div', 'kart', left);
-  el('div', 'sub', kartBox, t('hud.fuel'));
+  const fuelLabel = el('div', 'sub', kartBox, t('hud.fuel'));
   const fuelFill = el('i', '', el('div', 'bar fuel', kartBox));
-  el('div', 'sub', kartBox, t('hud.kart'));
+  // named after the vehicle: a unicorn is not a kart
+  const kartLabel = el('div', 'sub', kartBox);
   const kartFill = el('i', '', el('div', 'bar', kartBox));
 
   const weaponRow = el('div', 'weapons', bottom);
@@ -345,9 +346,11 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       kartBox.style.display = kart && s.run.stage !== 'race' ? '' : 'none';
       if (kart) {
         fuelFill.style.width = `${(kart.fuel / KART.fuelTicks) * 100}%`;
-        // race karts never run dry
-        (fuelFill.parentElement!.previousElementSibling as HTMLElement).style.display = kart.locked ? 'none' : '';
-        fuelFill.parentElement!.style.display = kart.locked ? 'none' : '';
+        // race karts never run dry, and a unicorn burns no fuel: no gauge for them
+        const burnsFuel = !kart.locked && kart.kind !== 'unicorn';
+        fuelLabel.style.display = burnsFuel ? '' : 'none';
+        fuelFill.parentElement!.style.display = burnsFuel ? '' : 'none';
+        kartLabel.textContent = t(`hud.vehicle.${kart.kind}`);
         kartFill.style.width = `${Math.max(0, kart.hp / VEHICLES[kart.kind].hp) * 100}%`;
       }
 
