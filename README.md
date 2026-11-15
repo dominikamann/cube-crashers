@@ -109,6 +109,7 @@ with up to nine friends on your LAN or online, together against the monsters or 
 
 Cube Crashers is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 You may study, modify and share the project for permitted non-commercial purposes under that license.
+Streams and videos, monetized ones too, and LAN parties are expressly allowed.
 Commercial use, distribution and other commercial exploitation require separate written permission
 from the copyright holder. For commercial licensing, publishing or platform enquiries, visit
 [AmannLabs](https://amannlabs.eu).
@@ -1003,10 +1004,8 @@ report it. (There is no bug bounty.)
 
 A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help from hard-working AI bots.
 
-The Town is built from open data: the 3D building models (LoD2) and house coordinates of Baden-Württemberg,
-© LGL, [www.lgl-bw.de](https://www.lgl-bw.de), [dl-de/by-2-0](https://www.govdata.de/dl-de/by-2-0); streets and the
-lake from © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Shop names in the game
-are made up.
+The Town is built from real building data. Shop names in the game are made up. Sources of third-party data
+and assets: [LICENSE-ASSETS.md](LICENSE-ASSETS.md).
 
 ## Privacy
 
@@ -1023,6 +1022,10 @@ The current project version is licensed under the [PolyForm Noncommercial Licens
 You may use, study, modify and distribute the project for purposes permitted by the PolyForm
 Noncommercial License 1.0.0, subject to all of its terms and notices. This includes personal
 study, private entertainment, hobby projects and non-commercial community forks.
+
+### Streams, videos and LAN parties
+
+Streams and videos of the game, monetized ones too, and LAN parties are expressly allowed.
 
 ### Commercial use and licensing
 
