@@ -18,6 +18,8 @@ function town(players = 1, seed = 4): SimState {
   for (const p of s.players) p.pos = { x: WALDSEE_FIRE.x, z: WALDSEE_FIRE.z + 9 };
   return s;
 }
+/** the longest she can take to get onto her broom and fly to her fire */
+const FLIGHT = WITCH.mountTicks + WITCH.flyMax + 2;
 const bodyOf = (s: SimState) => s.enemies.find(e => e.id === s.boss!.enemyId)!;
 /** she stands and does nothing until told to */
 const calm = (s: SimState) => {
@@ -103,9 +105,9 @@ describe('the witch', () => {
         attacks += s.events.filter(e => e.type === 'bossAttack').length;
       }
       expect(attacks, map).toBeGreaterThan(2);
-      // hurt, she dances round her own fire
+      // hurt, she flies to her own fire and dances round it
       me.hp = me.maxHp * 0.6;
-      run(s, 120);
+      run(s, 120 + FLIGHT);
       expect(s.boss!.witch!.dance, map).not.toBeNull();
     }
   });
@@ -289,10 +291,8 @@ describe('the Schrättelestanz and the two faces', () => {
     const s = town();
     calm(s);
     const me = bodyOf(s);
-    const events = (() => {
-      me.hp = me.maxHp * 0.6;
-      return run(s, 2);
-    })();
+    me.hp = me.maxHp * 0.6;
+    const events = run(s, FLIGHT);
     expect(events.some(e => e.type === 'witchDance')).toBe(true);
     const w = s.boss!.witch!;
     expect(w.dance!.helpers.length).toBe(WITCH.helpers[2]);
@@ -314,7 +314,7 @@ describe('the Schrättelestanz and the two faces', () => {
     const s = town();
     calm(s);
     bodyOf(s).hp = bodyOf(s).maxHp * 0.6;
-    const drums = run(s, 120).filter(e => e.type === 'witchDrum').length;
+    const drums = run(s, 120 + FLIGHT).filter(e => e.type === 'witchDrum').length;
     expect(drums).toBeGreaterThan(1);
     for (const e of s.enemies) if (e.kind === 'witchling') damageEnemy(s, e, 1000, 'pixelBlaster', 0);
     const events = run(s, 2);

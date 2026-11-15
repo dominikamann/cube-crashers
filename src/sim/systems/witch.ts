@@ -2,7 +2,7 @@ import { PLAYER_RADIUS, START_CLEAR_RADIUS } from '../config/balance';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, reachable } from '../map/tilemap';
 import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import { DT, TICK_RATE, type BossState, type Enemy, type Intent, type Player, type SimState, type Vec2, type WitchState } from '../types';
-import { dist } from '../util';
+import { allBosses, dist } from '../util';
 import { spawnEnemy } from './enemies';
 import { hordeScale } from './coop';
 import { damagePlayer } from './player';
@@ -92,6 +92,15 @@ export const WITCH = {
   helpers: { 2: 4, 3: 6 } as Record<2 | 3, number>,
   danceTicks: 30 * TICK_RATE,
   danceArmor: 0.25,
+  /** her flight to the fire when the dance is due: she gets onto her broom for `mountTicks` (her laugh warns of it),
+   *  then flies at `flySpeed` tiles a second, no less than `flyMin` and no more than `flyMax` ticks, with her way
+   *  bowed aside by `flyBow` of its length (`flyBowMax` tiles at most); the dance as a whole lasts no longer for it */
+  mountTicks: 40,
+  flySpeed: 8,
+  flyMin: 55,
+  flyMax: 140,
+  flyBow: 0.22,
+  flyBowMax: 2.5,
   /** the glaring face: this much quicker on her feet and with her attacks, this much harder */
   glareSpeed: 1.3,
   glareHaste: 0.8,
@@ -149,7 +158,17 @@ export function setupWitch(s: SimState, b: BossState, body: Enemy, near: Vec2): 
 /** She is in the middle of something: no new attack until it is over. */
 export function witchBusy(b: BossState): boolean {
   const w = b.witch;
-  return !!w && (w.move !== null || w.press !== null || !!b.leap);
+  return !!w && (w.move !== null || w.press !== null || !!b.leap || !!w.flight);
+}
+
+/**
+ * Is this the witch up on her broom on the way to her fire? Then she is up in the air as someone on a jetpack is:
+ * only a shot that went up to her hits her (see aimShot), and nothing on the floor reaches her or is hurt by her.
+ */
+export function witchAloft(s: SimState, e: Enemy): boolean {
+  if (e.kind !== 'tank') return false;
+  for (const b of allBosses(s)) if (b.enemyId === e.id && b.leap && b.witch?.flight?.land) return true;
+  return false;
 }
 
 /** what a hit on her counts for: little while she dances; a hit by anyone else knocks her off the player she presses */
@@ -158,7 +177,8 @@ export function witchHit(b: BossState, amount: number, byPlayerId?: number): num
   if (!w) return amount;
   // (a teammate's hits free the one she holds; a tower or a blast nobody fired does not)
   if (w.press && byPlayerId !== undefined && byPlayerId !== w.press.playerId) w.press.hurt += amount;
-  return w.dance ? amount * WITCH.danceArmor : amount;
+  // (from the moment she makes for her fire: it is the dance already)
+  return w.dance || w.flight ? amount * WITCH.danceArmor : amount;
 }
 
 /** is this player held down by a witch right now? */
@@ -174,7 +194,7 @@ function warn(s: SimState, pos: Vec2, radius: number, damage: number, delay: num
 /** She picks what to do next (called when her next attack is due and she is not busy). */
 export function witchAttack(s: SimState, b: BossState, seen: Player[]): void {
   const w = b.witch, me = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
-  if (!w || !me) return;
+  if (!w || !me || w.flight) return;
   // (only those she sees)
   const alive = seen;
   if (alive.length === 0) return;
@@ -287,7 +307,7 @@ function steerHop(s: SimState, b: BossState, w: WitchState): void {
 /** The witch leaps at `p` to sit on them (or, `next` = 'hop', to strike with her broom where they stand). */
 export function witchPounce(s: SimState, p: Player, next: 'hop' | 'press' = 'press', b: BossState | null = s.boss): void {
   const me = b?.witch && b.enemyId !== null ? byId(s, b.enemyId) : undefined;
-  if (!b || !me) return;
+  if (!b || !me || b.witch!.flight) return;
   b.witch!.move = null;
   leapOnto(s, b, me, p, next);
 }
@@ -308,31 +328,83 @@ function charge(s: SimState, b: BossState, me: Enemy, p: Player): void {
   s.events.push({ type: 'bossAttack', kind: 'witch' });
 }
 
-/** The little witches come out of the dark and dance with her round the fire. */
+/**
+ * The dance is due: she lets go of whoever she presses, gets onto her broom where she stands (or where the hop she
+ * is in brings her down: it ends with no blow) and flies to her place on the circle round the fire (see fly). The
+ * little witches come out of the dark when she lands.
+ */
 export function startDance(s: SimState, b: BossState, phase: 2 | 3): void {
-  const w = b.witch;
-  if (!w || w.dance) return;
+  const w = b.witch, me = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
+  if (!w || !me || w.dance || w.flight) return;
+  // (whatever she was about to do is off; in mid-hop she comes down first)
+  if (!b.leap) w.move = null;
+  if (w.press) letGo(s, b, false);
+  w.flight = { at: s.tick, up: (b.leap ? b.leap.land : s.tick) + WITCH.mountTicks, land: 0, from: { ...me.pos }, to: { ...me.pos }, helpers: WITCH.helpers[phase] + Math.min(4, s.players.length - 1), until: s.tick + WITCH.danceTicks, turn: 0 };
+  // (her laugh as she gets onto the broom: the warning)
+  s.events.push({ type: 'witchCackle', pos: { ...me.pos }, shriek: false, boss: true });
+}
+
+/** how far round the circle the dance has gone `t` seconds in: the pace wavers (a step forward, a stop, a rush) */
+const danceAngle = (t: number) => WITCH.danceSpin * (t + 0.6 * Math.sin(t * 1.3) + 0.35 * Math.sin(t * 0.47 + 1));
+
+/** her way through the air: how far along it at `k` (0 to 1): slow off, fast, and slow down again */
+const flyAlong = (k: number) => 0.5 * k + 0.5 * k * k * (3 - 2 * k);
+
+/**
+ * On her broom to the fire: she sits on it where she stands until `up` (her place there is kept in `from`), then
+ * up she goes over whatever is in the way, in a bow, to her place on the circle (turned so that it is the side she
+ * comes from), and lands: there the dance begins, with its drums and the little witches.
+ */
+function fly(s: SimState, b: BossState, w: WitchState, me: Enemy): void {
+  const f = w.flight!;
+  if (s.tick < f.up) {
+    // (getting onto the broom, or still in the hop she was in)
+    f.from = { ...me.pos };
+    return;
+  }
+  if (!f.land) {
+    // off: to the place on the circle nearest her
+    const off = dist(me.pos, w.fire) > 0.3 ? unit(w.fire, me.pos) : me.dir;
+    f.turn = Math.atan2(off.z, off.x) - danceAngle(0);
+    const spot = { x: w.fire.x + Math.cos(danceAngle(0) + f.turn) * WITCH.danceRadius, z: w.fire.z + Math.sin(danceAngle(0) + f.turn) * WITCH.danceRadius };
+    f.to = nearestFree(s.map, spot, me.radius, BLOCKS_ENEMY);
+    f.from = { ...me.pos };
+    f.land = s.tick + Math.max(WITCH.flyMin, Math.min(WITCH.flyMax, Math.round((dist(f.from, f.to) / WITCH.flySpeed) * TICK_RATE)));
+    b.leap = { from: { ...f.from }, to: { ...f.to }, start: s.tick, land: f.land };
+    w.move = null;
+    me.dir = unit(f.from, f.to);
+    s.events.push({ type: 'witchFly', pos: { ...me.pos }, up: true });
+    return;
+  }
+  if (b.leap) {
+    // (the leap carries her straight; she flies in a bow, slowing down at both ends)
+    const k = Math.min(1, (s.tick - b.leap.start) / Math.max(1, b.leap.land - b.leap.start)), u = flyAlong(k);
+    const dx = f.to.x - f.from.x, dz = f.to.z - f.from.z;
+    const bow = Math.min(WITCH.flyBowMax, Math.hypot(dx, dz) * WITCH.flyBow) / Math.max(1e-6, Math.hypot(dx, dz));
+    const side = Math.sin(Math.PI * u) * bow;
+    me.pos = { x: Math.max(0.5, Math.min(s.map.w - 0.5, f.from.x + dx * u - dz * side)), z: Math.max(0.5, Math.min(s.map.h - 0.5, f.from.z + dz * u + dx * side)) };
+    const lean = Math.cos(Math.PI * u) * Math.PI * bow;
+    me.dir = unit({ x: 0, z: 0 }, { x: dx - dz * lean, z: dz + dx * lean });
+    return;
+  }
+  // she is down by the fire: the small ones come out of the dark and the dance begins
   const helpers: number[] = [];
-  const n = WITCH.helpers[phase] + Math.min(4, s.players.length - 1);
-  for (let i = 0; i < n; i++) {
-    const a = ((i + 0.5) / n) * Math.PI * 2;
+  for (let i = 0; i < f.helpers; i++) {
+    const a = danceAngle(0) + f.turn + ((i + 1) / (f.helpers + 1)) * Math.PI * 2;
     const spot = nearestFree(s.map, { x: w.fire.x + Math.cos(a) * WITCH.danceRadius, z: w.fire.z + Math.sin(a) * WITCH.danceRadius }, 0.35, BLOCKS_ENEMY);
     helpers.push(spawnEnemy(s, 'witchling', spot).id);
   }
-  // (whatever she was about to do is off: she joins the dance)
-  w.move = null;
-  b.leap = null;
-  if (w.press) letGo(s, b, false);
-  w.dance = { helpers, at: s.tick, until: s.tick + WITCH.danceTicks };
+  w.flight = null;
+  w.dance = { helpers, at: s.tick, until: Math.max(s.tick + TICK_RATE, f.until), turn: f.turn };
   w.nextDrumAt = s.tick;
+  s.events.push({ type: 'witchFly', pos: { ...me.pos }, up: false });
   s.events.push({ type: 'witchDance', pos: { ...w.fire } });
 }
 
 /** where a dancer is on the circle round the fire: each at its own place, all going round at a wavering pace */
 function dancePos(w: WitchState, tick: number, slot: number, slots: number): Vec2 {
   const t = (tick - (w.dance?.at ?? 0)) / TICK_RATE;
-  // (the pace wavers: a step forward, a stop, a rush; the angle is the sum of it)
-  const a = WITCH.danceSpin * (t + 0.6 * Math.sin(t * 1.3) + 0.35 * Math.sin(t * 0.47 + 1)) + (slot / slots) * Math.PI * 2;
+  const a = danceAngle(t) + (w.dance?.turn ?? 0) + (slot / slots) * Math.PI * 2;
   const r = WITCH.danceRadius + 0.35 * Math.sin(t * 2.1 + slot * 1.9);
   return { x: w.fire.x + Math.cos(a) * r, z: w.fire.z + Math.sin(a) * r };
 }
@@ -358,6 +430,14 @@ function letGo(s: SimState, b: BossState, broke: boolean): void {
 export function moveWitch(s: SimState, b: BossState): void {
   const w = b.witch, me = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
   if (!w) return;
+  if (w.flight) {
+    // on the floor, getting onto her broom: she stays where she is and looks at her fire
+    if (me && !b.leap) {
+      me.pos = { ...w.flight.from };
+      me.dir = unit(me.pos, w.fire);
+    }
+    return;
+  }
   if (w.dance) {
     const dancers = [b.enemyId, ...w.dance.helpers];
     dancers.forEach((id, i) => {
@@ -437,11 +517,14 @@ export function updateWitch(s: SimState, b: BossState, intents?: Map<number, Int
     s.events.push({ type: 'witchFace', pos: { ...me.pos } });
     s.events.push({ type: 'bossAttack', kind: 'witch' });
   }
+  if (w.flight) fly(s, b, w, me);
   if (w.dance) dance(s, b, w);
   if (w.press) press(s, b, w, me, intents);
   const m = w.move;
   if (!m || s.tick < m.until) return;
   w.move = null;
+  // (the hop she was in as the dance came due: she comes down with no blow, and gets onto her broom)
+  if (w.flight) return;
   const p = s.players.find(x => x.id === m.target && x.downUntil === null);
   if (m.kind === 'scan' && p) {
     if (m.next === 'charge' && hasLos(s.map, me.pos, p.pos)) charge(s, b, me, p);
@@ -501,6 +584,7 @@ export function witchDown(s: SimState, b: BossState): void {
   if (w.press) s.events.push({ type: 'witchRelease', playerId: w.press.playerId, broke: true, pos: { ...b.lastPos } });
   w.press = null;
   w.move = null;
+  w.flight = null;
   w.embers = [];
   for (const id of w.dance?.helpers ?? []) {
     const e = byId(s, id);

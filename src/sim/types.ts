@@ -470,7 +470,13 @@ export interface WitchState {
   /** "s'Schrättele druckt": she sits on this player until `until`; `struggle` counts their tries to shake her off, `hurt` what the others did to her meanwhile */
   press: { playerId: number; at: Vec2; until: number; struggle: number; hurt: number; held: boolean } | null;
   /** the Schrättelestanz: the little witches dancing with her round the fire; it ends when they are beaten, at `until` at the latest */
-  dance: { helpers: number[]; at: number; until: number } | null;
+  dance: { helpers: number[]; at: number; until: number; turn?: number } | null;
+  /**
+   * her flight to the fire when the dance is due: she mounts her broom where she stands (`from`, from tick `at`),
+   * takes off at `up` and lands at `to` at `land` (0 until she is up; the way itself is the boss's `leap`); then
+   * `helpers` small ones come to dance, the dance over at `until` at the latest, its circle turned by `turn`
+   */
+  flight?: { at: number; up: number; land: number; from: Vec2; to: Vec2; helpers: number; until: number; turn: number } | null;
   /** burning twigs on the floor: they burn from `from` until `until` */
   embers: { id: number; pos: Vec2; radius: number; from: number; until: number }[];
   /** when the next drumbeat of the dance comes, and the next crackle of the fire */
@@ -768,6 +774,8 @@ export type SimEvent =
   | { type: 'witchRelease'; playerId: number; broke: boolean; pos: Vec2 }
   /** the Schrättelestanz begins round the fire, a drum is struck while it lasts, and it is broken */
   | { type: 'witchDance'; pos: Vec2 }
+  /** she gets onto her broom and takes off for her fire (`up`), and lands by it */
+  | { type: 'witchFly'; pos: Vec2; up: boolean }
   | { type: 'witchDrum'; pos: Vec2; beat: number }
   | { type: 'witchDanceEnd'; pos: Vec2 }
   /** she turns her mask: from now on the glaring face */

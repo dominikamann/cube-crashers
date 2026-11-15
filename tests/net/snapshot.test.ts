@@ -89,8 +89,19 @@ describe('floor changes over the network', () => {
     expect(view.boss!.witch!.press?.playerId).toBe(0);
     expect(view.boss!.witch!.embers).toHaveLength(1);
     expect(view.boss!.witch!.fire).toEqual(host.boss!.witch!.fire);
-    // dancing round the fire
+    // on her broom to the fire: she lets go of the player first
     body.hp = body.maxHp * 0.6;
+    for (let i = 0; i < 60; i++) stepSim(host, []);
+    view = roundTrip();
+    expect(view.boss!.witch!.press).toBeNull();
+    const f = view.boss!.witch!.flight!, hf = host.boss!.witch!.flight!;
+    expect([f.at, f.up, f.land, f.helpers, f.until]).toEqual([hf.at, hf.up, hf.land, hf.helpers, hf.until]);
+    expect(f.to.x).toBeCloseTo(hf.to.x, 1);
+    expect(f.to.z).toBeCloseTo(hf.to.z, 1);
+    expect(f.turn).toBeCloseTo(hf.turn, 1);
+    expect(view.boss!.leap!.land).toBe(host.boss!.leap!.land);
+    // dancing round the fire
+    while (host.boss!.witch!.flight) stepSim(host, []);
     for (let i = 0; i < 30; i++) stepSim(host, []);
     view = roundTrip();
     const w = view.boss!.witch!;
