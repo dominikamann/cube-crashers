@@ -301,8 +301,9 @@ export interface Projectile {
   travelled?: number;
   /** a bolt: full damage up to this far from `from` (see shotDamage in combat.ts); a boomerang: how far it goes out */
   range?: number;
-  /** a bolt past `range`: the share of its damage it still does (left out: 15 % less with every tile, see FALLOFF) */
-  tail?: number;
+  /** a bolt past `range`: the share of its damage it still does, in steps [up to this far, share] (left out: 15 % less
+   * with every tile, see FALLOFF) */
+  tiers?: [number, number][];
   returning?: boolean;
   /** its way through the air: fired at (x, z) `lift` up, `end` up after `reach` (see shot-height.ts) */
   arc?: { x: number; z: number; lift: number; end: number; reach: number };

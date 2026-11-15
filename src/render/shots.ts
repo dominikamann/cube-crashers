@@ -812,7 +812,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           const arc = p.arc;
           const dive = arc && Math.hypot(p.pos.x - arc.x, p.pos.z - arc.z) < arc.reach ? Math.atan2(arc.lift - arc.end, arc.reach) : 0;
           // (past its full reach it burns out: smaller and darker with every tile, until it is spent)
-          const left = p.from && p.range !== undefined && p.tail === undefined ? falloff(Math.hypot(p.pos.x - p.from.x, p.pos.z - p.from.z), p.range) : 1;
+          const left = p.from && p.range !== undefined && !p.tiers ? falloff(Math.hypot(p.pos.x - p.from.x, p.pos.z - p.from.z), p.range) : 1;
           if (left < 1) tint = dim(tint, 0.35 + 0.65 * left);
           bolts.add(p.pos.x, y, p.pos.z, yaw, 1.2 * out * (0.45 + 0.55 * left), tint, dive);
           if (!low && out >= 1 && left >= 1) auras.addScaled(p.pos.x, y, p.pos.z, yaw, 0.4, 0.4, 1, dim(tint, 0.2), dive);
