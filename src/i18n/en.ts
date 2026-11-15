@@ -308,6 +308,7 @@ export const en = {
   'update.ready': 'Version {version} is ready.',
   'update.restart': 'Restart now',
   'update.manual': 'Version {version} is available.',
+  'update.manualFrom': 'Version {version} is available (this is {current}).',
   'update.download': 'Download',
   'menu.join': 'Join a game',
   'settings.difficulty': 'Difficulty',

@@ -1,10 +1,11 @@
 import { t } from '../i18n';
 
+/** `current`: the version that is running (an older desktop app does not say) */
 export type UpdateEvent =
-  | { type: 'available'; version: string }
-  | { type: 'progress'; percent: number }
-  | { type: 'ready'; version: string }
-  | { type: 'manual'; version: string };
+  | { type: 'available'; version: string; current?: string }
+  | { type: 'progress'; percent: number; current?: string }
+  | { type: 'ready'; version: string; current?: string }
+  | { type: 'manual'; version: string; current?: string };
 
 export interface UpdateBridge {
   state(): Promise<UpdateEvent | null>;
@@ -33,7 +34,9 @@ export function createUpdateBanner(root: HTMLElement, bridge: UpdateBridge | und
       return;
     }
     version = e.version;
-    text.textContent = t(e.type === 'ready' ? 'update.ready' : 'update.manual', { version });
+    // (the download page: with the version that is running, so whoever installed it by hand sees whether the
+    // copy they start is the new one)
+    text.textContent = e.type === 'ready' ? t('update.ready', { version }) : t(e.current ? 'update.manualFrom' : 'update.manual', { version, current: e.current ?? '' });
     const b = document.createElement('button');
     b.className = 'btn alt small';
     b.textContent = t(e.type === 'ready' ? 'update.restart' : 'update.download');
