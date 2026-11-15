@@ -59,7 +59,7 @@ function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D
   return tex;
 }
 
-/** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof */
+/** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof, riveted steel plate on the helipad */
 function wallSideTexture(look: string): THREE.CanvasTexture {
   return canvasTexture(64, 64, g => {
     if (look === 'waldsee') return paintWaldseeWall(g);
@@ -140,6 +140,37 @@ function wallSideTexture(look: string): THREE.CanvasTexture {
       }
       g.fillStyle = '#d9cfae';
       g.fillRect(0, 56, 64, 8);
+    } else if (look === 'helipad') {
+      // painted steel plate: two panel seams, a row of rivets along the top and the bottom, a dark skirting
+      g.fillStyle = '#eef0f4';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#c9ccd8';
+      g.fillRect(21, 0, 2, 64);
+      g.fillRect(43, 0, 2, 64);
+      g.fillRect(0, 0, 64, 2);
+      g.fillStyle = '#a4a8b8';
+      for (let x = 5; x < 64; x += 11) {
+        g.fillRect(x, 5, 2, 2);
+        g.fillRect(x, 51, 2, 2);
+      }
+      g.fillStyle = '#9ea2b5';
+      g.fillRect(0, 57, 64, 7);
+    } else if (look === 'uplink') {
+      // an equipment cabinet: a steel panel with a recessed door, a vent grille at the top, a hazard stripe at the foot
+      g.fillStyle = '#eef0f6';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#c5c9d8';
+      g.fillRect(0, 0, 2, 64);
+      g.fillRect(62, 0, 2, 64);
+      g.fillRect(8, 18, 48, 2);
+      g.fillRect(8, 18, 2, 38);
+      g.fillRect(54, 18, 2, 38);
+      g.fillStyle = '#9ea2b5';
+      for (let x = 12; x < 52; x += 6) g.fillRect(x, 5, 3, 9);
+      g.fillRect(48, 36, 2, 6);
+      for (let x = 0; x < 64; x += 8) g.fillRect(x, 58, 4, 6);
+      g.fillStyle = '#dfe2ec';
+      for (let x = 4; x < 64; x += 8) g.fillRect(x, 58, 4, 6);
     } else if (look === 'rooftop') {
       // riveted metal with louvre slits
       g.fillStyle = '#f2f3f7';
@@ -185,8 +216,8 @@ function windowTexture(): THREE.CanvasTexture {
 
 /**
  * One floor tile's surface, by look: pavers with cracks and drains on the plaza, glazed tiles in the
- * factory, asphalt in the city and on the track, sand in the arena, tar paper on the roof, carpet in
- * the arcade. Grey only: the theme colour comes from the vertices.
+ * factory, asphalt in the city and on the track, sand in the arena, tar paper on the roof, concrete slabs on
+ * the helipad, carpet in the arcade. Grey only: the theme colour comes from the vertices.
  */
 function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, tz: number, x: number, y: number, px: number): void {
   if (look === 'waldsee') return paintWaldseeFloor(g, tx, tz, x, y, px);
@@ -229,6 +260,29 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
     }
     return;
   }
+  if (look === 'helipad') {
+    // concrete slabs: a thin joint right and bottom, a wider expansion joint every fourth row, grain, and now and
+    // then a tar patch or an oil stain where something was parked
+    g.fillStyle = 'rgba(20,20,40,0.22)';
+    g.fillRect(x, y + px - 2, px, 2);
+    g.fillRect(x + px - 2, y, 2, px);
+    if (tz % 4 === 0) g.fillRect(x, y, px, 3);
+    g.fillStyle = 'rgba(255,255,255,0.1)';
+    for (let k = 0; k < 9; k++) g.fillRect(x + 2 + Math.floor(hash(tx + k, tz * 5) * (px - 5)), y + 2 + Math.floor(hash(tz + k * 7, tx) * (px - 5)), 2, 2);
+    g.fillStyle = 'rgba(40,40,60,0.09)';
+    for (let k = 0; k < 6; k++) g.fillRect(x + 2 + Math.floor(hash(tx * 3 + k, tz) * (px - 5)), y + 2 + Math.floor(hash(tz * 3 + k, tx) * (px - 5)), 3, 2);
+    if (h < 0.012) {
+      g.fillStyle = 'rgba(20,20,30,0.26)';
+      g.fillRect(x + px * 0.2, y + px * 0.3, px * 0.6, px * 0.35);
+      g.fillRect(x + px * 0.3, y + px * 0.2, px * 0.3, px * 0.55);
+    } else if (h > 0.975) {
+      g.fillStyle = 'rgba(30,25,20,0.2)';
+      g.beginPath();
+      g.ellipse(x + px * 0.5, y + px * 0.5, px * 0.42, px * 0.3, hash(tx, tz) * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+    return;
+  }
   if (look === 'servers') {
     // raised floor panels: a strong seam, a screw in each corner, a perforated tile now and then
     g.fillStyle = 'rgba(10,14,30,0.35)';
@@ -252,6 +306,27 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
       g.fillStyle = 'rgba(255,245,230,0.7)';
       g.beginPath();
       g.arc(x + px * (0.3 + 0.4 * hash(tx, 3)), y + px * (0.3 + 0.4 * hash(tz, 3)), px * 0.12, 0, Math.PI);
+      g.fill();
+    }
+    return;
+  }
+  if (look === 'uplink') {
+    // concrete slabs two tiles wide: a tar joint between them, a tie-down ring now and then, and the odd stain
+    g.fillStyle = 'rgba(20,20,40,0.3)';
+    if (tx % 2 === 0) g.fillRect(x, y, 2, px);
+    if (tz % 2 === 0) g.fillRect(x, y, px, 2);
+    g.fillStyle = 'rgba(40,40,60,0.07)';
+    for (let k = 0; k < 9; k++) g.fillRect(x + 3 + Math.floor(hash(tx + k, tz * 5) * (px - 6)), y + 3 + Math.floor(hash(tz + k * 7, tx) * (px - 6)), 2, 2);
+    if (h < 0.03) {
+      g.strokeStyle = 'rgba(40,40,60,0.4)';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(x + px / 2, y + px / 2, px * 0.14, 0, Math.PI * 2);
+      g.stroke();
+    } else if (h > 0.95) {
+      g.fillStyle = 'rgba(30,25,20,0.12)';
+      g.beginPath();
+      g.ellipse(x + px * hash(tx, 2), y + px * hash(tz, 2), px * 0.4, px * 0.28, hash(tx, tz) * 3, 0, Math.PI * 2);
       g.fill();
     }
     return;
@@ -323,6 +398,24 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
     g.ellipse(x + px * 0.5, y + px * 0.5, px * 0.4, px * 0.26, hash(tx, tz) * 3, 0, Math.PI * 2);
     g.fill();
   }
+}
+
+/** the rotor wash on the helipad: the concrete again, with pale streaks that blow toward -z of the texture */
+function windTexture(): THREE.CanvasTexture {
+  return canvasTexture(32, 32, g => {
+    g.fillStyle = '#9ca1aa';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#8f949d';
+    for (let i = 0; i < 10; i++) g.fillRect(Math.floor(hash(i, 3) * 30), Math.floor(hash(3, i) * 30), 2, 2);
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    for (const [x, y, len] of [[4, 2, 12], [12, 10, 16], [21, 0, 10], [27, 14, 14], [8, 22, 8], [17, 26, 6]]) g.fillRect(x, y, 2, len);
+    // the heads of the streaks: a little chevron each
+    g.fillStyle = 'rgba(255,255,255,0.4)';
+    for (const [x, y] of [[4, 2], [12, 10], [21, 0], [27, 14], [8, 22], [17, 26]]) {
+      g.fillRect(x - 2, y + 2, 2, 2);
+      g.fillRect(x + 2, y + 2, 2, 2);
+    }
+  }, true);
 }
 
 /** jump-over barriers: yellow and dark diagonal stripes */
@@ -456,6 +549,31 @@ function kelpBedTexture(): THREE.CanvasTexture {
   }, true);
 }
 
+/** the Uplink's transformer yards: a dark steel grating with arcs jumping across it */
+function liveGratingTexture(): THREE.CanvasTexture {
+  return canvasTexture(32, 32, g => {
+    g.fillStyle = '#1a1c2c';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#3a3e56';
+    for (let k = 0; k < 32; k += 8) {
+      g.fillRect(k, 0, 2, 32);
+      g.fillRect(0, k, 32, 2);
+    }
+    // an arc: a jagged bright line with a halo
+    g.strokeStyle = '#5fe8ff';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(4, 20);
+    for (let k = 1; k <= 6; k++) g.lineTo(4 + k * 4, 20 + (hash(k, 3) - 0.5) * 12);
+    g.stroke();
+    g.fillStyle = '#eafcff';
+    g.fillRect(4, 19, 2, 2);
+    g.fillRect(27, 15, 2, 2);
+    g.fillStyle = '#ffd34a';
+    g.fillRect(14, 3, 4, 2);
+  }, true);
+}
+
 /** build pads: a ring with a plus in the middle, glowing */
 /** the AmannLabs logo, loaded once and painted into each map's floor */
 let markImage: Promise<HTMLImageElement> | null = null;
@@ -472,7 +590,7 @@ function loadMark(): Promise<HTMLImageElement> {
 /** the looks whose floor is dark: the logo's lettering is light there */
 /** Glitch Maze: this many pixels or fewer left, and they throb so the last ones are easy to find */
 const MAZE_LAST_PIXELS = 8;
-const DARK_FLOORS = new Set(['neon', 'rooftop', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
+const DARK_FLOORS = new Set(['neon', 'rooftop', 'uplink', 'servers', 'underwater', 'maze', 'lane', 'race', 'shaft']);
 
 /** how high the floor logo's lettering floats when it is awake: over the heads, so nobody stands in it */
 const LOGO_RISE = 2.3;
@@ -838,9 +956,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   // ---- glitch floor and boost tiles
   // the hazard tiles are glitch floor everywhere except where the map says otherwise: the jungle's
-  // swamp and the sea's kelp beds hurt just the same, but look like water (and need no colour-blind sign)
-  const glitchy = look !== 'jungle' && look !== 'underwater';
-  const water = look === 'jungle' ? swampTexture() : look === 'underwater' ? kelpBedTexture() : null;
+  // swamp and the sea's kelp beds hurt just the same, but look like water (and need no colour-blind sign),
+  // the Uplink's transformer yards are live gratings
+  const glitchy = look !== 'jungle' && look !== 'underwater' && look !== 'uplink';
+  const water = look === 'jungle' ? swampTexture() : look === 'underwater' ? kelpBedTexture() : look === 'uplink' ? liveGratingTexture() : null;
   const glitchTex = water ?? glitchTexture(NORMAL.glitchSign, false);
   const glitchTexCb = water ?? glitchTexture(COLOR_BLIND.glitchSign, true);
   const glitchMat = glowMat(0xffffff, 0.6);
@@ -854,8 +973,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.Boost, boostMat, 0.42, -0.4, false);
   disposables.push(glitchTex, glitchTexCb, boostTex);
 
-  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction
-  const beltTex = canvasTexture(32, 32, g => {
+  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction (on the helipad the
+  // rotor wash: concrete with pale streaks of wind that run the same way)
+  const beltTex = look === 'helipad' ? windTexture() : canvasTexture(32, 32, g => {
     g.fillStyle = '#3a3550';
     g.fillRect(0, 0, 32, 32);
     g.fillStyle = '#ffd34a';
@@ -1158,6 +1278,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
         const step = Math.floor(time * 10);
         if (step !== glitchStep) glitchStep = step;
         if (hash(glitchStep, 3) > 0.85) glitchMat.emissiveIntensity *= 1.8;
+      } else if (look === 'uplink') {
+        // the live gratings hum, and now and then an arc jumps
+        glitchMat.emissiveIntensity = (0.45 + 0.08 * Math.sin(time * 7)) * glow * (hash(Math.floor(time * 14), 5) > 0.82 ? 1.9 : 1);
       } else {
         // water only shimmers
         glitchMat.emissiveIntensity = (0.25 + 0.06 * Math.sin(time * 2)) * glow;

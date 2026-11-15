@@ -57,11 +57,11 @@ describe('the new worlds', () => {
     expect([...seen[1]].sort()).toEqual(['candy', 'jungle']);
     expect([...seen[2]].sort()).toEqual(['arena', 'underwater']);
     expect([...seen[3]].sort()).toEqual(['highway', 'neon', 'servers']);
-    expect([...seen[4]]).toEqual(['rooftop']);
+    expect([...seen[4]].sort()).toEqual(['helipad', 'rooftop', 'uplink']);
     expect(runFloors(7)).toEqual(runFloors(7));
   });
 
-  it('and its bosses too: the arena has the Mega Block, the Rhino or the Schrättele, the roof ends with the worm, King Rex, the Tarantula Queen or the Schrättele', () => {
+  it('and its bosses too: the arena has the Mega Block, the Rhino or the Schrättele, the roof or the helipad ends with the worm, King Rex, the Tarantula Queen or the Schrättele', () => {
     const mid = new Set<string>(), last = new Set<string>(), pairs = new Set<string>();
     for (let seed = 1; seed < 400; seed++) {
       const floors = runFloors(seed), bosses = runBosses(seed, floors);

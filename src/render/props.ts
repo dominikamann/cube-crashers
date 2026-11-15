@@ -40,9 +40,13 @@ export class PropBuilder {
     for (const g of p.geos) g.translate(ax * push, 0, az * push);
   }
 
-  /** a box of `w` × `h` × `d` with its centre at the local offset (ox, oy, oz), optionally turned around its own y axis */
-  box(w: number, h: number, d: number, mat: THREE.Material, ox = 0, oy = 0, oz = 0, yaw = 0): this {
+  /**
+   * a box of `w` × `h` × `d` with its centre at the local offset (ox, oy, oz), optionally turned around its own y axis;
+   * with `tilt` it is first tipped about its own z axis (a box along x has its far end lifted by `tilt`): struts and ribs
+   */
+  box(w: number, h: number, d: number, mat: THREE.Material, ox = 0, oy = 0, oz = 0, yaw = 0, tilt = 0): this {
     const g = new THREE.BoxGeometry(w, h, d);
+    if (tilt) g.rotateZ(tilt);
     if (yaw) g.rotateY(yaw);
     this.m.makeTranslation(ox, oy, oz).premultiply(this.frame);
     g.applyMatrix4(this.m);

@@ -64,8 +64,8 @@ describe('every mode and every map a server takes', () => {
         }
       }
     }
-    // 7 versus modes x (10 arenas + random), 13 floors + random, 10 brawl maps + random, 10 rush maps + own + random, the tower, endless
-    expect(games).toBe(7 * 11 + 14 + 11 + 12 + 2);
+    // 7 versus modes x (12 arenas + random), 15 floors + random, 12 brawl maps + random, 12 rush maps + own + random, the tower, endless
+    expect(games).toBe(7 * 13 + 16 + 13 + 14 + 2);
   }, 120_000);
 
   it('with the view from above too: every mode on every map that is left, never in the Town', () => {

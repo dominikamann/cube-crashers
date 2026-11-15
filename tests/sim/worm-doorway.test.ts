@@ -28,7 +28,7 @@ function standstills(map: string, seed: number): number {
 }
 
 describe('the Segment Worm gets through every doorway', () => {
-  for (const map of ['floor01', 'neon', 'highway', 'jungle', 'candy', 'servers', 'underwater'])
+  for (const map of ['floor01', 'neon', 'highway', 'jungle', 'candy', 'servers', 'underwater', 'uplink'])
     it(`never stands still in front of one on ${map}`, () => {
       for (const seed of [1, 2, 3]) expect(standstills(map, seed), `seed ${seed}`).toBe(0);
     }, 120_000);

@@ -205,8 +205,12 @@ export interface RunSummary {
   headline?: string;
   /** a Daily Run: its date */
   daily?: string;
+  /** the player on this computer (a client: their seat on the host), to mark their row */
+  me?: number;
+  /** a team match: red's and blue's score, the table groups the rows by team */
+  teamScores?: [number, number];
   /** one row per player, best first */
-  ranking: { name: string; color: number; score: number; kills: number; revives: number; downs: number; bestCombo: number; bestWeapon: string | null; coins: number; towers: number }[];
+  ranking: { id: number; name: string; color: number; team?: 0 | 1; bot?: boolean; score: number; kills: number; revives: number; downs: number; bestCombo: number; bestWeapon: string | null; coins: number; towers: number }[];
 }
 
 export interface ScreenActions {
@@ -1108,25 +1112,66 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         for (const u of r.unlocked) text(s, 'p', 'newbest', t('result.unlocked', { name: t(`unlock.${u}` as 'unlock.endless') }));
         if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
 
+        // the table: in a team match red and blue apart, the winning team first; the winners' rows in gold with a
+        // star, the player's own row marked. A wrapper scrolls sideways on a narrow screen, so no column is lost
+        const wrap = document.createElement('div');
+        wrap.className = 'ranking-wrap';
         const table = document.createElement('table');
-        table.className = 'ranking txt';
+        // (a full house gets tighter rows)
+        table.className = `ranking txt${r.ranking.length > 6 ? ' many' : ''}`;
         const head = ['', t('rank.player'), t('rank.score'), t('rank.kills'), t('rank.weapon'), t('rank.combo'), t('rank.towers'), t('rank.coins'), t('rank.revives'), t('rank.downs')];
         // versus has no towers, coins or revives: just who scored, who crashed whom, and who went down
         const cols = versus ? [0, 1, 2, 3, 9] : head.map((_h, i) => i);
-        table.innerHTML = `<tr>${cols.map(i => `<th>${head[i]}</th>`).join('')}</tr>`;
-        r.ranking.forEach((row, i) => {
-          const tr = document.createElement('tr');
-          const cells = [i === 0 && r.ranking.length > 1 ? '\u2605' : `${i + 1}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
-          cols.forEach(j => {
-            const c = cells[j];
-            const td = document.createElement('td');
-            td.textContent = String(c);
-            if (j === 1) td.style.color = hex(row.color);
-            tr.append(td);
-          });
-          table.append(tr);
-        });
-        s.append(table);
+        // (the place and the names read from the left, numbers line up on the right)
+        const align = (j: number) => (j === 0 ? 'rank' : j === 1 || j === 4 ? 'left' : '');
+        table.innerHTML = `<tr>${cols.map(i => `<th class="${align(i)}">${head[i]}</th>`).join('')}</tr>`;
+        const teams = r.teamScores;
+        const groups: { team?: 0 | 1; rows: RunSummary['ranking'] }[] = teams
+          ? ([0, 1] as const).slice().sort((a, b) => teams[b] - teams[a]).map(team => ({ team, rows: r.ranking.filter(row => row.team === team) }))
+          : [{ rows: r.ranking }];
+        const top = teams ? Math.max(...teams) : r.ranking[0]?.score ?? 0;
+        const winner = (row: RunSummary['ranking'][number]) => r.ranking.length > 1 && (teams ? teams[row.team ?? 0] === top : row.score === top);
+        let place = 0;
+        for (const g of groups) {
+          if (g.team !== undefined) {
+            const tr = document.createElement('tr');
+            tr.className = `team team${g.team}`;
+            tr.innerHTML = `<th colspan="${cols.length}">${t(g.team === 0 ? 'board.red' : 'board.blue')} \u00b7 ${teams![g.team]}</th>`;
+            table.append(tr);
+          }
+          for (const row of g.rows) {
+            place++;
+            const first = winner(row);
+            const tr = document.createElement('tr');
+            tr.className = `${first ? 'win' : ''}${row.id === r.me ? ' me' : ''}`;
+            const cells = [first ? '\u2605' : `${place}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
+            cols.forEach(j => {
+              const c = cells[j];
+              const td = document.createElement('td');
+              td.className = align(j);
+              if (j !== 1) {
+                td.textContent = String(c);
+              } else {
+                const dot = document.createElement('i');
+                dot.style.background = hex(row.color);
+                const name = document.createElement('span');
+                name.textContent = String(c) + (row.bot ? ' \u{1F916}' : '');
+                name.style.color = hex(row.color);
+                td.append(dot, name);
+                if (row.id === r.me) {
+                  const you = document.createElement('span');
+                  you.className = 'you';
+                  you.textContent = t('board.you');
+                  td.append(you);
+                }
+              }
+              tr.append(td);
+            });
+            table.append(tr);
+          }
+        }
+        wrap.append(table);
+        s.append(wrap);
         if (!versus) {
           text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
           text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);

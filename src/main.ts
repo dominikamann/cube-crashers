@@ -759,9 +759,12 @@ function startGame() {
         floorsTotal: 0,
         difficulty: s.difficulty,
         headline: label,
+        me: localId(),
+        // (a team match: the table lists red and blue apart, the team with more points or rounds first)
+        teamScores: vs.mode === 'team' ? (vs.rule === 'rounds' ? [vs.roundWins[0] ?? 0, vs.roundWins[1] ?? 0] : [...vs.teamScores]) : undefined,
         ranking: [...s.players]
           .sort((a, b) => points(b.id, b.team) - points(a.id, a.team))
-          .map(p => ({ name: p.name, color: p.color, score: points(p.id, p.team), kills: p.stats.kills, revives: 0, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
+          .map(p => ({ id: p.id, name: p.name, color: p.color, team: p.team, bot: !!p.bot, score: points(p.id, p.team), kills: p.stats.kills, revives: 0, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
       };
     }
     return {
@@ -781,9 +784,10 @@ function startGame() {
       floors: floorsCleared(s).cleared,
       floorsTotal: floorsCleared(s).total,
       difficulty: s.difficulty,
+      me: localId(),
       ranking: [...s.players]
         .sort((a, b) => b.stats.score - a.stats.score)
-        .map(p => ({ name: p.name, color: p.color, score: p.stats.score, kills: p.stats.kills, revives: p.stats.revives, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
+        .map(p => ({ id: p.id, name: p.name, color: p.color, bot: !!p.bot, score: p.stats.score, kills: p.stats.kills, revives: p.stats.revives, downs: p.stats.downs, bestCombo: p.stats.bestCombo, bestWeapon: bestWeapon(p.stats), coins: p.stats.coins, towers: p.stats.towersBuilt })),
     };
   }
 
@@ -885,8 +889,19 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], bots: names.map((_, i) => i >= humans), versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], bots: names.map((_, i) => i >= humans), versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') && !(import.meta.env.DEV && params.has('nocount')) });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
+    // dev: ?versus=ffa|team&demo=win (&size=10, &nocount=1) ends the match right at GO with made-up scores, to
+    // look at the result screen
+    if (import.meta.env.DEV && params.get('demo') === 'win' && solo.versus) {
+      solo.players.forEach((p, i) => {
+        solo!.versus!.scores[p.id] = Math.max(0, 9 - i * 2);
+        if (p.team !== undefined) solo!.versus!.teamScores[p.team] += solo!.versus!.scores[p.id];
+        p.stats.kills = 50 - i * 4;
+        p.stats.downs = 3 + i;
+      });
+      solo.versus.endsAt = solo.tick + 1;
+    }
     enterPlay();
   }
   /** the date of the Daily Run being played, or null */
@@ -1388,6 +1403,10 @@ function startGame() {
   // dev: ?versus=team|ffa starts a versus match with bots right away
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';
+    // dev: &size=10 fills the match up with bots; &rule=score|rounds|… picks the rule
+    if (import.meta.env.DEV && Number(params.get('size')) > 1) settings.versusSize = Number(params.get('size'));
+    if (import.meta.env.DEV && params.get('rule')) settings.versusRule = params.get('rule') as typeof settings.versusRule;
+    if (import.meta.env.DEV && params.has('demo')) settings.versusDiscovery = false;
     newVersusGame();
     // dev: &crown=1 gives the player the lead and Quad Damage, to look at the crown and the glow
     if (import.meta.env.DEV && params.has('crown') && solo.versus) {
