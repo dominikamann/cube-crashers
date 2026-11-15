@@ -34,7 +34,7 @@ import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
-import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type WeaponKind } from './sim/types';
+import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createEmotes } from './ui/emotes';
@@ -52,6 +52,8 @@ document.title = t('title');
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 /** dev: puts the camera on a circle round a figure (set once the renderer exists) */
+/** dev (&ride=…): switches every view on this computer to first person */
+let lookOut: (() => void) | null = null;
 let showroom: ((at: { x: number; z: number; height: number; radius: number; angle?: number; look?: number }) => void) | null = null;
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
 // the interface grows with big screens (see ui/scale.ts)
@@ -373,57 +375,6 @@ function startGame() {
   fpClick.textContent = t('hud.clickToAim');
   fpClick.style.display = 'none';
   hudRoots[0].append(fpClick);
-  // first person in a vehicle: a cockpit frame (kart, roller) or the nose of the board along the bottom
-  const KART_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M0 100 L0 0 L22 0 L60 70 Q200 52 340 70 L378 0 L400 0 L400 100 Z" fill="#1d1a33"/><path d="M60 70 Q200 52 340 70" stroke="#ff2bd6" stroke-width="2.5" fill="none"/><path d="M22 0 L60 70 M378 0 L340 70" stroke="#3a3560" stroke-width="5"/></svg><svg viewBox="0 0 200 200" class="wheel"><circle cx="100" cy="100" r="80" fill="none" stroke="#2a2550" stroke-width="18"/><circle cx="100" cy="100" r="80" fill="none" stroke="#4a4580" stroke-width="4"/><path d="M28 100 L172 100 M100 100 L100 172" stroke="#2a2550" stroke-width="16"/><rect x="93" y="11" width="14" height="18" rx="3" fill="#ff2bd6"/><circle cx="100" cy="100" r="16" fill="#ff2bd6"/></svg>`;
-  const BOARD_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M120 100 Q130 40 200 28 Q270 40 280 100 Z" fill="#2bf0ff" opacity="0.9"/><path d="M140 100 Q150 52 200 42 Q250 52 260 100" fill="none" stroke="#1d1a33" stroke-width="5"/></svg>`;
-  // riding a unicorn in first person: its white neck, ears, a rainbow mane and the golden horn in front of you
-  const UNICORN_FRAME = `<svg viewBox="0 0 400 100" preserveAspectRatio="none" class="frame"><path d="M150 100 Q160 50 200 40 Q240 50 250 100 Z" fill="#f6f4ff"/><path d="M168 46 L176 20 L186 44 Z M214 44 L224 20 L232 46 Z" fill="#f6f4ff" stroke="#c9b8ff" stroke-width="2"/><path d="M196 42 L200 0 L206 42 Z" fill="#ffd84a" stroke="#fff6c8" stroke-width="1.5"/><path d="M160 100 Q166 66 184 52" fill="none" stroke="#ff5a5f" stroke-width="6"/><path d="M168 100 Q172 70 188 56" fill="none" stroke="#ffe14a" stroke-width="5"/><path d="M176 100 Q178 76 192 60" fill="none" stroke="#3d8bfd" stroke-width="5"/></svg>`;
-  const cockpits = hudRoots.map(root => {
-    const c = document.createElement('div');
-    c.className = 'fp-cockpit';
-    c.style.display = 'none';
-    // under the HUD
-    root.prepend(c);
-    return { el: c, kind: '', yaw: 0, steer: 0, at: 0 };
-  });
-  const showCockpit = (i: number, on: boolean, playerId: number) => {
-    const s = view();
-    const p = s.players.find(x => x.id === playerId);
-    const kind = on && p?.vehicleId != null ? (s.vehicles.find(v => v.id === p.vehicleId)?.kind ?? '') : '';
-    const c = cockpits[i];
-    c.el.style.display = kind ? '' : 'none';
-    if (kind && kind !== c.kind) c.el.innerHTML = kind === 'hoverboard' ? BOARD_FRAME : kind === 'unicorn' ? UNICORN_FRAME : KART_FRAME;
-    c.kind = kind;
-    const wheel = kind ? c.el.querySelector<SVGElement>('.wheel') : null;
-    const ride = wheel && p ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
-    if (wheel && ride) {
-      // the steering wheel turns with the kart. A kart turns on the spot, so the wheel follows a heading that
-      // lags a little behind the real one and is turned by how far the two are apart
-      const now = performance.now() / 1000, dt = Math.max(1e-3, Math.min(0.1, now - c.at));
-      const speed = Math.hypot(ride.vel.x, ride.vel.z);
-      const yaw = speed > 0.5 ? Math.atan2(-ride.vel.x, -ride.vel.z) : c.yaw;
-      const off = Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw));
-      c.yaw += off * Math.min(1, dt * 5);
-      c.steer += (Math.max(-1, Math.min(1, off / 0.7)) - c.steer) * Math.min(1, dt * 14);
-      c.at = now;
-      // the model's heading grows to the left, the wheel on screen turns the way you steer
-      wheel.style.transform = `translate(-50%, 40%) rotate(${(-c.steer * 100).toFixed(1)}deg)`;
-    }
-    // the board and the unicorn have no wheel: they lean into the turn instead
-    const frame = kind === 'hoverboard' || kind === 'unicorn' ? c.el.querySelector<SVGElement>('.frame') : null;
-    const mount = frame && p ? s.vehicles.find(v => v.id === p.vehicleId) : undefined;
-    if (frame && mount) {
-      const now = performance.now() / 1000, dt = Math.max(1e-3, Math.min(0.1, now - c.at));
-      const speed = Math.hypot(mount.vel.x, mount.vel.z);
-      const yaw = speed > 0.5 ? Math.atan2(-mount.vel.x, -mount.vel.z) : c.yaw;
-      const off = Math.atan2(Math.sin(yaw - c.yaw), Math.cos(yaw - c.yaw));
-      c.yaw += off * Math.min(1, dt * 5);
-      c.steer += (Math.max(-1, Math.min(1, off / 0.7)) - c.steer) * Math.min(1, dt * 14);
-      c.at = now;
-      frame.style.transformOrigin = '50% 100%';
-      frame.style.transform = `rotate(${(-c.steer * 7).toFixed(1)}deg)`;
-    }
-  };
   /** the mouse is captured in first person so it can turn the view */
   let releasing = false;
   const lockPointer = (on: boolean) => {
@@ -462,6 +413,12 @@ function startGame() {
   const hud2 = createHud(hudRoots[1], { buy: () => {}, ready: () => {} });
   const buildMenu2 = createBuildMenu(hudRoots[1], () => {});
   const padCtl2 = new PadControls();
+  lookOut = () =>
+    [keyboard, padCtl, padCtl2].forEach(c => {
+      c.setFirstPerson(true, { x: 0, z: -1 });
+      // (&tilt=-0.5: looking that far down, or up)
+      if (params.has('tilt')) c.pitch = Number(params.get('tilt')) || 0;
+    });
   let split = false;
   /** Z zooms player 1's view out (R3 on the controller does the same) */
   let zoomedOut = false;
@@ -636,8 +593,6 @@ function startGame() {
       document.body.classList.toggle('no-map', !settings.showMap);
       fpCross[1].style.display = fp1on && mode === 'playing' ? '' : 'none';
       fpClick.style.display = fp0on && mode === 'playing' && !replay && !padActive && fp0 === keyboard && document.pointerLockElement !== canvas ? '' : 'none';
-      showCockpit(0, fp0on && mode === 'playing' && !replay, localId());
-      showCockpit(1, fp1on && mode === 'playing', 1);
       if (mode !== 'playing' || padActive || !keyboard.firstPerson) lockPointer(false);
       renderer.setLookAhead(0, padActive);
       // the mouse player's camera leans by where the pointer sits on screen (no feedback loop)
@@ -1662,6 +1617,19 @@ function applyDemo(sim: SimState) {
       });
     if (!fp && !top) showroom?.({ x: at.x + (Number(params.get('x')) || 0), z: at.z, height: Number(params.get('h')) || 2.2, radius: Number(params.get('r')) || 9, angle: params.has('turn') ? undefined : ((Number(params.get('angle')) || 0) * Math.PI) / 180 });
   }
+  // &ride=kart|roller|hoverboard|unicorn|police: every player on this computer sits in one, in first person
+  // (&boost=1: with a boost that does not end, &tilt=-0.5: looking down), to look at the view from inside
+  const ride = import.meta.env.DEV ? params.get('ride') : null;
+  if (ride && ['kart', 'roller', 'hoverboard', 'unicorn', 'police'].includes(ride))
+    void import('./sim/systems/vehicles').then(m => {
+      for (const p of sim.players) {
+        const v = m.addVehicle(sim, ride as VehicleKind, p.pos, 0);
+        v.driverId = p.id;
+        p.vehicleId = v.id;
+        if (params.has('boost')) p.boostUntil = Number.MAX_SAFE_INTEGER;
+      }
+      lookOut?.();
+    });
   // ?demo=garage: every vehicle in a row next to the player (to look at them)
   if (params.get('demo') === 'garage') {
     void import('./sim/systems/vehicles').then(m => {

@@ -1,6 +1,7 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_ENEMY, BLOCKS_KART, BLOCKS_WALKER, conveyorDir, moveCircle, tileAt } from '../map/tilemap';
 import { DT, type SimState, type Vec2 } from '../types';
+import { isBossBody } from './combat';
 import { KART } from './vehicles';
 
 export const CONVEYOR_SPEED = 2.5;
@@ -10,7 +11,10 @@ function push(s: SimState, pos: Vec2): Vec2 | null {
   return dir ? { x: dir.x * CONVEYOR_SPEED * DT, z: dir.z * CONVEYOR_SPEED * DT } : null;
 }
 
-/** Conveyor belts carry whatever stands on them: players on foot, monsters and parked or driven karts. */
+/**
+ * Conveyor belts carry whatever stands on them: players on foot, monsters and parked or driven karts. A boss's body is
+ * too heavy for a belt (and for the rotor wash on the helipad): it walks across as if the floor stood still.
+ */
 export function updateConveyors(s: SimState): void {
   for (const p of s.players) {
     if (p.downUntil !== null || p.air > 0 || p.flying || p.vehicleId !== null) continue;
@@ -18,9 +22,8 @@ export function updateConveyors(s: SimState): void {
     if (d) moveCircle(s.map, p.pos, d.x, d.z, PLAYER_RADIUS, BLOCKS_WALKER);
   }
   for (const e of s.enemies) {
-    // (not what flies: the helicopter hovers over the belt)
-    const d = e.hp > 0 && !e.fly ? push(s, e.pos) : null;
-    if (d) moveCircle(s.map, e.pos, d.x, d.z, e.radius, BLOCKS_ENEMY);
+    const d = e.hp > 0 ? push(s, e.pos) : null;
+    if (d && !isBossBody(s, e)) moveCircle(s.map, e.pos, d.x, d.z, e.radius, BLOCKS_ENEMY);
   }
   for (const v of s.vehicles) {
     const d = v.air === 0 ? push(s, v.pos) : null;

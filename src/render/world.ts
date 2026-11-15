@@ -12,9 +12,10 @@ import { logoSpots, type LogoSpot } from '../sim/map/logo-spots';
 import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
-import { buildDecor } from './decor';
+import { buildDecor, HULL_COLOR } from './decor';
 import { buildWaldseeTown, paintWaldseeFloor, paintWaldseeWall, waldseeBlockColor, waldseeBlockHeight, waldseeGround } from './waldsee-look';
 import { floorDef } from '../sim/config/floors';
+import { HELIPAD } from '../sim/config/floor-helipad';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -35,6 +36,9 @@ export interface World {
 function wallHeight(map: FloorMap, tx: number, tz: number): number {
   // (Bad Waldsee: every block is a house with its own height and roof, a garden bed or the lake)
   if (map.id === 'waldsee') return waldseeBlockHeight(tx, tz);
+  // (the helicopter's hull on the helipad is one block of one height, whatever patches it lies across)
+  const { heli } = HELIPAD;
+  if (map.id === 'helipad' && tx >= heli.x0 && tx <= heli.x1 && tz >= heli.z0 && tz <= heli.z1) return WALL_HEIGHT;
   return map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)];
 }
 
@@ -400,24 +404,6 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
   }
 }
 
-/** the rotor wash on the helipad: the concrete again, with pale streaks that blow toward -z of the texture */
-function windTexture(): THREE.CanvasTexture {
-  return canvasTexture(32, 32, g => {
-    g.fillStyle = '#9ca1aa';
-    g.fillRect(0, 0, 32, 32);
-    g.fillStyle = '#8f949d';
-    for (let i = 0; i < 10; i++) g.fillRect(Math.floor(hash(i, 3) * 30), Math.floor(hash(3, i) * 30), 2, 2);
-    g.fillStyle = 'rgba(255,255,255,0.55)';
-    for (const [x, y, len] of [[4, 2, 12], [12, 10, 16], [21, 0, 10], [27, 14, 14], [8, 22, 8], [17, 26, 6]]) g.fillRect(x, y, 2, len);
-    // the heads of the streaks: a little chevron each
-    g.fillStyle = 'rgba(255,255,255,0.4)';
-    for (const [x, y] of [[4, 2], [12, 10], [21, 0], [27, 14], [8, 22], [17, 26]]) {
-      g.fillRect(x - 2, y + 2, 2, 2);
-      g.fillRect(x + 2, y + 2, 2, 2);
-    }
-  }, true);
-}
-
 /** jump-over barriers: yellow and dark diagonal stripes */
 function barrierTexture(): THREE.CanvasTexture {
   return canvasTexture(32, 32, g => {
@@ -693,7 +679,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // ---- floor: one surface, detail and shading painted into a map-sized texture, theme colour per vertex
   const px = Math.max(16, Math.min(48, Math.floor(4096 / Math.max(map.w, map.h))));
   // (in the Town there is floor under what stands in the way too: a tree, the fountain, a parked car)
-  const floorTiles = cells.filter(c => c.tile === Tile.Floor || (map.id === 'waldsee' && c.tile === Tile.LowWall));
+  // (on the helipad the rotor wash is pad concrete like the rest: the wind shows in the air, not on the floor)
+  const level = (t: Tile) => t === Tile.Floor || (look === 'helipad' && t >= Tile.ConveyorN && t <= Tile.ConveyorW);
+  const floorTiles = cells.filter(c => level(c.tile) || (map.id === 'waldsee' && c.tile === Tile.LowWall));
   // (the cobbles go on behind a barrier, where the street is only painted on: it is drawn as floor, but no
   // props grow there and it casts no shadow of its own)
   const paved = map.id === 'waldsee' ? [...floorTiles, ...cells.filter(c => c.tile === Tile.Wall && waldseeGround(c.tx, c.tz) === 'street')] : floorTiles;
@@ -848,7 +836,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       // skirts toward lower neighbours (glitch floor sits a little lower)
       for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const t = tileOf(x + ox, z + oz);
-        if (t === Tile.Floor || t === Tile.Wall || t === Tile.LowWall) continue;
+        if (level(t) || t === Tile.Wall || t === Tile.LowWall) continue;
         const ex = ox === 1 ? x + 1 : x, ez = oz === 1 ? z + 1 : z;
         const a = ox ? [ex, 0, z] : [x, 0, ez];
         const b = ox ? [ex, 0, z + 1] : [x + 1, 0, ez];
@@ -911,6 +899,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // (what moves in the Town: the boats and the sharks out on the lake)
   let townLife: { update(time: number): void } | null = null;
   const walls = layer((t, c) => t === Tile.Wall && (!town || waldseeGround(c.tx, c.tz) === 'house'), [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
+  // (the helicopter's hull is wall blocks too: the same riveted plate, painted in the helicopter's colour)
+  const hull = (tx: number, tz: number) => look === 'helipad' && tx >= HELIPAD.heli.x0 && tx <= HELIPAD.heli.x1 && tz >= HELIPAD.heli.z0 && tz <= HELIPAD.heli.z1;
   if (town) {
     const ground = new THREE.MeshLambertMaterial({ vertexColors: true });
     disposables.push(ground);
@@ -973,9 +963,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.Boost, boostMat, 0.42, -0.4, false);
   disposables.push(glitchTex, glitchTexCb, boostTex);
 
-  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction (on the helipad the
-  // rotor wash: concrete with pale streaks of wind that run the same way)
-  const beltTex = look === 'helipad' ? windTexture() : canvasTexture(32, 32, g => {
+  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction (not on the helipad: its
+  // rotor wash is drawn as plain pad concrete, with the dust in the air over it, see decor.ts)
+  const beltTex = canvasTexture(32, 32, g => {
     g.fillStyle = '#3a3550';
     g.fillRect(0, 0, 32, 32);
     g.fillStyle = '#ffd34a';
@@ -993,7 +983,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   }, true);
   disposables.push(beltTex);
   const beltMat = new THREE.MeshLambertMaterial({ map: beltTex });
-  const belts = cells.filter(c => c.tile >= Tile.ConveyorN && c.tile <= Tile.ConveyorW);
+  const belts = cells.filter(c => c.tile >= Tile.ConveyorN && c.tile <= Tile.ConveyorW && !level(c.tile));
   const beltMesh = new THREE.InstancedMesh(unit, beltMat, Math.max(1, belts.length));
   beltMesh.count = belts.length;
   beltMesh.receiveShadow = true;
@@ -1233,7 +1223,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           }
         }
         col.needsUpdate = true;
-        walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : theme.wallA)));
+        walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : hull(c.tx, c.tz) ? HULL_COLOR : theme.wallA)));
         if (walls.mesh.instanceColor) walls.mesh.instanceColor.needsUpdate = true;
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
         if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;
