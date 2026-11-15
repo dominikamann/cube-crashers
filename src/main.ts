@@ -1429,6 +1429,8 @@ function startGame() {
     // dev only (?capture=1): time only moves when the recorder asks, so recordings are smooth
     let clock = 0;
     (window as unknown as { __advance: (ms: number) => void }).__advance = ms => loop.frame((clock += ms));
+    // (and a recorder may steer: the game being played and the keyboard, whose view it turns)
+    (window as unknown as { __director: object }).__director = { sim: () => solo, keyboard, showroom: (at: Parameters<NonNullable<typeof showroom>>[0]) => showroom?.(at) };
   } else {
     requestAnimationFrame(function frame(now) {
       loop.frame(now);
