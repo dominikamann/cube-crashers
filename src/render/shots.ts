@@ -3,6 +3,7 @@ import { CANDY, MAGNET, MINE, SWATTER, SWORD } from '../sim/config/weapons';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { shotHeight } from '../sim/systems/shot-height';
 import { TICK_RATE, type DamageSource, type Player, type Projectile, type SimEvent, type SimState, type Vec2 } from '../sim/types';
+import { BLADE_COLORS, bladeFlicker, bladeReach, bladeStep } from './blade';
 import { palette } from './palette';
 import { InstancedPool } from './pool';
 import type { Theme } from './theme';
@@ -15,13 +16,19 @@ const KETCHUP = [0xd8261c, 0xb81a14, 0xff4a3a];
 const MUSTARD = [0xffd400, 0xffe76a, 0xe0a800];
 /** the sword's slash from its edge to its tail */
 const SLASH_RAMP = [0xffffff, 0xffe0fa, 0xffa6f0, 0xff6be6, 0xff3bd9, 0xff2bd6, 0xe022c4, 0xc01cb0, 0x9c1a9c, 0x7a1890, 0x5c1478, 0x400f5c];
+/** a line the sword burnt into a wall as it cools: white-hot, pink, deep red, a dark scar, gone */
+const SCORCH_RAMP = [0xffffff, 0xffc8f4, 0xff5ae0, 0xd02aa8, 0x8a1a6a, 0x4a1438, 0x2e1424, 0x241820];
 const RAIL_RAMP = [0xffffff, 0xd8fdff, 0x9ff8ff, 0x5fe0ff, 0x3aa8ff];
 /** no more bits of light than this fly at a time */
 export const MAX_PIXELS = 700;
 /** a jump in the game's clock that is a cut to another time, not a late frame */
 const CUT_TICKS = 30;
 /** how long each of these is on show, in seconds */
-const SLASH_SECONDS = 0.2, SWAT_SECONDS = 0.24, RAIL_SECONDS = 0.34, MAGNET_SECONDS = 0.4, CUT_SECONDS = 0.14;
+const SLASH_SECONDS = 0.2, SWAT_SECONDS = 0.24, RAIL_SECONDS = 0.34, MAGNET_SECONDS = 0.4, CUT_SECONDS = 0.14, SCORCH_SECONDS = 1.6, CRACKLE_SECONDS = 0.14;
+/** the part of a slash in which the blade sweeps through the arc (the rest, its trail fades) */
+const SWEEP = 0.7;
+/** where a blade in a swing starts, out from the middle of whoever swings it (the hand) */
+const BLADE_ROOT = 0.45;
 /** how high above the floor a hand is: where shots leave from, where blades cut */
 const HAND = 0.9;
 
@@ -213,6 +220,44 @@ export function slashSweep(t: number): number {
   return 1 - 2 * (1 - (1 - k) ** 3);
 }
 
+/** when (0 to 1, as for slashSweep) the edge of a slash passes the spot `u` of its arc (-1 to 1): the inverse of slashSweep */
+export function slashPasses(u: number): number {
+  return 1 - Math.cbrt((1 + Math.max(-1, Math.min(1, u))) / 2);
+}
+
+/**
+ * Where a sword swung from `x`, `z` along `ax`, `az` (`half`: half its arc in radians) meets a wall within
+ * `radius`: a spot on the face of the wall for every step of the arc, the way the face looks (`nx`, `nz`), and
+ * where in the arc (-1 to 1) it is. Spots that would sit on one another are left out.
+ */
+export function bladeOnWalls(wall: (x: number, z: number) => boolean, x: number, z: number, ax: number, az: number, radius: number, half: number): { x: number; z: number; nx: number; nz: number; u: number }[] {
+  const out: { x: number; z: number; nx: number; nz: number; u: number }[] = [];
+  const steps = Math.max(2, Math.ceil((2 * half * radius) / 0.22));
+  for (let i = 0; i <= steps; i++) {
+    const u = 1 - (2 * i) / steps, a = u * half;
+    const dx = ax * Math.cos(a) - az * Math.sin(a), dz = az * Math.cos(a) + ax * Math.sin(a);
+    let px = x + dx * BLADE_ROOT, pz = z + dz * BLADE_ROOT;
+    // (one standing in a wall cuts nothing more on it)
+    if (wall(px, pz)) continue;
+    for (let r = BLADE_ROOT + 0.06; r <= radius; r += 0.06) {
+      const qx = x + dx * r, qz = z + dz * r;
+      if (!wall(qx, qz)) {
+        px = qx;
+        pz = qz;
+        continue;
+      }
+      // (which face it came through: the tile line it crossed)
+      const across = Math.floor(px) !== Math.floor(qx);
+      const nx = across ? Math.sign(px - qx) : 0, nz = across ? 0 : Math.sign(pz - qz);
+      const fx = across ? Math.floor(qx) + (nx > 0 ? 1 : 0) + nx * 0.02 : qx, fz = across ? qz : Math.floor(qz) + (nz > 0 ? 1 : 0) + nz * 0.02;
+      const last = out[out.length - 1];
+      if (!last || Math.hypot(last.x - fx, last.z - fz) > 0.12) out.push({ x: fx, z: fz, nx, nz, u });
+      break;
+    }
+  }
+  return out;
+}
+
 /** a bit of light: a small bright cube that flies, falls, grows or burns out (`ramp`: its colours from first to last) */
 interface Pixel {
   x: number;
@@ -247,6 +292,10 @@ interface Hoop {
 }
 
 interface Slash { id: number; x: number; z: number; ax: number; az: number; radius: number; age: number }
+/** a line burnt into a wall (`age` below 0: the blade has not got there yet); `along`: which way it runs on the face */
+interface Scorch { x: number; y: number; z: number; along: number; long: number; age: number; nx: number; nz: number }
+/** a crackle where the blade met something */
+interface Crackle { x: number; y: number; z: number; age: number }
 interface Swat { x: number; z: number; yaw: number; size: number; age: number }
 interface Rail { x: number; z: number; yaw: number; len: number; age: number }
 interface Pull { id: number; x: number; z: number; tx: number; tz: number; age: number }
@@ -377,6 +426,17 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
   const puddleMat = (color: number, opacity: number, offset: number) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: offset });
   const rims = pool(blot, puddleMat(0xd99a00, 0.8, -1), 32);
   const puddles = pool(blot, puddleMat(0xffd91a, 0.88, -2), 32);
+  // the glow of a sword: boxes of light added to the picture round its blade and its trail
+  const glows = pool(unit, added(), 128);
+  // and the light it throws on the floor round it: a disc that is brightest in its middle and fades to nothing at
+  // its rim (the colour of its vertices, times that of each one; added light, so black is no light)
+  const pond = new THREE.CircleGeometry(0.5, 20).rotateX(-Math.PI / 2);
+  {
+    const at = pond.getAttribute('position'), shade = new Float32Array(at.count * 3);
+    for (let i = 0; i < at.count; i++) shade.fill((1 - Math.min(1, Math.hypot(at.getX(i), at.getZ(i)) * 2)) ** 1.5, i * 3, i * 3 + 3);
+    pond.setAttribute('color', new THREE.BufferAttribute(shade, 3));
+  }
+  const ponds = pool(pond, new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3 }), 16);
 
   const pixels: Pixel[] = [];
   const hoopList: Hoop[] = [];
@@ -385,6 +445,12 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
   const rails: Rail[] = [];
   const pulls: Pull[] = [];
   const cuts: Cut[] = [];
+  const scorches: Scorch[] = [];
+  const crackles: Crackle[] = [];
+  /** how far each player's sword is out of its hilt (0 to 1), for the light it throws */
+  const blades = new Map<number, number>();
+  /** the players whose swords are in a swing this frame: their light goes with the blade */
+  const swinging = new Map<number, { x: number; z: number }>();
   /** the shots and the mines of the frame before: what is missing from them now has ended */
   let seen = new Map<number, SeenShot>();
   let mines = new Map<number, Vec2>();
@@ -527,15 +593,28 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
       case 'laserSword': {
         const radius = SWORD.radius + SWORD.radiusPerLevel * (level - 1);
         slashes.push({ id: who.id, x: e.pos.x, z: e.pos.z, ax, az, radius, age: 0 });
-        // what it cut: a bright nick on everything in the arc that was hit with it
-        const minDot = Math.cos((SWORD.halfArcDeg * Math.PI) / 180);
+        const half = (SWORD.halfArcDeg * Math.PI) / 180, minDot = Math.cos(half);
+        // what it cut (a monster; in a versus match a rival it dealt the hit to): a flash where the blade met it, a
+        // bright nick across it, sparks thrown on along the swing and a crackle of light that jumps about the spot
         for (const h of events) {
-          if (h.type !== 'enemyHit') continue;
-          const dx = h.pos.x - e.pos.x, dz = h.pos.z - e.pos.z, d = Math.hypot(dx, dz);
+          const at = h.type === 'enemyHit' ? h.pos : h.type === 'playerHit' && h.by === who.id ? h.pos : null;
+          if (!at) continue;
+          const dx = at.x - e.pos.x, dz = at.z - e.pos.z, d = Math.hypot(dx, dz);
           if (d > radius + 2 || (d > 0.6 && (dx * ax + dz * az) / d < minDot - 0.05)) continue;
-          if (cuts.length < 24) cuts.push({ x: h.pos.x, y: y - 0.1, z: h.pos.z, yaw: Math.atan2(ax, az) + 0.9, age: 0, color: 0xff6be6 });
-          spray(h.pos.x, y - 0.1, h.pos.z, -az, ax, 1.4, some(4), 6, 0.2, 0.055, [0xffffff, 0xff6be6, 0xff2bd6], { long: 3, fall: 3 });
+          // (on its near side, where the blade came in)
+          const cx = d > 0.5 ? at.x - (dx / d) * 0.35 : at.x, cz = d > 0.5 ? at.z - (dz / d) * 0.35 : at.z, cy = y - 0.1;
+          fx.flash(cx, cy, cz, 0.8, 0xffffff, 0.06, false);
+          fx.flash(cx, cy, cz, 1.5, BLADE_COLORS.glow, 0.14, false);
+          if (cuts.length < 24) cuts.push({ x: at.x, y: cy, z: at.z, yaw: Math.atan2(ax, az) + 0.9, age: 0, color: 0xff6be6 });
+          if (crackles.length < 12) crackles.push({ x: cx, y: cy, z: cz, age: 0 });
+          spray(cx, cy, cz, -az, ax, 1.4, some(6), 7, 0.22, 0.05, [0xffffff, 0xffffff, 0xff6be6, 0xff2bd6], { long: 3.5, fall: 4 });
         }
+        // a wall in the arc: the blade burns a line into it as it passes
+        if (scorches.length < 60)
+          for (const w of bladeOnWalls((x, z) => tileAt(s.map, x, z) === Tile.Wall, e.pos.x, e.pos.z, ax, az, radius, half)) {
+            const t = slashPasses(w.u) * SWEEP * SLASH_SECONDS;
+            scorches.push({ x: w.x, y: y - 0.1 + (rand() - 0.5) * 0.04, z: w.z, along: w.nx !== 0 ? 0 : Math.PI / 2, long: 0.3, age: -t, nx: w.nx, nz: w.nz });
+          }
         break;
       }
       case 'flySwatter': {
@@ -586,7 +665,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
       if (cut) {
         seen.clear();
         mines.clear();
-        pixels.length = hoopList.length = slashes.length = swats.length = rails.length = pulls.length = cuts.length = 0;
+        pixels.length = hoopList.length = slashes.length = swats.length = rails.length = pulls.length = cuts.length = scorches.length = crackles.length = 0;
       }
       const pal = palette();
 
@@ -775,7 +854,10 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
       }
       mines = laid;
 
-      // the sword's slash: a crescent of light that sweeps across the front, white at its edge, deep purple at its tail
+      // the sword's slash: the blade itself sweeps across the front, white-hot in its glow, and leaves its light in the
+      // air behind it, a trail that is white just behind the blade, then pink, then deep purple. The tip moves fastest:
+      // the trail's root fades first, the light of the tip stays longest
+      swinging.clear();
       for (let i = slashes.length - 1; i >= 0; i--) {
         const sl = slashes[i];
         sl.age += dt;
@@ -791,23 +873,81 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
         }
         const y = HAND - 0.05 + (who?.flying ? 2.5 : 0);
         const t = sl.age / SLASH_SECONDS, half = (SWORD.halfArcDeg * Math.PI) / 180;
-        const lead = slashSweep(t / 0.7) * half, fade = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+        const lead = slashSweep(t / SWEEP) * half, fade = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
         // (an angle of the arc as a direction: 0 is the aim, positive to the right of it)
         const dir = (a: number) => ({ x: sl.ax * Math.cos(a) - sl.az * Math.sin(a), z: sl.az * Math.cos(a) + sl.ax * Math.sin(a) });
-        const step = 0.12, n = low ? 8 : SLASH_RAMP.length;
+        const step = low ? 0.17 : 0.11, n = low ? 7 : SLASH_RAMP.length, reach = sl.radius - BLADE_ROOT;
+        // (seen through the swinger's own eyes the trail runs right past them: there only its bright part is solid,
+        // the rest is the glow, so it does not wall off the view)
+        const solid = eyes.has(sl.id) ? n * 0.45 : n;
         for (let k = 0; k < n; k++) {
-          const a = lead + k * step * (low ? 1.5 : 1);
+          const a = lead + k * step;
           if (a > half) break;
-          const d = dir(a), long = sl.radius * (0.62 * (1 - k / n) ** 0.8) * fade + 0.05, mid = sl.radius - long / 2;
-          pix.addScaled(sl.x + d.x * mid, y, sl.z + d.z * mid, Math.atan2(d.x, d.z), sl.radius * step * (low ? 1.6 : 1.08), 0.06, long, SLASH_RAMP[low ? Math.min(SLASH_RAMP.length - 1, Math.round(k * 1.5)) : k]);
+          const old = k / n, root = sl.radius - reach * (1 - Math.min(0.9, old ** 0.6)) * fade;
+          const d = dir(a), long = sl.radius - root + 0.04, mid = (root + sl.radius) / 2, yaw = Math.atan2(d.x, d.z);
+          const wide = sl.radius * step * 1.1;
+          if (k < solid) pix.addScaled(sl.x + d.x * mid, y, sl.z + d.z * mid, yaw, wide, 0.05 * (1 - old * 0.5), long, SLASH_RAMP[Math.min(SLASH_RAMP.length - 1, Math.round((k * SLASH_RAMP.length) / n))]);
+          if (!low) glows.addScaled(sl.x + d.x * mid, y, sl.z + d.z * mid, yaw, wide * 1.15, 0.3 * (1 - old * 0.6), long + 0.15, dim(BLADE_COLORS.glow, 0.42 * (1 - old) * fade));
         }
-        if (t < 0.7) {
-          // the blade itself at the edge, and sparks off its tip
-          const d = dir(lead);
-          from.set(sl.x + d.x * 0.5, y + 0.01, sl.z + d.z * 0.5);
-          rods.addBeam(from, Math.atan2(d.x, d.z), 0, sl.radius - 0.45, 0xffffff, 0.09);
-          if (!low) hazes.addBeam(from, Math.atan2(d.x, d.z), 0, sl.radius - 0.45, 0x80156b, 0.34);
+        if (t < SWEEP) {
+          // the blade at the edge: its white core in its glow, and sparks off its tip
+          const d = dir(lead), yaw = Math.atan2(d.x, d.z);
+          from.set(sl.x + d.x * BLADE_ROOT, y + 0.01, sl.z + d.z * BLADE_ROOT);
+          rods.addBeam(from, yaw, 0, reach, 0xffffff, 0.075);
+          if (!low) {
+            hazes.addBeam(from, yaw, 0, reach, dim(BLADE_COLORS.glow, 0.85), 0.2);
+            hazes.addBeam(from, yaw, 0, reach, dim(BLADE_COLORS.haze, 0.55), 0.42);
+          } else rods.addBeam(from, yaw, 0, reach, BLADE_COLORS.glow, 0.12);
           emit(sl.x + d.x * sl.radius, y, sl.z + d.z * sl.radius, d.x * 3 + (rand() - 0.5) * 2, rand() * 1.5, d.z * 3 + (rand() - 0.5) * 2, 0.18 + rand() * 0.14, 0.06, [0xffffff, 0xff6be6, 0xff2bd6], { fall: 3 });
+          swinging.set(sl.id, { x: sl.x + d.x * sl.radius * 0.6, z: sl.z + d.z * sl.radius * 0.6 });
+        }
+      }
+      // a drawn sword lights the floor round it a little, in its colour (more at night, where it is the light there
+      // is); a swinging one where its blade is. No light of its own: a disc of added light that fades at its rim
+      for (const p of s.players) {
+        const drawn = p.downUntil === null && !p.out && p.vehicleId === null && !(p.rare && p.rareSelected) && p.weapons[p.selected]?.kind === 'laserSword';
+        const out = bladeStep(blades.get(p.id) ?? 0, drawn, dt);
+        if (out > 0) blades.set(p.id, out);
+        else blades.delete(p.id);
+        if (low || out === 0) continue;
+        const swing = swinging.get(p.id);
+        const k = (0.16 + 0.34 * theme.pointLights) * bladeReach(out) * bladeFlicker(time, p.id) * (swing ? 1.5 : 1) * (p.flying ? 0.4 : 1);
+        ponds.add(swing ? swing.x : p.pos.x + p.aim.x * 0.75, 0.05, swing ? swing.z : p.pos.z + p.aim.z * 0.75, 0, 3.6, dim(BLADE_COLORS.glow, Math.min(1, k)));
+      }
+      // the lines the blade burnt into walls: they glow white, cool to pink and red, are a dark scar a moment, and go
+      for (let i = scorches.length - 1; i >= 0; i--) {
+        const c = scorches[i];
+        const was = c.age;
+        c.age += dt;
+        if (c.age >= SCORCH_SECONDS) {
+          scorches.splice(i, 1);
+          continue;
+        }
+        if (c.age < 0) continue;
+        // (as the blade gets there: a spit of sparks off the face)
+        if (was < 0) spray(c.x, c.y, c.z, c.nx, c.nz, 2.2, some(2), 5, 0.2, 0.045, [0xffffff, 0xff6be6], { long: 3, fall: 6 });
+        const t = c.age / SCORCH_SECONDS, size = Math.min(1, c.age / 0.04) * Math.min(1, (1 - t) * 5);
+        pix.addScaled(c.x, c.y, c.z, c.along, 0.03, 0.045 * size, c.long * size, SCORCH_RAMP[Math.min(SCORCH_RAMP.length - 1, Math.floor(t * 1.6 * SCORCH_RAMP.length))]);
+        if (!low && t < 0.25) glows.addScaled(c.x, c.y, c.z, c.along, 0.12, 0.2, c.long + 0.15, dim(BLADE_COLORS.glow, 0.5 * (1 - t / 0.25)));
+      }
+      // the crackle where a blade met something: short jagged lines of light that jump about the spot, every frame anew
+      for (let i = crackles.length - 1; i >= 0; i--) {
+        const c = crackles[i];
+        c.age += dt;
+        if (c.age >= CRACKLE_SECONDS) {
+          crackles.splice(i, 1);
+          continue;
+        }
+        const t = c.age / CRACKLE_SECONDS;
+        for (let b = 0; b < (low ? 1 : 3); b++) {
+          from.set(c.x, c.y, c.z);
+          let yaw = rand() * Math.PI * 2;
+          for (let j = 0; j < 3; j++) {
+            const len = (0.12 + rand() * 0.18) * (1 - t * 0.5), pitch = (rand() - 0.5) * 1.6;
+            rods.addBeam(from, yaw, pitch, len, j === 0 ? 0xffffff : 0xff8cf0, 0.03);
+            from.set(from.x + Math.sin(yaw) * Math.cos(pitch) * len, from.y - Math.sin(pitch) * len, from.z + Math.cos(yaw) * Math.cos(pitch) * len);
+            yaw += (rand() - 0.5) * 2;
+          }
         }
       }
       // a nick of light on what a blade or a beam went through: two strokes that cross
