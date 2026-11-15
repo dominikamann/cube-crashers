@@ -36,11 +36,15 @@ export const RARE = {
   missile: { cooldownTicks: 150, range: 22, halfConeDeg: 9, lockTicks: 42, speed: 13, turn: 3.2, lifeTicks: 360, radius: 2.4, damage: 150, direct: 60 },
   /** where the launcher hides: in this share of the crates of a versus match and of fallen elites, and of the crates a wild boss leaves */
   missileCrate: { versus: 0.06, elite: 0.05, wild: 0.5 },
-  /** and how often a golden card is the launcher, against 1 for each of the others: now and then, about one golden card in eleven */
+  /**
+   * how often a golden card is one of the two rare ones, against 1 for each of the others: the launcher and the
+   * Thunder Hammer, each about one golden card in twelve
+   */
   missileCard: 0.4,
+  hammerCard: 0.4,
 };
 
-/** the rare weapons that are on golden cards (the Lock-On Launcher only now and then, see RARE.missileCard) */
+/** the rare weapons that are on golden cards (the Lock-On Launcher and the Thunder Hammer only now and then, see RARE.missileCard) */
 export const ALL_RARE: RareKind[] = ['slushMachine', 'bubblegumBazooka', 'leafBlower', 'pizzaCutter'];
 /** every rare weapon there is: those of the golden cards, and the two that come out of crates (and now and then a card) */
 export const EVERY_RARE: RareKind[] = [...ALL_RARE, 'thunderHammer', 'missileLauncher'];

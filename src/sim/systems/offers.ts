@@ -20,10 +20,10 @@ export const START_CRATES = 3;
 export const NEST_CRATE_EVERY = 2;
 
 /** Adds the weapon or raises its level. Returns the level it has afterwards. */
-/** which rare weapon a golden card is, from one roll: each of ALL_RARE as often, the Lock-On Launcher now and then */
+/** which rare weapon a golden card is, from one roll: each of ALL_RARE as often, the launcher and the hammer now and then */
 export function goldenCard(roll: number): RareKind {
-  const k = roll * (ALL_RARE.length + RARE.missileCard);
-  return k < ALL_RARE.length ? ALL_RARE[Math.floor(k)] : 'missileLauncher';
+  const k = roll * (ALL_RARE.length + RARE.missileCard + RARE.hammerCard);
+  return k < ALL_RARE.length ? ALL_RARE[Math.floor(k)] : k < ALL_RARE.length + RARE.missileCard ? 'missileLauncher' : 'thunderHammer';
 }
 
 export function grantWeapon(p: Player, kind: WeaponKind): number {
