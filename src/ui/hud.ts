@@ -15,6 +15,7 @@ import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { jetTank } from '../sim/config/rare';
 import { ALARM_MAX, DASH_RECHARGE_TICKS, HOLD_TICKS, PLANT_RANGE, PLANT_TICKS, START_CREDITS } from '../sim/config/balance';
 import { MAX_WEAPON_LEVEL, MAX_WEAPONS, WEAPONS } from '../sim/config/weapons';
+import { barStart } from './weapon-bar';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
@@ -155,12 +156,12 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const weaponRow = el('div', 'weapons', bottom);
   const slots = Array.from({ length: MAX_WEAPONS }, (_, i) => {
     const slot = el('div', 'slot empty txt', weaponRow);
-    el('div', 'key', slot, String(i + 1));
+    const keyEl = el('div', 'key', slot, String(i + 1));
     const glyph = el('div', 'glyph', slot);
     const pips = el('div', 'pips', slot);
     const pipEls = Array.from({ length: MAX_WEAPON_LEVEL }, () => el('b', '', pips));
     const reload = el('i', '', el('div', 'reload', slot));
-    return { slot, glyph, pipEls, reload };
+    return { slot, glyph, pipEls, reload, keyEl };
   });
 
   const rareSlot = el('div', 'slot rare txt', weaponRow);
@@ -184,6 +185,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
 
   let lastCoins = -1;
   let lastAlarm = 0;
+  /** the first weapon the bar shows (it slides when there are more weapons than slots) */
+  let firstSlot = 0;
   let lastWeaponsKey = '';
   let lastDash = '';
 
@@ -365,19 +368,23 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         rareSlot.classList.toggle('ending', left <= 10);
       }
 
-      const key = p.weapons.map(w => `${w.kind}${w.level}`).join();
+      // more weapons than the bar has slots: it slides along, so the one in hand is always on it
+      firstSlot = barStart(firstSlot, p.selected, p.weapons.length, slots.length);
+      const key = `${firstSlot}:${p.weapons.map(w => `${w.kind}${w.level}`).join()}`;
       if (key !== lastWeaponsKey) {
         lastWeaponsKey = key;
         slots.forEach((sl, i) => {
-          const w = p.weapons[i];
+          const w = p.weapons[firstSlot + i];
           sl.slot.classList.toggle('empty', !w);
           sl.glyph.textContent = w ? WEAPON_GLYPH[w.kind] : '';
           sl.pipEls.forEach((b, j) => b.classList.toggle('on', !!w && j < w.level));
+          // (the number keys pick the first weapons; the ones beyond come with the wheel)
+          sl.keyEl.textContent = firstSlot + i < MAX_WEAPONS ? String(firstSlot + i + 1) : '';
         });
       }
       slots.forEach((sl, i) => {
-        const w = p.weapons[i];
-        sl.slot.classList.toggle('selected', !!w && i === p.selected && !p.rareSelected);
+        const w = p.weapons[firstSlot + i];
+        sl.slot.classList.toggle('selected', !!w && firstSlot + i === p.selected && !p.rareSelected);
         if (!w) {
           // a weapon that is gone (a versus respawn) leaves an empty slot, not a ready one
           sl.slot.classList.remove('ready');
