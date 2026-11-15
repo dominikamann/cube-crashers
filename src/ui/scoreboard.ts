@@ -95,7 +95,8 @@ export function createScoreboard(root: HTMLElement) {
         add(table, 'div', 'score-th name', g.team === undefined ? t('board.player') : `${t(g.team === 0 ? 'board.red' : 'board.blue')} · ${g.score ?? 0}`);
         for (const c of board.columns) add(table, 'div', 'score-th', t(c as 'board.kills'));
         for (const r of g.rows) {
-          const cls = `${r.id === me ? ' me' : ''}${r.down ? ' down' : ''}`;
+          // (not 'down': that is the HUD's "you are down" line, placed in the middle of the screen, and took the row with it)
+          const cls = `${r.id === me ? ' me' : ''}${r.down ? ' fallen' : ''}`;
           const name = add(table, 'div', `score-td name${cls}`, '');
           const dot = add(name, 'i', 'score-dot', '');
           dot.style.background = cssColor(playerColor(r.color));
