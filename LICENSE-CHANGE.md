@@ -13,10 +13,23 @@ copies or commits unavailable under MIT. A fork based on an earlier MIT release 
 granted with that release. Read this note together with the license and release notes for the
 specific version.
 
-Community contributors retain ownership of their contributions. Contributions may be accepted
-for distribution under the project's PolyForm Noncommercial License 1.0.0 after the contributor
-explicitly confirms those terms in the pull request. That confirmation does not grant commercial
-relicensing or sublicensing rights. Any commercial use of a contributor's work requires a
-separate written agreement with that contributor before the commercial use.
+## Community contributions and commercial game releases
+
+Contributors retain ownership of their contributions. As a condition of merging a pull request,
+the contributor must explicitly accept the contribution terms in CONTRIBUTING.md.
+
+Under those terms, the contributor grants the project maintainer a worldwide, perpetual,
+irrevocable, non-exclusive, royalty-free license to use and distribute the contribution
+commercially **only as part of Cube Crashers and its official versions, updates, expansions,
+ports, bundles and promotion**. This permits paid game releases, including distribution through
+commercial game stores. It does not permit standalone resale or licensing of the contribution
+as an unrelated asset, library or source-code package.
+
+Contributions are also made available to the community as part of the project under the
+PolyForm Noncommercial License 1.0.0. The separate commercial permission is granted to the
+project maintainer only; it does not grant commercial rights to the public.
+
+Third-party code, assets, data and other materials are not covered by this grant and remain
+subject to their own licenses and permissions.
 
 Commercial licensing contact: [AmannLabs](https://amannlabs.eu).
