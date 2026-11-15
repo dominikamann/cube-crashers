@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { licensesText, THIRD_PARTY } from '../src/ui/licenses';
+import { licensesText, OWN, THIRD_PARTY } from '../src/ui/licenses';
 
 const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8')) as { packages: Record<string, { version: string; dev?: boolean }> };
 
@@ -20,9 +20,15 @@ describe('the licenses the game names', () => {
     for (const part of ['Electron', '@fontsource/press-start-2p', 'three', 'LGL', 'OpenStreetMap']) expect(names + THIRD_PARTY.map(e => e.copyright).join(' | ')).toContain(part);
   });
 
+  it('start with the game’s own license, its full text as in LICENSE', () => {
+    const license = readFileSync(new URL('../LICENSE', import.meta.url), 'utf8').replace(/\r\n?/g, '\n').trim();
+    expect(OWN.text.startsWith(license)).toBe(true);
+  });
+
   it('come out as plain text for the server, the game’s own license first', () => {
     const out = licensesText();
-    expect(out.startsWith('Cube Crashers: PolyForm Noncommercial License 1.0.0')).toBe(true);
+    expect(out.startsWith('Cube Crashers')).toBe(true);
+    expect(out).toContain('PolyForm Noncommercial License 1.0.0');
     expect(out).toContain('ODbL');
   });
 });

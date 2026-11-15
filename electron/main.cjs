@@ -12,6 +12,7 @@ const EXTERNAL_LINKS = [
   'https://cubecrashers.amannlabs.eu/privacy-game.html',
   'https://amannlabs.eu/impressum.html',
   'https://github.com/dominikamann/cube-crashers/blob/main/SECURITY.md',
+  'https://github.com/dominikamann/cube-crashers/blob/main/LICENSE',
 ];
 const lan = require('./lan.cjs');
 const { startUpdater } = require('./updater.cjs');

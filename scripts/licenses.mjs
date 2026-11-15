@@ -90,6 +90,18 @@ const extra = [
   },
 ];
 
+// the game's own license, shown first (src/ui/licenses.ts)
+const own = {
+  name: 'Cube Crashers',
+  license: 'PolyForm-Noncommercial-1.0.0',
+  copyright: 'Copyright (c) 2026 Dominik Amann (https://amannlabs.eu)',
+  text:
+    readFileSync(join(ROOT, 'LICENSE'), 'utf8').replace(/\r\n?/g, '\n').trim() +
+    '\n\nStreams and videos of the game, monetized ones too, and LAN parties are expressly allowed. For commercial ' +
+    'licenses get in touch through https://cubecrashers.amannlabs.eu.',
+};
+writeFileSync(join(ROOT, 'src/ui/license-own.json'), JSON.stringify(own, null, 1) + '\n');
+
 const all = [...packages.sort((a, b) => a.name.localeCompare(b.name)), ...extra];
 writeFileSync(OUT, JSON.stringify(all, null, 1) + '\n');
 console.log(`wrote ${all.length} entries to ${OUT}`);
