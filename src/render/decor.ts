@@ -54,6 +54,8 @@ interface Spot {
 }
 
 const Q = Math.PI / 2;
+/** the helicopter on the helipad: the paint of its hull (world.ts paints its wall blocks in it) */
+export const HULL_COLOR = 0x24395f;
 /** an edge spot sits 0.22 toward its wall, so the wall face is 0.28 behind it: nothing reaches further back */
 const AGAINST_WALL = -0.27;
 /** rails and rungs of the climbable ladders in each world */
@@ -98,6 +100,10 @@ export function buildDecor(input: DecorContext): Decor {
   const spinners: { mesh: THREE.Object3D; speed: number }[] = [];
   /** lights that come on one after the other: the rings of the dish's signal */
   const pulses: { mat: THREE.MeshStandardMaterial; phase: number }[] = [];
+  /** lights that flash short and bright: the strobes of the helicopter */
+  const strobes: { mat: THREE.MeshStandardMaterial; base: number; period: number; phase: number }[] = [];
+  /** the helicopter's rotor wash: dust and scraps that run away from it over the ground, and its exhaust smoke */
+  const gusts: { pool: InstancedPool; kind: 'dust' | 'scrap' | 'smoke'; x: number; y: number; z: number; dx: number; dz: number; phase: number; size: number; color: number }[] = [];
   const pools: InstancedPool[] = [];
   const pieces: Piece[] = [];
   const unit = new THREE.BoxGeometry(1, 1, 1);
@@ -174,6 +180,11 @@ export function buildDecor(input: DecorContext): Decor {
   const blink = (color: number, speed: number, phase: number) => {
     const mat = glowMat(color, 1.5);
     blinkers.push({ mat, base: 1.5, speed, phase });
+    return mat;
+  };
+  const strobe = (color: number, base: number, phase: number) => {
+    const mat = glowMat(color, base);
+    strobes.push({ mat, base, period: 1.1, phase });
     return mat;
   };
   const flicker = (color: number, base: number, seed: number) => {
@@ -470,7 +481,7 @@ export function buildDecor(input: DecorContext): Decor {
     }
   } else if (look === 'helipad') {
     const steel = lambert(0x5a6374), dark = lambert(0x2b303c), concrete = lambert(0x8d9199), yellow = lambert(0xffc93a), white = lambert(0xeef0f4), red = lambert(0xd0352a);
-    const navy = lambert(0x24395f), glass = lambert(0x8fd0ff), orange = lambert(0xff7a1a), rubber = lambert(0x1c1f26), grille = lambert(0x3a404c);
+    const navy = lambert(HULL_COLOR), trim = lambert(0x1a2a48), glass = lambert(0x8fd0ff), orange = lambert(0xff7a1a), rubber = lambert(0x1c1f26), grille = lambert(0x3a404c);
     const floodMat = glowMat(0xfff4d0, 1.3), beaconMat = blink(0xff2a2a, 1.6, 0), green = (phase: number) => blink(0x5dff8a, 2, phase);
     const { pad, heli, hut, plant, container, pipe, walkway } = HELIPAD;
     /** the top of a jersey barrier (see LOW_WALL_HEIGHT in world.ts): the tail boom and the pipe rest on them */
@@ -497,7 +508,15 @@ export function buildDecor(input: DecorContext): Decor {
         return this;
       },
     });
-    // the markings: a yellow ring round the pad, a white one inside it, the H, and the walkway's dashed lines
+    /** the blur of a rotor going round: a thin dark disc one sees through, the blades flicker through it */
+    const blur = (x: number, y: number, z: number, r: number, roll: number) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 48), new THREE.MeshBasicMaterial({ color: 0x1c1f26, transparent: true, opacity: 0.22, depthWrite: false }));
+      m.position.set(x, y, z);
+      m.rotation.x = roll;
+      group.add(m);
+    };
+    // the markings: a yellow ring round the pad, a white one inside it, the big H under the helicopter (its bars come
+    // out on either side of the hull), and the walkway's dashed lines
     const ring = (r: number, w: number, color: number, n: number) => {
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2;
@@ -506,8 +525,8 @@ export function buildDecor(input: DecorContext): Decor {
     };
     ring(pad.r, 0.36, 0xffc93a, 56);
     ring(pad.r - 1.6, 0.22, 0xf4f6f8, 48);
-    for (const dx of [-2.6, 2.6]) decals.rect(pad.x + dx, pad.z, 1.1, 7, 0xf4f6f8);
-    decals.rect(pad.x, pad.z, 4.2, 1.1, 0xf4f6f8);
+    for (const dx of [-3.7, 3.7]) decals.rect(pad.x + dx, pad.z, 1.2, 9, 0xf4f6f8);
+    decals.rect(pad.x, pad.z, 6.2, 1.2, 0xf4f6f8);
     for (let z = walkway.z0; z <= walkway.z1; z++) for (const dx of [-0.9, 0.9]) decals.rect(walkway.x + dx, z + 0.5, 0.12, 0.7, 0xf4f6f8);
     // a yellow line round the fuel tanks, and hatching in front of the hut's door
     const t0 = HELIPAD.tanks[0], t1 = HELIPAD.tanks[1];
@@ -527,20 +546,74 @@ export function buildDecor(input: DecorContext): Decor {
       props.box(0.14, 1.8, 0.14, steel, 0, 0.9, 0).box(0.9, 0.08, 0.08, steel, 0, 1.75, 0);
       for (const sx of [-0.3, 0.3]) props.box(0.36, 0.26, 0.2, dark, sx, 1.78, 0.12).box(0.3, 0.2, 0.04, floodMat, sx, 1.78, 0.23);
     }
-    // the helicopter: a navy body with a white stripe, a glass nose toward the pad, the main rotor idling
-    // overhead, the tail boom lying on the barriers west of it with its fin and a small rotor
+    // the helicopter, in the middle of the pad with its nose to the east. Its hull is the wall block (riveted plate
+    // in its navy, see world.ts); everything else stands on it or hangs flush on its sides: the cabin with its
+    // doors and windows, the cockpit glass round the nose, the engine with its exhausts, the mast and the main rotor
+    // going round under its blur, the skids at its foot, the tail boom lying on the barriers west of it with the fin
+    // and the tail rotor. Nav lights on the sides (red left, green right), strobes on the roof and the fin, a
+    // searchlight under the nose.
     const hx = (heli.x0 + heli.x1 + 1) / 2, hz = (heli.z0 + heli.z1 + 1) / 2, hy = wallTopY(heli.x0, heli.z0);
+    const hl = (heli.x1 + 1 - heli.x0) / 2, hw = (heli.z1 + 1 - heli.z0) / 2;
     props.at(hx, hy, hz);
-    props.box(2.7, 0.9, 1.6, navy, -0.1, 0.45, 0).box(2.72, 0.14, 1.62, white, -0.1, 0.56, 0).box(1.7, 0.4, 1.3, navy, -0.3, 1.1, 0);
-    props.box(0.8, 0.7, 1.4, glass, 1.0, 0.75, 0).box(0.9, 0.3, 1.5, navy, 0.95, 0.25, 0);
-    props.box(0.16, 0.5, 0.16, dark, -0.2, 1.5, 0).box(0.1, 0.1, 0.1, blink(0xff3b3b, 1.2, 1), 0, 0.98, 0.84).box(0.1, 0.1, 0.1, blink(0x3bff7a, 1.2, 1), 0, 0.98, -0.84);
-    const rotor = spinner(hx - 0.2, hy + 1.78, hz, 1.6).bar(0.5, 0.16, 0.5, dark).bar(7.2, 0.05, 0.32, rubber).bar(7.2, 0.05, 0.32, rubber, 0, Q);
-    for (const yaw of [0, Q]) rotor.bar(0.9, 0.06, 0.34, yellow, 0.005, yaw);
-    const tx0 = heli.tailX0, tz = heli.tailZ + 0.5, boomY = lowTop + 0.3;
+    // the cabin roof, rounded off by a narrower box on top, and the cockpit glass over the nose with its windscreen
+    props.box(hl * 2 - 0.3, 0.5, hw * 2 - 0.2, navy, -0.25, 0.25, 0).box(hl * 2 - 1.3, 0.3, hw * 2 - 0.9, navy, -0.5, 0.62, 0);
+    props.box(1.2, 0.5, hw * 2 - 0.5, glass, hl - 0.75, 0.25, 0).box(0.9, 0.05, hw * 2 - 0.45, glass, hl - 0.4, 0.3, 0, 0, -0.75);
+    props.box(0.03, 0.55, hw * 2 - 0.5, glass, hl + 0.015, -0.33, 0);
+    for (const side of [-1, 1]) {
+      const sz = side * (hw + 0.015);
+      // the stripes along the hull, two windows and the sliding door with its own window and handle
+      props.box(hl * 2 - 0.2, 0.14, 0.03, white, -0.1, -0.2, sz).box(hl * 2 - 0.2, 0.05, 0.03, yellow, -0.1, -0.31, sz);
+      for (const wx of [-1.9, -1.2]) props.box(0.5, 0.36, 0.03, glass, wx, -0.6, sz);
+      props.box(1.15, 0.92, 0.025, trim, 0.1, -0.5, sz).box(0.55, 0.36, 0.03, glass, 0.1, -0.6, sz).box(0.2, 0.04, 0.04, white, -0.3, -0.85, sz);
+      // the cockpit's side glass, and the nav light at the cabin's front corner
+      props.box(0.8, 0.5, 0.03, glass, hl - 0.6, -0.4, sz);
+      props.box(0.1, 0.1, 0.04, blink(side < 0 ? 0xff3b3b : 0x3bff7a, 1.2, 1), -0.3, 0.05, side * (hw - 0.08));
+    }
+    // the engine behind the mast, its exhausts pointing back over the tail, the antennas and the pitot tube
+    props.box(1.5, 0.32, 1.1, grille, -1.0, 0.93, 0).box(0.24, 0.55, 0.24, dark, 0, 1.0, 0);
+    for (const sz of [-0.35, 0.35]) props.box(0.5, 0.2, 0.2, dark, -1.9, 1.0, sz).box(0.04, 0.14, 0.14, glowMat(0xff6a30, 0.8), -2.14, 1.0, sz);
+    props.box(0.04, 0.5, 0.04, steel, 0.9, 0.95, 0.9).box(0.04, 0.35, 0.04, steel, -1.8, 0.9, -0.8).box(0.5, 0.04, 0.04, steel, hl + 0.25, -0.1, 0.5);
+    props.box(0.12, 0.12, 0.12, strobe(0xff2a2a, 1.9, 0), -2.1, 0.84, 0);
+    // the searchlight under the nose
+    props.box(0.3, 0.3, 0.4, dark, hl + 0.16, -0.75, 0).box(0.04, 0.22, 0.3, glowMat(0xfff1c8, 1.6), hl + 0.33, -0.75, 0);
+    // the skids: a tube along each side at the foot of the hull, on short struts
+    props.at(hx, 0, hz);
+    for (const side of [-1, 1]) {
+      props.box(hl * 2 - 0.6, 0.12, 0.12, steel, -0.1, 0.14, side * (hw + 0.22));
+      for (const sx of [-1.5, 1.3]) props.box(0.12, 0.42, 0.34, steel, sx, 0.3, side * (hw + 0.1));
+    }
+    // the main rotor: four blades with yellow tips, going round fast, and the blur of them
+    const rotorY = hy + 1.33;
+    const rotor = spinner(hx, rotorY, hz, 24).bar(0.5, 0.18, 0.5, dark);
+    for (const yaw of [0, Q]) rotor.bar(hl * 3.5, 0.06, 0.38, rubber, 0, yaw).bar(hl * 3.5 + 0.5, 0.04, 0.2, yellow, -0.01, yaw);
+    blur(hx, rotorY, hz, hl * 1.8, 0);
+    // the tail boom: on the barriers, with the fin, the stabiliser, the white strobe and the tail rotor at its end
+    const tx0 = heli.tailX0, tz = heli.tailZ + 0.5, boomY = lowTop + 0.3, boomL = heli.x0 - tx0;
     props.at((tx0 + heli.x0) / 2, 0, tz);
-    props.box(heli.x0 - tx0 + 0.2, 0.42, 0.42, navy, 0, boomY, 0).box(heli.x0 - tx0 + 0.2, 0.08, 0.44, white, 0, boomY + 0.1, 0);
-    props.box(0.5, 1.0, 0.14, navy, -(heli.x0 - tx0) / 2 + 0.35, boomY + 0.5, 0).box(0.1, 0.1, 0.1, blink(0xffffff, 1.2, 2), -(heli.x0 - tx0) / 2 + 0.35, boomY + 1.02, 0);
-    spinner(tx0 + 0.25, boomY + 0.55, tz + 0.12, 7).bar(0.06, 1.2, 0.08, rubber).bar(1.2, 0.06, 0.08, rubber);
+    props.box(boomL + 0.2, 0.42, 0.42, navy, 0, boomY, 0).box(boomL + 0.2, 0.08, 0.44, white, 0, boomY + 0.1, 0);
+    props.box(0.5, 1.0, 0.14, navy, -boomL / 2 + 0.35, boomY + 0.5, 0).box(0.3, 0.08, 1.3, navy, -boomL / 2 + 0.8, boomY + 0.25, 0);
+    props.box(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), -boomL / 2 + 0.35, boomY + 1.02, 0);
+    const tailY = boomY + 0.75, tailX = tx0 + 0.35, tailZ = tz + 0.12;
+    spinner(tailX, tailY, tailZ, 40).bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.3, 0.08, rubber).bar(1.3, 0.06, 0.08, rubber);
+    blur(tailX, tailY, tailZ + 0.02, 0.66, Q);
+    // the rotor wash: dust that comes out from under the hull and runs along the ground away from it on every side,
+    // a few scraps of paper and leaves skittering with it, and the exhausts' smoke blown back over the tail; each
+    // its own instance, moved every frame (see update). The floor shows nothing: the wind is in the air.
+    // (the dust is round puffs, not cubes: its own pool with a coarse ball)
+    const dust = new InstancedPool(group, new THREE.IcosahedronGeometry(0.5, 1), new THREE.MeshLambertMaterial({ color: 0xd9dce2, transparent: true, opacity: 0.3, depthWrite: false }), 128, false);
+    pools.push(dust);
+    const scraps = pool(lambert(0xffffff));
+    for (let i = 0; i < 64; i++) {
+      // (in every direction, starting at the hull's edge that way)
+      const a = (i / 64) * Math.PI * 2 + hash(i, 5) * 0.1, dx = Math.cos(a), dz = Math.sin(a);
+      const edge = Math.min(hl / Math.max(Math.abs(dx), 0.01), hw / Math.max(Math.abs(dz), 0.01)) + 0.2;
+      gusts.push({ pool: dust, kind: 'dust', x: hx + dx * edge, y: 0, z: hz + dz * edge, dx, dz, phase: hash(i, 7), size: 0.38 + hash(i, 9) * 0.4, color: [0xd0d4dc, 0xe4e7ee, 0xbfc4ce][i % 3] });
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = hash(i, 11) * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a);
+      gusts.push({ pool: scraps, kind: 'scrap', x: hx + dx * 2.6, y: 0, z: hz + dz * 2.6, dx, dz, phase: hash(i, 13), size: 0.12 + hash(i, 15) * 0.1, color: [0xf4f4f0, 0x9a6a30, 0xd6b24a, 0x6f8a3a][i % 4] });
+    }
+    for (let i = 0; i < 8; i++) gusts.push({ pool: dust, kind: 'smoke', x: hx - 2.2, y: hy + 1.0, z: hz + (i % 2 ? 0.35 : -0.35), dx: -1, dz: 0, phase: i / 8, size: 0.14, color: 0x5c6069 });
     // the fuel tanks: eight-sided drums with a red band and a hatch, the pipe between them with a valve
     for (const t of HELIPAD.tanks) {
       props.at(t.x0 + 1, wallTopY(t.x0, t.z0), t.z0 + 1);
@@ -578,8 +651,9 @@ export function buildDecor(input: DecorContext): Decor {
       if (hash(c.tx * 7, c.tz * 3) < 0.14) continue;
       props.box(1.0, 0.05, 0.05, yellow, 0, 0.93, 0.42).box(1.0, 0.04, 0.04, steel, 0, 0.5, 0.42).box(1.0, 0.1, 0.03, dark, 0, 0.06, 0.42);
     }
-    // what stands about: traffic cones, fire extinguishers, a toolbox, a ground power unit on wheels
-    for (const s of edgeSpots(0.14, 19)) {
+    // what stands about: traffic cones, fire extinguishers, a toolbox, a ground power unit on wheels (not in the
+    // rotor wash: the floor tiles there are the wash, and the wind would have taken all of it)
+    for (const s of edgeSpots(0.14, 19).filter(s => isFloor(s.tx, s.tz))) {
       props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
       const k = Math.floor(s.r * 4);
       if (k === 0) {
@@ -1005,7 +1079,24 @@ export function buildDecor(input: DecorContext): Decor {
       for (const f of flags) f.mesh.rotation.y = f.yaw + Math.sin(time * 1.8 + f.phase) * 0.18;
       for (const s of spinners) s.mesh.rotation.y = time * s.speed;
       for (const p of pulses) p.mat.emissiveIntensity = (0.25 + 0.95 * Math.max(0, Math.sin(time * 2.2 - p.phase))) * glow;
+      for (const s of strobes) s.mat.emissiveIntensity = ((time / s.period + s.phase) % 1 < 0.07 ? 1 : 0.05) * s.base * glow;
       for (const p of pools) p.begin();
+      for (const g of gusts) {
+        if (g.kind === 'dust') {
+          // out from under the hull and along the ground, curling up a little and drifting sideways, thinning out
+          const t = (time * 0.5 + g.phase) % 1, run = 0.5 + t * 6.5, side = Math.sin(time * 2.6 + g.phase * 20) * 0.4 * t;
+          const k = g.size * (0.6 + t) * (1 - t * t * 0.7);
+          g.pool.addScaled(g.x + g.dx * run - g.dz * side, 0.12 + Math.sin(t * Math.PI) * 0.5, g.z + g.dz * run + g.dx * side, time * 2 + g.phase * 6, k, k * 0.55, k, g.color);
+        } else if (g.kind === 'scrap') {
+          // skitters away over the ground in little hops, tumbling
+          const t = (time * 0.45 + g.phase) % 1, run = t * 7.5, hop = Math.abs(Math.sin(t * 19 + g.phase * 6)) * 0.25 * (1 - t);
+          g.pool.addScaled(g.x + g.dx * run, 0.02 + hop, g.z + g.dz * run, time * 6 + g.phase * 9, g.size, 0.02, g.size * 0.7, g.color, 0, hop * 2);
+        } else {
+          // blown back over the tail, growing, gone at the end of its run
+          const t = (time * 0.7 + g.phase) % 1, k = (g.size + t * 0.45) * Math.min(1, (1 - t) * 4);
+          g.pool.addScaled(g.x + g.dx * t * 2.4, g.y + t * 0.7, g.z + Math.sin(time * 3 + g.phase * 7) * 0.15 * t, 0, k, k, k, g.color);
+        }
+      }
       for (const p of pieces) {
         if (p.move === 'sway') {
           // bend from the foot: the top moves, the foot stays

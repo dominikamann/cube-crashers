@@ -56,9 +56,9 @@ describe('the Sky Helipad', () => {
     for (const p of [m.elevator, ...m.pads.map(p => p.pos), ...m.crateSpots, ...m.vehicleSpots, ...m.powerSpots, ...m.waypoints]) expect(ok.has(at(m, p)), `${p.x},${p.z}`).toBe(true);
   });
 
-  it('the pad is open ground: the worm lies along its middle with room to move, and a boss never starts in a wall', () => {
-    // (a boss starts at the map's middle, a third of the way down, and the worm's segments trail toward the middle)
-    for (let z = Math.floor(m.h * 0.35) - 1; z < m.h * 0.35 + 18; z++) expect(isFree(m, { x: m.w / 2, z: z + 0.5 }, 1.2, BLOCKS_ENEMY), `z ${z}`).toBe(true);
+  it('the pad is mostly open ground: the boss has room where it comes out, the worm lies along the north half and never starts in a wall', () => {
+    // (a boss starts at the map's middle, a third of the way down, and the worm's segments trail north from there)
+    for (let z = 4; z < m.h * 0.35 + 2; z++) expect(isFree(m, { x: m.w / 2, z: z + 0.5 }, 1.2, BLOCKS_ENEMY), `z ${z}`).toBe(true);
     let open = 0, all = 0;
     for (let tz = HELIPAD.pad.z - HELIPAD.pad.r; tz < HELIPAD.pad.z + HELIPAD.pad.r; tz++)
       for (let tx = HELIPAD.pad.x - HELIPAD.pad.r; tx < HELIPAD.pad.x + HELIPAD.pad.r; tx++) {
@@ -66,28 +66,60 @@ describe('the Sky Helipad', () => {
         all++;
         if (tileAt(m, tx, tz) !== Tile.Wall && tileAt(m, tx, tz) !== Tile.LowWall) open++;
       }
-    expect(open / all).toBeGreaterThan(0.95);
+    expect(open / all).toBeGreaterThan(0.9);
     const s = createSim(m, 5, { mode: 'quick', players: 1 });
     expect(s.boss?.kind).toBe('worm');
     for (const id of s.boss!.worms[0]) {
       const seg = s.enemies.find(e => e.id === id)!;
       expect(tileAt(m, seg.pos.x, seg.pos.z)).not.toBe(Tile.Wall);
+      expect(seg.pos.z).toBeLessThan(HELIPAD.heli.z0 - 2);
     }
   });
 
-  it('the helicopter is cover with a tail to jump, and its rotor wash blows a player east across the top of the pad', () => {
-    expect(tileAt(m, HELIPAD.heli.x0 + 0.5, HELIPAD.heli.z0 + 0.5)).toBe(Tile.Wall);
-    expect(tileAt(m, HELIPAD.heli.tailX0 + 0.5, HELIPAD.heli.tailZ + 0.5)).toBe(Tile.LowWall);
-    const s = createSim(m, 5, { mode: 'quick', players: 1 });
-    s.enemies = [];
-    s.boss = null;
-    const p = s.players[0];
-    p.invulnUntil = 1e9;
-    p.pos = { x: 26.5, z: 17.5 };
-    expect(tileAt(m, p.pos.x, p.pos.z)).toBe(Tile.ConveyorE);
-    for (let i = 0; i < 30; i++) stepSim(s, []);
-    expect(p.pos.x).toBeGreaterThan(27.5);
-    expect(Math.abs(p.pos.z - 17.5)).toBeLessThan(0.2);
+  it('the helicopter stands in the middle of the pad, on the H, with its tail boom to jump', () => {
+    const { heli, pad } = HELIPAD;
+    expect((heli.x0 + heli.x1 + 1) / 2).toBe(pad.x);
+    expect((heli.z0 + heli.z1 + 1) / 2).toBe(pad.z);
+    for (let z = heli.z0; z <= heli.z1; z++) for (let x = heli.x0; x <= heli.x1; x++) expect(tileAt(m, x + 0.5, z + 0.5)).toBe(Tile.Wall);
+    for (let x = heli.tailX0; x <= heli.tailX1; x++) expect(tileAt(m, x + 0.5, heli.tailZ + 0.5)).toBe(Tile.LowWall);
+  });
+
+  it('its rotor wash blows a player away from it on every side: north, south, past the nose east and behind the tail west', () => {
+    const { heli, wash } = HELIPAD;
+    // every tile of the ring that is not the helicopter is wash
+    for (let z = wash.z0; z <= wash.z1; z++)
+      for (let x = wash.x0; x <= wash.x1; x++) {
+        const t = tileAt(m, x + 0.5, z + 0.5);
+        if (t === Tile.Wall || t === Tile.LowWall) continue;
+        expect(t, `${x},${z}`).toBeGreaterThanOrEqual(Tile.ConveyorN);
+        expect(t, `${x},${z}`).toBeLessThanOrEqual(Tile.ConveyorW);
+      }
+    const blown = (from: Vec2) => {
+      const s = createSim(m, 5, { mode: 'quick', players: 1 });
+      s.enemies = [];
+      s.boss = null;
+      const p = s.players[0];
+      p.invulnUntil = 1e9;
+      p.pos = { ...from };
+      for (let i = 0; i < 30; i++) stepSim(s, []);
+      return { x: p.pos.x - from.x, z: p.pos.z - from.z };
+    };
+    // (from the tiles right by the hull and the boom)
+    const mid = { x: (heli.x0 + heli.x1 + 1) / 2, z: (heli.z0 + heli.z1 + 1) / 2 };
+    const cases: [Vec2, Vec2][] = [
+      [{ x: mid.x, z: heli.z0 - 0.5 }, { x: 0, z: -1 }],
+      [{ x: mid.x, z: heli.z1 + 1.5 }, { x: 0, z: 1 }],
+      [{ x: heli.x1 + 1.5, z: mid.z }, { x: 1, z: 0 }],
+      [{ x: heli.tailX0 - 0.5, z: mid.z }, { x: -1, z: 0 }],
+      [{ x: heli.tailX0 + 1.5, z: heli.tailZ - 0.5 }, { x: 0, z: -1 }],
+      [{ x: heli.tailX0 + 1.5, z: heli.tailZ + 1.5 }, { x: 0, z: 1 }],
+    ];
+    for (const [from, dir] of cases) {
+      const d = blown(from);
+      // (pushed a good way that way, and not sideways)
+      expect(d.x * dir.x + d.z * dir.z, `${from.x},${from.z}`).toBeGreaterThan(1);
+      expect(Math.abs(d.x * dir.z - d.z * dir.x), `${from.x},${from.z}`).toBeLessThan(0.2);
+    }
   });
 
   it('the spawn and the elevator are at the south, by the way up, like on the other boss floors', () => {

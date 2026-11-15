@@ -232,7 +232,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, the **Rhino** *or* **the Schrättele** in the arena, or under water **the Kraken** with fish and sharks | a game between |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
-| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**; on the helipad a parked helicopter is cover and its rotor wash blows you across the top of the pad; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
+| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**; on the helipad a big helicopter stands in the middle of the pad with its rotor running: it is cover, and its wash blows you (and the monsters) away from it on every side; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
 
 Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
 look quite the same; no boss comes twice in a run (a run that goes through the Town meets the Schrättele there and on no
