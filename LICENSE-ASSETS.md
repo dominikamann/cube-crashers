@@ -13,7 +13,6 @@ Those materials remain subject to their respective license terms.
 
 Original game code, voxel graphics, pixel textures, synthesized sound effects, music and other
 original content authored for Cube Crashers are covered by the applicable project license for
-the relevant version. For the current version, see [LICENSE](LICENSE). Earlier versions may remain
-under MIT; see [LICENSE-CHANGE.md](LICENSE-CHANGE.md).
+the relevant version. For the current version, see [LICENSE](LICENSE).
 
 Do not assume that the project's license changes the license of third-party assets or data.
