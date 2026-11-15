@@ -163,7 +163,8 @@ installing anything: alone, in split screen or online on servers that take brows
 1. Download `CubeCrashers-<version>-win-x64.exe`.
 2. Run it. Windows SmartScreen warns about an unknown publisher because the installer is not signed yet:
    click **More info → Run anyway**.
-3. Choose the install folder and finish the setup. Start the game from the Start menu or the desktop.
+3. It installs by itself, for your Windows user, and starts. Afterwards start it from the Start menu or the
+   desktop. Installing a new version over it replaces the old one.
 4. **For LAN games:** when Windows asks whether Cube Crashers may use the network, allow it for **private
    networks**.
 
@@ -172,8 +173,16 @@ installing anything: alone, in split screen or online on servers that take brows
 The app checks GitHub for a new release when it starts (and every few hours).
 - **Windows:** the update downloads in the background; a banner offers **Restart now**, otherwise it is
   installed the next time you quit.
-- **macOS:** the same: the update downloads in the background and installs on restart. (Versions up to 0.3.4
-  were not signed; if you have one of those, download 0.3.5 once by hand.)
+- **macOS:** the same: the update downloads in the background and installs on restart. It only works from the
+  **Applications** folder: started from the disk image or the Downloads folder, the game offers to move itself
+  there. (Versions up to 0.3.4 were not signed; if you have one of those, download 0.3.5 once by hand.)
+- **If an update fails,** the app fetches it again and tries once more. Only then does the banner offer
+  **Download**, which goes straight to the file for your computer: install it over the old one. What happened is
+  written to `updater.log` in the game's data folder (Windows: `%APPDATA%\cube-crashers`, macOS:
+  `~/Library/Application Support/cube-crashers`).
+- **Windows, up to version 1.6.1:** the installer asked whether to install for all users or only for you, and
+  where to. If you see an update offered again after installing it, there are two copies: remove Cube
+  Crashers under *Settings → Apps* and install the newest version once more.
 
 ### From the source code
 

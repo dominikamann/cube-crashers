@@ -1,5 +1,5 @@
 // Electron main process: the game window, run logs, and the built-in LAN server.
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -184,7 +184,32 @@ ipcMain.handle('update:state', event => (fromGame(event) ? lastUpdate : null));
 ipcMain.on('update:install', event => fromGame(event) && updater?.install());
 ipcMain.on('update:download', event => fromGame(event) && updater?.openDownload());
 
+/**
+ * macOS: an app started from the disk image or the Downloads folder runs from a read-only copy and can never
+ * update itself. Offered once at the start: move it into Applications (it starts again from there).
+ */
+function offerApplicationsFolder() {
+  if (!app.isPackaged || process.platform !== 'darwin' || app.isInApplicationsFolder()) return false;
+  const choice = dialog.showMessageBoxSync({
+    type: 'question',
+    buttons: ['Move to Applications', 'Not now'],
+    defaultId: 0,
+    cancelId: 1,
+    message: 'Move Cube Crashers to the Applications folder?',
+    detail: 'From where it is now, the game cannot update itself. In the Applications folder it keeps itself up to date.',
+  });
+  if (choice !== 0) return false;
+  try {
+    return app.moveToApplicationsFolder();
+  } catch (err) {
+    dialog.showMessageBoxSync({ type: 'warning', message: 'The game could not be moved.', detail: `Drag Cube Crashers into the Applications folder yourself. (${err.message})` });
+    return false;
+  }
+}
+
 app.whenReady().then(() => {
+  // (moved: the game starts again from Applications)
+  if (offerApplicationsFolder()) return;
   createWindow();
   updater = startUpdater(e => {
     lastUpdate = e;

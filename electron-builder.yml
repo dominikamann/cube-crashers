@@ -27,6 +27,8 @@ win:
   target:
     - target: nsis
       arch: [x64]
+# installed for this Windows user without questions, always into the same folder: an update installs over it
+# silently, and no second copy can end up somewhere else (an old one is removed by the installer)
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  oneClick: true
+  perMachine: false
