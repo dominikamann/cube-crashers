@@ -79,6 +79,9 @@ const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
  * next to a wall or on top of one, never on a path, pad or spawn, and it is merged into a few meshes;
  * only what moves (grass, kelp, LEDs, bubbles) is drawn as instances that are refilled each frame.
  */
+/** how fast the Uplink's big dish turns on its tower, in radians a second */
+const DISH_TURN = 0.3;
+
 export function buildDecor(input: DecorContext): Decor {
   // the AmannLabs logos stay free: nothing is placed on, over or in front of them
   const logo = logoClear(input.map);
@@ -91,9 +94,8 @@ export function buildDecor(input: DecorContext): Decor {
   const flags: { mesh: THREE.Object3D; yaw: number; phase: number }[] = [];
   const flames: THREE.MeshStandardMaterial[] = [];
   const breathers: THREE.MeshStandardMaterial[] = [];
+  /** (the Uplink's big dish is one of them: it turns on its tower, once round in about twenty seconds) */
   const spinners: { mesh: THREE.Object3D; speed: number }[] = [];
-  /** the big dish: it slowly swings about its mast, tracking something */
-  const trackers: { mesh: THREE.Object3D; yaw: number; speed: number; swing: number }[] = [];
   /** lights that come on one after the other: the rings of the dish's signal */
   const pulses: { mat: THREE.MeshStandardMaterial; phase: number }[] = [];
   const pools: InstancedPool[] = [];
@@ -618,7 +620,7 @@ export function buildDecor(input: DecorContext): Decor {
       props.box(0.04, 0.5, 0.04, dark, 0, 1.6, -0.1, 0, 0.5).box(0.1, 0.1, 0.1, feed, 0, 1.82, -0.2);
     };
 
-    // ---- the giant dish on its pedestal in the middle: a mast, a yoke and a lattice bowl that slowly tracks
+    // ---- the giant dish on its tower in the middle: a tall mast, a yoke and a lattice bowl that turns round and round
     // (the pedestal is the 2x2 block nearest the middle of the map)
     let pedestal: { tx: number; tz: number } | null = null;
     for (const c of ctx.wallTiles) {
@@ -627,23 +629,34 @@ export function buildDecor(input: DecorContext): Decor {
       if (!pedestal || d < Math.hypot(pedestal.tx + 1 - map.w / 2, pedestal.tz + 1 - map.h / 2)) pedestal = c;
     }
     if (pedestal) {
-      const dish = new THREE.Group();
+      // the tower stands; its head (the yoke and the bowl) turns on it, round and round
+      const tower = new THREE.Group(), dish = new THREE.Group();
       const top = wallTopY(pedestal.tx, pedestal.tz);
+      // how much higher than a plain mast the tower is: the bowl hangs well clear of everything on the floor
+      const LIFT = 3;
+      tower.position.set(pedestal.tx + 1, top, pedestal.tz + 1);
       dish.position.set(pedestal.tx + 1, top, pedestal.tz + 1);
+      const tp = new PropBuilder();
+      // the base plate, the mast with its service ladder and a platform round its top
+      tp.at(0, 0, 0);
+      tp.box(2.2, 0.16, 2.2, concrete, 0, 0.08, 0).box(0.6, 2.3 + LIFT, 0.6, steel, 0, 1.3 + LIFT / 2, 0);
+      for (const [sx, sz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) tp.box(0.14, 0.1, 0.14, dark, sx, 0.2, sz);
+      for (const sx of [-0.14, 0.14]) tp.box(0.04, 2.0 + LIFT, 0.04, lattice, sx, 1.2 + LIFT / 2, 0.36);
+      for (let y = 0.4; y < 2.2 + LIFT; y += 0.25) tp.box(0.32, 0.03, 0.03, lattice, 0, y, 0.36);
+      tp.box(1.3, 0.06, 1.3, dark, 0, 2.3 + LIFT, 0);
+      tp.build(tower);
+      group.add(tower);
       const dp = new PropBuilder();
-      // the base plate, the mast with its service ladder, the yoke that holds the bowl's axle
+      // the turning head: a bearing on the mast, the yoke that holds the bowl's axle
       dp.at(0, 0, 0);
-      dp.box(2.2, 0.16, 2.2, concrete, 0, 0.08, 0).box(0.6, 2.3, 0.6, steel, 0, 1.3, 0).box(0.7, 0.1, 0.7, dark, 0, 2.5, 0);
-      for (const [sx, sz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) dp.box(0.14, 0.1, 0.14, dark, sx, 0.2, sz);
-      for (const sx of [-0.14, 0.14]) dp.box(0.04, 2.0, 0.04, lattice, sx, 1.2, 0.36);
-      for (let y = 0.4; y < 2.2; y += 0.25) dp.box(0.32, 0.03, 0.03, lattice, 0, y, 0.36);
-      dp.box(1.8, 0.3, 0.6, steel, 0, 2.6, 0);
-      for (const sx of [-0.75, 0.75]) dp.box(0.22, 0.9, 0.22, steel, sx, 2.9, 0).box(0.3, 0.3, 0.3, dark, sx, 3.3, 0);
+      dp.box(0.7, 0.1, 0.7, dark, 0, 2.5 + LIFT, 0);
+      dp.box(1.8, 0.3, 0.6, steel, 0, 2.6 + LIFT, 0);
+      for (const sx of [-0.75, 0.75]) dp.box(0.22, 0.9, 0.22, steel, sx, 2.9 + LIFT, 0).box(0.3, 0.3, 0.3, dark, sx, 3.3 + LIFT, 0);
       dp.build(dish);
       // the bowl, built with its axis up and then tipped toward the north and the sky: sixteen ribs along a parabola,
       // rings across them, a hub plate, the feed horn on three struts over the focus, and two beacons on the rim
       const bowl = new THREE.Group();
-      bowl.position.set(0, 3.3, 0);
+      bowl.position.set(0, 3.3 + LIFT, 0);
       bowl.rotation.x = -0.6;
       const bp = new PropBuilder();
       const R = 4.0, depth = 1.1, k = depth / (R * R), focus = (R * R) / (4 * depth);
@@ -685,7 +698,7 @@ export function buildDecor(input: DecorContext): Decor {
       // (the rest of the decoration is built in place; the dish's parts are placed through its groups, so their
       // world matrices are worked out here, before the first frame does)
       dish.updateMatrixWorld(true);
-      trackers.push({ mesh: dish, yaw: 0, speed: 0.11, swing: 0.3 });
+      spinners.push({ mesh: dish, speed: DISH_TURN });
     }
 
     // ---- every block has its own gear on top, by its size: the 2x2 cabinets, the 3x2 transformers, the halls
@@ -990,7 +1003,6 @@ export function buildDecor(input: DecorContext): Decor {
       for (const m of flames) m.emissiveIntensity = (1.5 + 0.5 * Math.sin(time * 9) * Math.sin(time * 5.3)) * Math.min(glow, 1.4);
       for (const f of flags) f.mesh.rotation.y = f.yaw + Math.sin(time * 1.8 + f.phase) * 0.18;
       for (const s of spinners) s.mesh.rotation.y = time * s.speed;
-      for (const t of trackers) t.mesh.rotation.y = t.yaw + Math.sin(time * t.speed) * t.swing;
       for (const p of pulses) p.mat.emissiveIntensity = (0.25 + 0.95 * Math.max(0, Math.sin(time * 2.2 - p.phase))) * glow;
       for (const p of pools) p.begin();
       for (const p of pieces) {
