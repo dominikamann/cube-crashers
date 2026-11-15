@@ -20,6 +20,28 @@ export function rotorLoudness(mapId: string, ears: Vec2[]): number {
   return k * k;
 }
 
+/** an attack helicopter this close (hovering low) takes over from the parked one's rotor, from this far on it does not */
+export const GUNSHIP_NEAR = 6;
+export const GUNSHIP_FAR = 22;
+/** how much of the parked rotor is left when a gunship is right by the listener */
+export const GUNSHIP_DUCK = 0.25;
+
+/**
+ * How far the parked helicopter's rotor is turned down for the attack helicopters about (`gunships`: where each
+ * flies, and whether it hovers low): the gunship's own rotor beat is the one to listen for, so near one the
+ * parked rotor sinks to a murmur under it. One circling high counts for half. 1 leaves the parked rotor as it is.
+ */
+export function rotorDuck(gunships: { pos: Vec2; low: boolean }[], ears: Vec2[]): number {
+  let near = 0;
+  for (const g of gunships)
+    for (const e of ears) {
+      const d = Math.hypot(e.x - g.pos.x, e.z - g.pos.z);
+      const k = Math.min(1, Math.max(0, 1 - (d - GUNSHIP_NEAR) / (GUNSHIP_FAR - GUNSHIP_NEAR))) * (g.low ? 1 : 0.5);
+      near = Math.max(near, k);
+    }
+  return 1 - (1 - GUNSHIP_DUCK) * near;
+}
+
 /**
  * The rotor as sound: a deep rush of air that the blades chop (noise under a low filter, its loudness beaten by
  * a slow oscillator as fast as the four blades go past, see the rotor's speed in decor.ts), the turbine's whine
