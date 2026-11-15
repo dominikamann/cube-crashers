@@ -3,7 +3,15 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron')
 const fs = require('node:fs');
 const path = require('node:path');
 
-const EXTERNAL_LINKS = ['https://www.amannlabs.eu', 'mailto:hello@amannlabs.eu', 'https://github.com/sponsors/dominikamann'];
+const EXTERNAL_LINKS = [
+  'https://www.amannlabs.eu',
+  'mailto:hello@amannlabs.eu',
+  'https://github.com/sponsors/dominikamann',
+  // the legal pages in the credits (LEGAL_LINKS in src/ui/screens.ts)
+  'https://cubecrashers.amannlabs.eu/privacy-game.html',
+  'https://cubecrashers.amannlabs.eu/privacy.html',
+  'https://amannlabs.eu/impressum.html',
+];
 const lan = require('./lan.cjs');
 const { startUpdater } = require('./updater.cjs');
 

@@ -262,6 +262,9 @@ body.split .build .card { width: 96px; }
 .sponsor-badge { display: inline-block; align-self: center; margin: 10px auto 4px; padding: 8px 14px; border: 2px solid #ea4aaa; border-radius: 6px; background: rgba(234, 74, 170, 0.15); color: #ff8fd0; font-size: 11px; text-decoration: none; cursor: pointer; }
 .sponsor-badge:hover { background: rgba(234, 74, 170, 0.35); color: #fff; }
 .credits-small { font-size: 9px; opacity: 0.85; }
+.credits-legal { font-size: 9px; text-align: center; margin: 4px 0 10px; }
+.credits-legal a { color: var(--cyan); text-decoration: none; }
+.credits-legal a:hover, .credits-legal a:focus-visible { text-decoration: underline; }
 .floor { color: var(--gold); }
 .shop { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: max-content; max-width: calc(100vw - 32px); background: var(--panel); border: 3px solid var(--gold); box-shadow: 0 6px 0 var(--shadow); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: auto; }
 .shop h2 { font-size: 16px; margin: 0; }

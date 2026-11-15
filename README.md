@@ -1007,6 +1007,10 @@ The Town is built from open data: the 3D building models (LoD2) and house coordi
 lake from © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Shop names in the game
 are made up.
 
+## Privacy
+
+The game has no account, no ads, no tracking and no analytics. What it stores and what it sends (updates and the server list from GitHub, your name to the servers you join) is in its privacy policy: [English](https://cubecrashers.amannlabs.eu/privacy-game.html) · [Deutsch](https://cubecrashers.amannlabs.eu/datenschutz-spiel.html). The credits link it too.
+
 ## License
 
 Copyright © 2026 [Dominik Amann](https://amannlabs.eu) – [AmannLabs](https://amannlabs.eu).

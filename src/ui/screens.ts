@@ -1,6 +1,6 @@
 import { APP_VERSION } from '../version';
 import { dailyBest, dailyDate } from '../daily';
-import { t } from '../i18n';
+import { t, type StringKey } from '../i18n';
 import type { GameInfo, LobbyPlayer, LobbyVote, ServerMode, ServerStatus, VersusOption as VersusChoice } from '../net/protocol';
 import { isCoop } from '../net/protocol';
 import { normalizeAddress, playerCount, type ServerRow } from '../net/server-list';
@@ -95,6 +95,14 @@ const markSeen = (key: string) => {
   }
 };
 const svg = (body: string) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+// the legal pages behind the credits (also allowed in electron/main.cjs, EXTERNAL_LINKS)
+const SITE = 'https://cubecrashers.amannlabs.eu';
+export const LEGAL_LINKS: [StringKey, string][] = [
+  ['credits.privacyGame', `${SITE}/privacy-game.html`],
+  ['credits.privacySite', `${SITE}/privacy.html`],
+  ['credits.imprint', 'https://amannlabs.eu/impressum.html'],
+];
+
 const ICONS = {
   settings: svg('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
   credits: svg('<path d="M12 3l2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>'),
@@ -524,6 +532,12 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
+      // privacy (the game's and the website's) and the imprint, on the game's website
+      const legal = text(s, 'p', 'credits-legal', '');
+      for (const [i, [key, url]] of LEGAL_LINKS.entries()) {
+        if (i) legal.append(' · ');
+        link(legal, '', t(key), url);
+      }
       link(s, 'sponsor-badge', t('credits.support'), 'https://github.com/sponsors/dominikamann', () => thank('sponsor'));
       // a one-off thank-you in tickets: for reading the credits, and for the sponsor button
       const thanks = text(s, 'p', 'credits-thanks', '');
