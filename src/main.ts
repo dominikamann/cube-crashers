@@ -625,8 +625,10 @@ function startGame() {
       countFrame();
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
       hud.setPadMode(padActive ? useLabel(0) : null);
+      hud.setShopFocus(padActive ? padCtl.shopFocus : null);
       buildMenu.setPadLabels(padActive);
       hud2.setPadMode(useLabel(rawPads().length >= 2 ? 1 : 0));
+      hud2.setShopFocus(padCtl2.shopFocus);
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       if (mode === 'playing' && !replay) {

@@ -30,6 +30,8 @@ export interface Hud {
   setVisible(v: boolean): void;
   /** playing with a controller: hints name its button (X or □) instead of E; null = keyboard */
   setPadMode(useButton: string | null): void;
+  /** the shop's offer picked on the controller (one past the last: Ready); null without a controller */
+  setShopFocus(index: number | null): void;
   /** shows who is in the team and how many lives each has left, for `seconds` */
   showTeam(seconds: number): void;
 }
@@ -70,6 +72,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let introShown = '';
   let goUntil = 0;
   let padMode: string | null = null;
+  let shopFocus: number | null = null;
   const top = el('div', 'hud-top', layer);
 
   const runBox = el('div', 'hud-box txt', top);
@@ -128,6 +131,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   const shopTimer = el('div', 'sub', shopBox);
   const shopList = el('div', 'shop-list', shopBox);
   const shopReady = el('button', 'btn alt', shopBox, t('shop.ready', { key: 'Enter' }));
+  const shopHint = el('div', 'shop-hint', shopBox);
   shopReady.addEventListener('mousedown', e => {
     e.preventDefault();
     onShop.ready();
@@ -214,6 +218,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
     setPadMode(useButton) {
       padMode = useButton;
     },
+    setShopFocus(index) {
+      shopFocus = index;
+    },
     update(s, events, buildMenuOpen, time, localId) {
       lastTime = time;
       // versus: the messages are smaller and sit under the score, out of the line of fire (see ui.css)
@@ -270,25 +277,32 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         const offers = shop.offers[p.id] ?? [];
         const ready = shop.ready.includes(p.id);
         shopTimer.textContent = t('shop.timer', { s: Math.max(0, Math.ceil((s.run.stageUntil - s.tick) / TICK_RATE)), coins: p.coins, ready: shop.ready.length, total: s.players.length });
-        // (on a controller the d-pad buys, left, up, right, down for the offers in turn, and its jump button is ready)
+        // (on a controller: left and right pick, its jump button buys, down or Y goes to Ready; see PadControls.shop)
         const padJump = padMode ? (padMode === '\u25A1' ? '\u2715' : 'A') : null;
-        const key = JSON.stringify([offers, ready, p.coins, shop.creditSold, padJump]);
+        const padReady = padMode ? (padMode === '\u25A1' ? '\u25B3' : 'Y') : null;
+        const focus = padMode ? shopFocus : null;
+        const key = JSON.stringify([offers, ready, p.coins, shop.creditSold, padJump, focus]);
         if (key !== shopKey) {
           shopKey = key;
           shopTitle.textContent = t('shop.title', { n: s.run.floor + 2 });
           shopList.innerHTML = '';
           offers.forEach((o, i) => {
-            const card = el('div', `card shop-card${o.sold ? ' sold' : ''}${p.coins < o.cost || (o.kind === 'credit' && shop.creditSold) ? ' poor' : ''}`, shopList);
-            el('div', 'key', card, padJump ? ['\u25C0', '\u25B2', '\u25B6', '\u25BC'][i] ?? String(i + 1) : String(i + 1));
+            const card = el('div', `card shop-card${o.sold ? ' sold' : ''}${p.coins < o.cost || (o.kind === 'credit' && shop.creditSold) ? ' poor' : ''}${focus === i ? ' pad-focus' : ''}`, shopList);
+            // (the number key that buys it; on a controller the picked card shows the button instead)
+            el('div', `key${padJump && focus !== i ? ' hidden' : ''}`, card, padJump ?? String(i + 1));
             const label = o.kind === 'weapon' ? t('shop.weapon', { name: t(`weapon.${o.weapon!}`) }) : o.kind === 'perk' ? t(`perk.${o.perk!}`) : t(o.kind === 'heal' ? 'shop.heal' : 'shop.credit');
             el('div', 'name', card, label);
+            // what a perk does: the name alone does not say
+            if (o.kind === 'perk') el('div', 'desc', card, t(`perk.${o.perk!}.desc` as 'perk.speed.desc'));
             el('div', 'cost', card, o.sold ? t('shop.sold') : `● ${o.cost}`);
             card.addEventListener('mousedown', e => {
               e.preventDefault();
               onShop.buy(i);
             });
           });
-          shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready', { key: padJump ?? 'Enter' });
+          shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready', { key: padReady ?? 'Enter' });
+          shopReady.classList.toggle('pad-focus', focus === offers.length);
+          shopHint.textContent = ready ? '' : padJump ? t('shop.padHint', { buy: padJump, ready: padReady! }) : t('shop.keyHint');
         }
       }
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));

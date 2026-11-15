@@ -31,8 +31,8 @@ export { TOWER_ORDER } from '../sim/config/towers';
 import { TOWER_ORDER } from '../sim/config/towers';
 /** d-pad while playing: quick messages (right pings the crosshair) */
 const DPAD_EMOTES: [number, EmoteId][] = [[PAD.UP, 'help'], [PAD.RIGHT, 'here'], [PAD.LEFT, 'nice'], [PAD.DOWN, 'gg']];
-/** d-pad in the elevator shop: offers 1 to 4 */
-const DPAD_SHOP = [PAD.LEFT, PAD.UP, PAD.RIGHT, PAD.DOWN];
+/** the left stick pushed this far sideways moves the shop's selection one step (and has to come back before the next) */
+const SHOP_STICK = 0.6;
 
 /** what a browser Gamepad looks like (only the parts we read) */
 export interface RawPad extends PadSnapshot {
@@ -96,6 +96,29 @@ export class PadControls {
   /** zoomed out (toggled with R3) */
   zoomedOut = false;
 
+  /** in the elevator shop: which offer is picked (one past the last: the Ready button), and where the stick was */
+  shopFocus = 0;
+  private shopStick = 0;
+
+  /**
+   * The elevator shop on a controller: left and right (d-pad or stick) go from offer to offer, down goes to Ready
+   * and up back to the offers; A buys the offer that is picked, or says ready on Ready; Y says ready from anywhere.
+   */
+  private shop(pad: PadSnapshot, press: (i: number) => boolean, offers: number, playerId: number, out: Command[]): void {
+    const x = pad.axes[0] ?? 0, y = pad.axes[1] ?? 0;
+    const stick = Math.abs(x) > SHOP_STICK && Math.abs(x) > Math.abs(y) ? Math.sign(x) * 1 : Math.abs(y) > SHOP_STICK ? Math.sign(y) * 2 : 0;
+    const flick = stick !== this.shopStick ? stick : 0;
+    this.shopStick = stick;
+    const ready = offers;
+    this.shopFocus = Math.min(this.shopFocus, ready);
+    if (press(PAD.LEFT) || flick === -1) this.shopFocus = this.shopFocus === ready ? offers - 1 : Math.max(0, this.shopFocus - 1);
+    if (press(PAD.RIGHT) || flick === 1) this.shopFocus = this.shopFocus === ready ? ready : Math.min(offers - 1, this.shopFocus + 1);
+    if (press(PAD.DOWN) || flick === 2) this.shopFocus = ready;
+    if ((press(PAD.UP) || flick === -2) && this.shopFocus === ready) this.shopFocus = Math.max(0, offers - 1);
+    if (press(PAD.A)) out.push(this.shopFocus === ready ? { type: 'ready', playerId } : { type: 'buy', playerId, offer: this.shopFocus });
+    if (press(PAD.Y)) out.push({ type: 'ready', playerId });
+  }
+
   /** true once when Start goes down (pause) */
   startPressed(pad: PadSnapshot): boolean {
     return this.pressed(pad, PAD.START);
@@ -136,11 +159,12 @@ export class PadControls {
     const p = s.players.find(pl => pl.id === playerId);
 
     if (s.run.stage === 'shop') {
-      DPAD_SHOP.forEach((b, i) => press(b) && out.push({ type: 'buy', playerId, offer: i }));
-      if (press(PAD.A)) out.push({ type: 'ready', playerId });
+      this.shop(pad, press, s.run.shop?.offers[playerId]?.length ?? 0, playerId, out);
       this.remember(pad);
       return out;
     }
+    // (out of the shop: the next one starts at its first offer)
+    this.shopFocus = 0;
 
     const dt = this.lastNow === null ? 0 : Math.min(0.1, Math.max(0, (now - this.lastNow) / 1000));
     this.lastNow = now;

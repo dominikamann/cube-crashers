@@ -154,17 +154,37 @@ describe('PadControls', () => {
     expect(c.commands(pad({ down: [X] }), s, 0, 100)).toContainEqual({ type: 'upgrade', playerId: 0, padId: PAD });
   });
 
-  it('in the shop the d-pad buys and A says ready', () => {
+  it('in the shop left and right pick an offer and A buys it; down goes to Ready, A there or Y anywhere says ready', () => {
     const s = createSim(floor01, 1, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
     openShop(s);
     const c = new PadControls();
-    expect(c.commands(pad({ down: [LEFT] }), s, 0, 0)).toEqual([{ type: 'buy', playerId: 0, offer: 0 }]);
-    c.commands(pad(), s, 0, 16);
-    expect(c.commands(pad({ down: [DOWN] }), s, 0, 32)).toEqual([{ type: 'buy', playerId: 0, offer: 3 }]);
-    c.commands(pad(), s, 0, 48);
-    expect(c.commands(pad({ down: [RIGHT] }), s, 0, 64)).toEqual([{ type: 'buy', playerId: 0, offer: 2 }]);
-    c.commands(pad(), s, 0, 80);
-    expect(c.commands(pad({ down: [A] }), s, 0, 96)).toEqual([{ type: 'ready', playerId: 0 }]);
+    let t = 0;
+    const tap = (b: number) => {
+      const out = c.commands(pad({ down: [b] }), s, 0, (t += 16));
+      c.commands(pad(), s, 0, (t += 16));
+      return out;
+    };
+    // a direction only picks: nothing is bought by it
+    expect(tap(RIGHT)).toEqual([]);
+    expect(c.shopFocus).toBe(1);
+    expect(tap(A)).toEqual([{ type: 'buy', playerId: 0, offer: 1 }]);
+    tap(RIGHT);
+    tap(RIGHT);
+    tap(RIGHT);
+    // (it stops at the last offer)
+    expect(c.shopFocus).toBe(3);
+    tap(LEFT);
+    expect(c.shopFocus).toBe(2);
+    tap(DOWN);
+    expect(c.shopFocus).toBe(4);
+    expect(tap(A)).toEqual([{ type: 'ready', playerId: 0 }]);
+    tap(12);
+    expect(c.shopFocus).toBe(3);
+    expect(tap(Y)).toEqual([{ type: 'ready', playerId: 0 }]);
+    // the stick picks too, one step per push
+    c.commands(pad({ axes: [-1, 0, 0, 0] }), s, 0, (t += 16));
+    c.commands(pad({ axes: [-1, 0, 0, 0] }), s, 0, (t += 16));
+    expect(c.shopFocus).toBe(2);
   });
 
   it('R3 toggles the zoomed-out view; pushing the right stick further aims further ahead', () => {
