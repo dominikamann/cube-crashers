@@ -9,7 +9,6 @@ const EXTERNAL_LINKS = [
   'https://github.com/sponsors/dominikamann',
   // the legal pages in the credits (LEGAL_LINKS in src/ui/screens.ts)
   'https://cubecrashers.amannlabs.eu/privacy-game.html',
-  'https://cubecrashers.amannlabs.eu/privacy.html',
   'https://amannlabs.eu/impressum.html',
 ];
 const lan = require('./lan.cjs');

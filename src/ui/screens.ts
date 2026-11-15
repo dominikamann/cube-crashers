@@ -99,7 +99,6 @@ const svg = (body: string) => `<svg viewBox="0 0 24 24" width="16" height="16" f
 const SITE = 'https://cubecrashers.amannlabs.eu';
 export const LEGAL_LINKS: [StringKey, string][] = [
   ['credits.privacyGame', `${SITE}/privacy-game.html`],
-  ['credits.privacySite', `${SITE}/privacy.html`],
   ['credits.imprint', 'https://amannlabs.eu/impressum.html'],
 ];
 
@@ -532,7 +531,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
-      // privacy (the game's and the website's) and the imprint, on the game's website
+      // the game's privacy policy and the imprint
       const legal = text(s, 'p', 'credits-legal', '');
       for (const [i, [key, url]] of LEGAL_LINKS.entries()) {
         if (i) legal.append(' · ');
