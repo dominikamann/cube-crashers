@@ -1425,6 +1425,12 @@ function applyDemo(sim: SimState) {
       const p = sim.players[0].pos;
       m.spawnBoss(sim, bossKind as 'rex', params.has('fall') ? { x: p.x, z: p.z - 5 } : undefined);
       if (params.has('fall')) for (const e of sim.enemies) e.hp = 0;
+      // (dev: &phase2=seconds: that long after the start it is hurt into its second phase, to look at what comes then)
+      if (import.meta.env.DEV && params.has('phase2'))
+        setTimeout(() => {
+          const body = sim.enemies.find(e => e.id === sim.boss?.enemyId);
+          if (body) body.hp = Math.min(body.hp, body.maxHp * 0.6);
+        }, Number(params.get('phase2')) * 1000);
     });
   }
   // ?demo=dominik: Angry Dominik on show. He stands still in the open and the camera circles him (&act=1: he
@@ -1472,7 +1478,12 @@ function applyDemo(sim: SimState) {
         w.speed = 0;
         if (!params.has('act')) b.nextAttackAt = Number.MAX_SAFE_INTEGER;
       }
-      // (into the second phase, above half her health: the dance starts, the mask stays as it is)
+      // (dev: &from=x,z: she stands there first, to watch her fly from afar to her fire)
+      if (import.meta.env.DEV && params.has('from') && body) {
+        const [x, z] = params.get('from')!.split(',').map(Number);
+        if (Number.isFinite(x) && Number.isFinite(z)) body.pos = { x, z };
+      }
+      // (into the second phase, above half her health: she flies to her fire and the dance starts, the mask stays as it is)
       if (params.has('dance') && body) body.hp = body.maxHp * 0.6;
       const at = params.has('dance') ? w.fire : body?.pos ?? w.fire;
       // (&angle=…: the camera stands still at that angle, 0 in front of her)
