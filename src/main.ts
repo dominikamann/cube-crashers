@@ -1441,6 +1441,8 @@ function applyDemo(sim: SimState) {
   // (&all=1: every weapon of the game, at level 3)
   sim.players[0].weapons = params.has('all') ? ALL_WEAPONS.map(kind => ({ kind, level: 3, cooldown: 0 })) : all.map(kind => ({ kind, level: 2, cooldown: 0 }));
   sim.players[0].coins = 200;
+  // (&all=1 also straps a jetpack on, with a full tank)
+  if (params.has('all')) Object.assign(sim.players[0], { jetpack: true, jetFuel: 300 });
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
   if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch'].includes(bossKind)) {
