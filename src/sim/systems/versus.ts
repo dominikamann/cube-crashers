@@ -268,6 +268,7 @@ function startRound(s: SimState): void {
     p.downUntil = null;
     p.reviveUntil = null;
     p.hp = p.maxHp;
+    p.disco = null;
     // capture the cube: each team starts at its own base
     const base = s.versus?.flags?.[p.team ?? 0]?.base;
     p.pos = base && s.versus?.rule === 'capture' ? nearBase(s, base, placed) : safeSpawn(s, p, placed);

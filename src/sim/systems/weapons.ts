@@ -204,7 +204,8 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
 function discoPulse(s: SimState, p: Player): void {
   const d = p.disco;
   if (!d || s.tick < d.next) return;
-  if (p.downUntil !== null || d.left <= 0) {
+  // (gone when they fell, and when its time passed unseen: a stage without weapons, the maze, came between)
+  if (p.downUntil !== null || d.left <= 0 || s.tick > d.next + DISCO.everyTicks) {
     p.disco = null;
     return;
   }

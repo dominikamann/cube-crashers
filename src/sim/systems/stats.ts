@@ -46,14 +46,21 @@ export function bestWeapon(stats: PlayerStats): string | null {
   return best;
 }
 
-/** Counts the first player's shots and hits of this tick, for the run log: how much of what one fires lands. */
+const aimOf = (s: SimState) => (s.stats.aim ??= { shots: {}, hits: {}, rivalKills: 0 });
+
+/** Counts the first player's shots and the rivals they took down this tick, for the run log. */
 export function aimStats(s: SimState): void {
   const me = s.players[0]?.id;
   if (me === undefined) return;
-  const aim = (s.stats.aim ??= { shots: {}, hits: 0, rivalHits: 0 });
   for (const e of s.events) {
-    if (e.type === 'shot' && e.playerId === me) aim.shots[e.weapon] = (aim.shots[e.weapon] ?? 0) + 1;
-    else if (e.type === 'enemyHit' && e.by === me) aim.hits++;
-    else if (e.type === 'playerHit' && e.by === me && e.playerId !== me) aim.rivalHits++;
+    if (e.type === 'shot' && e.playerId === me) aimOf(s).shots[e.weapon] = (aimOf(s).shots[e.weapon] ?? 0) + 1;
+    else if (e.type === 'pvpKill' && e.killerId === me) aimOf(s).rivalKills++;
   }
+}
+
+/** A hit by `by` with `source` landed (counted where the damage is dealt: events of small hits are thinned out). */
+export function countHit(s: SimState, by: number | undefined, source: string): void {
+  if (by === undefined || by !== s.players[0]?.id) return;
+  const hits = aimOf(s).hits;
+  hits[source] = (hits[source] ?? 0) + 1;
 }

@@ -294,6 +294,8 @@ export interface Projectile {
   hitIds: number[];
   /** player id, or -1 for towers and enemies */
   ownerId: number;
+  /** where it was when this tick began (a bolt's hits and walls count along the stretch it flew since) */
+  last?: Vec2;
   /** lob: start and target for the arc */
   from?: Vec2;
   target?: Vec2;
@@ -667,8 +669,9 @@ export interface RunStats {
   distance: number;
   idleTicks: number;
   samples: RunSample[];
-  /** the first player's aim: shots fired by weapon, and how many hits on monsters and on rivals they made (see aimStats) */
-  aim?: { shots: Record<string, number>; hits: number; rivalHits: number };
+  /** the first player's aim (see stats.ts): by weapon the shots fired and the hits they made (on monsters and rivals
+   *  alike; a hit with several sweets or beams counts each), and the rivals they took down */
+  aim?: { shots: Record<string, number>; hits: Record<string, number>; rivalKills: number };
 }
 
 export type SimEvent =

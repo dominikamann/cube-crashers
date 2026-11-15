@@ -15,15 +15,16 @@ import { airborne, makeBubble } from './rare';
 import { stepMissile } from './missile';
 import { quadOf } from './bounty';
 import { aimShot, atHeightOf, shotHeight, SHOT_HEIGHT, upInTheAir } from './shot-height';
-import { killCategory } from './stats';
+import { countHit, killCategory } from './stats';
 import { witchAloft, witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
 
-/** what a shot still does where it is: a Pixel Blaster bolt past its full reach does less with every tile, a sweet of the Candy Cannon less in steps */
-const shotDamage = (p: Projectile): number => {
+/** what a shot still does where it met `at` on its way this tick: a Pixel Blaster bolt past its full reach does less with
+ * every tile, a sweet of the Candy Cannon less in steps (0: it is spent, and passes) */
+const shotDamage = (p: Projectile, at: Vec2): number => {
   if (p.behavior !== 'bolt' || !p.from || p.range === undefined) return p.damage;
-  const d = dist(p.from, p.pos);
+  const d = dist(p.from, pointOnFlight(p, at));
   if (!p.tiers) return p.damage * falloff(d, p.range);
   return p.damage * (d <= p.range ? 1 : (p.tiers.find(([upTo]) => d <= upTo)?.[1] ?? 0));
 };
@@ -31,8 +32,8 @@ const shotDamage = (p: Projectile): number => {
 /** a fast shot that met a wall on its way this tick stops at the first wall, not deeper in: back to where it came to
  * it (true), or nothing in its way (false) */
 function wallOnFlight(s: SimState, p: Projectile): boolean {
-  const ax = p.pos.x - p.vel.x * DT, az = p.pos.z - p.vel.z * DT;
-  const steps = Math.ceil(Math.hypot(p.vel.x, p.vel.z) * DT / 0.2);
+  const ax = p.last?.x ?? p.pos.x, az = p.last?.z ?? p.pos.z;
+  const steps = Math.max(1, Math.ceil(Math.hypot(p.pos.x - ax, p.pos.z - az) / 0.2));
   for (let i = 1; i <= steps; i++) {
     const x = ax + ((p.pos.x - ax) * i) / steps, z = az + ((p.pos.z - az) * i) / steps;
     if (tileAt(s.map, x, z) !== Tile.Wall) continue;
@@ -42,14 +43,17 @@ function wallOnFlight(s: SimState, p: Projectile): boolean {
   return false;
 }
 
-/** how near a shot came to `at` on its way this tick: the whole stretch it flew counts, so a fast shot cannot
- * jump over someone between two ticks */
-function nearestOnFlight(p: Projectile, at: Vec2): number {
-  const ax = p.pos.x - p.vel.x * DT, az = p.pos.z - p.vel.z * DT;
+/** where a shot came nearest to `at` on its way this tick (from `p.last`, where the tick began, to where it is) */
+function pointOnFlight(p: Projectile, at: Vec2): Vec2 {
+  const ax = p.last?.x ?? p.pos.x, az = p.last?.z ?? p.pos.z;
   const dx = p.pos.x - ax, dz = p.pos.z - az, len2 = dx * dx + dz * dz;
   const k = len2 > 0 ? Math.max(0, Math.min(1, ((at.x - ax) * dx + (at.z - az) * dz) / len2)) : 1;
-  return Math.hypot(at.x - (ax + dx * k), at.z - (az + dz * k));
+  return { x: ax + dx * k, z: az + dz * k };
 }
+
+/** how near a shot came to `at` on its way this tick: the whole stretch it flew counts, so a fast shot cannot
+ * jump over someone between two ticks */
+const nearestOnFlight = (p: Projectile, at: Vec2): number => dist(pointOnFlight(p, at), at);
 
 /** a boss's own body: too big to be pulled, bubbled or bumped, and tough against stomps and karts */
 export function isBossBody(s: SimState, e: Enemy): boolean {
@@ -116,6 +120,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;
   s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt, ...(byPlayerId !== undefined ? { by: byPlayerId } : {}) });
+  countHit(s, byPlayerId, source);
   const horde = e.hordeId !== null ? s.hordes.find(h => h.id === e.hordeId) : undefined;
   if (horde) horde.aggro = true;
   if (e.hp > 0) return;
@@ -313,6 +318,8 @@ export function updateProjectiles(s: SimState): void {
       continue;
     }
 
+    // (where it was when the tick began: hits and walls count along the whole stretch it flies)
+    p.last = { ...p.pos };
     p.pos.x += p.vel.x * DT;
     p.pos.z += p.vel.z * DT;
 
@@ -366,7 +373,9 @@ export function updateProjectiles(s: SimState): void {
       // (the witch on her broom: a shot that went up to her hits her, one along the floor passes under her)
       const up = witchAloft(s, e);
       if (up && shotHeight(p) < SHOT_HEIGHT.split) continue;
-      hitEnemy(s, e, shotDamage(p), p.kind, p.ownerId, up);
+      const dealt = shotDamage(p, e.pos);
+      if (dealt <= 0) continue;
+      hitEnemy(s, e, dealt, p.kind, p.ownerId, up);
       p.hitIds.push(e.id);
       // a soap bubble: the monster floats stuck in it (bosses are too big)
       if (p.kind === 'bubbleWand' && e.hp > 0 && !isBossBody(s, e)) {
@@ -388,8 +397,8 @@ export function updateProjectiles(s: SimState): void {
         const mark = -1 - r.id;
         const over = !upInTheAir(r) && jumpLift(s, r) > SHOT_HEIGHT.floor + shotHeight(p);
         // spawn-protected players let shots pass
-        if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || nearestOnFlight(p, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
-        damagePlayer(s, r, pvpDamage(shotDamage(p)), 'shot', p.ownerId);
+        if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || nearestOnFlight(p, r.pos) > PLAYER_RADIUS + HIT_PADDING || shotDamage(p, r.pos) <= 0) continue;
+        damagePlayer(s, r, pvpDamage(shotDamage(p, r.pos)), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {
           alive = false;

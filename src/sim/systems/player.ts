@@ -30,6 +30,7 @@ import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
 import { overhead } from './witch';
 import { quadOf } from './bounty';
+import { countHit } from './stats';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
@@ -43,6 +44,9 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
   // coin-op chaos: hits between players count double
   else if (attackerId !== undefined && coinOpRule(s) === 'double') amount *= 2;
   amount *= quadOf(s, attackerId);
+  // (for the run log: a hit on a rival, by the weapon in the attacker's hand)
+  const attacker = attackerId !== undefined ? s.players.find(x => x.id === attackerId) : undefined;
+  if (attacker && attacker !== p) countHit(s, attackerId, attacker.weapons[attacker.selected]?.kind ?? 'other');
   // continuous damage (contact, glitch floor) would report a hit every tick; four times a second is enough
   const report = s.tick - p.lastHitEventAt >= HIT_EVENT_TICKS || amount >= 5;
   if (p.vehicleId !== null) {
@@ -63,6 +67,8 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
     s.events.push({ type: 'playerHit', playerId: p.id, hp: p.hp, pos: { ...p.pos }, amount, by: attackerId });
   }
   if (p.hp > 0) return;
+  // (a Disco Ball of theirs bursts as they fall)
+  p.disco = null;
 
   if (s.versus) {
     p.stats.downs++;
