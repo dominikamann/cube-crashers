@@ -47,7 +47,7 @@ export type WeaponKind =
   | 'yoyoLauncher';
 export type TowerKind = 'laser' | 'popcorn' | 'frost' | 'tesla' | 'bumper' | 'medic';
 export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp';
-export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
+export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'helipad' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn' | 'police';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
 export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch';

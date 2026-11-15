@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Tile, type FloorMap } from '../sim/map/tilemap';
 import { ladders } from '../sim/map/ladders';
 import { logoClear } from '../sim/map/logo-spots';
+import { HELIPAD } from '../sim/config/floor-helipad';
 import { glowMat, InstancedPool, lambert } from './pool';
 import { DecalBuilder, PropBuilder, hash } from './props';
 
@@ -62,6 +63,7 @@ const LADDER_COLORS: Record<string, [number, number]> = {
   neon: [0x454a66, 0x2c2a4a],
   arena: [0x6b4a2a, 0xb08a5a],
   rooftop: [0x3a3f52, 0x6a4a3a],
+  helipad: [0x3c4454, 0xffc93a],
   jungle: [0x5a3d22, 0x8a6236],
   servers: [0x454a66, 0xf4f4ff],
   underwater: [0x4a5656, 0x7a8a7a],
@@ -456,6 +458,132 @@ export function buildDecor(input: DecorContext): Decor {
       } else {
         // a roof vent with a turbine cap
         props.box(0.4, 0.5, 0.4, concrete, 0, 0.25, 0).box(0.5, 0.12, 0.5, metal, 0, 0.56, 0, Math.PI / 4).box(0.3, 0.1, 0.3, dark, 0, 0.66, 0);
+      }
+    }
+  } else if (look === 'helipad') {
+    const steel = lambert(0x5a6374), dark = lambert(0x2b303c), concrete = lambert(0x8d9199), yellow = lambert(0xffc93a), white = lambert(0xeef0f4), red = lambert(0xd0352a);
+    const navy = lambert(0x24395f), glass = lambert(0x8fd0ff), orange = lambert(0xff7a1a), rubber = lambert(0x1c1f26), grille = lambert(0x3a404c);
+    const floodMat = glowMat(0xfff4d0, 1.3), beaconMat = blink(0xff2a2a, 1.6, 0), green = (phase: number) => blink(0x5dff8a, 2, phase);
+    const { pad, heli, hut, plant, container, pipe, walkway } = HELIPAD;
+    /** the top of a jersey barrier (see LOW_WALL_HEIGHT in world.ts): the tail boom and the pipe rest on them */
+    const lowTop = 0.5;
+    // (a long block's tiles come in different heights, patch by patch: what stands on one stands on its own tile's
+    // top, and what spans several on the tallest of them)
+    const topAt = (x: number, z: number) => wallTopY(Math.floor(x), Math.floor(z));
+    const topOver = (x0: number, x1: number, z0: number, z1: number) => {
+      let top = 0;
+      for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) top = Math.max(top, wallTopY(x, z));
+      return top;
+    };
+    /** something that turns about the y axis through (x, y, z): rotor blades, fans, the beacon; each bar its own mesh at that axis */
+    const spinner = (x: number, y: number, z: number, speed: number) => ({
+      bar(w: number, h: number, d: number, mat: THREE.Material, dy = 0, yaw = 0) {
+        const g = new THREE.BoxGeometry(w, h, d);
+        if (yaw) g.rotateY(yaw);
+        g.translate(0, dy, 0);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        group.add(m);
+        spinners.push({ mesh: m, speed });
+        return this;
+      },
+    });
+    // the markings: a yellow ring round the pad, a white one inside it, the H, and the walkway's dashed lines
+    const ring = (r: number, w: number, color: number, n: number) => {
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        decals.rect(pad.x + Math.cos(a) * r, pad.z + Math.sin(a) * r, (2 * Math.PI * r) / n + 0.02, w, color, a + Q);
+      }
+    };
+    ring(pad.r, 0.36, 0xffc93a, 56);
+    ring(pad.r - 1.6, 0.22, 0xf4f6f8, 48);
+    for (const dx of [-2.6, 2.6]) decals.rect(pad.x + dx, pad.z, 1.1, 7, 0xf4f6f8);
+    decals.rect(pad.x, pad.z, 4.2, 1.1, 0xf4f6f8);
+    for (let z = walkway.z0; z <= walkway.z1; z++) for (const dx of [-0.9, 0.9]) decals.rect(walkway.x + dx, z + 0.5, 0.12, 0.7, 0xf4f6f8);
+    // a yellow line round the fuel tanks, and hatching in front of the hut's door
+    const t0 = HELIPAD.tanks[0], t1 = HELIPAD.tanks[1];
+    const fx0 = t0.x0 - 0.5, fx1 = t1.x0 + 2.5, fz0 = t0.z0 - 0.5, fz1 = t0.z0 + 2.5;
+    decals.rect((fx0 + fx1) / 2, fz0, fx1 - fx0, 0.12, 0xffc93a).rect((fx0 + fx1) / 2, fz1, fx1 - fx0, 0.12, 0xffc93a).rect(fx0, (fz0 + fz1) / 2, 0.12, fz1 - fz0, 0xffc93a).rect(fx1, (fz0 + fz1) / 2, 0.12, fz1 - fz0, 0xffc93a);
+    for (let i = 0; i < 5; i++) decals.rect(hut.x0 + 1.5 + i * 0.3 - 0.6, hut.z1 + 1.5, 0.1, 1.2, 0xffc93a, 0.6);
+    // the pad's edge lights: green, running round the ring one after the other
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2, x = pad.x + Math.cos(a) * (pad.r + 0.7), z = pad.z + Math.sin(a) * (pad.r + 0.7);
+      if (!isFloor(Math.floor(x), Math.floor(z))) continue;
+      props.at(x, 0, z).box(0.3, 0.1, 0.3, dark, 0, 0.05, 0).box(0.18, 0.1, 0.18, green(i * 0.4), 0, 0.14, 0);
+    }
+    // the floodlight towers: a mast with two lamps looking at the pad
+    for (const [tx, tz] of HELIPAD.towers) {
+      const yaw = Math.atan2(pad.x - tx - 0.5, pad.z - tz - 0.5);
+      props.at(tx + 0.5, wallTopY(tx, tz), tz + 0.5, yaw);
+      props.box(0.14, 1.8, 0.14, steel, 0, 0.9, 0).box(0.9, 0.08, 0.08, steel, 0, 1.75, 0);
+      for (const sx of [-0.3, 0.3]) props.box(0.36, 0.26, 0.2, dark, sx, 1.78, 0.12).box(0.3, 0.2, 0.04, floodMat, sx, 1.78, 0.23);
+    }
+    // the helicopter: a navy body with a white stripe, a glass nose toward the pad, the main rotor idling
+    // overhead, the tail boom lying on the barriers west of it with its fin and a small rotor
+    const hx = (heli.x0 + heli.x1 + 1) / 2, hz = (heli.z0 + heli.z1 + 1) / 2, hy = wallTopY(heli.x0, heli.z0);
+    props.at(hx, hy, hz);
+    props.box(2.7, 0.9, 1.6, navy, -0.1, 0.45, 0).box(2.72, 0.14, 1.62, white, -0.1, 0.56, 0).box(1.7, 0.4, 1.3, navy, -0.3, 1.1, 0);
+    props.box(0.8, 0.7, 1.4, glass, 1.0, 0.75, 0).box(0.9, 0.3, 1.5, navy, 0.95, 0.25, 0);
+    props.box(0.16, 0.5, 0.16, dark, -0.2, 1.5, 0).box(0.1, 0.1, 0.1, blink(0xff3b3b, 1.2, 1), 0, 0.98, 0.84).box(0.1, 0.1, 0.1, blink(0x3bff7a, 1.2, 1), 0, 0.98, -0.84);
+    const rotor = spinner(hx - 0.2, hy + 1.78, hz, 1.6).bar(0.5, 0.16, 0.5, dark).bar(7.2, 0.05, 0.32, rubber).bar(7.2, 0.05, 0.32, rubber, 0, Q);
+    for (const yaw of [0, Q]) rotor.bar(0.9, 0.06, 0.34, yellow, 0.005, yaw);
+    const tx0 = heli.tailX0, tz = heli.tailZ + 0.5, boomY = lowTop + 0.3;
+    props.at((tx0 + heli.x0) / 2, 0, tz);
+    props.box(heli.x0 - tx0 + 0.2, 0.42, 0.42, navy, 0, boomY, 0).box(heli.x0 - tx0 + 0.2, 0.08, 0.44, white, 0, boomY + 0.1, 0);
+    props.box(0.5, 1.0, 0.14, navy, -(heli.x0 - tx0) / 2 + 0.35, boomY + 0.5, 0).box(0.1, 0.1, 0.1, blink(0xffffff, 1.2, 2), -(heli.x0 - tx0) / 2 + 0.35, boomY + 1.02, 0);
+    spinner(tx0 + 0.25, boomY + 0.55, tz + 0.12, 7).bar(0.06, 1.2, 0.08, rubber).bar(1.2, 0.06, 0.08, rubber);
+    // the fuel tanks: eight-sided drums with a red band and a hatch, the pipe between them with a valve
+    for (const t of HELIPAD.tanks) {
+      props.at(t.x0 + 1, wallTopY(t.x0, t.z0), t.z0 + 1);
+      for (const yaw of [0, Math.PI / 4]) props.box(1.5, 1.3, 1.5, white, 0, 0.65, 0, yaw).box(1.54, 0.18, 1.54, red, 0, 0.5, 0, yaw);
+      props.box(0.5, 0.12, 0.5, dark, 0.2, 1.36, 0.2).box(0.12, 0.3, 0.12, steel, -0.4, 1.4, -0.3);
+    }
+    props.at((pipe.x0 + pipe.x1 + 1) / 2, lowTop, pipe.z + 0.5);
+    props.box(pipe.x1 - pipe.x0 + 1.2, 0.18, 0.18, steel, 0, 0.1, 0).box(0.26, 0.26, 0.08, red, 0, 0.32, 0).box(0.06, 0.2, 0.06, steel, 0, 0.2, 0);
+    // the plant room: air handlers with turning fans, and a duct along the back
+    for (let x = plant.x0; x + 1 <= plant.x1; x += 2) {
+      const cx = x + 1, cz = plant.z0 + 1, y = topOver(x, x + 1, plant.z0, plant.z1);
+      props.at(cx, y, cz).box(1.5, 0.5, 1.5, concrete, 0, 0.25, 0).box(0.9, 0.04, 0.9, grille, 0, 0.52, 0.1);
+      spinner(cx, y + 0.56, cz + 0.1, 5 + hash(x, 1) * 4).bar(0.7, 0.03, 0.1, white).bar(0.1, 0.03, 0.7, white);
+    }
+    props.at((plant.x0 + plant.x1 + 1) / 2, topOver(plant.x0, plant.x1, plant.z0, plant.z1), plant.z0 + 0.3).box(plant.x1 - plant.x0 + 0.6, 0.3, 0.3, steel, 0, 0.65, 0);
+    // the control hut: a door and a window toward the pad, the beacon turning on the roof, an antenna, a windsock
+    const hutMidX = (hut.x0 + hut.x1 + 1) / 2, beaconY = topAt(hutMidX, hut.z0 + 1.5), mastY = topAt(hut.x0 + 1, hut.z0 + 0.8), sockY = topAt(hut.x1 + 0.5, hut.z1 + 0.6);
+    props.at(hut.x0 + 1.5, 0, hut.z0 - 0.02).box(0.8, 1.2, 0.04, dark, 0, 0.6, 0).box(0.1, 0.1, 0.04, yellow, 0.25, 0.6, 0).box(0.3, 0.14, 0.14, glowMat(0xffe9a8, 1.4), 0, 1.3, -0.05);
+    props.at(hut.x1 - 1.5, 0, hut.z0 - 0.02).box(1.6, 0.6, 0.04, glass, 0, 0.95, 0).box(1.7, 0.06, 0.06, white, 0, 0.62, 0);
+    props.at(hutMidX, beaconY, hut.z0 + 1.5).box(0.16, 0.7, 0.16, steel, 0, 0.35, 0);
+    spinner(hutMidX, beaconY + 0.78, hut.z0 + 1.5, 2.2).bar(0.3, 0.3, 0.3, beaconMat).bar(0.5, 0.2, 0.08, dark, 0.03);
+    props.at(hut.x0 + 1, mastY, hut.z0 + 0.8).box(0.08, 2.4, 0.08, steel, 0, 1.2, 0).box(0.6, 0.04, 0.04, steel, 0, 2.1, 0).box(0.4, 0.04, 0.04, steel, 0, 1.7, 0);
+    props.at(hut.x1 + 0.5, sockY, hut.z1 + 0.6).box(0.08, 2.2, 0.08, white, 0, 1.1, 0);
+    flag(hut.x1 + 0.5, sockY + 1.95, hut.z1 + 0.6, 0, orange, 1.1, 0.3);
+    // the container: locking bars on its doors, at the east end
+    props.at(container.x1 + 1.02, 0, (container.z0 + container.z1 + 1) / 2, Q);
+    for (const sx of [-0.7, -0.3, 0.3, 0.7]) props.box(0.06, 1.2, 0.06, dark, sx, 0.6, 0);
+    // the railing along the roof's edge: posts with a yellow top rail, missing in places
+    for (const c of ctx.floorTiles) {
+      const dir = DIRS.find(([ox, oz]) => tileOf(c.tx + ox, c.tz + oz) === Tile.Hazard);
+      if (!dir || !clear(c.tx, c.tz)) continue;
+      const [ox, oz] = dir;
+      props.at(c.tx + 0.5, 0, c.tz + 0.5, Math.atan2(ox, oz));
+      props.box(0.06, 0.95, 0.06, steel, -0.5, 0.48, 0.42);
+      if (hash(c.tx * 7, c.tz * 3) < 0.14) continue;
+      props.box(1.0, 0.05, 0.05, yellow, 0, 0.93, 0.42).box(1.0, 0.04, 0.04, steel, 0, 0.5, 0.42).box(1.0, 0.1, 0.03, dark, 0, 0.06, 0.42);
+    }
+    // what stands about: traffic cones, fire extinguishers, a toolbox, a ground power unit on wheels
+    for (const s of edgeSpots(0.14, 19)) {
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
+      const k = Math.floor(s.r * 4);
+      if (k === 0) {
+        props.box(0.4, 0.04, 0.4, orange, 0, 0.02, 0).box(0.22, 0.3, 0.22, orange, 0, 0.17, 0).box(0.14, 0.3, 0.14, orange, 0, 0.45, 0).box(0.16, 0.06, 0.16, white, 0, 0.3, 0);
+      } else if (k === 1) {
+        props.box(0.2, 0.55, 0.2, red, 0, 0.28, 0).box(0.08, 0.1, 0.08, dark, 0, 0.6, 0).box(0.04, 0.3, 0.04, dark, 0.1, 0.4, 0.06);
+      } else if (k === 2) {
+        props.box(0.6, 0.3, 0.35, red, 0, 0.15, 0).box(0.62, 0.04, 0.37, dark, 0, 0.3, 0).box(0.2, 0.06, 0.08, dark, 0, 0.36, 0);
+      } else {
+        props.box(0.9, 0.6, 0.6, yellow, 0, 0.45, 0).box(0.9, 0.06, 0.62, dark, 0, 0.75, 0);
+        for (const sx of [-0.3, 0.3]) props.box(0.2, 0.2, 0.1, rubber, sx, 0.1, 0.3).box(0.2, 0.2, 0.1, rubber, sx, 0.1, -0.3);
+        props.box(0.4, 0.06, 0.06, dark, 0.45, 0.55, 0.2);
       }
     }
   }

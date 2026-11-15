@@ -4,7 +4,7 @@ import { createSim, stepSim } from '../../src/sim/sim';
 import { spawnBoss } from '../../src/sim/systems/boss';
 import type { BossKind } from '../../src/sim/types';
 
-const MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'jungle', 'servers', 'underwater'].filter(id => FLOORS[id]);
+const MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'helipad', 'jungle', 'servers', 'underwater'].filter(id => FLOORS[id]);
 
 /** how close the boss gets to a player who stands still at the entrance, within a minute */
 function closest(map: string, kind: BossKind, seed: number): number {

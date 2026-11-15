@@ -59,7 +59,7 @@ function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D
   return tex;
 }
 
-/** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof */
+/** wall sides, by look: stone courses on the plaza, iced cake in the factory, window panels in the city, sandstone in the arena, louvred metal on the roof, riveted steel plate on the helipad */
 function wallSideTexture(look: string): THREE.CanvasTexture {
   return canvasTexture(64, 64, g => {
     if (look === 'waldsee') return paintWaldseeWall(g);
@@ -140,6 +140,21 @@ function wallSideTexture(look: string): THREE.CanvasTexture {
       }
       g.fillStyle = '#d9cfae';
       g.fillRect(0, 56, 64, 8);
+    } else if (look === 'helipad') {
+      // painted steel plate: two panel seams, a row of rivets along the top and the bottom, a dark skirting
+      g.fillStyle = '#eef0f4';
+      g.fillRect(0, 0, 64, 64);
+      g.fillStyle = '#c9ccd8';
+      g.fillRect(21, 0, 2, 64);
+      g.fillRect(43, 0, 2, 64);
+      g.fillRect(0, 0, 64, 2);
+      g.fillStyle = '#a4a8b8';
+      for (let x = 5; x < 64; x += 11) {
+        g.fillRect(x, 5, 2, 2);
+        g.fillRect(x, 51, 2, 2);
+      }
+      g.fillStyle = '#9ea2b5';
+      g.fillRect(0, 57, 64, 7);
     } else if (look === 'rooftop') {
       // riveted metal with louvre slits
       g.fillStyle = '#f2f3f7';
@@ -185,8 +200,8 @@ function windowTexture(): THREE.CanvasTexture {
 
 /**
  * One floor tile's surface, by look: pavers with cracks and drains on the plaza, glazed tiles in the
- * factory, asphalt in the city and on the track, sand in the arena, tar paper on the roof, carpet in
- * the arcade. Grey only: the theme colour comes from the vertices.
+ * factory, asphalt in the city and on the track, sand in the arena, tar paper on the roof, concrete slabs on
+ * the helipad, carpet in the arcade. Grey only: the theme colour comes from the vertices.
  */
 function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, tz: number, x: number, y: number, px: number): void {
   if (look === 'waldsee') return paintWaldseeFloor(g, tx, tz, x, y, px);
@@ -225,6 +240,29 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
       g.fillStyle = 'rgba(90,60,30,0.22)';
       g.beginPath();
       g.ellipse(x + px * hash(tx, 2), y + px * hash(tz, 2), px * 0.45, px * 0.3, hash(tx, tz) * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+    return;
+  }
+  if (look === 'helipad') {
+    // concrete slabs: a thin joint right and bottom, a wider expansion joint every fourth row, grain, and now and
+    // then a tar patch or an oil stain where something was parked
+    g.fillStyle = 'rgba(20,20,40,0.22)';
+    g.fillRect(x, y + px - 2, px, 2);
+    g.fillRect(x + px - 2, y, 2, px);
+    if (tz % 4 === 0) g.fillRect(x, y, px, 3);
+    g.fillStyle = 'rgba(255,255,255,0.1)';
+    for (let k = 0; k < 9; k++) g.fillRect(x + 2 + Math.floor(hash(tx + k, tz * 5) * (px - 5)), y + 2 + Math.floor(hash(tz + k * 7, tx) * (px - 5)), 2, 2);
+    g.fillStyle = 'rgba(40,40,60,0.09)';
+    for (let k = 0; k < 6; k++) g.fillRect(x + 2 + Math.floor(hash(tx * 3 + k, tz) * (px - 5)), y + 2 + Math.floor(hash(tz * 3 + k, tx) * (px - 5)), 3, 2);
+    if (h < 0.012) {
+      g.fillStyle = 'rgba(20,20,30,0.26)';
+      g.fillRect(x + px * 0.2, y + px * 0.3, px * 0.6, px * 0.35);
+      g.fillRect(x + px * 0.3, y + px * 0.2, px * 0.3, px * 0.55);
+    } else if (h > 0.975) {
+      g.fillStyle = 'rgba(30,25,20,0.2)';
+      g.beginPath();
+      g.ellipse(x + px * 0.5, y + px * 0.5, px * 0.42, px * 0.3, hash(tx, tz) * 3, 0, Math.PI * 2);
       g.fill();
     }
     return;
@@ -323,6 +361,24 @@ function paintFloorTile(g: CanvasRenderingContext2D, look: string, tx: number, t
     g.ellipse(x + px * 0.5, y + px * 0.5, px * 0.4, px * 0.26, hash(tx, tz) * 3, 0, Math.PI * 2);
     g.fill();
   }
+}
+
+/** the rotor wash on the helipad: the concrete again, with pale streaks that blow toward -z of the texture */
+function windTexture(): THREE.CanvasTexture {
+  return canvasTexture(32, 32, g => {
+    g.fillStyle = '#9ca1aa';
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle = '#8f949d';
+    for (let i = 0; i < 10; i++) g.fillRect(Math.floor(hash(i, 3) * 30), Math.floor(hash(3, i) * 30), 2, 2);
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    for (const [x, y, len] of [[4, 2, 12], [12, 10, 16], [21, 0, 10], [27, 14, 14], [8, 22, 8], [17, 26, 6]]) g.fillRect(x, y, 2, len);
+    // the heads of the streaks: a little chevron each
+    g.fillStyle = 'rgba(255,255,255,0.4)';
+    for (const [x, y] of [[4, 2], [12, 10], [21, 0], [27, 14], [8, 22], [17, 26]]) {
+      g.fillRect(x - 2, y + 2, 2, 2);
+      g.fillRect(x + 2, y + 2, 2, 2);
+    }
+  }, true);
 }
 
 /** jump-over barriers: yellow and dark diagonal stripes */
@@ -854,8 +910,9 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   layer(t => t === Tile.Boost, boostMat, 0.42, -0.4, false);
   disposables.push(glitchTex, glitchTexCb, boostTex);
 
-  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction
-  const beltTex = canvasTexture(32, 32, g => {
+  // ---- conveyor belts: dark rubber with bright chevrons that scroll in the push direction (on the helipad the
+  // rotor wash: concrete with pale streaks of wind that run the same way)
+  const beltTex = look === 'helipad' ? windTexture() : canvasTexture(32, 32, g => {
     g.fillStyle = '#3a3550';
     g.fillRect(0, 0, 32, 32);
     g.fillStyle = '#ffd34a';

@@ -121,7 +121,7 @@ export function blendTheme(a: Theme, b: Theme, t: number): Theme {
   return out;
 }
 
-/** Day and night palettes of each floor theme. Arena, rooftop and shaft get theirs with the bosses. */
+/** Day and night palettes of each floor theme. Arena, rooftop, helipad and shaft get theirs with the bosses. */
 export function themeFor(id: string): { day: Theme; night: Theme } {
   switch (id) {
     case 'candy':
@@ -162,6 +162,12 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
     case 'rooftop':
       return {
         day: { ...THEMES.day, background: 0xffb48a, skyTop: 0x5a3a9a, roadA: 0x8f95a8, roadB: 0x858b9e, wallA: 0x4a5070, wallB: 0x424866, sunColor: 0xffc890, sunIntensity: 1.5 },
+        night: THEMES.night,
+      };
+    case 'helipad':
+      // high over the city on a clear day: a deep blue sky, thin haze on the horizon, concrete and painted steel
+      return {
+        day: { ...THEMES.day, background: 0xaccbec, skyTop: 0x1d3f8c, roadA: 0xa4a9b2, roadB: 0x9a9fa8, wallA: 0x4c5569, wallB: 0x444c5e, hemiGround: 0x6e7684, fillColor: 0xa8c8ff, fillIntensity: 0.5, sunColor: 0xfff2dc, sunIntensity: 1.6, fogNear: 26, fogFar: 56 },
         night: THEMES.night,
       };
     case 'maze': {
