@@ -546,6 +546,8 @@ function startGame() {
           replay = killcam.start(kill.killerId!);
           const who = s.players.find(p => p.id === kill.killerId);
           killBanner.querySelector('b')!.textContent = t('killcam.banner', { name: who?.name ?? '?' });
+          // (with a controller its button skips it, see pollPadMenus)
+          killBanner.querySelector('span')!.textContent = padActive ? t('killcam.skipPad', { key: useLabel(0) === '\u25A1' ? '\u2715' : 'A' }) : t('killcam.skip');
         }
       }
       const me = s.players.find(p => p.id === localId());
@@ -1222,7 +1224,11 @@ function startGame() {
   const PAD_AFTER_GAME_MS = 1200;
   let padFocused: HTMLElement | null = null;
 
-  /** Controller in menus: d-pad or stick moves to the button that way, A presses, B goes back, Start pauses and resumes. */
+  /**
+   * Controller in menus: d-pad or stick moves to the button that way, A presses, B goes back, Start pauses and
+   * resumes. A slider takes left and right itself (quieter, louder); a link is pressed like a button. In a game, A
+   * skips the kill cam.
+   */
   function pollPadMenus() {
     requestAnimationFrame(pollPadMenus);
     if (mode === 'playing') playedUntil = performance.now();
@@ -1237,12 +1243,24 @@ function startGame() {
       else if (mode === 'paused') resume();
       return;
     }
+    if (mode === 'playing' && replay && e.a) {
+      replay = null;
+      return;
+    }
     if (mode === 'playing' || !(e.up || e.down || e.left || e.right || e.a || e.b)) return;
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.screen button:not(:disabled)')].filter(b => b.offsetParent !== null);
+    const buttons = [...document.querySelectorAll<HTMLElement>('.screen button:not(:disabled), .screen input[type=range], .screen a[href]')].filter(b => b.offsetParent !== null);
     if (buttons.length === 0) return;
-    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const at = buttons.indexOf(document.activeElement as HTMLElement);
+    // a slider with the focus: left and right turn it, up and down leave it
+    const slider = at >= 0 && buttons[at] instanceof HTMLInputElement ? (buttons[at] as HTMLInputElement) : null;
+    if (slider && (e.left || e.right)) {
+      if (e.right) slider.stepUp();
+      else slider.stepDown();
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     // the controller's own highlight: the browser hides its focus ring when the mouse was used last
-    const focus = (b: HTMLButtonElement) => {
+    const focus = (b: HTMLElement) => {
       padFocused?.classList.remove('pad-focus');
       b.focus();
       b.classList.add('pad-focus');
@@ -1259,7 +1277,7 @@ function startGame() {
     if (e.a) {
       // nothing chosen yet: the first press only shows where you are
       if (at < 0) focus(buttons[0]);
-      else if (performance.now() - playedUntil > PAD_AFTER_GAME_MS) buttons[at].click();
+      else if (performance.now() - playedUntil > PAD_AFTER_GAME_MS && !slider) buttons[at].click();
     }
     if (e.b) {
       if (mode === 'paused') resume();

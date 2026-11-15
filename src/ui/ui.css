@@ -592,7 +592,7 @@ body.no-map .mapbox { display: none; }
 /* the settings' way back stays in reach on a short window */
 .screen.settings > .btn:last-child { position: sticky; bottom: 8px; flex: none; }
 /* controller focus on the small controls too */
-.swatch.pad-focus, .vote-card.pad-focus, .tip-close.pad-focus, .server-remove.pad-focus, .vote-card:focus-visible, .swatch:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+input[type=range].pad-focus, a.pad-focus, .swatch.pad-focus, .vote-card.pad-focus, .tip-close.pad-focus, .server-remove.pad-focus, .vote-card:focus-visible, .swatch:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 /* a drop-down stays inside its box: a long label wraps, the arrow keeps its place beside it */
 .map-drop { max-width: 100%; }
 .chip.drop { display: inline-flex; align-items: center; max-width: 100%; text-align: left; line-height: 1.5; }

@@ -318,6 +318,7 @@ export const en = {
   'settings.killCam': 'Kill cam (versus)',
   'killcam.banner': 'KILL CAM · {name} got you',
   'killcam.skip': 'Click to skip',
+  'killcam.skipPad': '{key} to skip',
   'settings.version': 'Installed version',
   'settings.colorAuto': 'Automatic',
   'settings.character': 'Character',
