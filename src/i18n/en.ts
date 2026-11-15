@@ -308,6 +308,7 @@ export const en = {
   'credits.imprint': 'Imprint',
   'credits.security': 'Security',
   'credits.licenses': 'Licenses',
+  'credits.website': 'Game Website',
   'licenses.title': 'Licenses',
   'licenses.intro': 'Cube Crashers is built with these fonts, libraries and open data. Select one to read its license.',
   'licenses.own': 'Cube Crashers itself: {license}',

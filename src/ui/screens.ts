@@ -95,8 +95,8 @@ const markSeen = (key: string) => {
   }
 };
 const svg = (body: string) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
-// the legal pages behind the credits (also allowed in electron/main.cjs, EXTERNAL_LINKS)
-const SITE = 'https://cubecrashers.amannlabs.eu';
+// the game's website and the legal pages behind the credits (also allowed in electron/main.cjs, EXTERNAL_LINKS)
+export const SITE = 'https://cubecrashers.amannlabs.eu';
 export const LEGAL_LINKS: [StringKey, string][] = [
   ['credits.privacyGame', `${SITE}/privacy-game.html`],
   ['credits.imprint', 'https://amannlabs.eu/impressum.html'],
@@ -554,6 +554,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       const row = document.createElement('div');
       row.className = 'lobby-group-row';
       button(row, t('menu.back'), () => back());
+      button(row, t('credits.website'), () => window.open(`${SITE}/`, '_blank', 'noopener'), true);
       button(row, t('credits.licenses'), licensesScreen, true);
       s.append(row);
     });
