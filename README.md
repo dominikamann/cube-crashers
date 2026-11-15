@@ -451,10 +451,11 @@ floor). Who joins while a match is running comes straight into it: in versus a b
 
 The server is a small program without graphics. Pick one way:
 
-**Free in the cloud, online day and night** (no computer of your own has to keep running): Oracle Cloud's
-Always Free tier is enough for it. [The step-by-step guide](docs/hosting-oracle-cloud.md) gets a server up in
-about 20 minutes, all in the browser: one script to paste, one port to open, and it keeps itself on the
-newest version.
+**[Dedicated server: how to](docs/dedicated-server-how-to.md)** says what every server needs (a computer
+that stays on, one open port, the same version as the players) and then walks through an example: a server
+that is **free in the cloud and online day and night** on Oracle Cloud's Always Free tier, in about 20
+minutes, all in the browser: one script to paste, one port to open, and it keeps itself on the newest
+version.
 
 **Docker** (recommended):
 
