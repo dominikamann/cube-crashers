@@ -8,7 +8,7 @@ Thanks for your interest in contributing!
 - Do not add protected characters, names or brands.
 - Keep game logic in `src/sim/` pure and deterministic, and add or update tests.
 - Route player-visible text through `t()` in `src/i18n/`.
-- Read the project's [license](LICENSE) and [license-change note](LICENSE-CHANGE.md).
+- Read the project's [license](LICENSE).
 
 ## Licensing of contributions
 
