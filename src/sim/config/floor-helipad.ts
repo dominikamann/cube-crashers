@@ -20,10 +20,10 @@ export const HELIPAD = {
   /** the helicopter: its hull (wall blocks, the nose to the east) and the tail boom west of it (low walls) */
   heli: { x0: 28, x1: 32, z0: 25, z1: 27, tailX0: 24, tailX1: 27, tailZ: 26 },
   /**
-   * the rotor wash: a ring of two tiles round the hull and the boom, every side blowing away from the helicopter
+   * the rotor wash: a ring of three tiles round the hull and the boom, every side blowing away from the helicopter
    * (north of it north, south of it south, past the nose east, behind the tail west; alongside the boom to either side)
    */
-  wash: { x0: 22, x1: 34, z0: 23, z1: 29 },
+  wash: { x0: 21, x1: 35, z0: 22, z1: 30 },
   /** two fuel tanks with a pipe between them */
   tanks: [{ x0: 48, z0: 10 }, { x0: 52, z0: 10 }],
   pipe: { x0: 50, x1: 51, z: 11 },
@@ -60,8 +60,8 @@ for (const [x, z] of HELIPAD.towers) b.put('#', [x, z]);
 b.put('S', [30, 46]).put('E', [30, 49]);
 b.put('p', [14, 19], [46, 19], [14, 34], [46, 34], [30, 9], [8, 29], [52, 29]);
 b.put('V', [24, 46]);
-// (the power-ups on the pad lie just outside the wash: whoever goes for one gets blown off again)
-b.put('*', [22, 30], [38, 30], [30, 12], [30, 40]);
+// (two power-ups lie at the edge of the pad just outside the wash, two on the way in and out)
+b.put('*', [21, 32], [39, 32], [30, 12], [30, 40]);
 b.put('c', [14, 5], [52, 7], [7, 47], [44, 46]);
 b.put('w', [12, 26], [48, 26], [30, 6], [30, 38], [8, 9], [54, 15], [8, 46], [52, 44]);
 

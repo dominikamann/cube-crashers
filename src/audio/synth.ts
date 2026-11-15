@@ -20,7 +20,7 @@ export interface SynthParams {
 
 const noiseBuffers = new WeakMap<BaseAudioContext, AudioBuffer>();
 
-function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
+export function noiseBuffer(ctx: BaseAudioContext): AudioBuffer {
   let buf = noiseBuffers.get(ctx);
   if (!buf) {
     buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);

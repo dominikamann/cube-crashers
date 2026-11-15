@@ -8,6 +8,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
+import { rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
@@ -669,6 +670,8 @@ function startGame() {
         }
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
+        // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
+        audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) : 0);
         for (const e of frameEvents) {
           // the fast track belongs to a boss fight and to the highest alarm
           if (e.type === 'bossSpawn') bossesUp++;
