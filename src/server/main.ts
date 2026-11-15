@@ -5,6 +5,7 @@ import type { Transport } from '../net/transport';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { DT } from '../sim/types';
 import { APP_VERSION } from '../version';
+import { licensesText } from '../ui/licenses';
 import { HELP, mapChoices, parseConfig, serverIdentity, type ServerConfig } from './config';
 import { DedicatedServer } from './dedicated';
 
@@ -13,6 +14,10 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help') || args.includes('-h')) {
     process.stdout.write(HELP);
+    return;
+  }
+  if (args.includes('--licenses')) {
+    process.stdout.write(licensesText());
     return;
   }
   if (args.includes('--version')) {

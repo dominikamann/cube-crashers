@@ -551,7 +551,47 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         thanks.classList.add('pop');
       };
       thank('credits');
-      button(s, t('menu.back'), () => back());
+      const row = document.createElement('div');
+      row.className = 'lobby-group-row';
+      button(row, t('menu.back'), () => back());
+      button(row, t('credits.licenses'), licensesScreen, true);
+      s.append(row);
+    });
+  }
+
+  /** every font, library and data set the game is built with, each with its license text to open */
+  function licensesScreen() {
+    show('settings licenses', s => {
+      text(s, 'h2', '', t('licenses.title'));
+      text(s, 'p', 'credits-small', t('licenses.intro'));
+      const list = document.createElement('div');
+      list.className = 'license-list';
+      s.append(list);
+      button(s, t('menu.back'), creditsScreen);
+      // (loaded when asked for: the texts stay out of the game's start)
+      void import('./licenses').then(({ THIRD_PARTY, OWN_LICENSE }) => {
+        if (!list.isConnected) return;
+        const own = text(list, 'p', 'license-own', t('licenses.own', { license: OWN_LICENSE }));
+        own.classList.add('credits-small');
+        for (const e of THIRD_PARTY) {
+          const item = document.createElement('button');
+          item.className = 'license-item';
+          item.setAttribute('aria-expanded', 'false');
+          text(item, 'b', '', `${e.name}${e.version ? ` ${e.version}` : ''}`);
+          text(item, 'span', 'license-id', e.license);
+          if (e.copyright) text(item, 'span', 'license-holder', e.copyright);
+          const body = document.createElement('pre');
+          body.className = 'license-text';
+          body.textContent = e.text;
+          body.hidden = true;
+          item.addEventListener('click', () => {
+            actions.click();
+            body.hidden = !body.hidden;
+            item.setAttribute('aria-expanded', String(!body.hidden));
+          });
+          list.append(item, body);
+        }
+      });
     });
   }
 

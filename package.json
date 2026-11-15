@@ -16,7 +16,8 @@
     "icon": "node scripts/make-icon.mjs",
     "dist:mac:signed": "npm run build && node scripts/dist-mac-signed.mjs",
     "build:server": "vite build --config vite.server.config.ts",
-    "server": "npm run build:server && node dist-server/cube-crashers-server.mjs"
+    "server": "npm run build:server && node dist-server/cube-crashers-server.mjs",
+    "licenses": "node scripts/licenses.mjs"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

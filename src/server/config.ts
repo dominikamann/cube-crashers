@@ -169,6 +169,7 @@ export const HELP = `Cube Crashers dedicated server
   --web                let players from the browser version join (needs a TLS proxy, see the README)
   --compress           squeeze what the server sends: far less upload, more work for the processor
   --config <file>      read settings from a JSON file (default ./server.json if it exists)
+  --licenses           the licenses of the libraries and data this server is built with
 
 Every option also works as an environment variable: CC_MODE=gungame, CC_BOTS=6, ...
 `;

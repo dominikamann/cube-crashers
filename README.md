@@ -387,7 +387,7 @@ the whole team.
   yellow bolts; angry eyes and warning lanes and rings blink hard; the glitch floor shows a thick yellow "no" sign.
   It switches at once, also in a paused match.
 - **Controls** are listed at the bottom of the settings screen, and **About** shows the version you have installed.
-- **Credits & Legal** (title screen): who made the game, the privacy policy, the imprint and how to report a security issue.
+- **Credits & Legal** (title screen): who made the game, the privacy policy, the imprint, how to report a security issue and the licenses of every font, library and data set it is built with.
 
 ---
 
@@ -1006,6 +1006,10 @@ A game by **[amannlabs.eu](https://amannlabs.eu)** – Dominik Amann, with help 
 
 The Town is built from real building data. Shop names in the game are made up. Sources of third-party data
 and assets: [LICENSE-ASSETS.md](LICENSE-ASSETS.md).
+
+Every font, library and data set the game ships with is listed with its license text in the game under
+**Credits & Legal → Licenses**; the dedicated server prints the same list with `--licenses`. After a change to
+the dependencies, `npm run licenses` writes that list again (a test fails until it does).
 
 ## Privacy
 
