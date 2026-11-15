@@ -17,6 +17,7 @@ import { looksFor, type Look } from '../characters';
 import { animate, buildFigure, DANCE_SECONDS } from './cast';
 import { bake, FIGURE_GLOW, FIGURE_LIT, FIGURE_SOLID } from './figure';
 import { weaponModel, type HeldKind } from './viewmodel';
+import { bladeStep, showBlade } from './blade';
 import type { Theme } from './theme';
 import { NORMAL, palette, playerColor } from './palette';
 
@@ -103,6 +104,8 @@ function makePlayer(color: number, look: Look) {
   return {
     color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, swatter, paddle, light, pack, flame, glint,
     swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN, lift: 0,
+    // the sword's blade: how far it is out of the hilt, and the blade itself while a sword is in the hand
+    blade: 0, bladeObj: null as THREE.Object3D | null,
     // what the animation remembers from frame to frame
     step: 0, pace: 0, ahead: 0, aside: 0, idle: 0, land: 0, dash: 0, kick: 0, wasAir: false, lastCooldown: 0,
   };
@@ -547,11 +550,19 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const weapon = p.weapons[p.selected];
     const rare = p.rare && p.rareSelected ? p.rare.kind : null;
     const kind: HeldKind = rare ?? weapon?.kind ?? 'pixelBlaster';
-    if (v.heldKind !== kind) {
+    // the sword's blade runs out of the hilt when it is taken (and after a fall), and back in before another
+    // weapon is shown or the player gets into a vehicle
+    v.blade = bladeStep(v.blade, kind === 'laserSword' && !down && !driving, frameDt);
+    const inHand: HeldKind = kind !== 'laserSword' && v.blade > 0 ? 'laserSword' : kind;
+    if (v.heldKind !== inHand) {
       disposeTree(v.held);
       v.held.clear();
-      v.held.add(bake(weaponModel(kind)));
-      v.heldKind = kind;
+      const model = bake(weaponModel(inHand));
+      // (the blade is merged on its own: it grows out of the hilt)
+      v.bladeObj = model.getObjectByName('blade') ?? null;
+      if (v.bladeObj) bake(v.bladeObj as THREE.Group);
+      v.held.add(model);
+      v.heldKind = inHand;
       v.lastCooldown = 0;
     }
     // a fresh cooldown means a shot: the weapon kicks back
@@ -559,6 +570,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (cooldown > v.lastCooldown) v.kick = 1;
     v.lastCooldown = cooldown;
     v.kick = Math.max(0, v.kick - frameDt * 7);
+    // (while it swings, the blade is the one drawn sweeping through its arc, see shots.ts)
+    if (v.bladeObj) showBlade(v.bladeObj, v.blade, time, p.id, weapon?.level ?? 1, v.kick > 0 && kind === 'laserSword');
     // steps go by the ground covered, so feet do not slide; a jump in place (a respawn) is not a step
     const dx = Number.isNaN(v.lastX) ? 0 : p.pos.x - v.lastX, dz = Number.isNaN(v.lastZ) ? 0 : p.pos.z - v.lastZ;
     const dist = Math.hypot(dx, dz);
