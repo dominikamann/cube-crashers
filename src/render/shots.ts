@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CANDY, MAGNET, MINE, SWATTER, SWORD } from '../sim/config/weapons';
+import { CANDY, falloff, MAGNET, MINE, SWATTER, SWORD } from '../sim/config/weapons';
 import { Tile, tileAt } from '../sim/map/tilemap';
 import { shotHeight } from '../sim/systems/shot-height';
 import { TICK_RATE, type DamageSource, type Player, type Projectile, type SimEvent, type SimState, type Vec2 } from '../sim/types';
@@ -811,8 +811,11 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           tint = pal.playerShot;
           const arc = p.arc;
           const dive = arc && Math.hypot(p.pos.x - arc.x, p.pos.z - arc.z) < arc.reach ? Math.atan2(arc.lift - arc.end, arc.reach) : 0;
-          bolts.add(p.pos.x, y, p.pos.z, yaw, 1.2 * out, tint, dive);
-          if (!low && out >= 1) auras.addScaled(p.pos.x, y, p.pos.z, yaw, 0.4, 0.4, 1, dim(tint, 0.2), dive);
+          // (past its full reach it burns out: smaller and darker with every tile, until it is spent)
+          const left = p.from && p.range !== undefined ? falloff(Math.hypot(p.pos.x - p.from.x, p.pos.z - p.from.z), p.range) : 1;
+          if (left < 1) tint = dim(tint, 0.35 + 0.65 * left);
+          bolts.add(p.pos.x, y, p.pos.z, yaw, 1.2 * out * (0.45 + 0.55 * left), tint, dive);
+          if (!low && out >= 1 && left >= 1) auras.addScaled(p.pos.x, y, p.pos.z, yaw, 0.4, 0.4, 1, dim(tint, 0.2), dive);
         }
         now.set(p.id, { kind: p.kind, behavior: p.behavior, x: p.pos.x, z: p.pos.z, y, vx: p.vel.x, vz: p.vel.z, until: p.until, tick: s.tick, tint, target: p.target });
       }

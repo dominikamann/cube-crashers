@@ -1415,6 +1415,8 @@ function startGame() {
     // dev: &size=10 fills the match up with bots; &rule=score|rounds|… picks the rule
     if (import.meta.env.DEV && Number(params.get('size')) > 1) settings.versusSize = Number(params.get('size'));
     if (import.meta.env.DEV && params.get('rule')) settings.versusRule = params.get('rule') as typeof settings.versusRule;
+    // dev: &map=helipad plays the match on that arena
+    if (import.meta.env.DEV && params.get('map')) settings.versusMap = params.get('map')!;
     if (import.meta.env.DEV && params.has('demo')) settings.versusDiscovery = false;
     newVersusGame();
     // dev: &crown=1 gives the player the lead and Quad Damage, to look at the crown and the glow

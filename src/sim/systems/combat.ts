@@ -4,7 +4,7 @@ import { BOMBER, CLOSE_BONUS, ENEMY_CAP, CLOSE_RANGE, SHIELDER, PLAYER_RADIUS, C
 import { ELITE, ENEMIES } from '../config/enemies';
 import { FROZEN_DAMAGE, RARE } from '../config/rare';
 import { DIFFICULTY } from '../config/difficulty';
-import { BUBBLE_WAND, HOTDOG, MINE } from '../config/weapons';
+import { BUBBLE_WAND, falloff, HOTDOG, MINE } from '../config/weapons';
 import { BLOCKS_ENEMY, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { jumpLift, pvpDamage, rivals } from './versus';
 import { DT, type DamageSource, type Enemy, type Player, type Projectile, type SimState, type Vec2 } from '../types';
@@ -19,6 +19,23 @@ import { killCategory } from './stats';
 import { witchAloft, witchHit } from './witch';
 
 const HIT_PADDING = 0.15;
+
+/** what a shot still does where it is: a Pixel Blaster bolt past its full reach does less with every tile */
+const shotDamage = (p: Projectile): number => (p.behavior === 'bolt' && p.from && p.range !== undefined ? p.damage * falloff(dist(p.from, p.pos), p.range) : p.damage);
+
+/** a fast shot that met a wall on its way this tick stops at the first wall, not deeper in: back to where it came to
+ * it (true), or nothing in its way (false) */
+function wallOnFlight(s: SimState, p: Projectile): boolean {
+  const ax = p.pos.x - p.vel.x * DT, az = p.pos.z - p.vel.z * DT;
+  const steps = Math.ceil(Math.hypot(p.vel.x, p.vel.z) * DT / 0.2);
+  for (let i = 1; i <= steps; i++) {
+    const x = ax + ((p.pos.x - ax) * i) / steps, z = az + ((p.pos.z - az) * i) / steps;
+    if (tileAt(s.map, x, z) !== Tile.Wall) continue;
+    p.pos = { x, z };
+    return true;
+  }
+  return false;
+}
 
 /** how near a shot came to `at` on its way this tick: the whole stretch it flew counts, so a fast shot cannot
  * jump over someone between two ticks */
@@ -321,7 +338,7 @@ export function updateProjectiles(s: SimState): void {
         p.vel = { x: (dx / d) * speed, z: (dz / d) * speed };
       }
       if (s.tick >= p.until) continue;
-    } else if (s.tick >= p.until || tileAt(s.map, p.pos.x, p.pos.z) === Tile.Wall) {
+    } else if (wallOnFlight(s, p) || s.tick >= p.until) {
       // a shot that reaches a wall can still hit someone standing on top of it
       if (s.tick < p.until) {
         hitPerched(s, p);
@@ -344,7 +361,7 @@ export function updateProjectiles(s: SimState): void {
       // (the witch on her broom: a shot that went up to her hits her, one along the floor passes under her)
       const up = witchAloft(s, e);
       if (up && shotHeight(p) < SHOT_HEIGHT.split) continue;
-      hitEnemy(s, e, p.damage, p.kind, p.ownerId, up);
+      hitEnemy(s, e, shotDamage(p), p.kind, p.ownerId, up);
       p.hitIds.push(e.id);
       // a soap bubble: the monster floats stuck in it (bosses are too big)
       if (p.kind === 'bubbleWand' && e.hp > 0 && !isBossBody(s, e)) {
@@ -367,7 +384,7 @@ export function updateProjectiles(s: SimState): void {
         const over = !upInTheAir(r) && jumpLift(s, r) > SHOT_HEIGHT.floor + shotHeight(p);
         // spawn-protected players let shots pass
         if (p.hitIds.includes(mark) || over || !atHeightOf(p, r) || s.tick < r.invulnUntil || nearestOnFlight(p, r.pos) > PLAYER_RADIUS + HIT_PADDING) continue;
-        damagePlayer(s, r, pvpDamage(p.damage), 'shot', p.ownerId);
+        damagePlayer(s, r, pvpDamage(shotDamage(p)), 'shot', p.ownerId);
         p.hitIds.push(mark);
         if (p.pierce <= 0) {
           alive = false;

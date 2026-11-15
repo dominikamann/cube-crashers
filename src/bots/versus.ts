@@ -1,4 +1,4 @@
-import { WEAPONS } from '../sim/config/weapons';
+import { BLASTER, WEAPONS } from '../sim/config/weapons';
 import { buildFlowField, towerTiles, flowDir } from '../sim/map/flowfield';
 import { BLOCKS_WALKER, hasLos } from '../sim/map/tilemap';
 import { rivals } from '../sim/systems/versus';
@@ -132,7 +132,7 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
       // lead the target: aim where it will be when the shot gets there
       const before = seenAt.get(seen.id) ?? seen.pos;
       const vx = (seen.pos.x - before.x) * 60, vz = (seen.pos.z - before.z) * 60;
-      const flight = Math.min(0.6, dist / 20) * skill.lead;
+      const flight = Math.min(0.6, dist / BLASTER.speed) * skill.lead;
       cmds.push(aim({ x: seen.pos.x + vx * flight, z: seen.pos.z + vz * flight }));
       // a wall in the strafing direction: turn around
       const side = { x: p.pos.x - tz * strafe * 1.2, z: p.pos.z + tx * strafe * 1.2 };

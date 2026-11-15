@@ -33,12 +33,18 @@ export function levelMul(level: number): number {
 }
 
 /** `power`: what all its bolts together deal at each level, as a multiple of level 1 (it grows by bolts, not by +20 %) */
-// (35 tiles a second: in first person a shot lands where one looks; at 20 a rival running across was missed from 3 tiles on)
-export const BLASTER = { speed: 35, range: 10, power: [1, 1.3, 1.8, 2.3, 3] };
+// (45 tiles a second: in first person a shot lands where one looks; at 20 a rival running across was missed from 3 tiles on)
+export const BLASTER = { speed: 45, range: 10, power: [1, 1.3, 1.8, 2.3, 3] };
 export const SWORD = { radius: 2.2, radiusPerLevel: 0.2, halfArcDeg: 70 };
 /** the fly swatter: a huge slap, but only right in front of you (the knife of this game) */
-/** the pixel rail: an instant beam through everything in a line, stopped only by walls */
-export const RAIL = { range: 14, width: 0.3 };
+/** the pixel rail: an instant beam through everything in a line, with full damage up to the first wall (the sniper) */
+export const RAIL = { width: 0.3 };
+/** past its full reach a Pixel Blaster bolt goes on, each tile taking this share of its damage away (at 10 tiles it
+ * does all of it, at 11 85 %, at 12 70 %, ...), until nothing is left: then it is spent */
+const PER_TILE = 0.15;
+export const FALLOFF = { perTile: PER_TILE, tiles: 1 / PER_TILE };
+/** the share of its damage a shot still does `d` tiles from where it was fired, with full damage up to `reach` */
+export const falloff = (d: number, reach: number): number => (d <= reach ? 1 : Math.max(0, 1 - FALLOFF.perTile * (d - reach)));
 export const SWATTER = { radius: 1.4, radiusPerLevel: 0.1, halfArcDeg: 40 };
 export const CANDY = { speed: 14, range: 6, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */

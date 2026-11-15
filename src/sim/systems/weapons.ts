@@ -1,7 +1,7 @@
 import { PLAYER_RADIUS } from '../config/balance';
 import { coinOpRule, pvpDamage, rivals } from './versus';
 import { damagePlayer } from './player';
-import { BLASTER, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MINE, RAIL, SWATTER, SWORD, WEAPONS, YOYO, levelMul } from '../config/weapons';
+import { BLASTER, FALLOFF, BOMB, BOOMERANG, BUBBLE_WAND, CANDY, DISCO, HOTDOG, MAGNET, MINE, RAIL, SWATTER, SWORD, WEAPONS, YOYO, levelMul } from '../config/weapons';
 import { BLOCKS_WALKER, hasLos, moveCircle, Tile, tileAt } from '../map/tilemap';
 import { DT, type HeldWeapon, type Intent, type Player, type Projectile, type SimState, type Vec2 } from '../types';
 import { dist, nearestEnemies, targets } from '../util';
@@ -46,7 +46,9 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       for (let i = 0; i < bolts; i++) {
         const off = (i - (bolts - 1) / 2) * 0.25;
         const pos = { x: p.pos.x - p.aim.z * off, z: p.pos.z + p.aim.x * off };
-        s.projectiles.push(bolt(s, p, w, pos, p.aim, BLASTER.speed, BLASTER.range, (def.damage * BLASTER.power[w.level - 1]) / bolts));
+        // (it flies on past its full reach, weaker with every tile: see FALLOFF)
+        const b = bolt(s, p, w, pos, p.aim, BLASTER.speed, BLASTER.range + FALLOFF.tiles, (def.damage * BLASTER.power[w.level - 1]) / bolts);
+        s.projectiles.push({ ...b, from: { ...pos }, range: BLASTER.range });
       }
       return true;
     }
@@ -73,7 +75,9 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
     case 'pixelRail': {
       // the beam runs until the first wall
       let reach = 0;
-      while (reach < RAIL.range && tileAt(s.map, p.pos.x + p.aim.x * reach, p.pos.z + p.aim.z * reach) !== Tile.Wall) reach += 0.25;
+      // (the sniper: full damage through everyone in its way, as far as the first wall, however far that is)
+      const far = Math.hypot(s.map.w, s.map.h);
+      while (reach < far && tileAt(s.map, p.pos.x + p.aim.x * reach, p.pos.z + p.aim.z * reach) !== Tile.Wall) reach += 0.25;
       const onLine = (q: Vec2, r: number) => {
         const qx = q.x - p.pos.x, qz = q.z - p.pos.z;
         const along = qx * p.aim.x + qz * p.aim.z;

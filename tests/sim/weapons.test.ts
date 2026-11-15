@@ -312,3 +312,41 @@ describe('weapons', () => {
     expect(s.enemies.includes(e)).toBe(false);
   });
 });
+
+describe('reach', () => {
+  /** the floor cleared of everything but its outer wall, so a shot can fly as far as it goes */
+  const open = () => {
+    const s = quietSim();
+    const m = s.map;
+    s.map = { ...m, tiles: m.tiles.map((t, i) => (i % m.w === 0 || i % m.w === m.w - 1 || i < m.w || i >= m.w * (m.h - 1) ? t : 0) as typeof t) };
+    s.players[0].pos = { x: m.w / 2, z: m.h - 3 };
+    return s;
+  };
+
+  it('a Pixel Blaster bolt does all its damage up to 10 tiles, then 15 % less with every tile, and is spent when nothing is left', () => {
+    const at = (d: number) => {
+      const s = open();
+      const p = s.players[0];
+      const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -d));
+      stepSim(s, [aimAt(e.pos), fire]);
+      run(s, 60);
+      return (TANK - e.hp) / dmg('pixelBlaster');
+    };
+    expect(at(8)).toBeCloseTo(1, 5);
+    // (it counts where the bolt meets the tank's side, a little before its middle: at 12 tiles about 11)
+    expect(at(12)).toBeGreaterThan(0.75);
+    expect(at(12)).toBeLessThan(0.9);
+    expect(at(15)).toBeLessThan(at(12));
+    expect(at(15)).toBeGreaterThan(0);
+    expect(at(18.5)).toBe(0);
+  });
+
+  it('the Pixel Rail hits with full damage as far as the first wall, however far that is', () => {
+    const s = open();
+    const p = s.players[0];
+    p.weapons = held('pixelRail');
+    const e = spawnEnemy(s, 'tank', rel(p.pos, 0, -40));
+    stepSim(s, [aimAt(e.pos), fire]);
+    expect(TANK - e.hp).toBeCloseTo(dmg('pixelRail'), 5);
+  });
+});
