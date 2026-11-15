@@ -36,7 +36,8 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorHighway.id]: { map: floorHighway, theme: 'neon', kind: 'nests', name: 'floor.highway', eliteBonus: 0.15 },
   [floorArena.id]: { map: floorArena, theme: 'arena', kind: 'boss', boss: 'megaBlock', name: 'floor.arena', eliteBonus: 0 },
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
-  [floorHelipad.id]: { map: floorHelipad, theme: 'helipad', kind: 'boss', boss: 'worm', name: 'floor.helipad', eliteBonus: 0 },
+  // (the pad has a boss of its own: an attack helicopter that flies in and circles over it)
+  [floorHelipad.id]: { map: floorHelipad, theme: 'helipad', kind: 'boss', boss: 'heli', name: 'floor.helipad', eliteBonus: 0 },
   // (under the big dish Angry Dominik is at home: his lightning and the beams from his eyes belong to a place like this)
   [floorUplink.id]: { map: floorUplink, theme: 'uplink', kind: 'boss', boss: 'dominik', name: 'floor.uplink', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
@@ -73,14 +74,15 @@ export function runFloors(seed: number): string[] {
 /**
  * The bosses a boss floor of a Tower Run can have, picked by the seed like the worlds: the Mega Block's arena is
  * also where the Rhino has room to charge, and on the roof, the helipad or under the Uplink Dish the run ends with the
- * Segment Worm, King Rex or the Tarantula Queen; the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik is no boss of a run: he is the end of the Boss Rush, and the Uplink Dish's own boss on a Single floor.) The first
+ * Segment Worm, King Rex or the Tarantula Queen (on the helipad also with the attack helicopter, which belongs
+ * there); the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik is no boss of a run: he is the end of the Boss Rush, and the Uplink Dish's own boss on a Single floor.) The first
  * of each list is the floor's own boss, the one a Single floor has; but for the Uplink Dish, see FLOORS.
  */
 export const RUN_BOSSES: Record<string, BossKind[]> = {
   [floorArena.id]: ['megaBlock', 'rhino', 'witch'],
   [floorUnderwater.id]: ['kraken'],
   [floorRooftop.id]: ['worm', 'rex', 'spider', 'witch'],
-  [floorHelipad.id]: ['worm', 'rex', 'spider', 'witch'],
+  [floorHelipad.id]: ['heli', 'worm', 'rex', 'spider', 'witch'],
   [floorUplink.id]: ['worm', 'rex', 'spider', 'witch'],
 };
 
@@ -110,6 +112,8 @@ export const BOSS_RUSH: { map: string; boss: BossKind }[] = [
   { map: floorJungle.id, boss: 'rhino' },
   { map: floorServers.id, boss: 'spider' },
   { map: floorNeon.id, boss: 'rex' },
+  // the attack helicopter over its pad
+  { map: floorHelipad.id, boss: 'heli' },
   // the Schrättele in her own town, at her fire beside the fountain
   { map: floorWaldsee.id, boss: 'witch' },
   // the very last one comes to the roof, at night, in a thunderstorm

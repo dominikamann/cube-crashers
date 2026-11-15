@@ -56,6 +56,8 @@ function packEnemy(e: Enemy): PackedEnemy {
     e.stateUntil, e.dir.x, e.dir.z, e.slowUntil, e.frozenUntil, e.stuckUntil, e.chargeLeft, e.hordeId ?? -1,
     // (only a shark in mid-leap: where it comes from and goes to, and from when to when)
     ...(e.leap ? [e.leap.from.x, e.leap.from.z, e.leap.to.x, e.leap.to.z, e.leap.at, e.leap.until] : []),
+    // (only the helicopter's body, which never leaps: one number more says that it flies, high or low)
+    ...(e.fly && !e.leap ? [e.fly === 'high' ? 1 : 2] : []),
   ];
 }
 
@@ -82,7 +84,8 @@ function unpackEnemy(a: PackedEnemy): Enemy {
     ramHitUntil: 0,
     chill: 0,
     slamUntil: 0,
-    ...(a.length > 17 ? { leap: { from: { x: a[17], z: a[18] }, to: { x: a[19], z: a[20] }, at: a[21], until: a[22] } } : {}),
+    ...(a.length === 18 ? { fly: a[17] === 1 ? ('high' as const) : ('low' as const) } : {}),
+    ...(a.length > 18 ? { leap: { from: { x: a[17], z: a[18] }, to: { x: a[19], z: a[20] }, at: a[21], until: a[22] } } : {}),
   };
 }
 

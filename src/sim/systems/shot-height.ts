@@ -106,7 +106,7 @@ export function aimShot(s: SimState, p: Projectile): void {
   }
   // first person: the way along the view (not for a pizza cutter, which rolls along the floor)
   const looked = o?.aimPitch !== undefined && p.behavior !== 'saw' ? lookedWay(lift, o.aimPitch) : null;
-  const low = firstInLine(from, dir, [...s.enemies.map(e => e.pos), ...foes.filter(x => !upInTheAir(x)).map(x => x.pos)]);
+  const low = firstInLine(from, dir, [...s.enemies.filter(e => e.fly !== 'high').map(e => e.pos), ...foes.filter(x => !upInTheAir(x)).map(x => x.pos)]);
   // a shot on its way up that is over the heads of whoever stands in its line is not aimed at them
   const over = looked !== null && looked.slope >= 0 && lift + looked.slope * Math.max(SHOT_HEIGHT.near, low) >= SHOT_HEIGHT.split;
   const aimed = low !== Infinity && !over;

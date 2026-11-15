@@ -18,7 +18,8 @@ export function updateConveyors(s: SimState): void {
     if (d) moveCircle(s.map, p.pos, d.x, d.z, PLAYER_RADIUS, BLOCKS_WALKER);
   }
   for (const e of s.enemies) {
-    const d = e.hp > 0 ? push(s, e.pos) : null;
+    // (not what flies: the helicopter hovers over the belt)
+    const d = e.hp > 0 && !e.fly ? push(s, e.pos) : null;
     if (d) moveCircle(s.map, e.pos, d.x, d.z, e.radius, BLOCKS_ENEMY);
   }
   for (const v of s.vehicles) {

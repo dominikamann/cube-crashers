@@ -9,9 +9,9 @@ export function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/** All living things weapons and towers may target. */
+/** All living things weapons and towers may target (not the helicopter while it flies high: nothing reaches it). */
 export function targets(s: SimState): Enemy[] {
-  return s.enemies.filter(e => e.hp > 0);
+  return s.enemies.filter(e => e.hp > 0 && e.fly !== 'high');
 }
 
 export function nearestEnemy(s: SimState, from: Vec2, range: number): Enemy | null {

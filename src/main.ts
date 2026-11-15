@@ -1445,7 +1445,7 @@ function applyDemo(sim: SimState) {
   if (params.has('all')) Object.assign(sim.players[0], { jetpack: true, jetFuel: 300 });
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
-  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch'].includes(bossKind)) {
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch', 'heli'].includes(bossKind)) {
     sim.enemies = [];
     sim.nests = [];
     sim.boss = null;

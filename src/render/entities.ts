@@ -16,6 +16,7 @@ import { wallTop } from './world';
 import { createSpiderLegs } from './spider-legs';
 import { createWitchFigures, WITCH_LOOK, type WitchPose } from './witch-figure';
 import { createWitchFires } from './witch-fire';
+import { createHeliFigures } from './heli-figure';
 import { Tile, tileAt } from '../sim/map/tilemap';
 
 /** Look of each enemy kind: body box size, colours, eye height and spacing. */
@@ -64,6 +65,8 @@ const HOPPERS = new Set<EnemyKind>(['blob', 'splitter', 'splitling', 'healer', '
 export interface Entities {
   update(s: SimState, theme: Theme, time: number, events: SimEvent[], frameDt: number): void;
   setDamageNumbers(on: boolean): void;
+  /** fewer bits of smoke and dust on low graphics */
+  setParticleScale(k: number): void;
 }
 
 /** an egg as slices from foot to tip: [height of the slice's middle, its width] */
@@ -173,6 +176,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   // the witch and the small ones: figures of their own, and her bonfire
   const witches = createWitchFigures(scene);
   const witchFires = createWitchFires(scene);
+  // the attack helicopter: a figure of its own too, with its wash, its missiles and its smoke
+  const helis = createHeliFigures(scene);
   /** her steps follow the ground she covers: where each one was, how far into the stride, and how long she counts as moving */
   const witchWalk = new Map<number, { x: number; z: number; stride: number; moving: number; fly: number }>();
   const eyeMat = glowMat(0xfff27a, 1.3);
@@ -276,6 +281,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   }
 
   return {
+    setParticleScale(k) {
+      helis.setParticleScale(k);
+    },
     setDamageNumbers(on) {
       showNumbers = on;
       if (!on) for (const n of numbers) n.sprite.visible = false;
@@ -419,6 +427,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       const roarEase = Math.min(1, sinceRoar / 0.35, Math.max(0, roarSeconds - sinceRoar) / 0.3);
       witches.begin();
       for (const e of s.enemies) {
+        // (the attack helicopter is drawn by itself: see heli-figure.ts)
+        if (e.fly) continue;
         // the witch and the little witches have figures of their own
         const witchBoss = e.kind === 'tank' ? allBosses(s).find(b => b.kind === 'witch' && b.enemyId === e.id) : undefined;
         if (witchBoss || e.kind === 'witchling') {
@@ -662,6 +672,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       for (const k of KINDS) bodies.get(k)!.end();
       witches.end();
       witchFires.update(s, events, time, frameDt, theme.pointLights);
+      helis.update(s, events, time, frameDt);
       for (const id of witchWalk.keys()) if (!s.enemies.some(e => e.id === id)) witchWalk.delete(id);
       rhinoBodies.end();
       spiderBodies.end();

@@ -17,6 +17,7 @@ import { aloft } from './rare';
 import { dropCoins } from './combat';
 import { spawnEnemy } from './enemies';
 import { spawnHorde, type HordeComp } from './hordes';
+import { HELI, heliAttack, heliBusy, heliDown, heliPhase, moveHeli, setupHeli, updateHeli } from './heli';
 import { moveWitch, setupWitch, startDance, updateWitch, witchAttack, witchBusy, witchDown, witchlingsLeft, WITCH } from './witch';
 
 export const BOSS = {
@@ -180,6 +181,13 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2, share = 1): vo
     e.hp = e.maxHp = WITCH.hp * bossScale(s);
     b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
     setupWitch(s, b, e, centre);
+  } else if (kind === 'heli') {
+    // the attack helicopter is a tank in the rules too, but it flies: it moves itself (see heli.ts). The floor's
+    // own one flies in from the edge of the map
+    const e = spawnEnemy(s, 'tank', centre);
+    e.hp = e.maxHp = HELI.hp * bossScale(s);
+    b = { kind, maxHp: e.maxHp, phase: 1, enemyId: e.id, worms: [], nextAttackAt: 0, lastPos: { ...centre } };
+    setupHeli(s, b, e, centre, !at);
   } else if (kind === 'dominik') {
     // Angry Dominik walks like a tank in the rules, but is a body of his own
     const e = spawnEnemy(s, 'tank', centre);
@@ -249,7 +257,8 @@ export function seenBy(s: SimState, b: BossState): Player[] {
   const close = (body?.radius ?? 1) + 2.5;
   // (one up on a wall top stands over the walls: seen as far as it sees; and the climbers, the Tarantula Queen and the
   // Kraken, look over the walls they climb)
-  const over = b.kind === 'spider' || b.kind === 'kraken';
+  // (and the helicopter looks down on them all)
+  const over = b.kind === 'spider' || b.kind === 'kraken' || b.kind === 'heli';
   return s.players.filter(p => p.downUntil === null && (dist(p.pos, from) <= close || (dist(p.pos, from) <= BOSS_SIGHT && (over || p.perched || hasLos(s.map, from, p.pos)))));
 }
 
@@ -263,7 +272,8 @@ export function startUnaware(s: SimState, b: BossState): void {
     b.unseen = true;
     return;
   }
-  if (b.enemyId === null || b.kind === 'worm') return;
+  // (the helicopter does not wander either: it flies in and is on the players at once)
+  if (b.enemyId === null || b.kind === 'worm' || b.kind === 'heli') return;
   const body = byId(s, b.enemyId);
   if (!body) return;
   const h: Horde = { id: s.nextId++, waypoint: { ...body.pos }, aggro: false, rush: false, nextWanderAt: s.tick + Math.floor(s.rng.range(60, 180)) };
@@ -273,7 +283,7 @@ export function startUnaware(s: SimState, b: BossState): void {
 }
 
 export const BRAWL = {
-  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider', 'witch'] as BossKind[],
+  kinds: ['megaBlock', 'rex', 'worm', 'kraken', 'rhino', 'spider', 'witch', 'heli'] as BossKind[],
   /** this many of them come a second time */
   extra: 2,
   dominikChance: 0.25,
@@ -420,6 +430,8 @@ function attack(s: SimState, b: BossState): void {
     }
   } else if (b.kind === 'witch') {
     witchAttack(s, b, alive);
+  } else if (b.kind === 'heli') {
+    heliAttack(s, b, alive);
   } else if (b.kind === 'dominik') {
     const dom = byId(s, b.enemyId!);
     if (!dom) return;
@@ -714,16 +726,17 @@ export function moveBoss(s: SimState): void {
   const all = allBosses(s);
   for (const b of all) if (b.kind === 'worm') moveWorms(s, b);
   for (const b of all) if (b.kind === 'witch') moveWitch(s, b);
+  for (const b of all) if (b.kind === 'heli') moveHeli(s, b);
   if (all.length > 1) keepApart(s, all);
 }
 
 /**
  * Bosses do not walk into each other: where two bodies overlap, each gives way by half of it. (A worm is many
- * small pieces and winds between the others; a boss in mid-leap is in the air.) Giving way puts nobody into a
+ * small pieces and winds between the others; a boss in mid-leap is in the air, and so is the helicopter.) Giving way puts nobody into a
  * wall: the climbers stay clear of the wall round the map, the others of every wall.
  */
 function keepApart(s: SimState, all: BossState[]): void {
-  const solid = all.filter(b => b.enemyId !== null && !b.leap && b.kind !== 'worm').map(b => ({ b, e: byId(s, b.enemyId!) })).filter((x): x is { b: BossState; e: Enemy } => !!x.e && x.e.hp > 0);
+  const solid = all.filter(b => b.enemyId !== null && !b.leap && b.kind !== 'worm' && b.kind !== 'heli').map(b => ({ b, e: byId(s, b.enemyId!) })).filter((x): x is { b: BossState; e: Enemy } => !!x.e && x.e.hp > 0);
   const give = ({ b, e }: { b: BossState; e: Enemy }, dx: number, dz: number) => {
     const reach = b.kind === 'spider' ? QUEEN_REACH : b.kind === 'kraken' ? KRAKEN_REACH : 0;
     if (!reach) return void moveCircle(s.map, e.pos, dx, dz, Math.min(e.radius, 0.45), BLOCKS_ENEMY);
@@ -766,10 +779,11 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
   leap(s, b);
   laser(s, b);
   updateWitch(s, b, intents);
+  updateHeli(s, b);
   const living = bodies(s, b);
   // a body that has ended up in a wall (a leap or a shove too far) steps back out onto the floor: in there it
-  // sees nobody and nobody sees it. (Not the climbers, which go over walls, nor a worm's pieces, nor in mid-leap)
-  if (!b.leap && ((b.kind === 'spider' && b.brood) || (b.kind !== 'spider' && b.kind !== 'kraken' && b.kind !== 'worm')))
+  // sees nobody and nobody sees it. (Not the climbers, which go over walls, nor a worm's pieces, nor in mid-leap, nor the helicopter)
+  if (!b.leap && ((b.kind === 'spider' && b.brood) || (b.kind !== 'spider' && b.kind !== 'kraken' && b.kind !== 'worm' && b.kind !== 'heli')))
     for (const e of living) if (!isFree(s.map, e.pos, 0.3, BLOCKS_ENEMY)) e.pos = nearestFloor(s.map, e.pos, Math.min(e.radius, 0.9), BLOCKS_ENEMY);
   if (living.length > 0) b.lastPos = { ...living[0].pos };
   if (b.kind === 'worm') resolveWorms(s, b);
@@ -791,6 +805,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     if (b.grab) s.events.push({ type: 'krakenRelease', playerId: b.grab.playerId });
     witchDown(s, b);
     s.events.push({ type: 'bossDead', pos: { ...b.lastPos }, kind: b.kind });
+    heliDown(s, b);
     dropCoins(s, b.lastPos, BOSS.deathCoins);
     if (b.kind === 'rex') layEggs(s, b.lastPos);
     // Angry Dominik leaves a crate, and most of the time his hammer is in it
@@ -836,6 +851,8 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
         const a = (i / BOSS.spiderCall) * Math.PI * 2;
         spawnEnemy(s, 'spiderling', nearestFloor(s.map, { x: b.lastPos.x + Math.cos(a) * 2.2, z: b.lastPos.z + Math.sin(a) * 2.2 }, 0.3, BLOCKS_ENEMY));
       }
+    // the helicopter breaks off and climbs away (and calls for help like the others)
+    if (b.kind === 'heli') heliPhase(s, b);
     // the witch calls no horde: the little witches come to dance with her round the fire
     if (b.kind === 'witch') {
       if (!b.wild) startDance(s, b, b.phase);
@@ -893,14 +910,15 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
     b.waiting = undefined;
   }
   // (the witch finishes what she is doing before she starts on something new)
-  if (s.tick >= b.nextAttackAt && !witchBusy(b)) {
+  // (and the helicopter its run, its descent or its climb)
+  if (s.tick >= b.nextAttackAt && !witchBusy(b) && !heliBusy(b)) {
     // (a boss attacks nobody it does not see: it tries again in a moment)
     if (seenBy(s, b).length === 0) {
       b.nextAttackAt = s.tick + TICK_RATE / 2;
       return;
     }
     attack(s, b);
-    const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : 1;
+    const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : b.kind === 'heli' ? HELI.haste : 1;
     b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * haste);
   }
 }

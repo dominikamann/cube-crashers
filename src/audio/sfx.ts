@@ -86,7 +86,13 @@ export type SoundId =
   | 'uiClick'
   | 'announce'
   | 'lockOn'
-  | 'lockWarn';
+  | 'lockWarn'
+  | 'heliRotor'
+  | 'heliRotorLow'
+  | 'heliMissiles'
+  | 'heliGun'
+  | 'heliWhine'
+  | 'heliCrash';
 
 const notes = (wave: SynthParams['wave'], freqs: number[], gap: number, volume: number, decay = 0.1, sustain = 0.04): SynthParams[] =>
   freqs.map((freq, i) => ({ wave, freq, attack: 0.003, sustain, decay, volume, at: i * gap }));
@@ -320,6 +326,45 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sawtooth', freq: 210, freqEnd: 150, attack: 0.02, sustain: 0.28, decay: 0.2, volume: 0.26, vibrato: { rate: 26, depth: 14 }, lowpass: 1500 },
     { wave: 'square', freq: 105, freqEnd: 80, attack: 0.02, sustain: 0.28, decay: 0.2, volume: 0.12, lowpass: 700 },
     { wave: 'noise', freq: 800, attack: 0.01, sustain: 0.12, decay: 0.2, volume: 0.14, lowpass: 1800 },
+  ],
+  // the attack helicopter: its warning horn, two harsh tones in turn, with static over them
+  roar_heli: [
+    ...[620, 465, 620, 465].map((freq, i): SynthParams => ({ wave: 'square', freq, attack: 0.01, sustain: 0.09, decay: 0.03, volume: 0.1, lowpass: 2200, at: i * 0.13 })),
+    ...[310, 232, 310, 232].map((freq, i): SynthParams => ({ wave: 'sawtooth', freq, attack: 0.01, sustain: 0.09, decay: 0.03, volume: 0.07, lowpass: 1200, at: i * 0.13 })),
+    { wave: 'noise', freq: 2400, attack: 0.01, sustain: 0.45, decay: 0.1, volume: 0.04, lowpass: 3600 },
+  ],
+  // its rotor, a second of it: eight dull beats of the blades (far off while it circles, heavy while it hovers low)
+  heliRotor: Array.from({ length: 8 }, (_, i): SynthParams[] => [
+    { wave: 'sine', freq: 82, freqEnd: 50, attack: 0.004, sustain: 0.02, decay: 0.07, volume: 0.085, at: i * 0.125 },
+    { wave: 'noise', freq: 500, attack: 0.004, sustain: 0.02, decay: 0.05, volume: 0.03, lowpass: 700, at: i * 0.125 },
+  ]).flat(),
+  heliRotorLow: [
+    ...Array.from({ length: 8 }, (_, i): SynthParams[] => [
+      { wave: 'sine', freq: 74, freqEnd: 42, attack: 0.004, sustain: 0.03, decay: 0.08, volume: 0.17, at: i * 0.125 },
+      { wave: 'noise', freq: 700, attack: 0.004, sustain: 0.03, decay: 0.06, volume: 0.06, lowpass: 1000, at: i * 0.125 },
+    ]).flat(),
+    { wave: 'noise', freq: 1200, attack: 0.2, sustain: 0.6, decay: 0.2, volume: 0.035, lowpass: 1800 },
+  ],
+  // a salvo leaves its pods: the hiss of the motors and a whistle that falls
+  heliMissiles: [
+    { wave: 'noise', freq: 2600, attack: 0.03, sustain: 0.25, decay: 0.5, volume: 0.16, lowpass: 3400 },
+    { wave: 'noise', freq: 500, attack: 0.05, sustain: 0.3, decay: 0.5, volume: 0.14, lowpass: 700 },
+    { wave: 'sine', freq: 1500, freqEnd: 520, attack: 0.05, sustain: 0.5, decay: 0.4, volume: 0.05, vibrato: { rate: 30, depth: 30 } },
+  ],
+  // its gun: a short dry rattle
+  heliGun: Array.from({ length: 7 }, (_, i): SynthParams[] => [
+    { wave: 'noise', freq: 1800, attack: 0.001, sustain: 0.012, decay: 0.035, volume: 0.2, lowpass: 2600, at: i * 0.07 },
+    { wave: 'square', freq: 150, freqEnd: 90, attack: 0.001, sustain: 0.012, decay: 0.03, volume: 0.1, at: i * 0.07 },
+  ]).flat(),
+  // its engine as it comes down, climbs away or swoops: a whine that bends (the pitch says which way)
+  heliWhine: [
+    { wave: 'sawtooth', freq: 520, freqEnd: 300, attack: 0.15, sustain: 0.5, decay: 0.4, volume: 0.07, vibrato: { rate: 18, depth: 12 }, lowpass: 1600 },
+    { wave: 'noise', freq: 900, attack: 0.2, sustain: 0.5, decay: 0.4, volume: 0.08, lowpass: 1200 },
+  ],
+  // shot down: the engine howls and sputters as it spins to the floor
+  heliCrash: [
+    { wave: 'sawtooth', freq: 900, freqEnd: 180, attack: 0.03, sustain: 0.9, decay: 0.3, volume: 0.13, vibrato: { rate: 11, depth: 70 }, lowpass: 2400 },
+    ...[0.1, 0.32, 0.5, 0.74, 0.9].map((at): SynthParams => ({ wave: 'noise', freq: 700, attack: 0.002, sustain: 0.03, decay: 0.08, volume: 0.2, lowpass: 1100, at })),
   ],
   // thunder: a crack, then a long rumble that rolls away
   thunder: [
@@ -694,6 +739,20 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'bossDead':
       // (the witch goes up in her fire)
       return e.kind === 'dominik' ? [{ id: 'thunder', pitch: 1 }, { id: 'bossDead', pitch: 1 }] : e.kind === 'witch' ? [{ id: 'fireWhoosh', pitch: 0.55 }, { id: 'bossDead', pitch: 1 }, { id: 'roar_witch', pitch: 1.6 }] : one('bossDead');
+    case 'heliMissiles':
+      return one('heliMissiles');
+    case 'heliGun':
+      return one('heliGun');
+    case 'heliDown':
+      return one('heliWhine');
+    case 'heliUp':
+      return one('heliWhine', 1.5);
+    case 'heliSwoop':
+      return one('heliWhine', 0.8);
+    case 'heliRotor':
+      return one(e.low ? 'heliRotorLow' : 'heliRotor');
+    case 'heliCrash':
+      return one('heliCrash');
     case 'dominikJoined':
       return [{ id: 'thunder', pitch: 1.3 }, { id: 'roar_dominik', pitch: 1.5 }];
     case 'dominikLeft':
