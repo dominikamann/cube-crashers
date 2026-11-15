@@ -1,4 +1,4 @@
-import { startAmbience, type AmbienceId } from './ambience';
+import { startAmbience, type Ambience, type AmbienceId } from './ambience';
 import { JITTER, SOUNDS, type SoundId } from './sfx';
 import { noiseBuffer, playSynth, soundDuration } from './synth';
 
@@ -35,8 +35,9 @@ export interface Mixer {
   setPaused(on: boolean): void;
   /** every effect still ringing falls silent (the game was left): new ones play as before */
   cutEffects(): void;
-  /** how loud a sound that goes on and on is right now (0: off); it starts the first time it is turned up */
-  setAmbience(id: AmbienceId, level: number): void;
+  /** how loud a sound that goes on and on is right now (0: off); it starts the first time it is turned up
+   *  (`speed`, 0 to 1: how hard it goes, for the ones that change with the game, like the maze's siren) */
+  setAmbience(id: AmbienceId, level: number, speed?: number): void;
   readonly musicBus: GainNode;
   /** where sounds that run on (the hum of a sword) go: with the effects' volume, but not cut with them */
   readonly loopBus: GainNode;
@@ -84,9 +85,9 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
 
   // the ambience (the rotor on the helipad) runs on the loop bus with a gain of its own: it steps back with the
   // music while the game is paused and falls silent with cutEffects
-  const ambience = new Map<AmbienceId, { out: GainNode; level: number }>();
+  const ambience = new Map<AmbienceId, { sound: Ambience; level: number; speed: number }>();
   const setAmbience = () => {
-    for (const a of ambience.values()) a.out.gain.setTargetAtTime(a.level * (paused ? PAUSED_MUSIC : 1), ctx.currentTime, 0.15);
+    for (const a of ambience.values()) a.sound.out.gain.setTargetAtTime(a.level * (paused ? PAUSED_MUSIC : 1), ctx.currentTime, 0.15);
   };
 
   let muted = false;
@@ -122,13 +123,18 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
       setMusic();
       setAmbience();
     },
-    setAmbience(id, level) {
+    setAmbience(id, level, speed) {
       let a = ambience.get(id);
       if (!a) {
         if (level <= 0) return;
-        a = { out: startAmbience(ctx, id, noiseBuffer(ctx)), level: 0 };
-        a.out.connect(loopBus);
+        a = { sound: startAmbience(ctx, id, noiseBuffer(ctx)), level: 0, speed: -1 };
+        a.sound.out.connect(loopBus);
         ambience.set(id, a);
+      }
+      // (in small steps only: it is set every frame)
+      if (speed !== undefined && a.sound.speed && Math.abs(speed - a.speed) > 0.02) {
+        a.speed = speed;
+        a.sound.speed(speed, ctx.currentTime);
       }
       if (a.level === level) return;
       a.level = level;

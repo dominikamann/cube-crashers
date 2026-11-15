@@ -50,3 +50,26 @@ describe("the helicopter's rotor", () => {
     expect(await peakOf(never)).toBe(0);
   });
 });
+
+describe('the Glitch Maze', () => {
+  const maze = (left: number, powerUntil = 0) => ({ tick: 100, phase: 'playing', run: { stage: 'maze', maze: { pixels: Array(left).fill(0), total: 40, powerUntil } } });
+
+  it('wails while the ghosts hunt, faster as it empties, and wobbles while they flee; outside it, nothing', async () => {
+    const { mazeAmbience } = await import('../../src/audio/ambience');
+    expect(mazeAmbience(maze(40))).toEqual({ siren: 1, scared: 0, speed: 0 });
+    expect(mazeAmbience(maze(10)).speed).toBeCloseTo(0.75);
+    expect(mazeAmbience(maze(10, 200))).toMatchObject({ siren: 0, scared: 1 });
+    expect(mazeAmbience({ ...maze(10), run: { stage: 'floor', maze: null } })).toEqual({ siren: 0, scared: 0, speed: 0 });
+    expect(mazeAmbience({ ...maze(10), phase: 'won' })).toEqual({ siren: 0, scared: 0, speed: 0 });
+  });
+
+  it('its siren and its wobble sound when turned up, quieter than the effects', async () => {
+    for (const id of ['mazeSiren', 'mazeScared'] as const) {
+      const ctx = new OfflineAudioContext(2, 44100, 44100);
+      createMixer(ctx as unknown as BaseAudioContext).setAmbience(id, 1, 0.5);
+      const peak = await peakOf(ctx);
+      expect(peak, id).toBeGreaterThan(0.01);
+      expect(peak, id).toBeLessThan(0.1);
+    }
+  });
+});

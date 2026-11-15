@@ -8,7 +8,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
-import { rotorLoudness } from './audio/ambience';
+import { mazeAmbience, rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
@@ -129,10 +129,12 @@ function startGame() {
   let baseTrack: TrackId | null = null;
   /** until when a Disco Ball's track plays (seconds on the page's clock) */
   let discoUntil = 0;
+  /** in the Glitch Maze the ghosts' siren is the music */
+  let mazeQuiet = false;
   /** plays what should play now; a track that is already right goes on */
   function syncMusic() {
     if (!audio) return;
-    const id = trackToPlay(baseTrack, discoUntil, performance.now() / 1000);
+    const id = mazeQuiet ? null : trackToPlay(baseTrack, discoUntil, performance.now() / 1000);
     audio.music.playTrack(id, id === 'disco' ? DISCO_FADE_S : undefined);
   }
   /** the game's own choice of track (`keepDisco`: a ball that is in the air right now plays on over it) */
@@ -672,6 +674,16 @@ function startGame() {
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
         audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) : 0);
+        // the Glitch Maze: the ghosts' siren while they hunt (faster as the maze empties), a wobble while they flee;
+        // the music keeps out of it
+        const maze = mode === 'playing' || mode === 'paused' ? mazeAmbience(s) : { siren: 0, scared: 0, speed: 0 };
+        audio.mixer.setAmbience('mazeSiren', maze.siren, maze.speed);
+        audio.mixer.setAmbience('mazeScared', maze.scared);
+        const quiet = maze.siren > 0 || maze.scared > 0;
+        if (quiet !== mazeQuiet) {
+          mazeQuiet = quiet;
+          syncMusic();
+        }
         for (const e of frameEvents) {
           // the fast track belongs to a boss fight and to the highest alarm
           if (e.type === 'bossSpawn') bossesUp++;
@@ -1195,6 +1207,7 @@ function startGame() {
       audio.mixer.setPaused(false);
       audio.mixer.cutEffects();
       audio.hum.silence();
+      mazeQuiet = false;
       playBase('menu');
     }
   }

@@ -12,6 +12,10 @@ export type SoundId =
   | 'enemyKilled'
   | 'coin'
   | 'mazePixel'
+  | 'mazeChomp'
+  | 'mazePower'
+  | 'mazeGhost'
+  | 'mazeCaught'
   | 'towerBuilt'
   | 'buildDenied'
   | 'tower_laser'
@@ -195,6 +199,20 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   ],
   // one for every pixel of the Glitch Maze, several a second: a short soft blip with a little chirp up
   mazePixel: [{ wave: 'triangle', freq: 660, freqEnd: 880, attack: 0.002, sustain: 0.02, decay: 0.06, volume: 0.09 }],
+  // ...and every other one chirps down again: going along a row of pixels it chews, up and down
+  mazeChomp: [{ wave: 'triangle', freq: 880, freqEnd: 620, attack: 0.002, sustain: 0.02, decay: 0.06, volume: 0.09 }],
+  // a power cube: the tables turn, a quick climb up
+  mazePower: notes('square', [392, 523, 659, 784, 1047], 0.045, 0.07, 0.08, 0.02),
+  // a ghost crashed while powered: it is swept up and away, a whistle going up
+  mazeGhost: [
+    { wave: 'sine', freq: 240, freqEnd: 1900, attack: 0.004, sustain: 0.16, decay: 0.08, volume: 0.13 },
+    { wave: 'square', freq: 120, freqEnd: 950, attack: 0.004, sustain: 0.12, decay: 0.06, volume: 0.035, lowpass: 2000 },
+  ],
+  // caught by a ghost: a wobbling tone that winds down and down, and a pop at the end
+  mazeCaught: [
+    { wave: 'triangle', freq: 900, freqEnd: 140, attack: 0.01, sustain: 0.85, decay: 0.12, volume: 0.11, vibrato: { rate: 9, depth: 40 } },
+    { wave: 'noise', freq: 700, attack: 0.002, sustain: 0.03, decay: 0.08, volume: 0.07, lowpass: 1500, at: 0.95 },
+  ],
   towerBuilt: [
     { wave: 'noise', freq: 400, attack: 0.002, sustain: 0.04, decay: 0.12, volume: 0.35, lowpass: 600 },
     { wave: 'triangle', freq: 523, freqEnd: 1047, attack: 0.01, sustain: 0.1, decay: 0.15, volume: 0.15, at: 0.08 },
@@ -708,13 +726,14 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'cubeCaptured':
       return one('gameWon');
     case 'mazePixel':
-      return one('mazePixel', SEMITONE ** (Math.min(e.streak - 1, MAX_MAZE_STREAK_STEPS) / 2));
+      // (up, down, up, down: chewing along the row, and the whole run still climbs)
+      return one(e.streak % 2 === 0 ? 'mazeChomp' : 'mazePixel', SEMITONE ** (Math.min(e.streak - 1, MAX_MAZE_STREAK_STEPS) / 2));
     case 'mazePower':
-      return one('powerupPicked');
+      return one('mazePower');
     case 'mazeGhost':
-      return one('enemyKilled', 1.4);
+      return one('mazeGhost');
     case 'mazeCaught':
-      return one('playerHit');
+      return one('mazeCaught');
     case 'mazeEnd':
       return one('gameWon');
     case 'laneLeak':
