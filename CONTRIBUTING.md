@@ -10,12 +10,17 @@ Thanks for your interest in contributing!
 - Route player-visible text through `t()` in `src/i18n/`.
 - Read the project's [license](LICENSE) and [license-change note](LICENSE-CHANGE.md).
 
-## Contributor License Agreement (CLA)
+## Licensing of contributions
 
-A separate Contributor License Agreement is required before a contribution can be merged if the
-maintainer intends to offer that contribution under both the project's non-commercial license and
-separate commercial terms. The CLA must be presented to the contributor and explicitly accepted.
+Contributors retain ownership of their work. Before a pull request is merged, the contributor
+must explicitly confirm in the pull request that their contribution is submitted under the
+project's PolyForm Noncommercial License 1.0.0, so it can be included and distributed as part
+of the non-commercial project.
 
-The draft in [CLA-DRAFT.md](CLA-DRAFT.md) is for discussion only. It is not an agreement, does not
-become binding merely by submitting a pull request, and must be reviewed and finalized before use.
-Contributors retain ownership; the project receives only rights expressly granted in the final CLA.
+This confirmation does **not** grant the maintainer permission to commercially relicense,
+sell, or sublicense that contribution. Any commercial use of a contribution requires a
+separate written agreement with its author before that use.
+
+Do not submit code, assets, data, or other material that you do not have the right to contribute,
+including employer-owned or third-party material. Bug reports, suggestions, and discussions do
+not transfer intellectual-property rights.
