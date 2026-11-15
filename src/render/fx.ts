@@ -68,7 +68,7 @@ const BOSS_WRECK: Record<BossKind, number[]> = {
   dominik: [0x1b1c21, 0x1b1c21, 0x1b1c21, 0xd3936e, 0xd3936e, 0x20295c, 0x20295c, 0x2bc8ff, 0xd62bff, 0x8a919e, 0x4a3222],
   spider: [0x3a2a22, 0x3a2a22, 0x241a15, 0x5a4034, 0xd9701e, 0xd9701e, 0xff3b3b],
   rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
-  witch: [0x2f7d3a, 0xc0262c, 0xd6a12a, 0x18181d, 0x18181d, 0xbd8752, 0xe2c062, 0xc4262e],
+  witch: [0xb0262f, 0x1c1c22, 0xd6a12a, 0x18181d, 0x18181d, 0xbd8752, 0xe2c062, 0x2a4f8f],
   heli: [0x55623f, 0x55623f, 0x3f4a2f, 0x22272a, 0x22272a, 0x70757d, 0x14303a, 0xff3b30],
 };
 
@@ -535,7 +535,7 @@ export function createFx(scene: THREE.Scene): Fx {
             addShake(0.25);
             break;
           case 'witchRelease':
-            if (e.broke) burst(e.pos, 1, 16, [0xffffff, 0xd6a12a, 0x2f7d3a], 4, 0.1, 0.8);
+            if (e.broke) burst(e.pos, 1, 16, [0xffffff, 0xd6a12a, 0xb0262f], 4, 0.1, 0.8);
             break;
           case 'witchFace':
             // the mask turns: chips of wood fly off it and sparks come out of its eyes

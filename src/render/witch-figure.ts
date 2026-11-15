@@ -7,9 +7,10 @@ import { Sculpt } from './figure';
  * voxel style. She stands on y = 0 and looks along +z (as the monsters do), about 2.3 high before `scale`.
  *
  * Her carved wooden mask has two faces, the grinning one in front and the glaring one at the back of her head: at
- * the phase change she turns her head round (see `face`). A red headscarf with straw braids, a black cape, a
- * mustard-yellow blouse, a green skirt with the red underskirt showing under its hem, white bloomers to the knee,
- * patterned socks, straw shoes over dark ones, black gloves, and a broom of birch twigs in her right hand.
+ * the phase change she turns her head round (see `face`). A blue headscarf with straw braids, a black cape, a
+ * mustard-yellow blouse, a red skirt with a dark underskirt showing under its hem, white bloomers to the knee,
+ * patterned socks, straw shoes over dark ones, black gloves, and a broom of birch twigs in her right hand. Her
+ * colours are her own.
  */
 export const WITCH_LOOK = {
   /** the boss and the small ones, against the figure as built */
@@ -55,10 +56,14 @@ export interface WitchFigures {
 
 type C = number;
 const WOOD = 0xbd8752, WOOD_DARK = 0x8e4f2c, CARVE = 0x3a2314, TEETH = 0xf0e6d0, CHEEK = 0xd24a3c, GLINT = 0xff3020;
-const SCARF = 0xc4262e, SCARF_DARK = 0x9a1c24, STRAW = 0xe2c062, STRAW_DARK = 0xc29a3e;
+// (her first colours, kept for reference: SCARF = 0xc4262e, SCARF_DARK = 0x9a1c24, SKIRT = 0x2f7d3a,
+// SKIRT_DARK = 0x235f2c, UNDER = 0xc0262c, SOCK = [0xb8232f, 0xf2efe8, 0x2f6b3a, 0xf2efe8]; in fx.ts her pieces
+// were [0x2f7d3a, 0xc0262c, 0xd6a12a, 0x18181d, 0x18181d, 0xbd8752, 0xe2c062, 0xc4262e], in entities.ts the little
+// ones' skirt 0x2f7d3a by day and 0x3fa04c by night)
+const SCARF = 0x2a4f8f, SCARF_DARK = 0x1f3b6c, STRAW = 0xe2c062, STRAW_DARK = 0xc29a3e;
 const BLOUSE = 0xd6a12a, BLOUSE_DARK = 0xb4841c, CAPE = 0x18181d, CAPE_EDGE = 0x26262c, GLOVE = 0x111114;
-const SKIRT = 0x2f7d3a, SKIRT_DARK = 0x235f2c, UNDER = 0xc0262c, BLOOMERS = 0xf1eee6, SHOE = 0x2b2119;
-const SOCK = [0xb8232f, 0xf2efe8, 0x2f6b3a, 0xf2efe8];
+const SKIRT = 0xb0262f, SKIRT_DARK = 0x8a1d25, UNDER = 0x1c1c22, BLOOMERS = 0xf1eee6, SHOE = 0x2b2119;
+const SOCK = [0x2a4f8f, 0xf2efe8, 0xb0262f, 0xf2efe8];
 const STICK = 0x5e3b1e, STICK_DARK = 0x4a2e17, BAND = 0x2a2420, TWIG = [0x6b5236, 0x4c3a26, 0xe8e2d4, 0x7a5f3c], HOT = [0xff6a14, 0xffb52e, 0xff3a0a, 0xffe07a];
 
 /** the two faces of her mask, top row first, 8 wide: d carved dark, k eye, w teeth, c red cheek, r glint, n nose */

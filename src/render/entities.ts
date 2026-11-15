@@ -46,8 +46,8 @@ export const ENEMY_LOOK: Record<EnemyKind, { w: number; h: number; d: number; da
   kraken: { w: 3.0, h: 2.2, d: 2.6, day: 0xd04a8a, night: 0xff6ab0, eyeY: 1.5, eyeX: 0.6, eye: 0.45 },
   phantom: { w: 0.7, h: 0.85, d: 0.7, day: 0x6af0ff, night: 0x8ff8ff, eyeY: 0.6, eyeX: 0.15, eye: 0.14 },
   trex: { w: 1.1, h: 2.0, d: 2.2, day: 0x6a8f3a, night: 0x9fd35a, eyeY: 1.8, eyeX: 0.26, eye: 0.16 },
-  // the little witches: a figure of her own (see witch-figure.ts); this is her size and her green skirt
-  witchling: { w: 0.4, h: 1.15, d: 0.35, day: 0x2f7d3a, night: 0x3fa04c, eyeY: 0.95, eyeX: 0.05, eye: 0 },
+  // the little witches: a figure of her own (see witch-figure.ts); this is her size and her red skirt
+  witchling: { w: 0.4, h: 1.15, d: 0.35, day: 0xb0262f, night: 0xd6343e, eyeY: 0.95, eyeX: 0.05, eye: 0 },
 };
 
 const KINDS = Object.keys(ENEMY_LOOK) as EnemyKind[];
