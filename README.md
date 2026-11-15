@@ -239,7 +239,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, the **Rhino** *or* **the Schrättele** in the arena, or under water **the Kraken** with fish and sharks | a game between |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
-| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**, on the helipad also **Gunship Vulture**, an attack helicopter that circles over the pad; on the helipad a big helicopter stands in the middle of the pad with its rotor running: it is cover, and its wash blows you (and the monsters) away from it on every side; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
+| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**, on the helipad also the **Maltecopter**, an attack helicopter that circles over the pad; on the helipad a big helicopter stands in the middle of the pad with its rotor running: it is cover, and its wash blows you (and the monsters) away from it on every side; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
 
 Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
 look quite the same; no boss comes twice in a run (a run that goes through the Town meets the Schrättele there and on no
@@ -268,7 +268,8 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
   (about a minute), together if you are several; the counter shows how many are left. A caught player goes
   back to the start (no damage, no life lost), and so do the ghosts lurking there, to their cage. A power cube
   in each corner turns the ghosts blue for a few seconds: crash them for coins (they come back). Every pixel
-  pays its collector, and clearing the maze pays everyone a bonus.
+  pays its collector, and clearing the maze pays everyone a bonus. There is no music in the maze: the ghosts'
+  siren wails instead, faster as the maze empties, and wobbles while they flee.
 - **Shaft ride:** you stand on the elevator platform for 45 seconds while flying **glitch swarmers** attack from
   every side. Keep shooting.
 - **The Town:** the old town of Bad Waldsee, the Hochstatt with the Federle fountain, the café terrace, the
@@ -297,7 +298,7 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
   about from the start, the Kraken keeps calling new ones, faster each phase, and a big school at each new phase.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
-- **Gunship Vulture:** the Sky Helipad's own boss, an attack helicopter (not the one parked on the pad: it flies
+- **The Maltecopter:** the Sky Helipad's own boss, an attack helicopter (not the one parked on the pad: it flies
   in from outside). It circles over you where nothing reaches it, fires salvos of missiles at rings marked on the
   floor, strafes along a line with its gun and swoops down so that its rotor wash blows everyone about. Then it
   comes down and hovers low for a while: that is when you can hurt it. Its wash keeps you off and its gun fires
@@ -319,7 +320,7 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
 map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
-under everyone, **Gunship Vulture** (over the Sky Helipad), **the Schrättele** (in the Town, by her bonfire; in the arena when a LAN host has fixed the view from above), and at
+under everyone, the **Maltecopter** (over the Sky Helipad), **the Schrättele** (in the Town, by her bonfire; in the arena when a LAN host has fixed the view from above), and at
 the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
@@ -672,8 +673,8 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 | Weapon | What it does |
 |---|---|
 | **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels (two at level 3, three at level 5, together three times the damage of level 1). |
-| **Laser Sword** | Wide swing toward the crosshair. |
-| **Candy Cannon** | Spread of candy pellets. |
+| **Laser Sword** | Wide swing toward the crosshair: a blade of light that hums in the hand, sweeps a trail through the arc and leaves a burn on the walls it touches. |
+| **Candy Cannon** | A spread of wrapped sweets and lollipops, a little further than a sword reaches. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
 | **Disco Ball** | A mirror ball flies up and shoots a beam of light at each of the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. It hangs there for a few seconds, turning, its coloured lights sweeping the floor, and its own house track plays while it does. |
@@ -697,7 +698,7 @@ help standing next to).
 | **Leaf Blower 3000** | Blows hordes away and slams them into walls. Blows coins toward you. |
 | **Pizza Cutter** | A spinning saw that bounces off walls and cuts through everything. |
 | **Thunder Hammer** | From Angry Dominik's crate, and rarely a golden card: a smash in front of you, and lightning that jumps on to the nearest monsters. |
-| **Lock-On Launcher** | Rare even among the rare: now and then a golden card, now and then a crate that hides it (in a versus match, from a fallen elite, from a wild boss, and often from the Gunship Vulture). Keep a target near the crosshair until the box round it turns red, then fire: the missile follows that target and blows up on it. Without a lock it does not fire. A rival it reaches is out; a quick step round a corner shakes it off. |
+| **Lock-On Launcher** | Rare even among the rare: now and then a golden card, now and then a crate that hides it (in a versus match, from a fallen elite, from a wild boss, and often from the Maltecopter). Keep a target near the crosshair until the box round it turns red, then fire: the missile follows that target and blows up on it. Without a lock it does not fire. A rival it reaches is out; a quick step round a corner shakes it off. |
 
 ### Ladders
 
@@ -759,6 +760,11 @@ Now and then a **unicorn** trots in on its own ("A unicorn appeared!"). Ride it 
 it leaps off ramps, spears monsters with its horn and leaves a rainbow behind. It never runs out of steam, but
 once it is wrecked it is gone until the next lucky moment.
 
+In first person you look out of what you ride: over the kart's nose and its steering wheel, from the
+Steamroller's cab over its drum, from behind the police car's dashboard, down the Hoverboard's deck, or between
+the unicorn's ears with its mane and horn in front of you. The wheel turns as you steer, and a boost presses you
+back into the seat.
+
 ### Power-ups
 
 Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, **Rapid Fire**,
@@ -795,12 +801,12 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Little Schrättele** | The Town's little witches: they walk its streets on their own until they see you, then come for you; the elevator stays shut until the last one is squashed (the HUD counts them). They also dance round the fire with the Schrättele. Every third one rides her broom: she hovers, draws back, then swoops at you and knocks you back (16 damage); step aside or squash her while she is dazed after a swoop. | – |
 | **The Kraken** | Boss of the Sunken Arcade. Crawls straight at you over walls and barriers, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl, and the final boss of some Tower Runs. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
-| **Angry Dominik** | The very last boss of the Boss Rush, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
+| **Angry Dominik** | The very last boss of the Boss Rush, the boss of a Single floor under the Uplink Dish, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
 | **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Charges like mad and flings whoever it hits. | Red lane on the ground |
-| **King Rex** | The last boss of the Boss Rush; in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
+| **King Rex** | Boss of the Boss Rush (Neon City); in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
 | **The Schrättele** | Boss of the Town; like every boss also in the Boss Rush and the Boss Brawl, and in versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little Schrättele and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. | Her crouch and her cackle; a fan of strikes before the sweep |
 | **Mega Block** | Boss of floor 3 (in some runs the Rhino, the Schrättele or the Kraken takes its place). | Red rings, marked lines |
-| **Gunship Vulture** | Boss of the Sky Helipad; also in the Boss Rush and the Boss Brawl, and the final boss of some Tower Runs that end on the helipad. An attack helicopter that circles out of reach, fires missiles, strafes with its gun and swoops down to blow you about with its rotor wash; it can only be hurt while it hovers low between its attack runs. From three players on two of them come and take turns coming down. | A ring for every missile and every gun strike; a yellow ring where it is about to come down |
+| **Maltecopter** | Boss of the Sky Helipad; also in the Boss Rush and the Boss Brawl, and the final boss of some Tower Runs that end on the helipad. An attack helicopter that circles out of reach, fires missiles, strafes with its gun and swoops down to blow you about with its rotor wash; it can only be hurt while it hovers low between its attack runs. From three players on two of them come and take turns coming down. | A ring for every missile and every gun strike; a yellow ring where it is about to come down |
 | **Segment Worm** | One of the final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
 
@@ -964,6 +970,7 @@ docs/         gameplay GIF and screenshots
 - [x] Wild bosses in the Tower Run and in versus chaos, monster voices, a Segment Worm with new attacks, Single floor on the LAN
 - [x] The Town: Bad Waldsee's old town from real building data, walked in first person, with the Schrättele as its boss
 - [x] Little Schrättele in the Town's streets (the elevator waits for them), finer houses and roofs, an end screen in the middle: version 1.2
+- [x] Sky Helipad and Uplink Dish with the Maltecopter and Angry Dominik, the Lock-On Launcher, versus with a crown, kill streaks and Quad Damage, weapons that look like what they are, a cockpit in every vehicle: versions 1.5 and 1.6
 - [ ] Smaller snapshots for online play: send of each monster only what changed since the last one, instead of the whole game 30 times a second (a full co-op floor is about 590 KB/s per player today). Less upload and less work for the server; needs a new network format
 - [ ] A guided first round for new players: towers, nests, rare weapons and the shop, one after the other
 - [ ] More in [IDEAS.md](IDEAS.md): a full Lane Defense mode, new floors and bosses, plugins. Add your own!
