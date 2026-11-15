@@ -667,7 +667,8 @@ export type SimEvent =
   /** a Disco Ball went off: who threw it, and whom its beams hit (monsters, then rivals; `at`: where each stood) */
   | { type: 'discoZap'; playerId: number; pos: Vec2; enemies: number[]; rivals: number[]; at: Vec2[] }
   | { type: 'weaponSelected'; playerId: number; slot: number }
-  | { type: 'enemyHit'; id: number; pos: Vec2; amount: number }
+  /** `by`: the player whose hit it was (none for towers and the like) */
+  | { type: 'enemyHit'; id: number; pos: Vec2; amount: number; by?: number }
   | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
   | { type: 'coinPicked'; playerId: number; streak: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number; playerId: number }

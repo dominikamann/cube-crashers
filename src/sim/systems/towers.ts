@@ -1,4 +1,5 @@
 import { rivals, VERSUS } from './versus';
+import { overhead } from './witch';
 import { damagePlayer } from './player';
 import { BUILD_TICKS, BUMPER, FROST_SLOW_SECONDS, MAX_TOWER_LEVEL, POPCORN_FLIGHT, POPCORN_RADIUS, REPAIR_PER_SECOND, TESLA, TOWERS, UPGRADE_TICKS, towerStats, upgradeCost } from '../config/towers';
 import { DT, TICK_RATE, type Intent, type Player, type SimState, type Tower, type TowerKind, type Vec2 } from '../types';
@@ -13,6 +14,9 @@ export const BUILD_RADIUS = 1.2;
 export const PAD_SIZE = 1.7;
 
 /** The pad the position is standing on, or null. */
+/** what a tower can hit: every monster but those over everyone's heads */
+const reachable = (s: SimState) => targets(s).filter(e => !overhead(s, e));
+
 export function padAt(s: SimState, pos: Vec2): number | null {
   // the nearest one: pads can sit two tiles apart, and a solid tower keeps you off the middle of yours
   let best: number | null = null, bestD = BUILD_RADIUS;
@@ -153,13 +157,13 @@ function fire(s: SimState, t: Tower): boolean {
         damageEnemy(s, from, damage, t.kind);
         damage *= TESLA.falloff;
         // the bolt does not run along the worm: one segment takes it, like one hit on any other boss
-        e = targets(s).filter(o => !hit.has(o.id) && dist(o.pos, from.pos) <= TESLA.hop && !(o.kind === 'wormSegment' && from.kind === 'wormSegment')).sort((a, b) => dist(a.pos, from.pos) - dist(b.pos, from.pos))[0];
+        e = reachable(s).filter(o => !hit.has(o.id) && dist(o.pos, from.pos) <= TESLA.hop && !(o.kind === 'wormSegment' && from.kind === 'wormSegment')).sort((a, b) => dist(a.pos, from.pos) - dist(b.pos, from.pos))[0];
       }
       s.events.push({ type: 'teslaChain', points });
       return true;
     }
     case 'bumper': {
-      const near = targets(s).filter(e => dist(t.pos, e.pos) <= def.range + e.radius);
+      const near = reachable(s).filter(e => dist(t.pos, e.pos) <= def.range + e.radius);
       const pushed = t.ownerId === undefined ? [] : rivals(s, t.ownerId).filter(r => !airborne(r) && dist(r.pos, t.pos) <= def.range);
       if (near.length === 0 && pushed.length === 0) return false;
       const away = (q: { x: number; z: number }) => {
@@ -193,7 +197,7 @@ function fire(s: SimState, t: Tower): boolean {
       return true;
     }
     case 'frost': {
-      const inRange = targets(s).filter(e => dist(t.pos, e.pos) <= def.range && hasLos(s.map, t.pos, e.pos));
+      const inRange = reachable(s).filter(e => dist(t.pos, e.pos) <= def.range && hasLos(s.map, t.pos, e.pos));
       if (inRange.length === 0) return false;
       for (const e of inRange) e.slowUntil = s.tick + FROST_SLOW_SECONDS * TICK_RATE;
       s.events.push({ type: 'towerFired', kind: t.kind, pos: { ...t.pos }, target: { ...t.pos } });

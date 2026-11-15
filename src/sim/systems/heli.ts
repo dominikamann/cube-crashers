@@ -1,4 +1,5 @@
 import { PLAYER_RADIUS } from '../config/balance';
+import { airborne } from './rare';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, reachable, Tile, tileAt } from '../map/tilemap';
 import { DT, TICK_RATE, type BossState, type Enemy, type HeliState, type Player, type SimState, type Vec2 } from '../types';
 import { allBosses, dist } from '../util';
@@ -364,7 +365,8 @@ export function updateHeli(s: SimState, b: BossState): void {
   if (wash.push <= 0) return;
   for (const p of alive) {
     const d = dist(p.pos, me.pos);
-    if (d >= wash.radius || p.vehicleId !== null || p.perched) continue;
+    // (whoever is in the air or on a ladder is not on foot: the wash is a push along the floor)
+    if (d >= wash.radius || p.vehicleId !== null || p.perched || airborne(p) || p.climb) continue;
     const dir = unit(me.pos, p.pos, { x: -p.facing.x, z: -p.facing.z });
     const step = wash.push * (1 - d / wash.radius) * DT;
     moveCircle(s.map, p.pos, dir.x * step, dir.z * step, PLAYER_RADIUS, BLOCKS_WALKER);
@@ -379,6 +381,8 @@ export function heliDown(s: SimState, b: BossState): void {
   s.events.push({ type: 'heliCrash', pos: { ...b.lastPos }, at: s.tick + HELI.crashTicks });
   // (its launcher is often still good; not in the Gun Game, where weapons come from kills)
   if (s.versus?.rule === 'gungame') return;
-  const beside = nearestFree(s.map, { x: b.lastPos.x, z: b.lastPos.z + HELI.wreckRadius + 1 }, 0.4, BLOCKS_WALKER);
+  // (beside the spot it came down over, which players can reach; not where it hung on its way down, over a wall or the edge)
+  const at = b.heli.mode === 'circle' ? b.lastPos : b.heli.spot;
+  const beside = nearestFree(s.map, { x: at.x, z: at.z + HELI.wreckRadius + 1 }, 0.4, BLOCKS_WALKER);
   s.crates.push({ id: s.nextId++, pos: { ...clearSpot(s, beside) }, ...(s.rng.next() < HELI.launcherChance ? { prize: 'missileLauncher' as const } : {}) });
 }

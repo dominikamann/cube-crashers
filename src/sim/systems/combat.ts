@@ -84,7 +84,7 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   }
   const dealt = e.frozenUntil > s.tick ? amount * FROZEN_DAMAGE : amount;
   e.hp -= dealt;
-  s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt });
+  s.events.push({ type: 'enemyHit', id: e.id, pos: { ...e.pos }, amount: dealt, ...(byPlayerId !== undefined ? { by: byPlayerId } : {}) });
   const horde = e.hordeId !== null ? s.hordes.find(h => h.id === e.hordeId) : undefined;
   if (horde) horde.aggro = true;
   if (e.hp > 0) return;

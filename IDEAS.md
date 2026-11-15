@@ -47,6 +47,7 @@ into the other lanes ("garbage" like in puzzle battles). Last one standing wins.
 ## Monsters
 
 - **Coin Thief**: grabs coins from the floor and runs; drops them all when killed.
+- **Disco fever**: monsters near a Disco Ball that is up dance for a moment on its beat, then go on; a boss only nods along.
 
 ## Weapons and items
 

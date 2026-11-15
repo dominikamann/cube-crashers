@@ -1,4 +1,5 @@
 import { carryingCube, pvpDamage, rivals } from './versus';
+import { overhead } from './witch';
 import { damagePlayer } from './player';
 import { airborne } from './rare';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
@@ -188,7 +189,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   for (const e of s.enemies) {
     // a solid boss is rammed at its edge (nothing drives into it)
     const reach = isBossBody(s, e) ? Math.max(stats.radius + e.radius, solidEdge(s, e) + 0.3) : stats.radius + e.radius;
-    if (e.hp <= 0 || e.fly === 'high' || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > reach) continue;
+    if (e.hp <= 0 || overhead(s, e) || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > reach) continue;
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
     e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
     e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
@@ -213,7 +214,7 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
 function keepOutOfBosses(s: SimState, v: Vehicle): void {
   if (v.air > 0) return;
   for (const e of s.enemies) {
-    if (e.hp <= 0 || e.fly === 'high' || (e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id))) continue;
+    if (e.hp <= 0 || overhead(s, e) || (e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id))) continue;
     const dx = v.pos.x - e.pos.x, dz = v.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz), edge = solidEdge(s, e);
     if (d >= edge) continue;

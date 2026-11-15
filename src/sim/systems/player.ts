@@ -28,7 +28,7 @@ import { DIFFICULTY } from '../config/difficulty';
 import { comboMult, damageEnemy, solidEdge, wormShare } from './combat';
 import { checkTeamWipe, loseLife, sendToRespawn } from './coop';
 import { airborne, updateFlight } from './rare';
-import { witchAloft } from './witch';
+import { overhead } from './witch';
 import { quadOf } from './bounty';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
@@ -113,7 +113,7 @@ function stomp(s: SimState, p: Player): void {
   const radius = STOMP_RADIUS + 0.5 * p.perks.stomp;
   const damage = (STOMP_DAMAGE + 10 * p.perks.stomp) * STOMP_CHAIN[Math.min(p.stompChain, STOMP_CHAIN.length - 1)];
   s.events.push({ type: 'stomp', pos: { ...p.pos }, radius });
-  const under = s.enemies.filter(e => e.hp > 0 && e.fly !== 'high' && dist(p.pos, e.pos) <= radius + e.radius);
+  const under = s.enemies.filter(e => e.hp > 0 && !overhead(s, e) && dist(p.pos, e.pos) <= radius + e.radius);
   const part = wormShare(under);
   for (const e of under) {
     const d = dist(p.pos, e.pos);
@@ -135,7 +135,7 @@ function pushOutOfBosses(s: SimState, p: Player): void {
   for (const e of s.enemies) {
     // the big boss bodies (Mega Block, the Kraken, King Rex) are solid
     // (not the helicopter flying high, nor the witch up on her broom: they are over everyone's heads)
-    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id)) || e.hp <= 0 || e.fly === 'high' || witchAloft(s, e)) continue;
+    if ((e.kind !== 'megaBlock' && e.kind !== 'kraken' && !allBosses(s).some(b => b.enemyId === e.id)) || e.hp <= 0 || overhead(s, e)) continue;
     const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
     const d = Math.hypot(dx, dz);
     const edge = solidEdge(s, e);
@@ -302,7 +302,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       p.dashTicks--;
       moveCircle(s.map, p.pos, p.dashDir.x * DASH_SPEED * DT, p.dashDir.z * DASH_SPEED * DT, PLAYER_RADIUS, BLOCKS_WALKER);
       for (const e of s.enemies) {
-        if (e.hp <= 0 || e.fly === 'high' || p.dashHits.includes(e.id)) continue;
+        if (e.hp <= 0 || overhead(s, e) || p.dashHits.includes(e.id)) continue;
         if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + 0.3) continue;
         p.dashHits.push(e.id);
         damageEnemy(s, e, DASH_DAMAGE, 'dash', p.id);

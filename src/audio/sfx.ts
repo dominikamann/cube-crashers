@@ -607,7 +607,8 @@ export function swordClashes(events: readonly SimEvent[]): { id: SoundId; pitch:
     let hits = 0;
     for (const h of events) {
       // (a hit on a player or a vehicle says who dealt it: then it must be the swinger)
-      const pos = h.type === 'enemyHit' ? h.pos : (h.type === 'playerHit' || h.type === 'vehicleHit') && (h.by ?? -1) === (e.playerId ?? -2) ? h.pos : null;
+      // (a hit on a monster says so too; an older host does not, then the place decides)
+      const pos = h.type === 'enemyHit' && (h.by === undefined || e.playerId === undefined || h.by === e.playerId) ? h.pos : (h.type === 'playerHit' || h.type === 'vehicleHit') && (h.by ?? -1) === (e.playerId ?? -2) ? h.pos : null;
       if (pos && Math.hypot(pos.x - e.pos.x, pos.z - e.pos.z) <= SWORD_HIT_REACH) hits++;
     }
     if (hits > 0) out.push({ id: 'swordClash', pitch: Math.max(0.8, 1.05 - 0.05 * hits) });

@@ -1,4 +1,5 @@
 import type { GameInfo, VersusOption } from './net/protocol';
+import { allBosses } from './sim/util';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
@@ -674,7 +675,7 @@ function startGame() {
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
         // (an attack helicopter near them is the rotor to listen for: the parked one sinks under its beat)
-        const gunships = [s.boss, ...(s.bosses ?? [])].flatMap(b => (b?.heli ? s.enemies.filter(e => e.id === b.enemyId).map(e => ({ pos: e.pos, low: e.fly === 'low' })) : []));
+        const gunships = allBosses(s).flatMap(b => (b.heli ? s.enemies.filter(e => e.id === b.enemyId).map(e => ({ pos: e.pos, low: e.fly === 'low' })) : []));
         audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) * rotorDuck(gunships, ears) : 0);
         // the Glitch Maze: the ghosts' siren while they hunt (faster as the maze empties), a wobble while they flee;
         // the music keeps out of it

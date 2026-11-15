@@ -1,4 +1,5 @@
 import { TICK_RATE } from '../types';
+import { overhead } from './witch';
 import type { SimState } from '../types';
 import { logoSpots, onFloorLogo } from '../map/logo-spots';
 import { damageEnemy } from './combat';
@@ -40,6 +41,6 @@ export function updateLogoSpin(s: SimState): void {
     // the monster's body reaches the logo
     const q = onFloorLogo(r, e.pos);
     const dx = Math.max(r.tx - q.x, 0, q.x - (r.tx + r.w)), dz = Math.max(r.tz - q.z, 0, q.z - (r.tz + r.h));
-    if (e.hp > 0 && e.fly !== 'high' && Math.hypot(dx, dz) <= e.radius) damageEnemy(s, e, blow, 'explosion', keeper);
+    if (e.hp > 0 && !overhead(s, e) && Math.hypot(dx, dz) <= e.radius) damageEnemy(s, e, blow, 'explosion', keeper);
   }
 }

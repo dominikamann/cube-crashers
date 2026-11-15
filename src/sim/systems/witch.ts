@@ -171,6 +171,15 @@ export function witchAloft(s: SimState, e: Enemy): boolean {
   return false;
 }
 
+/**
+ * Whether a monster is over everyone's heads, out of reach of all that stays on the floor (karts, stomps, dashes,
+ * towers, bumping into it): the attack helicopter flying high, or the witch on her broom. (An aimed shot that goes
+ * up can still reach the witch; nothing reaches the helicopter up there.)
+ */
+export function overhead(s: SimState, e: Enemy): boolean {
+  return e.fly === 'high' || witchAloft(s, e);
+}
+
 /** what a hit on her counts for: little while she dances; a hit by anyone else knocks her off the player she presses */
 export function witchHit(b: BossState, amount: number, byPlayerId?: number): number {
   const w = b.witch;
@@ -335,7 +344,12 @@ function charge(s: SimState, b: BossState, me: Enemy, p: Player): void {
  */
 export function startDance(s: SimState, b: BossState, phase: 2 | 3): void {
   const w = b.witch, me = b.enemyId !== null ? byId(s, b.enemyId) : undefined;
-  if (!w || !me || w.dance || w.flight) return;
+  if (!w || !me || w.dance) return;
+  // (hurt into the next phase on her way: the dance she lands in is that phase's, with its helpers)
+  if (w.flight) {
+    w.flight.helpers = Math.max(w.flight.helpers, WITCH.helpers[phase] + Math.min(4, s.players.length - 1));
+    return;
+  }
   // (whatever she was about to do is off; in mid-hop she comes down first)
   if (!b.leap) w.move = null;
   if (w.press) letGo(s, b, false);

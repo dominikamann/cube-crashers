@@ -161,6 +161,32 @@ describe('the attack helicopter of the Sky Helipad', () => {
     expect(hurt(true)).toBe(0);
   });
 
+  it('its wash does not blow whoever is up in the air on a jetpack', () => {
+    const s = fight();
+    until(s, () => low(s));
+    const body = bodyOf(s), p = s.players[0];
+    Object.assign(p, { jetpack: true, jetFuel: 300, flying: true });
+    p.pos = { x: body.pos.x + 2.2, z: body.pos.z };
+    const at = { ...p.pos };
+    until(s, () => false, 20, () => [{ type: 'fly', playerId: 0 }]);
+    expect(Math.hypot(p.pos.x - at.x, p.pos.z - at.z)).toBeLessThan(0.05);
+  });
+
+  it('a Lock-On missile after it lets go once it climbs out of reach, and is not spent on it', () => {
+    const s = fight();
+    until(s, () => low(s));
+    const body = bodyOf(s);
+    s.projectiles.push({ id: s.nextId++, kind: 'missileLauncher', behavior: 'missile', pos: { x: body.pos.x + 6, z: body.pos.z }, vel: { x: -13, z: 0 }, damage: 150, pierce: 0, until: s.tick + 360, hitIds: [], ownerId: 0, launchedAt: s.tick, seek: { id: body.id, rival: false } });
+    body.fly = 'high';
+    s.boss!.heli!.mode = 'circle';
+    const hp = body.hp;
+    const missile = s.projectiles[s.projectiles.length - 1];
+    // (it flies on straight, past where the helicopter is, instead of turning round to it)
+    for (let i = 0; i < 20; i++) stepSim(s, []);
+    expect(body.hp).toBe(hp);
+    expect(missile.vel.z).toBe(0);
+  });
+
   it('its wash blows a player on foot away from under it, harder the nearer its middle, and never into a wall', () => {
     const s = fight();
     until(s, () => low(s));

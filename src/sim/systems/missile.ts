@@ -1,4 +1,5 @@
 import { PLAYER_RADIUS } from '../config/balance';
+import { overhead } from './witch';
 import { RARE } from '../config/rare';
 import { hasLos, Tile, tileAt } from '../map/tilemap';
 import { DT, type Enemy, type Player, type Projectile, type SimState, type Vec2 } from '../types';
@@ -16,7 +17,8 @@ import { rivals } from './versus';
 /** what a launcher can lock on to: a rival (versus) or a monster, by its id */
 type Mark = { id: number; rival: boolean };
 
-const sought = (s: SimState, m: Mark): Player | Enemy | undefined => (m.rival ? s.players.find(p => p.id === m.id && p.downUntil === null) : s.enemies.find(e => e.id === m.id && e.hp > 0));
+/** the target a missile is after, while it can be reached (a monster that went out of reach is let go: it flies on straight) */
+const sought = (s: SimState, m: Mark): Player | Enemy | undefined => (m.rival ? s.players.find(p => p.id === m.id && p.downUntil === null) : s.enemies.find(e => e.id === m.id && e.hp > 0 && !overhead(s, e)));
 
 /** how far `to` is off the line of `aim` from `from`, in radians */
 function offAim(from: Vec2, aim: Vec2, to: Vec2): number {
@@ -31,7 +33,7 @@ function candidate(s: SimState, p: Player): Mark | null {
   const nearest = <T extends { pos: Vec2 }>(list: T[]): T | undefined => list.filter(seen).sort((a, b) => offAim(p.pos, p.aim, a.pos) - offAim(p.pos, p.aim, b.pos))[0];
   const rival = nearest(rivals(s, p.id).filter(r => s.tick >= r.invulnUntil));
   if (rival) return { id: rival.id, rival: true };
-  const enemy = nearest(targets(s));
+  const enemy = nearest(targets(s).filter(e => !overhead(s, e)));
   return enemy ? { id: enemy.id, rival: false } : null;
 }
 
