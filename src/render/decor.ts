@@ -697,6 +697,7 @@ export function buildDecor(input: DecorContext): Decor {
       group.add(dish);
       // (the rest of the decoration is built in place; the dish's parts are placed through its groups, so their
       // world matrices are worked out here, before the first frame does)
+      tower.updateMatrixWorld(true);
       dish.updateMatrixWorld(true);
       spinners.push({ mesh: dish, speed: DISH_TURN });
     }
