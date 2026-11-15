@@ -303,7 +303,7 @@ export const en = {
   'credits.author': 'Dominik Amann',
   'credits.helpers': 'with help from hard-working AI bots',
   'credits.builtWith': 'Built with Three.js, Electron and the "Press Start 2P" font (SIL Open Font License).',
-  'credits.license': 'Open source under the MIT license · github.com/dominikamann/cube-crashers',
+  'credits.license': 'Source available under the PolyForm Noncommercial License 1.0.0 · github.com/dominikamann/cube-crashers',
   'credits.privacyGame': 'Privacy',
   'credits.imprint': 'Imprint',
   'credits.security': 'Security',
