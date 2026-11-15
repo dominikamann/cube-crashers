@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { HOLD_TICKS } from '../sim/config/balance';
 import { jumpLift } from '../sim/systems/versus';
 import { wallTop } from './world';
+import { shooterOf } from './shots';
 import { CLIMB_TICKS } from '../sim/map/ladders';
 import { perchable } from '../sim/map/perch';
 import { JETPACK } from '../sim/config/rare';
@@ -101,7 +102,7 @@ function makePlayer(color: number, look: Look) {
   });
   return {
     color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, swatter, paddle, light, pack, flame, glint,
-    swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN,
+    swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN, lift: 0,
     // what the animation remembers from frame to frame
     step: 0, pace: 0, ahead: 0, aside: 0, idle: 0, land: 0, dash: 0, kick: 0, wasAir: false, lastCooldown: 0,
   };
@@ -121,6 +122,9 @@ const scaffoldGeo = (() => {
   }
   return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
 })();
+
+/** how fast a figure rises to its flying height and sinks from it, in tiles a second */
+const LIFT_PACE = 6;
 
 /** geometries and materials shared by many actors: never disposed with one of them */
 const SHARED = new Set<object>();
@@ -518,7 +522,13 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const mount = driving && s.vehicles.find(c => c.id === p.vehicleId)?.kind === 'unicorn' ? 0.95 : 0.35;
     const x = p.climb ? p.pos.x + (p.climb.top.x - p.pos.x) * over : p.pos.x;
     const z = p.climb ? p.pos.z + (p.climb.top.z - p.pos.z) * over : p.pos.z;
-    v.root.position.set(x, perch + jump + fly + (driving ? mount : 0), z);
+    // the height in the air: a jump as it is; taking off and sinking, the figure rises and sinks to where it
+    // belongs at a steady pace (a jump that turns into a flight would else leap up and drop back, and with it
+    // the camera of whoever looks through these eyes)
+    const airborne = p.flying || sinking;
+    const want = airborne ? fly : jump;
+    v.lift = airborne ? v.lift + Math.max(-LIFT_PACE * frameDt, Math.min(LIFT_PACE * frameDt, want - v.lift)) : want;
+    v.root.position.set(x, perch + v.lift + (driving ? mount : 0), z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying || sinking;
     // a short braking flame on the way down
@@ -783,7 +793,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       }
       for (const e of events) {
         if (e.type === 'shot' && (e.weapon === 'laserSword' || e.weapon === 'flySwatter')) {
-          const shooter = s.players.find(p => p.pos.x === e.pos.x && p.pos.z === e.pos.z);
+          const shooter = shooterOf(s, e.pos, e.playerId);
           const v = shooter ? players.get(shooter.id) : undefined;
           if (v && e.weapon === 'flySwatter') v.swatT = 0;
         }

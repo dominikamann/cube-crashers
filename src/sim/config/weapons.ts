@@ -39,7 +39,7 @@ export const SWORD = { radius: 2.2, radiusPerLevel: 0.2, halfArcDeg: 70 };
 /** the pixel rail: an instant beam through everything in a line, stopped only by walls */
 export const RAIL = { range: 14, width: 0.3 };
 export const SWATTER = { radius: 1.4, radiusPerLevel: 0.1, halfArcDeg: 40 };
-export const CANDY = { speed: 14, range: 5, pellets: 6, spreadDeg: 40 };
+export const CANDY = { speed: 14, range: 6, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */
 export const HOTDOG = { range: 8, flightTicks: 24, radius: 1.6, impact: 14, durationTicks: 150, intervalTicks: 15, slowTicks: 20 };
 export const BOOMERANG = { speed: 14, distance: 8.5 };

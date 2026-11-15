@@ -81,7 +81,7 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       };
       hitMany(s, targets(s).filter(e => onLine(e.pos, e.radius)), damage, w.kind, p.id);
       for (const r of rivals(s, p.id)) if (onLine(r.pos, PLAYER_RADIUS)) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
-      s.events.push({ type: 'railFired', from: { ...p.pos }, to: { x: p.pos.x + p.aim.x * reach, z: p.pos.z + p.aim.z * reach } });
+      s.events.push({ type: 'railFired', from: { ...p.pos }, to: { x: p.pos.x + p.aim.x * reach, z: p.pos.z + p.aim.z * reach }, playerId: p.id });
       return true;
     }
     case 'candyCannon': {
@@ -223,7 +223,7 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
     const use = coinOpRule(s) === 'swords' ? { ...w, kind: 'laserSword' as const } : w;
     if (fire(s, p, use)) {
       w.cooldown = WEAPONS[use.kind].cooldown;
-      s.events.push({ type: 'shot', weapon: use.kind, pos: { ...p.pos } });
+      s.events.push({ type: 'shot', weapon: use.kind, pos: { ...p.pos }, playerId: p.id });
     }
   }
 }

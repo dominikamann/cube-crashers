@@ -272,6 +272,23 @@ export function ringFor(s: SimState, ownerId: number, viewers: ReadonlySet<numbe
   return s.versus.mode === 'team' && owner?.team !== undefined && s.players.some(p => viewers.has(p.id) && p.team === owner.team);
 }
 
+/**
+ * Who fired a shot that left from `pos`: the player the game names, else whoever stands nearest (within a step or
+ * two: a player who walks has moved on a little by the time the shot is drawn).
+ */
+export function shooterOf(s: SimState, pos: Vec2, id?: number): Player | undefined {
+  if (id !== undefined) return s.players.find(p => p.id === id);
+  let best: Player | undefined, d = 1.5;
+  for (const p of s.players) {
+    const far = Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z);
+    if (far < d) {
+      d = far;
+      best = p;
+    }
+  }
+  return best;
+}
+
 export interface Shots {
   update(s: SimState, events: SimEvent[], theme: Theme, dt: number, time: number): void;
   /**
@@ -472,12 +489,12 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
     }
   }
 
-  /** who fired: the game says only where from */
-  const shooter = (s: SimState, pos: Vec2): Player | undefined => s.players.find(p => p.pos.x === pos.x && p.pos.z === pos.z);
+  /** who fired: the one the game names, or (an older host says only where from) whoever stands nearest that spot */
+  const shooter = (s: SimState, pos: Vec2, id?: number): Player | undefined => shooterOf(s, pos, id);
 
   /** the flash where a shot leaves the hand, and whatever a swing or a beam shows as it goes off */
   function fired(e: Extract<SimEvent, { type: 'shot' }>, s: SimState, events: SimEvent[]) {
-    const who = shooter(s, e.pos);
+    const who = shooter(s, e.pos, e.playerId);
     if (!who) return;
     const ax = who.aim.x, az = who.aim.z;
     const y = HAND + (who.flying ? 2.5 : 0);
@@ -580,7 +597,7 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           const dx = e.to.x - e.from.x, dz = e.to.z - e.from.z, len = Math.hypot(dx, dz) || 0.001;
           const ax = dx / len, az = dz / len, start = Math.min(1, len);
           rails.push({ x: e.from.x + ax * start, z: e.from.z + az * start, yaw: Math.atan2(ax, az), len: len - start, age: 0 });
-          if (!eyes.has(shooter(s, e.from)?.id ?? -1)) fx.flash(e.from.x + ax * (start + 0.5), HAND, e.from.z + az * (start + 0.5), 1.1, 0x9ff8ff, 0.12, false);
+          if (!eyes.has(shooter(s, e.from, e.playerId)?.id ?? -1)) fx.flash(e.from.x + ax * (start + 0.5), HAND, e.from.z + az * (start + 0.5), 1.1, 0x9ff8ff, 0.12, false);
           fx.flash(e.to.x, HAND, e.to.z, 1.7, 0xffffff, 0.16, false);
           fx.flash(e.to.x, 0.07, e.to.z, 2.2, 0x9ff8ff, 0.3, true);
           fx.stain(e.to.x, e.to.z, 0.7, 0x1c2a33, 2.5);

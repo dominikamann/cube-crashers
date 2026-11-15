@@ -628,7 +628,8 @@ export interface RunStats {
 }
 
 export type SimEvent =
-  | { type: 'shot'; weapon: WeaponKind; pos: Vec2 }
+  /** `playerId`: who fired (a player who walks is not where the shot left any more by the time it is drawn) */
+  | { type: 'shot'; weapon: WeaponKind; pos: Vec2; playerId?: number }
   /** a Disco Ball went off: who threw it, and whom its beams hit (monsters, then rivals; `at`: where each stood) */
   | { type: 'discoZap'; playerId: number; pos: Vec2; enemies: number[]; rivals: number[]; at: Vec2[] }
   | { type: 'weaponSelected'; playerId: number; slot: number }
@@ -668,7 +669,7 @@ export type SimEvent =
   | { type: 'raceWreck'; playerId: number; pos: Vec2 }
   | { type: 'towerDone'; padId: number; level: number }
   | { type: 'towerFired'; kind: TowerKind; pos: Vec2; target: Vec2 }
-  | { type: 'railFired'; from: Vec2; to: Vec2 }
+  | { type: 'railFired'; from: Vec2; to: Vec2; playerId?: number }
   | { type: 'magnetPull'; from: Vec2; to: Vec2 }
   /** a healer mended the monsters at these spots */
   | { type: 'enemyHealed'; pos: Vec2; targets: Vec2[] }

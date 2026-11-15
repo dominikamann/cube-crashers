@@ -233,3 +233,28 @@ describe('the ring that shows where a bomb will land', () => {
     expect(ringFor(team, team.players[0].id, new Set([rival.id]))).toBe(false);
   });
 });
+
+describe('who fired a shot', () => {
+  it('is the player the game names, also when they have walked on since', async () => {
+    const { shooterOf } = await import('../../src/render/shots');
+    const { createSim, stepSim } = await import('../../src/sim/sim');
+    const { FLOORS } = await import('../../src/sim/config/floors');
+    const s = createSim(FLOORS.floor01.map, 1, { players: 2 });
+    s.countdown = 0;
+    s.enemies = [];
+    const p = s.players[0];
+    p.weapons = [{ kind: 'laserSword', level: 1, cooldown: 0 }];
+    p.selected = 0;
+    // walking and swinging at once: the event still says who it was
+    let shot: Extract<(typeof s.events)[number], { type: 'shot' }> | undefined;
+    for (let i = 0; i < 10 && !shot; i++) {
+      stepSim(s, [{ type: 'move', playerId: p.id, dir: { x: 1, z: 0 } }, { type: 'fire', playerId: p.id }]);
+      shot = s.events.find((e): e is Extract<(typeof s.events)[number], { type: 'shot' }> => e.type === 'shot');
+    }
+    expect(shot?.playerId).toBe(p.id);
+    expect(shooterOf(s, shot!.pos, shot!.playerId)).toBe(p);
+    // (an older host says only where from: the nearest player it is, not one far off)
+    expect(shooterOf(s, { x: p.pos.x + 0.3, z: p.pos.z })).toBe(p);
+    expect(shooterOf(s, { x: p.pos.x + 30, z: p.pos.z + 30 })).toBeUndefined();
+  });
+});

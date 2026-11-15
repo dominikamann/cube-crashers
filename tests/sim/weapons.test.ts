@@ -30,7 +30,7 @@ describe('manual fire', () => {
     const onLine = spawnEnemy(s, 'tank', rel(p.pos, 0, -6));
     const aside = spawnEnemy(s, 'tank', rel(p.pos, 4, -3));
     stepSim(s, [aimAt(rel(p.pos, 0, -4)), fire]);
-    expect(s.events).toContainEqual({ type: 'shot', weapon: 'pixelBlaster', pos: p.pos });
+    expect(s.events).toContainEqual({ type: 'shot', weapon: 'pixelBlaster', pos: p.pos, playerId: p.id });
     run(s, 40);
     expect(onLine.hp).toBe(TANK - dmg('pixelBlaster'));
     expect(aside.hp).toBe(TANK);
