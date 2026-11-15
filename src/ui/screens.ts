@@ -100,6 +100,7 @@ const SITE = 'https://cubecrashers.amannlabs.eu';
 export const LEGAL_LINKS: [StringKey, string][] = [
   ['credits.privacyGame', `${SITE}/privacy-game.html`],
   ['credits.imprint', 'https://amannlabs.eu/impressum.html'],
+  ['credits.security', 'https://github.com/dominikamann/cube-crashers/blob/main/SECURITY.md'],
 ];
 
 const ICONS = {
@@ -531,7 +532,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       text(s, 'p', '', t('credits.helpers'));
       text(s, 'p', 'credits-small', t('credits.builtWith'));
       text(s, 'p', 'credits-small', t('credits.license'));
-      // the game's privacy policy and the imprint
+      // the game's privacy policy, the imprint and how to report a security issue
       const legal = text(s, 'p', 'credits-legal', '');
       for (const [i, [key, url]] of LEGAL_LINKS.entries()) {
         if (i) legal.append(' · ');

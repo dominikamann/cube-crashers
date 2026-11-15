@@ -386,7 +386,7 @@ the whole team.
   yellow bolts; angry eyes and warning lanes and rings blink hard; the glitch floor shows a thick yellow "no" sign.
   It switches at once, also in a paused match.
 - **Controls** are listed at the bottom of the settings screen, and **About** shows the version you have installed.
-- **Credits** (title screen): who made the game.
+- **Credits & Legal** (title screen): who made the game, the privacy policy, the imprint and how to report a security issue.
 
 ---
 
