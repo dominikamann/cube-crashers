@@ -15,7 +15,8 @@ export const WEAPONS: Record<WeaponKind, WeaponDef> = {
   candyCannon: { cooldown: 0.8, damage: 4 },
   hotdogSlinger: { cooldown: 3, damage: 4 },
   joystickBoomerang: { cooldown: 2, damage: 10 },
-  discoBall: { cooldown: 3.5, damage: 12 },
+  // (each of its pulses: see DISCO)
+  discoBall: { cooldown: 3.5, damage: 5 },
   bananaMine: { cooldown: 2.5, damage: 40 },
   bomb: { cooldown: 5, damage: 50 },
   flySwatter: { cooldown: 0.8, damage: 55 },
@@ -51,8 +52,9 @@ export const CANDY = { speed: 24, range: 6, tiers: [[7, 0.8], [8, 0.5]] as [numb
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */
 export const HOTDOG = { range: 8, flightTicks: 24, radius: 1.6, impact: 14, durationTicks: 150, intervalTicks: 15, slowTicks: 20 };
 export const BOOMERANG = { speed: 20, distance: 9.5 };
-/** (`show`: how long the ball hangs there with its lights and its music, in seconds; the hit itself is at once) */
-export const DISCO = { range: 7, targets: 4, show: 3.8 };
+/** (`show`: how long the ball hangs there with its lights and its music, in seconds; while it hangs it lets go
+ * `pulses` bursts of beams, one every `everyTicks`, the first at once, each at the nearest `targets` in `range`) */
+export const DISCO = { range: 7, targets: 4, show: 3.8, pulses: 4, everyTicks: 54 };
 export const MINE = { armTicks: 30, trigger: 1.0, radius: 2.5, lifetimeTicks: 1800, max: 5 };
 export const BOMB = { range: 7, flightTicks: 42, radius: 3 };
 /** a slow soap bubble: the monster it hits floats stuck in it for a while */

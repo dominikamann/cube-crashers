@@ -202,6 +202,8 @@ export interface Player {
   /** sinking down after the jetpack was let go: ticks until the landing */
   descent?: number;
   lastStompAt?: number;
+  /** a Disco Ball up in the air: its next burst of beams at tick `next`, `left` more to come, each doing `damage` to up to `targets` */
+  disco?: { next: number; left: number; damage: number; targets: number } | null;
   rare: { kind: RareKind; until: number; cooldown: number } | null;
   rareSelected: boolean;
   /** the Lock-On Launcher in hand: what is near the crosshair (a rival's or a monster's id) and for how many ticks; locked at RARE.missile.lockTicks */
@@ -673,7 +675,8 @@ export type SimEvent =
   /** `playerId`: who fired (a player who walks is not where the shot left any more by the time it is drawn) */
   | { type: 'shot'; weapon: WeaponKind; pos: Vec2; playerId?: number }
   /** a Disco Ball went off: who threw it, and whom its beams hit (monsters, then rivals; `at`: where each stood) */
-  | { type: 'discoZap'; playerId: number; pos: Vec2; enemies: number[]; rivals: number[]; at: Vec2[] }
+  /** `pulse`: which of the ball's bursts this is (0: it was just thrown) */
+  | { type: 'discoZap'; playerId: number; pos: Vec2; enemies: number[]; rivals: number[]; at: Vec2[]; pulse?: number }
   | { type: 'weaponSelected'; playerId: number; slot: number }
   /** `by`: the player whose hit it was (none for towers and the like) */
   | { type: 'enemyHit'; id: number; pos: Vec2; amount: number; by?: number }

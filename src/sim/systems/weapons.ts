@@ -174,19 +174,9 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
       return true;
     }
     case 'discoBall': {
-      // light beams to the nearest monsters (and rivals in versus) in sight; with nobody in reach it still
-      // flashes, so you see it went off
-      const n = DISCO.targets + (w.level - 1);
-      const hits = nearestEnemies(s, p.pos, DISCO.range, n);
-      hitMany(s, hits, damage, w.kind, p.id);
-      const near = rivals(s, p.id)
-        // (it hangs in the air and flashes all round: rivals on a jetpack are not out of its reach, only a jump is)
-        .filter(r => (r.flying || (r.descent ?? 0) > 0 || !airborne(r)) && dist(r.pos, p.pos) <= DISCO.range && hasLos(s.map, p.pos, r.pos))
-        .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))
-        .slice(0, Math.max(0, n - hits.length));
-      for (const r of near) damagePlayer(s, r, pvpDamage(damage), 'shot', p.id);
-      // (who was hit, for the show: a beam from the ball to each of them)
-      s.events.push({ type: 'discoZap', playerId: p.id, pos: { ...p.pos }, enemies: hits.map(e => e.id), rivals: near.map(r => r.id), at: [...hits, ...near].map(o => ({ ...o.pos })) });
+      // up it goes, and lets its beams go at once and again while it hangs there (see discoPulse)
+      p.disco = { next: s.tick, left: DISCO.pulses, damage, targets: DISCO.targets + (w.level - 1) };
+      discoPulse(s, p);
       return true;
     }
     case 'bananaMine': {
@@ -205,6 +195,33 @@ function fire(s: SimState, p: Player, w: HeldWeapon): boolean {
   }
 }
 
+/**
+ * A burst of the Disco Ball's beams, when one is due: to the nearest monsters (and rivals in versus) in sight; with
+ * nobody in reach it still flashes, so you see it went off. The ball goes with whoever threw it and bursts when they fall.
+ */
+function discoPulse(s: SimState, p: Player): void {
+  const d = p.disco;
+  if (!d || s.tick < d.next) return;
+  if (p.downUntil !== null || d.left <= 0) {
+    p.disco = null;
+    return;
+  }
+  const pulse = DISCO.pulses - d.left;
+  d.left--;
+  d.next = s.tick + DISCO.everyTicks;
+  const hits = nearestEnemies(s, p.pos, DISCO.range, d.targets);
+  hitMany(s, hits, d.damage, 'discoBall', p.id);
+  const near = rivals(s, p.id)
+    // (it hangs in the air and flashes all round: rivals on a jetpack are not out of its reach, only a jump is)
+    .filter(r => (r.flying || (r.descent ?? 0) > 0 || !airborne(r)) && dist(r.pos, p.pos) <= DISCO.range && hasLos(s.map, p.pos, r.pos))
+    .sort((a, b) => dist(a.pos, p.pos) - dist(b.pos, p.pos))
+    .slice(0, Math.max(0, d.targets - hits.length));
+  for (const r of near) damagePlayer(s, r, pvpDamage(d.damage), 'shot', p.id);
+  // (who was hit, for the show: a beam from the ball to each of them)
+  s.events.push({ type: 'discoZap', playerId: p.id, pos: { ...p.pos }, enemies: hits.map(e => e.id), rivals: near.map(r => r.id), at: [...hits, ...near].map(o => ({ ...o.pos })), pulse });
+  if (d.left <= 0) p.disco = null;
+}
+
 export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
   // the Glitch Maze is played without weapons
   if (s.run.stage === 'maze') return;
@@ -214,6 +231,7 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
       w.cooldown -= DT * rate;
       if (w.cooldown < 1e-9) w.cooldown = 0;
     }
+    discoPulse(s, p);
     if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
     if (p.rareSelected && p.rare) {
       const kind = p.rare.kind;

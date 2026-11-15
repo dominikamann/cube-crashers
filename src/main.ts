@@ -697,7 +697,7 @@ function startGame() {
           if (e.type === 'bossDead') bossesUp = Math.max(0, bossesUp - 1);
           if (e.type === 'alarmChanged' || e.type === 'bossSpawn' || e.type === 'bossDead') playBase(s.alarm.level >= 5 || bossesUp > 0 ? 'boss' : 'battle', true);
           if (e.type === 'gameWon' || e.type === 'gameLost') playBase(null);
-          if (e.type === 'discoZap' && discoHeard(e.pos, ears)) discoUntil = performance.now() / 1000 + DISCO.show + DISCO_TAIL_S;
+          if (e.type === 'discoZap' && !e.pulse && discoHeard(e.pos, ears)) discoUntil = performance.now() / 1000 + DISCO.show + DISCO_TAIL_S;
         }
         syncMusic();
       }

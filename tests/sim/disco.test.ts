@@ -55,7 +55,29 @@ describe('disco ball', () => {
     p.weapons = [{ kind: 'discoBall', level: 1, cooldown: 0 }];
     p.selected = 0;
     stepSim(s, [fire]);
-    expect(s.events).toContainEqual({ type: 'discoZap', playerId: p.id, pos: p.pos, enemies: [], rivals: [], at: [] });
+    expect(s.events).toContainEqual({ type: 'discoZap', playerId: p.id, pos: p.pos, enemies: [], rivals: [], at: [], pulse: 0 });
+  });
+
+  it('while it hangs it lets its beams go again and again: four bursts, and who comes near meanwhile is hit too', () => {
+    const s = quietSim();
+    const p = s.players[0];
+    p.weapons = [{ kind: 'discoBall', level: 1, cooldown: 0 }];
+    p.selected = 0;
+    const first = spawnEnemy(s, 'tank', rel(p.pos, 3, 0));
+    first.speed = 0;
+    stepSim(s, [fire]);
+    // (one walks into its reach after the first burst)
+    const late = spawnEnemy(s, 'tank', rel(p.pos, -3, 0));
+    late.speed = 0;
+    const pulses: number[] = [];
+    for (let i = 0; i < DISCO.everyTicks * DISCO.pulses + 10; i++) {
+      stepSim(s, []);
+      for (const e of s.events) if (e.type === 'discoZap') pulses.push(e.pulse ?? -1);
+    }
+    expect(pulses).toEqual([1, 2, 3]);
+    expect(first.maxHp - first.hp).toBeGreaterThan(late.maxHp - late.hp);
+    expect(late.hp).toBeLessThan(late.maxHp);
+    expect(p.disco ?? null).toBeNull();
   });
 
   it('in versus it hits rivals too', () => {

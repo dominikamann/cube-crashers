@@ -124,15 +124,16 @@ export function createDisco(scene: THREE.Scene, fx: DiscoFx): DiscoShow {
         if (e.type !== 'discoZap') continue;
         const who = s.players.find(p => p.id === e.playerId);
         const front = who ? { x: e.pos.x + who.aim.x * 1.4, z: e.pos.z + who.aim.z * 1.4 } : e.pos;
-        // a glittering flash just in front of the shooter: seen from above and in first person alike
-        fx.burst(front, 1.3, 14, DISCO_COLORS, 3.5, 0.08, 0.35);
+        // a glittering flash just in front of the shooter when it is thrown: seen from above and in first person alike
+        if (!e.pulse) fx.burst(front, 1.3, 14, DISCO_COLORS, 3.5, 0.08, 0.35);
         // one ball for each player: thrown again while it is still up, it stays and lets new beams go
         let ball = list.find(b => b.ownerId === e.playerId);
         if (!ball) {
           ball = { ownerId: e.playerId, x: front.x, z: front.z, age: 0, left: 0, glitter: 0, zaps: [] };
           list.push(ball);
         }
-        ball.left = DISCO.show;
+        // (thrown anew: it hangs on for the whole show again; a later burst of the same ball changes nothing)
+        if (!e.pulse) ball.left = DISCO.show;
         const targets = [...e.enemies, ...e.rivals];
         for (let k = 0; k < targets.length && ball.zaps.length < MAX_DISCO_BEAMS; k++) {
           ball.zaps.push({ id: targets[k], rival: k >= e.enemies.length, x: e.at[k].x, y: 0.6, z: e.at[k].z, age: -k * ZAP.apart, tint: k, landed: false });
