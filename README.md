@@ -232,7 +232,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, the **Rhino** *or* **the Schrättele** in the arena, or under water **the Kraken** with fish and sharks | a game between |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
-| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**; on the helipad a big helicopter stands in the middle of the pad with its rotor running: it is cover, and its wash blows you (and the monsters) away from it on every side; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
+| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**, on the helipad also **Gunship Vulture**, an attack helicopter that circles over the pad; on the helipad a big helicopter stands in the middle of the pad with its rotor running: it is cover, and its wash blows you (and the monsters) away from it on every side; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
 
 Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
 look quite the same; no boss comes twice in a run (a run that goes through the Town meets the Schrättele there and on no
@@ -290,6 +290,12 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
   about from the start, the Kraken keeps calling new ones, faster each phase, and a big school at each new phase.
 - **Segment Worm:** a long worm of segments. Shoot it in the middle and it splits into two worms (up to four).
   Its strikes are marked on the ground first.
+- **Gunship Vulture:** the Sky Helipad's own boss, an attack helicopter (not the one parked on the pad: it flies
+  in from outside). It circles over you where nothing reaches it, fires salvos of missiles at rings marked on the
+  floor, strafes along a line with its gun and swoops down so that its rotor wash blows everyone about. Then it
+  comes down and hovers low for a while: that is when you can hurt it. Its wash keeps you off and its gun fires
+  in bursts. Hurt, it climbs away at once, calls for help and comes back with bigger salvos. Shot down it spins
+  to the floor burning (step back from the ring) and leaves a crate that often holds a **Lock-On Launcher**.
 - The boss of the last floor is the **final boss**: it has twice the health. Bosses shrug off stomps and kart
   rams (a quarter of the damage), so bring your weapons.
 - **A boss is a fight for every team:** its health grows with the number of players (three quarters of a boss
@@ -306,7 +312,7 @@ and a run has four gaps, so every run draws its own order by its seed, and no ga
 Also under **Tower Run**: every boss in a row, with a shop between them: **Mega Block**, the **Segment Worm**,
 **the Kraken**, the **Rhino** (in the Pixel Jungle: it charges like mad and flings whoever it hits across the
 map), the **Tarantula Queen** (in the Server Farm), **King Rex**, a T-Rex grown to boss size that roars, cracks the ground in a ring around itself and stomps
-under everyone, **the Schrättele** (in the Town, by her bonfire; in the arena when a LAN host has fixed the view from above), and at
+under everyone, **Gunship Vulture** (over the Sky Helipad), **the Schrättele** (in the Town, by her bonfire; in the arena when a LAN host has fixed the view from above), and at
 the very end, on the roof at night, **Angry Dominik**: laser eyes, a hammer he throws
 and slams into the floor, and lightning with everything he does. He leaves a crate that usually holds his
 **Thunder Hammer**. At the difficulty you set; its own best list.
@@ -787,7 +793,8 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **King Rex** | The last boss of the Boss Rush; in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
 | **The Schrättele** | Boss of the Town; like every boss also in the Boss Rush and the Boss Brawl, and in versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little Schrättele and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. | Her crouch and her cackle; a fan of strikes before the sweep |
 | **Mega Block** | Boss of floor 3 (in some runs the Rhino, the Schrättele or the Kraken takes its place). | Red rings, marked lines |
-| **Segment Worm** | One of the four final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
+| **Gunship Vulture** | Boss of the Sky Helipad; also in the Boss Rush and the Boss Brawl, and the final boss of some Tower Runs that end on the helipad. An attack helicopter that circles out of reach, fires missiles, strafes with its gun and swoops down to blow you about with its rotor wash; it can only be hurt while it hovers low between its attack runs. From three players on two of them come and take turns coming down. | A ring for every missile and every gun strike; a yellow ring where it is about to come down |
+| **Segment Worm** | One of the final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
 | **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
 
 ---

@@ -8,7 +8,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
-import { mazeAmbience, rotorLoudness } from './audio/ambience';
+import { mazeAmbience, rotorDuck, rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
@@ -673,7 +673,9 @@ function startGame() {
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
         // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
-        audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) : 0);
+        // (an attack helicopter near them is the rotor to listen for: the parked one sinks under its beat)
+        const gunships = [s.boss, ...(s.bosses ?? [])].flatMap(b => (b?.heli ? s.enemies.filter(e => e.id === b.enemyId).map(e => ({ pos: e.pos, low: e.fly === 'low' })) : []));
+        audio.mixer.setAmbience('rotor', mode === 'playing' || mode === 'paused' ? rotorLoudness(s.map.id, ears) * rotorDuck(gunships, ears) : 0);
         // the Glitch Maze: the ghosts' siren while they hunt (faster as the maze empties), a wobble while they flee;
         // the music keeps out of it
         const maze = mode === 'playing' || mode === 'paused' ? mazeAmbience(s) : { siren: 0, scared: 0, speed: 0 };
@@ -1428,7 +1430,7 @@ function applyDemo(sim: SimState) {
   if (params.has('all')) Object.assign(sim.players[0], { jetpack: true, jetFuel: 300 });
   // ?demo=1&boss=rex|rhino|megaBlock|worm|kraken (&map=…): just that boss, on that floor
   const bossKind = params.get('boss');
-  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch'].includes(bossKind)) {
+  if (bossKind && ['megaBlock', 'worm', 'rex', 'kraken', 'rhino', 'dominik', 'spider', 'witch', 'heli'].includes(bossKind)) {
     sim.enemies = [];
     sim.nests = [];
     sim.boss = null;
@@ -1438,6 +1440,9 @@ function applyDemo(sim: SimState) {
       const p = sim.players[0].pos;
       m.spawnBoss(sim, bossKind as 'rex', params.has('fall') ? { x: p.x, z: p.z - 5 } : undefined);
       if (params.has('fall')) for (const e of sim.enemies) e.hp = 0;
+      // (&hp=0.5: it comes with this share of its health, so its later phases are a moment away; &god=1: nothing hurts the player)
+      if (params.has('hp')) for (const e of sim.enemies) e.hp = e.maxHp * Number(params.get('hp'));
+      if (params.has('god')) sim.players[0].invulnUntil = Number.MAX_SAFE_INTEGER;
     });
   }
   // ?demo=dominik: Angry Dominik on show. He stands still in the open and the camera circles him (&act=1: he

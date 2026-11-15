@@ -465,6 +465,13 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'witchFace':
             toast(t('toast.witchFace'), 'final');
             break;
+          case 'heliDown':
+            // (said the first time each helicopter comes down: after that the players know)
+            if ([s.boss, ...(s.bosses ?? [])].some(b => b?.heli && b.heli.landings <= 1 && b.heli.mode === 'descend')) toast(t('toast.heliDown'), 'good', t('toast.heliDownHow'));
+            break;
+          case 'heliUp':
+            if ([s.boss, ...(s.bosses ?? [])].some(b => b?.heli && b.heli.landings <= 1 && b.heli.mode === 'rise')) toast(t('toast.heliUp'), 'warn');
+            break;
           case 'bossDead':
             // (the Schrättele is beaten, but little ones are still out in the streets: the elevator waits for them)
             if (e.kind === 'witch' && witchlingsLeft(s)) toast(t('toast.witchlings'), 'final', t('toast.witchlingsHow'));

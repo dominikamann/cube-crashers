@@ -69,6 +69,7 @@ const BOSS_WRECK: Record<BossKind, number[]> = {
   spider: [0x3a2a22, 0x3a2a22, 0x241a15, 0x5a4034, 0xd9701e, 0xd9701e, 0xff3b3b],
   rhino: [0x8d9299, 0x8d9299, 0xa7aebb, 0x5d6168, 0x5d6168, 0xf2ead8, 0xfff8ea],
   witch: [0x2f7d3a, 0xc0262c, 0xd6a12a, 0x18181d, 0x18181d, 0xbd8752, 0xe2c062, 0xc4262e],
+  heli: [0x55623f, 0x55623f, 0x3f4a2f, 0x22272a, 0x22272a, 0x70757d, 0x14303a, 0xff3b30],
 };
 
 /** the colours of the unicorn's trail */
@@ -209,6 +210,8 @@ export function createFx(scene: THREE.Scene): Fx {
   const chipped = new Map<number, number>();
   /** Angry Dominik has fallen and stands in the lightning: when each one bursts */
   const dying: { at: Vec2; in: number }[] = [];
+  /** attack helicopters on their way down: where each wreck hits the floor, and in how long */
+  const wrecks: { at: Vec2; in: number }[] = [];
 
   const shakeOffset = new THREE.Vector3();
   let shakeAmp = 0;
@@ -481,6 +484,8 @@ export function createFx(scene: THREE.Scene): Fx {
               addShake(0.6);
               break;
             }
+            // (the attack helicopter spins down burning first, and bursts where it hits the floor: see `wrecks`)
+            if (e.kind === 'heli') break;
             if (e.kind === 'dominik') {
               thunderstorm(e.pos, 14, 2.6, DOMINIK_DEATH);
               dying.push({ at: { ...e.pos }, in: DOMINIK_DEATH });
@@ -500,6 +505,9 @@ export function createFx(scene: THREE.Scene): Fx {
             addShake(0.8);
             break;
           }
+          case 'heliCrash':
+            wrecks.push({ at: { ...e.pos }, in: (e.at - s.tick) / TICK_RATE });
+            break;
           case 'bossSpawn':
             if (e.kind === 'dominik' && s.boss) thunderstorm(s.boss.lastPos, 4, 3, 0.6);
             break;
@@ -700,6 +708,22 @@ export function createFx(scene: THREE.Scene): Fx {
         m.rings++;
         m.in += 22 / TICK_RATE;
         if (m.rings >= BOSS.hammerRings.length) slams.splice(i, 1);
+      }
+      for (let i = wrecks.length - 1; i >= 0; i--) {
+        const w = wrecks[i];
+        w.in -= dt;
+        if (w.in > 0) continue;
+        wrecks.splice(i, 1);
+        // the wreck hits the floor: its hull, its blades and its pods fly apart in a ball of fire
+        const body = BOSS_WRECK.heli;
+        pops.push({ x: w.at.x, y: 1.2, z: w.at.z, age: 0, life: 0.32, size: 9, color: 0xffd27a, ring: false });
+        pops.push({ x: w.at.x, y: 0.07, z: w.at.z, age: 0, life: 0.55, size: 14, color: 0xff7a2e, ring: true });
+        splats.push({ x: w.at.x, z: w.at.z, age: 0, life: 12, size: 5, color: 0x1c1a18, turn: rand() * Math.PI * 2 });
+        chunks(w.at, 1.2, 40, body, 10, 0.3, 0.7);
+        chunks(w.at, 1.4, 110, body, 8, 0.1, 0.24);
+        burst(w.at, 1.2, 50, [0xffd040, 0xff7a14, 0xff4a0a], 8, 0.2);
+        ring(w.at, 6, [0xffd040, 0xff7a14]);
+        addShake(0.9);
       }
       for (let i = dying.length - 1; i >= 0; i--) {
         const d = dying[i];

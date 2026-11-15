@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OfflineAudioContext } from 'node-web-audio-api';
-import { ROTOR_FAR, ROTOR_NEAR, rotorLoudness } from '../../src/audio/ambience';
+import { GUNSHIP_DUCK, GUNSHIP_FAR, ROTOR_FAR, ROTOR_NEAR, rotorDuck, rotorLoudness } from '../../src/audio/ambience';
 import { createMixer } from '../../src/audio/mixer';
 import { HELIPAD } from '../../src/sim/config/floor-helipad';
 
@@ -71,5 +71,19 @@ describe('the Glitch Maze', () => {
       expect(peak, id).toBeGreaterThan(0.01);
       expect(peak, id).toBeLessThan(0.1);
     }
+  });
+});
+
+describe("the parked rotor and the gunship's", () => {
+  it('the parked rotor sinks under the beat of an attack helicopter near the listener, most when it hovers low, and not at all when it is far', () => {
+    const ear = { x: 30, z: 40 };
+    expect(rotorDuck([], [ear])).toBe(1);
+    expect(rotorDuck([{ pos: { x: 30, z: 41 }, low: true }], [ear])).toBeCloseTo(GUNSHIP_DUCK, 6);
+    const high = rotorDuck([{ pos: { x: 30, z: 41 }, low: false }], [ear]);
+    expect(high).toBeGreaterThan(GUNSHIP_DUCK);
+    expect(high).toBeLessThan(1);
+    expect(rotorDuck([{ pos: { x: 30, z: 40 - GUNSHIP_FAR - 1 }, low: true }], [ear])).toBe(1);
+    // (two players on one screen: the one nearer to it decides)
+    expect(rotorDuck([{ pos: { x: 30, z: 41 }, low: true }], [{ x: 0, z: 0 }, ear])).toBeCloseTo(GUNSHIP_DUCK, 6);
   });
 });

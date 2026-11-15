@@ -61,8 +61,9 @@ describe('the new worlds', () => {
     expect(runFloors(7)).toEqual(runFloors(7));
   });
 
-  it('and its bosses too: the arena has the Mega Block, the Rhino or the Schrättele, the roof or the helipad ends with the worm, King Rex, the Tarantula Queen or the Schrättele', () => {
+  it('and its bosses too: the arena has the Mega Block, the Rhino or the Schrättele, the roof or the helipad ends with the worm, King Rex, the Tarantula Queen or the Schrättele, the helipad also with the attack helicopter', () => {
     const mid = new Set<string>(), last = new Set<string>(), pairs = new Set<string>();
+    const floorsWithHeli: string[] = [];
     for (let seed = 1; seed < 400; seed++) {
       const floors = runFloors(seed), bosses = runBosses(seed, floors);
       expect(bosses).toHaveLength(floors.length);
@@ -76,14 +77,18 @@ describe('the new worlds', () => {
       expect(own).not.toContain('dominik');
       mid.add(bosses[2]!);
       last.add(bosses[4]!);
+      if (bosses[4] === 'heli') floorsWithHeli.push(floors[4]);
       pairs.add(`${bosses[2]}+${bosses[4]}`);
       // under water it is always the Kraken
       if (floors[2] === 'underwater') expect(bosses[2]).toBe('kraken');
     }
     expect([...mid].sort()).toEqual(['kraken', 'megaBlock', 'rhino', 'witch']);
-    expect([...last].sort()).toEqual(['rex', 'spider', 'witch', 'worm']);
-    // (nearly every pair of the 15 there are: no boss comes twice in a run, so never the Schrättele twice)
-    expect(pairs.size).toBeGreaterThanOrEqual(13);
+    // (the attack helicopter only over its own pad)
+    expect([...last].sort()).toEqual(['heli', 'rex', 'spider', 'witch', 'worm']);
+    floorsWithHeli.forEach(id => expect(id).toBe('helipad'));
+    expect(floorsWithHeli.length).toBeGreaterThan(5);
+    // (nearly every pair of the 19 there are: no boss comes twice in a run, so never the Schrättele twice)
+    expect(pairs.size).toBeGreaterThanOrEqual(16);
     expect([...pairs]).not.toContain('witch+witch');
     expect(runBosses(7, runFloors(7))).toEqual(runBosses(7, runFloors(7)));
   });

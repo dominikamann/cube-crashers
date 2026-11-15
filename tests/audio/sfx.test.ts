@@ -126,6 +126,13 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   witchSweep: { type: 'witchSweep', pos: p, dir: { x: 0, z: 1 } },
   witchTwigs: { type: 'witchTwigs', from: p, to: [p], at: 0 },
   fireCrackle: { type: 'fireCrackle', pos: p },
+  heliMissiles: { type: 'heliMissiles', from: p, to: [p], at: 0 },
+  heliGun: { type: 'heliGun', pos: p, dir: p },
+  heliDown: { type: 'heliDown', pos: p },
+  heliUp: { type: 'heliUp', pos: p },
+  heliSwoop: { type: 'heliSwoop', pos: p },
+  heliRotor: { type: 'heliRotor', pos: p, low: false },
+  heliCrash: { type: 'heliCrash', pos: p, at: 0 },
   gameWon: { type: 'gameWon', score: 1000 },
   gameLost: { type: 'gameLost' },
 };

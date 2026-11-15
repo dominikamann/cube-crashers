@@ -93,7 +93,8 @@ export function createBot(): (s: SimState) => Command[] {
       return [{ type: 'move', playerId: 0, dir: { x: (p.pos.x - ghost.pos.x) / len, z: (p.pos.z - ghost.pos.z) / len } }];
     }
     const cmds: Command[] = [];
-    const enemies = s.enemies.filter(e => e.hp > 0);
+    // (not the helicopter while it flies high: nothing reaches it up there)
+    const enemies = s.enemies.filter(e => e.hp > 0 && e.fly !== 'high');
     const near = enemies.map(e => ({ e, d: d(e.pos, p.pos) })).sort((a, b) => a.d - b.d);
 
     // where to go

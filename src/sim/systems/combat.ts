@@ -64,7 +64,8 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
   if (e.hp <= 0) return;
   amount *= quadOf(s, byPlayerId);
   // (a shark in mid-leap out of the Town's lake is out of reach: it is over the water and the barrier)
-  if (e.leap) return;
+  // (and so is the helicopter while it flies high)
+  if (e.leap || e.fly === 'high') return;
   // maze ghosts are only crashed by touching them while powered up
   if (e.kind === 'ghost') return;
   if (isBossBody(s, e)) {

@@ -18,7 +18,7 @@ import { quietSim } from '../sim/helpers';
  */
 
 export const LEVELS = Array.from({ length: MAX_WEAPON_LEVEL }, (_, i) => i + 1);
-export const BOSSES: BossKind[] = ['megaBlock', 'kraken', 'worm', 'rex', 'rhino', 'spider', 'dominik', 'witch'];
+export const BOSSES: BossKind[] = ['megaBlock', 'kraken', 'worm', 'rex', 'rhino', 'spider', 'dominik', 'witch', 'heli'];
 /** the weapons that are fought with at arm's length: measured there, the others from across the arena */
 const MELEE: WeaponKind[] = ['laserSword', 'flySwatter', 'bananaMine'];
 

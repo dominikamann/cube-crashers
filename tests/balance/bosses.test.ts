@@ -15,7 +15,8 @@ import { ALL_WEAPONS, BOSSES, DIFFICULTIES, LEVELS, bossHealth, botFight, fastes
  */
 const dps = Object.fromEntries(ALL_WEAPONS.map(w => [w, LEVELS.map(l => weaponDps(w, l))]));
 const blaster = (level: number) => dps.pixelBlaster[level - 1];
-const FLOOR_BOSSES = BOSSES.filter(b => b !== 'dominik');
+// (the attack helicopter is out of reach half the time: its health alone says little, see its own tests below)
+const FLOOR_BOSSES = BOSSES.filter(b => b !== 'dominik' && b !== 'heli');
 
 describe('how long a boss lives', () => {
   it('a floor boss takes a well-armed player on Medium most of a minute', () => {
@@ -93,6 +94,35 @@ describe('the witch of the Town', () => {
   });
 });
 
+describe('the attack helicopter of the Sky Helipad', () => {
+  it('does not fall in under half a minute, not even to the strongest weapon at its best, on any difficulty', () => {
+    for (const d of DIFFICULTIES)
+      for (const w of ['pixelBlaster', 'flySwatter'] as const) expect(fastestKill('heli', 'helipad', w, 5, d), `${w} on ${d}`).toBeGreaterThanOrEqual(30);
+  });
+
+  it('is beaten on Ultra Low by a lone player with the weapon everyone starts with', () => {
+    const f = botFight('helipad', 'pixelBlaster', 1, 'ultraLow');
+    expect(f.won).toBe(true);
+    expect(f.downs).toBeLessThanOrEqual(1);
+    expect(f.seconds).toBeGreaterThan(45);
+  });
+
+  it('takes about as long as the other bosses a Tower Run can end with there, although it is out of reach half the time', () => {
+    const seconds = (boss: 'heli' | 'worm' | 'rex' | 'spider') => {
+      const fights = [3, 5, 9].map(seed => botFight('helipad', 'pixelBlaster', 3, 'medium', seed, true, boss));
+      // (the scripted player is no good at keeping its lives: most of its fights are won, and those are measured)
+      const won = fights.filter(f => f.won);
+      expect(won.length, boss).toBeGreaterThanOrEqual(2);
+      if (process.env.BALANCE_REPORT) console.log(boss, fights.map(f => `${f.won ? 'won' : 'lost'} after ${f.seconds.toFixed(0)} s, ${f.downs} down`).join(' | '));
+      return won.reduce((n, f) => n + f.seconds, 0) / won.length;
+    };
+    const others = (['worm', 'rex', 'spider'] as const).map(seconds);
+    const heli = seconds('heli');
+    expect(heli).toBeGreaterThan(Math.min(...others) * 0.9);
+    expect(heli).toBeLessThan(Math.max(...others) * 1.15);
+  }, 120_000);
+});
+
 describe('a boss cannot be burst down', () => {
   it('takes at most a small share of its health a second in full, the rest of a burst only in part', () => {
     const s = quietSim();
@@ -110,7 +140,8 @@ describe('a boss cannot be burst down', () => {
 
   it('the last boss of a run takes no more a second in full than it would with single health', () => {
     const s = createSim(floor01, 3, { mode: 'run', between: ['race', 'lane', 'maze', 'shaft'] });
-    s.run.bosses = undefined;
+    // (whatever the seed picked for the top: the worm)
+    s.run.bosses = s.run.floors.map((_, i) => (i === s.run.floors.length - 1 ? 'worm' : null));
     enterFloor(s, s.run.floors.length - 1);
     const b = s.boss!;
     expect(b.gateShare).toBeCloseTo(BOSS_HP.gate.share / BOSS_HP.final, 6);

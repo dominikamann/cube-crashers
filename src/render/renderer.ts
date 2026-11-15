@@ -487,6 +487,7 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       quality = q;
       world.setDetail(q === 'low');
       fx.setParticleScale(QUALITY[q].particles);
+      entities.setParticleScale(QUALITY[q].particles);
       buildComposer();
     },
     setDamageNumbers(on) {

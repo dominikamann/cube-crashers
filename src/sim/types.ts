@@ -50,7 +50,7 @@ export type PerkKind = 'speed' | 'dash' | 'magnet' | 'greed' | 'regen' | 'stomp'
 export type ThemeId = 'plaza' | 'candy' | 'arena' | 'neon' | 'rooftop' | 'helipad' | 'uplink' | 'shaft' | 'race' | 'lane' | 'maze' | 'jungle' | 'servers' | 'underwater' | 'waldsee';
 export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn' | 'police';
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
-export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch';
+export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch' | 'heli';
 export type VersusMode = 'ffa' | 'team';
 export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
@@ -246,6 +246,9 @@ export interface Enemy {
   leap?: { from: Vec2; to: Vec2; at: number; until: number };
   /** a wall slam from the leaf blower cannot repeat before this tick */
   slamUntil: number;
+  /** a body that flies (the attack helicopter): no floor carries it and nothing bumps it; `high`, it is out of
+   *  reach of everything, `low`, it can be hit like any monster */
+  fly?: 'high' | 'low';
 }
 
 export interface Horde {
@@ -448,6 +451,31 @@ export interface BossState {
   gateShare?: number;
   /** the witch: her fire, her mask, her moves (see witch.ts) */
   witch?: WitchState;
+  /** the attack helicopter: where it circles, and whether it is up or down (see heli.ts) */
+  heli?: HeliState;
+}
+
+/** what the attack helicopter of the Sky Helipad is up to (see systems/heli.ts) */
+export interface HeliState {
+  /** the middle of the circle it flies while it is up (it follows the players), and how far round it is (radians) */
+  home: Vec2;
+  angle: number;
+  /**
+   * what it is doing, from tick `at` until `until`: circling up high out of reach (`circle`), coming down over
+   * `spot` (`descend`), hovering low over it, where it can be hurt (`low`), or climbing back up (`rise`)
+   */
+  mode: 'circle' | 'descend' | 'low' | 'rise';
+  at: number;
+  until: number;
+  spot: Vec2;
+  /**
+   * an attack run while it is up: a `strafe` along a line of gun strikes from `from` to `to`, or a `swoop` that
+   * hangs over player `target` half-way down and blows everyone under it about
+   */
+  run: { kind: 'strafe' | 'swoop'; at: number; until: number; from: Vec2; to: Vec2; target?: number } | null;
+  /** how many times it has come down so far, and when its rotor is heard next */
+  landings: number;
+  nextRotorAt: number;
 }
 
 /** what the witch of the Town is up to (see systems/witch.ts) */
@@ -757,6 +785,19 @@ export type SimEvent =
   | { type: 'hammerSlam'; pos: Vec2; at: number }
   /** a bolt of lightning strikes the floor */
   | { type: 'lightning'; pos: Vec2 }
+  /** the attack helicopter fires missiles from where it flies (`from`) to the marked spots; they land from tick `at` on */
+  | { type: 'heliMissiles'; from: Vec2; to: Vec2[]; at: number }
+  /** its gun rattles along a line of strikes */
+  | { type: 'heliGun'; pos: Vec2; dir: Vec2 }
+  /** it comes down over `pos` (now it can be hurt), and climbs away again */
+  | { type: 'heliDown'; pos: Vec2 }
+  | { type: 'heliUp'; pos: Vec2 }
+  /** it hangs over a player and blows everyone under it about */
+  | { type: 'heliSwoop'; pos: Vec2 }
+  /** its rotor, heard every second: `low` while it hovers within reach */
+  | { type: 'heliRotor'; pos: Vec2; low: boolean }
+  /** shot down, it spins and comes down burning: the wreck hits the floor at tick `at` */
+  | { type: 'heliCrash'; pos: Vec2; at: number }
   /** his eyes take aim, and then they burn: once each per laser */
   | { type: 'laserAim'; pos: Vec2 }
   | { type: 'laserFire'; pos: Vec2 }

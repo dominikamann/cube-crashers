@@ -5,7 +5,8 @@ import { onBorder } from '../../src/sim/map/border';
 import { Tile, tileAt } from '../../src/sim/map/tilemap';
 import type { Enemy, SimState } from '../../src/sim/types';
 
-const bodies = (s: SimState): Enemy[] => (s.bosses ?? []).filter(b => b.enemyId !== null && !b.leap).map(b => s.enemies.find(e => e.id === b.enemyId)!).filter(Boolean);
+// (the attack helicopter flies: it is over the others and over the walls, in nobody's way)
+const bodies = (s: SimState): Enemy[] => (s.bosses ?? []).filter(b => b.enemyId !== null && !b.leap && b.kind !== 'heli').map(b => s.enemies.find(e => e.id === b.enemyId)!).filter(Boolean);
 
 describe('bosses do not walk into each other', () => {
   it('in a Boss Brawl their bodies stay apart, all the way through', () => {
@@ -13,8 +14,8 @@ describe('bosses do not walk into each other', () => {
     s.players[0].invulnUntil = 1e9;
     let seen = 0, since = 0, streak = 0;
     for (let i = 0; i < 120 * 60; i++) {
-      // (a wave with one boss alone is of no use here: it falls at once, and so does a brood)
-      const alone = (s.bosses ?? []).filter(x => x.enemyId !== null || x.worms.length > 0).length < 2;
+      // (a wave with one boss alone is of no use here, or one with the helicopter overhead: it falls at once, and so does a brood)
+      const alone = (s.bosses ?? []).filter(x => x.kind !== 'heli' && (x.enemyId !== null || x.worms.length > 0)).length < 2;
       if (alone) {
         const ids = new Set((s.bosses ?? []).flatMap(x => [x.enemyId, ...x.worms.flat(), ...(x.brood ?? [])]));
         for (const e of s.enemies) if (ids.has(e.id)) e.hp = 0;

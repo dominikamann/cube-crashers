@@ -334,7 +334,8 @@ function contactDamage(s: SimState, players: Player[]): void {
     if (aloft(s, p) || p.vehicleId !== null || p.perched) continue;
     let strongest = 0, total = 0;
     for (const e of s.enemies) {
-      if (e.hp <= 0 || e.state === 'stunned' || held(s, e)) continue;
+      // (the helicopter touches nobody: its wash keeps them off)
+      if (e.hp <= 0 || e.fly || e.state === 'stunned' || held(s, e)) continue;
       // a solid boss bites whoever stands at its edge (players cannot get closer than that)
       if (dist(p.pos, e.pos) >= Math.max(e.radius + PLAYER_RADIUS, isBossBody(s, e) ? solidEdge(s, e) + 0.15 : 0)) continue;
       const dps = ENEMIES[e.kind].contactDamage * (e.elite ? ELITE.contact : 1);
@@ -360,7 +361,8 @@ export function updateEnemies(s: SimState): void {
 
   const grid = new Map<number, Enemy[]>();
   for (const e of s.enemies) {
-    if (e.hp <= 0) continue;
+    // (what flies is in nobody's way: the monsters walk under the helicopter)
+    if (e.hp <= 0 || e.fly) continue;
     const key = CELL_KEY(e.pos.x, e.pos.z);
     const cell = grid.get(key);
     if (cell) cell.push(e);
@@ -368,7 +370,8 @@ export function updateEnemies(s: SimState): void {
   }
 
   for (const e of s.enemies) {
-    if (e.hp <= 0) continue;
+    // (the helicopter flies itself: see heli.ts)
+    if (e.hp <= 0 || e.fly) continue;
     let dir = { x: 0, z: 0 };
     let factor = 0;
 
