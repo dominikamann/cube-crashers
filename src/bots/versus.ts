@@ -7,7 +7,7 @@ import type { Command, Difficulty, SimState, Vec2 } from '../sim/types';
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 
 /** how far each weapon is worth firing from */
-const REACH: Record<string, number> = { pixelBlaster: 9, laserSword: 2.2, candyCannon: 6, hotdogSlinger: 8, bananaMine: 3, bomb: 7, discoBall: 4, joystickBoomerang: 8.5, flySwatter: 1.6, pixelRail: 12, bubbleWand: 7, magnetGlove: 5, yoyoLauncher: 4.5 };
+const REACH: Record<string, number> = { pixelBlaster: 9, laserSword: 2.2, candyCannon: 7, hotdogSlinger: 8, bananaMine: 3, bomb: 7, discoBall: 4, joystickBoomerang: 9.5, flySwatter: 1.6, pixelRail: 12, bubbleWand: 8, magnetGlove: 5, yoyoLauncher: 4.5 };
 
 /**
  * How well a bot plays, from Ultra Low (a beginner) to Ultra High (sharp-eyed, instant):

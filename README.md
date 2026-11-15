@@ -684,17 +684,17 @@ glows when a weapon is ready, so you can switch through and fire whatever is loa
 
 | Weapon | What it does |
 |---|---|
-| **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels (two at level 3, three at level 5, together three times the damage of level 1). |
+| **Pixel Blaster** | Starter weapon. Fast bolts; more bolts at higher levels (two at level 3, three at level 5, together three times the damage of level 1). Full damage up to 10 tiles, then 15 % less with every tile: past about 16 tiles a bolt has burnt out. |
 | **Laser Sword** | Wide swing toward the crosshair: a blade of light that hums in the hand, sweeps a trail through the arc and leaves a burn on the walls it touches. |
-| **Candy Cannon** | A spread of wrapped sweets and lollipops, a little further than a sword reaches. |
+| **Candy Cannon** | A spread of wrapped sweets and lollipops, up to 7 tiles: the shotgun. |
 | **Hotdog Slinger** | Lobs a hotdog to the crosshair: a ketchup burst on impact, then sticky mustard that slows and hurts. |
 | **Joystick Boomerang** | Flies out and back, hitting everything twice. |
 | **Disco Ball** | A mirror ball flies up and shoots a beam of light at each of the nearest monsters around you (up to 7 tiles, in versus rivals too), no aiming needed. It hangs there for a few seconds, turning, its coloured lights sweeping the floor, and its own house track plays while it does. |
 | **Banana Mine** | Drops a mine that blows up when a monster steps on it. |
 | **Party Bomb** | Lobs a big bomb to the crosshair. |
-| **Pixel Rail** | An instant beam through every monster in a line, until the first wall. Slow to reload, hits hard. |
+| **Pixel Rail** | An instant beam through every monster in a line, with full damage as far as the first wall: the sniper. Slow to reload, hits hard. |
 | **Fly Swatter** | A huge slap swung sideways right across your front: very strong, very short. The knife of this game. |
-| **Bubble Wand** | A slow soap bubble: the monster it hits floats stuck in it for a few seconds. |
+| **Bubble Wand** | A soap bubble: the monster it hits floats stuck in it for a few seconds. |
 | **Magnet Glove** | Pulls the monsters in front of you together at the crosshair (then throw a bomb). Yanks rivals toward you. |
 | **Yo-yo Launcher** | Out and straight back on its string, hitting on both ways. Short and quick. |
 

@@ -46,16 +46,16 @@ export const FALLOFF = { perTile: PER_TILE, tiles: 1 / PER_TILE };
 /** the share of its damage a shot still does `d` tiles from where it was fired, with full damage up to `reach` */
 export const falloff = (d: number, reach: number): number => (d <= reach ? 1 : Math.max(0, 1 - FALLOFF.perTile * (d - reach)));
 export const SWATTER = { radius: 1.4, radiusPerLevel: 0.1, halfArcDeg: 40 };
-export const CANDY = { speed: 14, range: 6, pellets: 6, spreadDeg: 40 };
+export const CANDY = { speed: 24, range: 7, pellets: 6, spreadDeg: 40 };
 /** a ketchup burst on impact, then a sticky mustard puddle that slows and nibbles */
 export const HOTDOG = { range: 8, flightTicks: 24, radius: 1.6, impact: 14, durationTicks: 150, intervalTicks: 15, slowTicks: 20 };
-export const BOOMERANG = { speed: 14, distance: 8.5 };
+export const BOOMERANG = { speed: 20, distance: 9.5 };
 /** (`show`: how long the ball hangs there with its lights and its music, in seconds; the hit itself is at once) */
 export const DISCO = { range: 7, targets: 4, show: 3.8 };
 export const MINE = { armTicks: 30, trigger: 1.0, radius: 2.5, lifetimeTicks: 1800, max: 5 };
 export const BOMB = { range: 7, flightTicks: 42, radius: 3 };
 /** a slow soap bubble: the monster it hits floats stuck in it for a while */
-export const BUBBLE_WAND = { speed: 11, range: 8, stuckTicks: 150 };
+export const BUBBLE_WAND = { speed: 18, range: 9, stuckTicks: 150 };
 /** pulls the monsters in a cone toward the crosshair (set up a bomb); rivals are yanked toward you */
 export const MAGNET = { range: 6.5, halfArcDeg: 50, pull: 9, rivalPull: 1.6 };
 /** out and straight back on its string, hitting on both ways */
