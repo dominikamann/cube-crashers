@@ -237,9 +237,12 @@ export function parseMessage(raw: string): Message | null {
 const finite = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const vec = (v: unknown): v is { x: number; z: number } => isObj(v) && finite(v.x) && finite(v.z);
 const TOWER_KINDS = new Set<string>(TOWER_ORDER);
-/** generous bounds for aim points: the map plus a margin */
-const AIM_MIN = 0;
-const AIM_MAX = 70;
+/** generous bounds for aim points: the biggest map (the Town, 128 tiles) plus a margin all round, as far as a
+ * first-person view aims past the edge. (Bounds of 0 to 70 cut every aim in the Town's east and south short:
+ * shots there went the wrong way, and the lake's sharks never saw anyone watch them.) */
+const AIM_MARGIN = 16;
+const AIM_MIN = -AIM_MARGIN;
+const AIM_MAX = Math.max(...Object.values(FLOORS).map(f => Math.max(f.map.w, f.map.h))) + AIM_MARGIN;
 
 /**
  * Turns whatever a client sent into well-formed commands for its own player. Anything malformed is dropped,

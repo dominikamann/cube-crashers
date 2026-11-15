@@ -55,7 +55,9 @@ describe('sanitizeCommands', () => {
     const [m] = clean([{ type: 'move', playerId: 0, dir: { x: 3, z: 4 } }]);
     expect(m).toMatchObject({ type: 'move', playerId: 3 });
     if (m.type === 'move') expect(Math.hypot(m.dir.x, m.dir.z)).toBeCloseTo(1);
-    expect(clean([{ type: 'aim', point: { x: -50, z: 999 } }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 0, z: 70 } }]);
+    expect(clean([{ type: 'aim', point: { x: -50, z: 999 } }])).toEqual([{ type: 'aim', playerId: 3, point: { x: -16, z: 144 } }]);
+    // (an aim anywhere in the Town, the biggest map, comes through as it was sent: out at its lake too)
+    expect(clean([{ type: 'aim', point: { x: 97.2, z: 45 } }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 97.2, z: 45 } }]);
     expect(clean([{ type: 'select', slot: -1 }])).toEqual([{ type: 'select', playerId: 3, slot: -1 }]);
     // the tilt of a first-person view comes along with the aim: kept within bounds, left out when it is broken or missing
     expect(clean([{ type: 'aim', point: { x: 5, z: 6 }, pitch: 0.25 }])).toEqual([{ type: 'aim', playerId: 3, point: { x: 5, z: 6 }, pitch: 0.25 }]);

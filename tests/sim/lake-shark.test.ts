@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { FLOORS } from '../../src/sim/config/floors';
 import { WALDSEE_BARRIERS } from '../../src/sim/config/waldsee-town';
 import { BLOCKS_ENEMY, isFree } from '../../src/sim/map/tilemap';
-import { createSim, stepSim } from '../../src/sim/sim';
+import { createSim, stepSim, type SimOptions } from '../../src/sim/sim';
+import { enterTown } from '../../src/sim/systems/run';
 import { LAKE_SHARK, leapAt, watchesLake } from '../../src/sim/systems/lake-shark';
 import type { Command, SimState } from '../../src/sim/types';
 
@@ -100,4 +101,29 @@ describe('the sharks of the Town\'s lake', () => {
     }
     expect(nearest).toBeLessThan(1.2);
   });
+
+  // (in every game the Town is played in: one leaps at whoever watches, whatever the mode)
+  const GAMES: [string, SimOptions][] = [
+    ['a Single floor', { mode: 'quick' }],
+    ['the Boss Brawl', { mode: 'brawl' }],
+    ['the Boss Rush', { mode: 'bossrush', rushMaps: Array(12).fill('waldsee') }],
+    ...(['score', 'rounds', 'king', 'capture', 'gungame', 'coinop'] as const).map((rule): [string, SimOptions] => [`versus, ${rule}`, { players: 2, versus: { mode: rule === 'capture' ? 'team' : 'ffa', rule } }]),
+  ];
+  for (const [name, opts] of [...GAMES, ['the Town between two floors of a Tower Run', { mode: 'run' }] as [string, SimOptions]]) {
+    it(`leap out in ${name}`, () => {
+      const s = createSim(FLOORS.waldsee.map, 4, opts);
+      if (opts.mode === 'run') enterTown(s);
+      s.rng.next = () => 0;
+      const p = s.players[0];
+      let leaps = 0;
+      for (let i = 0; i < 30 * 30 && !leaps; i++) {
+        p.pos = out(-1.5);
+        p.invulnUntil = 1e9;
+        p.downUntil = null;
+        stepSim(s, [lookAt(12)]);
+        leaps += s.events.filter(e => e.type === 'sharkLeap').length;
+      }
+      expect(leaps, `${name}: map ${s.map.id}, stage ${s.run.stage}, phase ${s.phase}`).toBeGreaterThan(0);
+    });
+  }
 });

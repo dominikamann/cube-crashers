@@ -242,6 +242,8 @@ export interface Enemy {
   frozenUntil: number;
   /** caught in a gum bubble */
   stuckUntil: number;
+  /** came out of the Town's lake (see lake-shark.ts): only these count toward the most that may be out at once */
+  fromLake?: boolean;
   /** in mid-leap out of the Town's lake: carried from `from` to `to` through the air, and held meanwhile (see lake-shark.ts) */
   leap?: { from: Vec2; to: Vec2; at: number; until: number };
   /** a wall slam from the leaf blower cannot repeat before this tick */

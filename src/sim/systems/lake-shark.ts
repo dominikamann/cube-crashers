@@ -36,7 +36,8 @@ export function watchesLake(p: Player): boolean {
   return len > 0.01 && (dx * LAKE.dir[0] + dz * LAKE.dir[1]) / len >= LAKE_SHARK.look;
 }
 
-const sharksOut = (s: SimState): number => s.enemies.filter(e => e.kind === 'shark' && e.hp > 0).length;
+// (only those from the lake: a boss's own sharks, as in a Boss Brawl, do not keep the lake shut)
+const sharksOut = (s: SimState): number => s.enemies.filter(e => e.fromLake && e.hp > 0).length;
 
 /** A shark leaps out of the lake at `p`: it flies in over the barrier and is held until it lands. */
 export function leapAt(s: SimState, p: Player): void {
@@ -50,6 +51,7 @@ export function leapAt(s: SimState, p: Player): void {
   s.enemies = s.enemies.filter(e => e.hordeId !== horde.id || mine.indexOf(e) < Math.max(1, room));
   for (const e of s.enemies) {
     if (e.hordeId !== horde.id) continue;
+    e.fromLake = true;
     e.leap = { from, to: { ...e.pos }, at: s.tick, until: s.tick + LAKE_SHARK.leapTicks };
     e.pos = { ...from };
   }

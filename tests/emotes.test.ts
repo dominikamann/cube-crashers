@@ -34,7 +34,7 @@ describe('emotes in the simulation', () => {
     expect(EMOTES).toEqual(['help', 'here', 'nest', 'coins', 'nice', 'gg']);
     expect(sanitizeCommands([{ type: 'emote', emote: 'nice' }, { type: 'emote', emote: 'spam' }], 3)).toEqual([{ type: 'emote', playerId: 3, emote: 'nice' }]);
     const [ping] = sanitizeCommands([{ type: 'emote', emote: 'here', at: { x: -50, z: 999 } }], 3);
-    expect(ping).toEqual({ type: 'emote', playerId: 3, emote: 'here', at: { x: 0, z: 70 } });
+    expect(ping).toEqual({ type: 'emote', playerId: 3, emote: 'here', at: { x: -16, z: 144 } });
   });
 
   it('a client emote reaches the host once, not every tick', () => {
