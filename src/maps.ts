@@ -6,15 +6,15 @@ import { FLOORS, RUN_FLOORS } from './sim/config/floors';
  */
 
 /** arenas for versus: every floor with room to fight, the boss floors and the Town too */
-export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop', 'helipad', 'jungle', 'servers', 'underwater', 'waldsee'];
+export const VERSUS_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop', 'helipad', 'uplink', 'jungle', 'servers', 'underwater', 'waldsee'];
 /** the map choice "rotation": a random arena for every match, a new one after each */
 export const MAP_ROTATION = 'random';
 
 /** where a Boss Brawl can be fought: the arena first (the default), then every other floor with room for it */
-export const BRAWL_MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'helipad', 'jungle', 'servers', 'underwater', 'waldsee'];
+export const BRAWL_MAPS = ['arena', 'floor01', 'candy', 'neon', 'highway', 'rooftop', 'helipad', 'uplink', 'jungle', 'servers', 'underwater', 'waldsee'];
 
 /** maps for "Single floor": the floors of the tower in their order, then the Town and the games between the floors */
-export const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'helipad', 'jungle', 'servers', 'underwater', 'waldsee', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
+export const QUICK_MAPS = [...RUN_FLOORS.slice(0, 4), 'highway', RUN_FLOORS[4], 'helipad', 'uplink', 'jungle', 'servers', 'underwater', 'waldsee', 'race', 'lane', 'maze'].filter(id => FLOORS[id] && FLOORS[id].kind !== 'shaft');
 
 /** the maps of a list one may play: the Town is walked in first person only, so not with the view fixed from above */
 export const withoutTown = (maps: string[], noTown: boolean): string[] => (noTown ? maps.filter(id => id !== 'waldsee') : maps);

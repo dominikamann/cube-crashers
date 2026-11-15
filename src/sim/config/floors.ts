@@ -15,6 +15,7 @@ import { floorJungle } from './floor-jungle';
 import { floorServers } from './floor-servers';
 import { floorWaldsee } from './floor-waldsee';
 import { floorUnderwater } from './floor-underwater';
+import { floorUplink } from './floor-uplink';
 
 export interface FloorDef {
   map: FloorMap;
@@ -36,6 +37,7 @@ export const FLOORS: Record<string, FloorDef> = {
   [floorArena.id]: { map: floorArena, theme: 'arena', kind: 'boss', boss: 'megaBlock', name: 'floor.arena', eliteBonus: 0 },
   [floorRooftop.id]: { map: floorRooftop, theme: 'rooftop', kind: 'boss', boss: 'worm', name: 'floor.rooftop', eliteBonus: 0 },
   [floorHelipad.id]: { map: floorHelipad, theme: 'helipad', kind: 'boss', boss: 'worm', name: 'floor.helipad', eliteBonus: 0 },
+  [floorUplink.id]: { map: floorUplink, theme: 'uplink', kind: 'boss', boss: 'worm', name: 'floor.uplink', eliteBonus: 0 },
   [floorJungle.id]: { map: floorJungle, theme: 'jungle', kind: 'nests', name: 'floor.jungle', eliteBonus: 0.05 },
   [floorServers.id]: { map: floorServers, theme: 'servers', kind: 'nests', name: 'floor.servers', eliteBonus: 0.15 },
   // the Town is not a floor of the run: it is one of the games between the floors (see run.ts), a boss fight with
@@ -57,19 +59,20 @@ export const RUN_CHOICES: string[][] = [
   [floorCandy.id, floorJungle.id],
   [floorArena.id, floorUnderwater.id],
   [floorNeon.id, floorHighway.id, floorServers.id],
-  [floorRooftop.id, floorHelipad.id],
+  [floorRooftop.id, floorHelipad.id, floorUplink.id],
 ];
 
 /** the floors of one run, one of each floor's choices */
 export function runFloors(seed: number): string[] {
-  // a different slice of the seed for each floor, so the choices do not move in step
-  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 2, 4, 8][i]) % choices.length]);
+  // a different slice of the seed for each floor, so the choices do not move in step (the last floor's is no power
+  // of two: those slices pick the bosses, see runBosses, and the arena has as many bosses as the top has worlds)
+  return RUN_CHOICES.map((choices, i) => choices[Math.floor(seed / [1, 1, 2, 4, 3][i]) % choices.length]);
 }
 
 /**
  * The bosses a boss floor of a Tower Run can have, picked by the seed like the worlds: the Mega Block's arena is
- * also where the Rhino has room to charge, and on the roof or the helipad the run ends with the Segment Worm, King
- * Rex or the Tarantula Queen; the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
+ * also where the Rhino has room to charge, and on the roof, the helipad or under the Uplink Dish the run ends with the
+ * Segment Worm, King Rex or the Tarantula Queen; the Schrättele can be in any of them, at a fire of her own. (The Kraken stays in its sea, and Angry Dominik stays the end of the Boss Rush.) The first
  * of each list is the floor's own boss: the one a Single floor has.
  */
 export const RUN_BOSSES: Record<string, BossKind[]> = {
@@ -77,6 +80,7 @@ export const RUN_BOSSES: Record<string, BossKind[]> = {
   [floorUnderwater.id]: ['kraken'],
   [floorRooftop.id]: ['worm', 'rex', 'spider', 'witch'],
   [floorHelipad.id]: ['worm', 'rex', 'spider', 'witch'],
+  [floorUplink.id]: ['worm', 'rex', 'spider', 'witch'],
 };
 
 /**

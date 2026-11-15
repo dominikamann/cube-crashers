@@ -232,7 +232,7 @@ best weapon, best combo, towers built, coins collected, revives and downs.
 | 2 | Candy Factory *or* Pixel Jungle | Nests; **conveyor belts** and gumball machines for cover in the factory; **tall grass** in the jungle hides monsters until they are close, crocodiles and monkeys live there | a game between |
 | 3 | Mega Block Arena *or* Sunken Arcade | **Boss: Mega Block**, the **Rhino** *or* **the Schrättele** in the arena, or under water **the Kraken** with fish and sharks | a game between |
 | 4 | Neon City, Neon Highway *or* Server Farm | Nests; permanent night, more elites; in the server farm cooling fans blow you along the aisles | a game between |
-| 5 | Rooftop *or* Sky Helipad | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**; on the helipad a parked helicopter is cover and its rotor wash blows you across the top of the pad | – |
+| 5 | Rooftop, Sky Helipad *or* Uplink Dish | **Final boss: Segment Worm**, **King Rex**, the **Tarantula Queen** *or* **the Schrättele**; on the helipad a parked helicopter is cover and its rotor wash blows you across the top of the pad; under the Uplink's giant dish the **feeder lines** give a jolt of speed and the **transformer yards** are live gratings no monster sets foot on | – |
 
 Which world each floor is, and which boss waits on a boss floor, depends on the run (its seed), so no two runs
 look quite the same; no boss comes twice in a run (a run that goes through the Town meets the Schrättele there and on no
@@ -493,9 +493,9 @@ the ones that do.
 
 | Mode | `--map` | Default |
 |---|---|---|
-| versus (`discovery`, `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`) | `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop`, `helipad`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` | `random`: a new arena each match, never the same twice in a row |
-| `quick` (Single floor) | `floor01`, `candy`, `arena`, `neon`, `highway`, `rooftop`, `helipad`, `jungle`, `servers`, `underwater`, `waldsee`, `race` (Kart Rally), `lane` (Lane Defense), `maze` (Glitch Maze), or `random` | `random`: a new floor each match |
-| `brawl` (Boss Brawl) | `arena`, `floor01`, `candy`, `neon`, `highway`, `rooftop`, `helipad`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` (another one each match) | `arena` |
+| versus (`discovery`, `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`) | `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` | `random`: a new arena each match, never the same twice in a row |
+| `quick` (Single floor) | `floor01`, `candy`, `arena`, `neon`, `highway`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, `race` (Kart Rally), `lane` (Lane Defense), `maze` (Glitch Maze), or `random` | `random`: a new floor each match |
+| `brawl` (Boss Brawl) | `arena`, `floor01`, `candy`, `neon`, `highway`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` (another one each match) | `arena` |
 | `bossrush` | `own` (each boss on its own floor), `random` (a random map for each boss), or one of the Boss Brawl's maps for all of them | `own` |
 | `coop`, `endless` | none: they bring their own floors | |
 

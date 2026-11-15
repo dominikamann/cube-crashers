@@ -239,6 +239,7 @@ export const en = {
   'floor.neon': 'Neon City',
   'floor.rooftop': 'Rooftop',
   'floor.helipad': 'Sky Helipad',
+  'floor.uplink': 'Uplink Dish',
   'floor.highway': 'Neon Highway',
   'floor.race': 'Kart Rally',
   'floor.lane': 'Lane Defense',

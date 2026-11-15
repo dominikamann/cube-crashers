@@ -57,7 +57,7 @@ describe('the new worlds', () => {
     expect([...seen[1]].sort()).toEqual(['candy', 'jungle']);
     expect([...seen[2]].sort()).toEqual(['arena', 'underwater']);
     expect([...seen[3]].sort()).toEqual(['highway', 'neon', 'servers']);
-    expect([...seen[4]].sort()).toEqual(['helipad', 'rooftop']);
+    expect([...seen[4]].sort()).toEqual(['helipad', 'rooftop', 'uplink']);
     expect(runFloors(7)).toEqual(runFloors(7));
   });
 

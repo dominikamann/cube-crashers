@@ -40,7 +40,8 @@ describe('the Sky Helipad', () => {
     // the last floor's world does not move in step with the others: over the seeds every pairing comes up
     const pairs = new Set<string>();
     for (let seed = 1; seed < 80; seed++) pairs.add(runFloors(seed).slice(2).join('+'));
-    expect(pairs.size).toBe(2 * 3 * 2);
+    // (two worlds for floor 3, three for floor 4, three tops: the Rooftop, the Helipad and the Uplink Dish)
+    expect(pairs.size).toBe(2 * 3 * 3);
     // and the run ends with one of its bosses
     const bosses = new Set<string>();
     for (let seed = 1; seed < 200; seed++) {

@@ -170,6 +170,32 @@ export function themeFor(id: string): { day: Theme; night: Theme } {
         day: { ...THEMES.day, background: 0xaccbec, skyTop: 0x1d3f8c, roadA: 0xa4a9b2, roadB: 0x9a9fa8, wallA: 0x4c5569, wallB: 0x444c5e, hemiGround: 0x6e7684, fillColor: 0xa8c8ff, fillIntensity: 0.5, sunColor: 0xfff2dc, sunIntensity: 1.6, fogNear: 26, fogFar: 56 },
         night: THEMES.night,
       };
+    case 'uplink': {
+      // the blue hour high up: a deep indigo sky over a warm last light on the horizon, cool concrete, steel-blue
+      // cabinets, the cyan of the dish's signal as the fill; at night only the lights of the station
+      const dusk: Theme = {
+        ...THEMES.day,
+        background: 0xe89a7c,
+        skyTop: 0x1c1f5c,
+        fillColor: 0x3bd6ff,
+        fillIntensity: 0.55,
+        fogNear: 26,
+        fogFar: 60,
+        hemiSky: 0xb8c4ff,
+        hemiGround: 0x3a3f58,
+        hemiIntensity: 1.0,
+        sunColor: 0xffb078,
+        sunIntensity: 1.35,
+        roadA: 0x777e9b,
+        roadB: 0x6f7692,
+        wallA: 0x485a7c,
+        wallB: 0x415271,
+        glow: 1.5,
+        bloomStrength: 0.3,
+        bloomThreshold: 0.85,
+      };
+      return { day: dusk, night: { ...THEMES.night, background: 0x161634, skyTop: 0x05050f, roadA: 0x3c4160, roadB: 0x373c59, wallA: 0x34436a, wallB: 0x2e3c5f, fillColor: 0x3bd6ff } };
+    }
     case 'maze': {
       // a dark glitch grid: deep blue floor, glowing blue walls
       const mazeLook: Theme = {

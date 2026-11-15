@@ -64,6 +64,7 @@ const LADDER_COLORS: Record<string, [number, number]> = {
   arena: [0x6b4a2a, 0xb08a5a],
   rooftop: [0x3a3f52, 0x6a4a3a],
   helipad: [0x3c4454, 0xffc93a],
+  uplink: [0x5a6680, 0xc9cfdd],
   jungle: [0x5a3d22, 0x8a6236],
   servers: [0x454a66, 0xf4f4ff],
   underwater: [0x4a5656, 0x7a8a7a],
@@ -73,7 +74,8 @@ const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 /**
  * Theme decoration: benches and lamps on the plaza, lollipops in the factory, signs and cables in the
  * neon city, banners around the arena, vents and antennas on the roof, ferns and tall grass in the
- * jungle, blinking racks in the server farm, coral and kelp in the sunken arcade. Everything stands
+ * jungle, blinking racks in the server farm, coral and kelp in the sunken arcade, the giant dish and its
+ * cabinets, masts and transformer yards at the Uplink. Everything stands
  * next to a wall or on top of one, never on a path, pad or spawn, and it is merged into a few meshes;
  * only what moves (grass, kelp, LEDs, bubbles) is drawn as instances that are refilled each frame.
  */
@@ -90,6 +92,10 @@ export function buildDecor(input: DecorContext): Decor {
   const flames: THREE.MeshStandardMaterial[] = [];
   const breathers: THREE.MeshStandardMaterial[] = [];
   const spinners: { mesh: THREE.Object3D; speed: number }[] = [];
+  /** the big dish: it slowly swings about its mast, tracking something */
+  const trackers: { mesh: THREE.Object3D; yaw: number; speed: number; swing: number }[] = [];
+  /** lights that come on one after the other: the rings of the dish's signal */
+  const pulses: { mat: THREE.MeshStandardMaterial; phase: number }[] = [];
   const pools: InstancedPool[] = [];
   const pieces: Piece[] = [];
   const unit = new THREE.BoxGeometry(1, 1, 1);
@@ -586,9 +592,213 @@ export function buildDecor(input: DecorContext): Decor {
         props.box(0.4, 0.06, 0.06, dark, 0.45, 0.55, 0.2);
       }
     }
-  }
+  } else if (look === 'uplink') {
+    const steel = lambert(0x5a6680), dark = lambert(0x2a3045), concrete = lambert(0x8a8ea0), white = lambert(0xe8ecf4), yellow = lambert(0xffd34a), rust = lambert(0x7a5a4a), cable = lambert(0x23283a);
+    const lattice = lambert(0xc9cfdd), ceramic = lambert(0xd8d2c4), copper = lambert(0xb87333);
+    const feed = glowMat(0x5fe8ff, 1.8), flood = glowMat(0xfff1c4, 1.6), window = glowMat(0x9fd8ff, 0.9), screen = flicker(0x7fd8ff, 1.1, 21);
+    breathers.push(feed);
+    const ledGreen = pool(glowMat(0x3bff8a, 1.4)), ledAmber = pool(glowMat(0xffb020, 1.2));
+    /** a status light on a cabinet face: it blinks on its own */
+    const led = (x: number, y: number, z: number, h: number) => pieces.push({ pool: h < 0.7 ? ledGreen : ledAmber, x, y, z, sx: 0.06, sy: 0.06, sz: 0.06, move: 'blink', phase: h * 40 });
+    /** a red aircraft-warning light */
+    const beacon = (phase: number) => blink(0xff3b3b, 1.0, phase);
+    /** an antenna mast: a lattice of three uprights with cross bars, a beacon on top */
+    const mast = (h: number, phase: number) => {
+      for (const [sx, sz] of [[-0.14, -0.08], [0.14, -0.08], [0, 0.16]]) props.box(0.05, h, 0.05, lattice, sx, h / 2, sz);
+      for (let y = 0.4; y < h; y += 0.5) props.box(0.34, 0.03, 0.03, lattice, 0, y, -0.08).box(0.03, 0.03, 0.3, lattice, -0.07, y, 0.04, 0.5).box(0.03, 0.03, 0.3, lattice, 0.07, y, 0.04, -0.5);
+      props.box(0.1, 0.1, 0.1, dark, 0, h + 0.02, 0).box(0.12, 0.12, 0.12, beacon(phase), 0, h + 0.14, 0);
+    };
+    /** a small dish on a pole: eight plates round a hub, tipped toward the sky, its feed on a short arm */
+    const smallDish = (yaw: number) => {
+      props.box(0.1, 1.2, 0.1, steel, 0, 0.6, 0).box(0.3, 0.1, 0.3, dark, 0, 1.2, 0);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        props.box(0.34, 0.04, 0.3, white, Math.cos(a) * 0.3, 1.45 + Math.sin(a) * 0.17, Math.sin(a) * 0.3 * 0.6, yaw + a, Math.sin(a) * 0.5);
+      }
+      props.box(0.04, 0.5, 0.04, dark, 0, 1.6, -0.1, 0, 0.5).box(0.1, 0.1, 0.1, feed, 0, 1.82, -0.2);
+    };
 
-  else if (look === 'jungle') {
+    // ---- the giant dish on its pedestal in the middle: a mast, a yoke and a lattice bowl that slowly tracks
+    // (the pedestal is the 2x2 block nearest the middle of the map)
+    let pedestal: { tx: number; tz: number } | null = null;
+    for (const c of ctx.wallTiles) {
+      if (!isWall(c.tx + 1, c.tz) || !isWall(c.tx, c.tz + 1) || !isWall(c.tx + 1, c.tz + 1) || isWall(c.tx - 1, c.tz) || isWall(c.tx, c.tz - 1) || isWall(c.tx + 2, c.tz) || isWall(c.tx, c.tz + 2)) continue;
+      const d = Math.hypot(c.tx + 1 - map.w / 2, c.tz + 1 - map.h / 2);
+      if (!pedestal || d < Math.hypot(pedestal.tx + 1 - map.w / 2, pedestal.tz + 1 - map.h / 2)) pedestal = c;
+    }
+    if (pedestal) {
+      const dish = new THREE.Group();
+      const top = wallTopY(pedestal.tx, pedestal.tz);
+      dish.position.set(pedestal.tx + 1, top, pedestal.tz + 1);
+      const dp = new PropBuilder();
+      // the base plate, the mast with its service ladder, the yoke that holds the bowl's axle
+      dp.at(0, 0, 0);
+      dp.box(2.2, 0.16, 2.2, concrete, 0, 0.08, 0).box(0.6, 2.3, 0.6, steel, 0, 1.3, 0).box(0.7, 0.1, 0.7, dark, 0, 2.5, 0);
+      for (const [sx, sz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) dp.box(0.14, 0.1, 0.14, dark, sx, 0.2, sz);
+      for (const sx of [-0.14, 0.14]) dp.box(0.04, 2.0, 0.04, lattice, sx, 1.2, 0.36);
+      for (let y = 0.4; y < 2.2; y += 0.25) dp.box(0.32, 0.03, 0.03, lattice, 0, y, 0.36);
+      dp.box(1.8, 0.3, 0.6, steel, 0, 2.6, 0);
+      for (const sx of [-0.75, 0.75]) dp.box(0.22, 0.9, 0.22, steel, sx, 2.9, 0).box(0.3, 0.3, 0.3, dark, sx, 3.3, 0);
+      dp.build(dish);
+      // the bowl, built with its axis up and then tipped toward the north and the sky: sixteen ribs along a parabola,
+      // rings across them, a hub plate, the feed horn on three struts over the focus, and two beacons on the rim
+      const bowl = new THREE.Group();
+      bowl.position.set(0, 3.3, 0);
+      bowl.rotation.x = -0.6;
+      const bp = new PropBuilder();
+      const R = 4.0, depth = 1.1, k = depth / (R * R), focus = (R * R) / (4 * depth);
+      const ring = (r: number) => k * r * r;
+      bp.at(0, 0, 0);
+      bp.box(1.3, 0.1, 1.3, dark, 0, 0, 0).box(1.3, 0.1, 1.3, dark, 0, 0, 0, Math.PI / 4).box(1.8, 0.2, 0.2, steel, 0, -0.35, 0).box(0.9, 0.5, 0.7, steel, 0, -0.7, 0);
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        for (let r0 = 0.6; r0 < R - 0.01; r0 += 0.85) {
+          const r1 = Math.min(R, r0 + 0.85), rm = (r0 + r1) / 2, dr = r1 - r0, dy = ring(r1) - ring(r0);
+          bp.box(Math.hypot(dr, dy) + 0.04, 0.07, 0.07, lattice, Math.cos(a) * rm, (ring(r0) + ring(r1)) / 2, -Math.sin(a) * rm, a, Math.atan2(dy, dr));
+        }
+      }
+      for (const r of [1.2, 2.1, 3.0, R]) {
+        const n = r < 2 ? 16 : 32, chord = 2 * r * Math.sin(Math.PI / n), rim = r === R;
+        for (let i = 0; i < n; i++) {
+          const a = ((i + 0.5) / n) * Math.PI * 2;
+          bp.box(chord + 0.03, rim ? 0.1 : 0.06, rim ? 0.1 : 0.06, rim ? steel : lattice, Math.cos(a) * r, ring(r), -Math.sin(a) * r, a + Math.PI / 2);
+        }
+      }
+      for (const a of [Math.PI / 2, Math.PI / 2 + (Math.PI * 2) / 3, Math.PI / 2 + (Math.PI * 4) / 3]) {
+        const r = R - 0.3, dy = focus - 0.2 - ring(r);
+        bp.box(Math.hypot(r, dy), 0.06, 0.06, lattice, (Math.cos(a) * r) / 2, (ring(r) + focus - 0.2) / 2, (-Math.sin(a) * r) / 2, a, Math.atan2(-dy, r));
+      }
+      bp.box(0.4, 0.6, 0.4, dark, 0, focus, 0).box(0.5, 0.14, 0.5, dark, 0, focus + 0.34, 0).box(0.3, 0.16, 0.3, feed, 0, focus - 0.36, 0);
+      for (const a of [0, Math.PI]) bp.box(0.14, 0.14, 0.14, beacon(a), Math.cos(a) * R, ring(R) + 0.14, 0);
+      bp.build(bowl);
+      // the signal: rings of light widening up the beam, lit one after the other
+      for (let j = 0; j < 4; j++) {
+        const mat = glowMat(0x5fe8ff, 1.2);
+        const m = new THREE.Mesh(new THREE.TorusGeometry(0.45 + j * 0.4, 0.035, 6, 32), mat);
+        m.rotation.x = Math.PI / 2;
+        m.position.set(0, focus + 1.1 + j * 0.9, 0);
+        bowl.add(m);
+        pulses.push({ mat, phase: j * 0.9 });
+      }
+      dish.add(bowl);
+      group.add(dish);
+      // (the rest of the decoration is built in place; the dish's parts are placed through its groups, so their
+      // world matrices are worked out here, before the first frame does)
+      dish.updateMatrixWorld(true);
+      trackers.push({ mesh: dish, yaw: 0, speed: 0.11, swing: 0.3 });
+    }
+
+    // ---- every block has its own gear on top, by its size: the 2x2 cabinets, the 3x2 transformers, the halls
+    for (const c of ctx.wallTiles) {
+      if (onBorder(c.tx, c.tz) || isWall(c.tx - 1, c.tz) || isWall(c.tx, c.tz - 1)) continue;
+      let w = 1, d = 1;
+      while (isWall(c.tx + w, c.tz)) w++;
+      while (isWall(c.tx, c.tz + d)) d++;
+      if (pedestal && c.tx === pedestal.tx && c.tz === pedestal.tz) continue;
+      const y = wallTopY(c.tx, c.tz), r = hash(c.tx * 7, c.tz * 3);
+      if (w === 2 && d === 2) {
+        const byLane = DIRS.some(([ox, oz]) => [tileOf(c.tx + ox * 2, c.tz + oz * 2), tileOf(c.tx + ox * 2, c.tz + 1 + oz * 2), tileOf(c.tx + 1 + ox * 2, c.tz + oz * 2)].includes(Tile.Boost));
+        props.at(c.tx + 1, y, c.tz + 1, Math.floor(r * 4) * Q);
+        if (byLane) {
+          // a junction cabinet where a feeder line ends: a fuse box with a hazard stripe and an amber light
+          props.box(1.5, 0.5, 1.2, steel, 0, 0.25, 0).box(1.54, 0.08, 1.24, yellow, 0, 0.3, 0).box(0.5, 0.3, 0.3, dark, 0.3, 0.65, 0).box(0.12, 0.12, 0.12, blink(0xffb020, 2.2, r * 9), 0.3, 0.86, 0);
+          props.box(0.1, 0.4, 0.1, ceramic, -0.4, 0.7, 0.2).box(0.1, 0.4, 0.1, ceramic, -0.4, 0.7, -0.2).box(0.06, 0.06, 0.6, copper, -0.4, 0.92, 0);
+        } else if (r < 0.34) {
+          smallDish(Q);
+        } else if (r < 0.67) {
+          mast(2.6 + r, r * 9);
+        } else {
+          // an air conditioner with a fan that turns
+          props.box(1.4, 0.6, 1.1, concrete, 0, 0.3, 0).box(0.9, 0.04, 0.9, dark, 0, 0.62, 0).box(0.1, 0.2, 0.1, steel, 0, 0.7, 0);
+          const blades = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.03, 0.1), white);
+          blades.position.set(c.tx + 1, y + 0.68, c.tz + 1);
+          group.add(blades);
+          spinners.push({ mesh: blades, speed: 5 + r * 6 });
+        }
+      } else if (w === 3 && d === 2) {
+        // a transformer: a finned tank with insulators and a bushing, a mast beside it
+        props.at(c.tx + 1.5, y, c.tz + 1);
+        props.box(2.4, 0.8, 1.4, steel, 0, 0.4, 0).box(2.5, 0.1, 1.5, dark, 0, 0.82, 0);
+        for (let i = 0; i < 6; i++) props.box(0.06, 0.6, 1.5, dark, -1.0 + i * 0.4, 0.4, 0);
+        for (const sx of [-0.7, 0, 0.7]) for (let j = 0; j < 4; j++) props.box(0.3 - j * 0.03, 0.08, 0.3 - j * 0.03, ceramic, sx, 0.95 + j * 0.12, 0.3);
+        props.box(2.0, 0.05, 0.05, copper, 0, 1.45, 0.3).box(0.12, 0.4, 0.12, rust, -1.0, 1.0, -0.5).box(0.1, 0.1, 0.1, beacon(r * 7), -1.0, 1.25, -0.5);
+        props.at(c.tx + 2.5, y, c.tz + 0.5);
+        mast(3.2, r * 11);
+      } else if (w >= 8 && d >= 4) {
+        // a hall: a railing round the roof, a lattice mast with a beacon on one corner, a small dish, skylights,
+        // an exhaust stack, and lit windows in the faces that look onto the floor (its blocks come in different
+        // heights, like every block: everything stands on the top of the block under it)
+        const topAt = (x: number, z: number) => wallTopY(Math.floor(x), Math.floor(z));
+        const on = (x: number, z: number, yaw = 0) => props.at(x, topAt(x, z), z, yaw);
+        for (let i = 0; i < w; i++) for (const z of [0.15, d - 0.15]) on(c.tx + i + 0.5, c.tz + z).box(0.04, 0.9, 0.04, steel, 0, 0.45, 0).box(1, 0.04, 0.04, steel, 0, 0.9, 0);
+        for (let i = 0; i < d; i++) for (const x of [0.15, w - 0.15]) on(c.tx + x, c.tz + i + 0.5).box(0.04, 0.9, 0.04, steel, 0, 0.45, 0).box(0.04, 0.04, 1, steel, 0, 0.9, 0);
+        on(c.tx + (r < 0.5 ? 1.2 : w - 1.2), c.tz + 1.2);
+        mast(4.0, r * 13);
+        on(c.tx + (r < 0.5 ? w - 1.5 : 1.5), c.tz + d - 1.5);
+        smallDish(r < 0.5 ? -Q : Q);
+        for (let i = 2; i < w - 2; i += 2) on(c.tx + i + 0.5, c.tz + d / 2).box(0.9, 0.2, 0.9, dark, 0, 0.1, 0).box(0.76, 0.04, 0.76, window, 0, 0.21, 0);
+        on(c.tx + w / 2, c.tz + 1).box(0.4, 1.2, 0.4, concrete, 0, 0.6, 0).box(0.5, 0.1, 0.5, dark, 0, 1.22, 0);
+        for (let i = 0; i < w; i++)
+          for (const [z, side] of [[c.tz - 1, -1], [c.tz + d, 1]] as const) {
+            if (!isFloor(c.tx + i, z) || !free({ tx: c.tx + i, tz: z }) || i % 2 === 0) continue;
+            props.at(c.tx + i + 0.5, 0, c.tz + (side < 0 ? 0 : d - 1) + 0.5 + side * 0.515);
+            props.box(0.7, 0.4, 0.03, hash(c.tx + i, z) < 0.8 ? window : screen, 0, 0.75, 0).box(0.76, 0.46, 0.02, dark, 0, 0.75, -side * 0.005);
+          }
+      }
+    }
+
+    // ---- the transformer yards: fence posts round the gratings, transformers along their back wall
+    for (let tz = 1; tz < map.h - 1; tz++)
+      for (let tx = 1; tx < map.w - 1; tx++) {
+        if (tileOf(tx, tz) !== Tile.Hazard || !free({ tx, tz })) continue;
+        for (const [ox, oz] of DIRS) {
+          if (tileOf(tx + ox, tz + oz) !== Tile.Floor) continue;
+          props.at(tx + 0.5 + ox * 0.42, 0, tz + 0.5 + oz * 0.42, Math.atan2(ox, oz));
+          props.box(0.08, 0.9, 0.08, steel, 0, 0.45, 0).box(0.1, 0.08, 0.1, yellow, 0, 0.92, 0).box(1, 0.04, 0.03, steel, 0, 0.6, 0).box(1, 0.04, 0.03, steel, 0, 0.3, 0);
+        }
+        const wall = DIRS.find(([ox, oz]) => isWall(tx + ox, tz + oz));
+        if (!wall || hash(tx * 5, tz * 9) > 0.45) continue;
+        props.at(tx + 0.5 + wall[0] * 0.1, 0, tz + 0.5 + wall[1] * 0.1, Math.atan2(-wall[0], -wall[1]));
+        props.box(0.6, 0.7, 0.5, steel, 0, 0.35, 0).box(0.64, 0.06, 0.54, dark, 0, 0.72, 0);
+        for (let i = 0; i < 4; i++) props.box(0.04, 0.5, 0.56, dark, -0.24 + i * 0.16, 0.35, 0);
+        for (const sx of [-0.15, 0.15]) for (let j = 0; j < 3; j++) props.box(0.16 - j * 0.03, 0.06, 0.16 - j * 0.03, ceramic, sx, 0.8 + j * 0.09, 0);
+      }
+
+    // ---- the feeder lines are marked on the floor beside them: a yellow line along each edge; cable ducts cross
+    // the floor here and there
+    for (const c of ctx.floorTiles) {
+      for (const [ox, oz] of DIRS) if (tileOf(c.tx + ox, c.tz + oz) === Tile.Boost) decals.rect(c.tx + 0.5 + ox * 0.44, c.tz + 0.5 + oz * 0.44, ox ? 0.1 : 1, ox ? 1 : 0.1, 0xffd34a);
+      if (hash(c.tx * 3, c.tz * 13) > 0.985 && clear(c.tx, c.tz)) props.at(c.tx + 0.5, 0, c.tz + 0.5, hash(c.tz, c.tx) * Math.PI).box(0.9, 0.07, 0.16, cable, 0, 0.04, 0).box(0.5, 0.06, 0.12, cable, 0.1, 0.1, 0.1);
+    }
+
+    // ---- along the walls: cabinets with status lights, cable drums, waveguides, floodlights, crates, signs
+    for (const s of edgeSpots(0.17, 19)) {
+      props.at(s.x, 0, s.z, s.yaw, AGAINST_WALL);
+      const k = Math.floor(s.r * 6);
+      if (k === 0) {
+        // an equipment cabinet with a door and two status lights
+        props.box(0.7, 1.3, 0.5, steel, 0, 0.65, 0).box(0.56, 1.0, 0.02, dark, 0, 0.7, 0.26).box(0.06, 0.2, 0.03, white, 0.2, 0.7, 0.27);
+        const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+        led(s.x + fx * 0.28 - fz * 0.18, 1.12, s.z + fz * 0.28 + fx * 0.18, hash(s.tx, s.tz));
+        led(s.x + fx * 0.28 - fz * 0.06, 1.12, s.z + fz * 0.28 + fx * 0.06, hash(s.tz, s.tx * 3));
+      } else if (k === 1) {
+        // a cable drum on its side, half unwound
+        props.box(0.7, 0.1, 0.7, rust, 0, 0.05, 0, Math.PI / 4).box(0.7, 0.1, 0.7, rust, 0, 0.05, 0).box(0.44, 0.32, 0.44, cable, 0, 0.26, 0, Math.PI / 4).box(0.7, 0.1, 0.7, rust, 0, 0.47, 0, Math.PI / 4).box(0.7, 0.1, 0.7, rust, 0, 0.47, 0);
+      } else if (k === 2) {
+        // a waveguide: a square pipe along the wall with flanges, up into the air at one end
+        props.box(1.2, 0.16, 0.16, white, 0, 0.3, -0.12).box(0.2, 0.22, 0.22, steel, -0.4, 0.3, -0.12).box(0.2, 0.22, 0.22, steel, 0.3, 0.3, -0.12).box(0.16, 0.7, 0.16, white, 0.6, 0.6, -0.12).box(0.1, 0.14, 0.1, concrete, -0.2, 0.1, -0.12);
+      } else if (k === 3) {
+        // a floodlight on a pole, looking onto the floor
+        props.box(0.3, 0.1, 0.3, concrete, 0, 0.05, 0).box(0.08, 2.4, 0.08, steel, 0, 1.2, 0).box(0.4, 0.26, 0.2, dark, 0, 2.45, 0.1).box(0.34, 0.2, 0.04, flood, 0, 2.45, 0.21);
+      } else if (k === 4) {
+        // equipment crates with a hazard stripe
+        props.box(0.8, 0.5, 0.6, steel, 0, 0.25, 0).box(0.82, 0.06, 0.62, yellow, 0, 0.3, 0).box(0.5, 0.4, 0.5, steel, 0.1, 0.7, -0.03, 0.3);
+      } else {
+        // a warning sign: a yellow plate with a dark bolt on a post
+        props.box(0.06, 1.0, 0.06, steel, 0, 0.5, 0).box(0.5, 0.5, 0.04, yellow, 0, 1.15, 0).box(0.1, 0.3, 0.02, dark, 0, 1.15, 0.03, 0, 0.35);
+      }
+    }
+  } else if (look === 'jungle') {
     const leafA = lambert(0x3fae4a), leafB = lambert(0x2f8a3c), fern = lambert(0x4fbf5a), bark = lambert(0x6b4e32), stone = lambert(0x8a8f84), stoneDark = lambert(0x6c7168);
     const capRed = lambert(0xe04a3a), capTan = lambert(0xd9b07a), stem = lambert(0xf2e8d8), vine = lambert(0x3f9a38), flower = glowMat(0xff6ab0, 0.6);
     const blade = pool(lambert(0x5fbf4a)), bladeDark = pool(lambert(0x3f9a38));
@@ -780,6 +990,8 @@ export function buildDecor(input: DecorContext): Decor {
       for (const m of flames) m.emissiveIntensity = (1.5 + 0.5 * Math.sin(time * 9) * Math.sin(time * 5.3)) * Math.min(glow, 1.4);
       for (const f of flags) f.mesh.rotation.y = f.yaw + Math.sin(time * 1.8 + f.phase) * 0.18;
       for (const s of spinners) s.mesh.rotation.y = time * s.speed;
+      for (const t of trackers) t.mesh.rotation.y = t.yaw + Math.sin(time * t.speed) * t.swing;
+      for (const p of pulses) p.mat.emissiveIntensity = (0.25 + 0.95 * Math.max(0, Math.sin(time * 2.2 - p.phase))) * glow;
       for (const p of pools) p.begin();
       for (const p of pieces) {
         if (p.move === 'sway') {
