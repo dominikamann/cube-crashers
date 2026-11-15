@@ -307,7 +307,6 @@ export const en = {
   'credits.privacyGame': 'Privacy',
   'credits.imprint': 'Imprint',
   'credits.security': 'Security',
-  'credits.licenseLink': 'License',
   'credits.licenses': 'Licenses',
   'credits.website': 'Game Website',
   'licenses.title': 'Licenses',
