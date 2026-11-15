@@ -13,7 +13,10 @@ copies or commits unavailable under MIT. A fork based on an earlier MIT release 
 granted with that release. Read this note together with the license and release notes for the
 specific version.
 
-New contributions intended for dual licensing must be covered by a separate, explicitly accepted
-CLA before merge. The repository's CLA draft is not yet an operative agreement.
+Community contributors retain ownership of their contributions. Contributions may be accepted
+for distribution under the project's PolyForm Noncommercial License 1.0.0 after the contributor
+explicitly confirms those terms in the pull request. That confirmation does not grant commercial
+relicensing or sublicensing rights. Any commercial use of a contributor's work requires a
+separate written agreement with that contributor before the commercial use.
 
 Commercial licensing contact: [AmannLabs](https://amannlabs.eu).
