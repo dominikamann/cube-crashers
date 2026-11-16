@@ -14,17 +14,37 @@ const CLOCK_EASE = 0.1, CLOCK_RESET = 8;
 
 interface Sample extends Vec2 {
   tick: number;
+  /** a player: the angle it aims at (see `angleOf`) and the spot on the ground it aims at */
+  aim?: number;
+  aimPoint?: Vec2;
 }
 
+/** what is smoothed of one player or vehicle: where it is, and for a player where it aims */
+interface Thing {
+  key: string;
+  pos: Vec2;
+  aim?: Vec2;
+  aimPoint?: Vec2;
+}
+
+/** a direction as an angle, and back: `aim` is a unit vector, so the two go round and round without loss */
+const angleOf = (dir: Vec2) => Math.atan2(dir.x, dir.z);
+/** the shortest turn from one angle to another, in -π..π */
+const turn = (from: number, to: number) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
+
 /** where something was at `at` (in ticks, with a fraction), on the line through the positions known of it */
-function where(samples: Sample[], at: number): Vec2 {
+function where(samples: Sample[], at: number): Sample {
   const last = samples[samples.length - 1];
   if (at >= last.tick) return last;
   for (let i = samples.length - 1; i > 0; i--) {
     const a = samples[i - 1], b = samples[i];
     if (at < a.tick) continue;
     const k = (at - a.tick) / (b.tick - a.tick);
-    return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k };
+    const out: Sample = { tick: at, x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k };
+    // (the aim turns the short way round, so a figure never spins through a whole circle between two ticks)
+    if (a.aim !== undefined && b.aim !== undefined) out.aim = a.aim + turn(a.aim, b.aim) * k;
+    if (a.aimPoint && b.aimPoint) out.aimPoint = { x: a.aimPoint.x + (b.aimPoint.x - a.aimPoint.x) * k, z: a.aimPoint.z + (b.aimPoint.z - a.aimPoint.z) * k };
+    return out;
   }
   return samples[0];
 }
@@ -35,6 +55,12 @@ function where(samples: Sample[], at: number): Vec2 {
  * tick before the frame's moment: `alpha` of the way from the tick before the newest one to the newest. A frame
  * does not always hold one tick: it may hold none or several, and then the way starts where the kart was one tick
  * ago, not where it was in the last frame (that drew it a whole tick too far back, every time: a wobble).
+ *
+ * A player's aim goes the same way: which way the figure faces and where its crosshair lies on the ground are
+ * taken from the aim, and the aim moves with every tick while the camera above follows the figure (the spot on the
+ * ground under a still mouse pointer moves with the camera). Drawn from the newest tick alone, figure and
+ * crosshair would turn and slide in tick-sized steps while the body glides: a judder, on a screen that draws
+ * more frames than there are ticks, or whenever a frame holds no tick or two.
  *
  * A LAN client (`remote`, with the seconds since the last frame) gets its state in snapshots, every other tick
  * and whenever they arrive: there the time between frames says how far along the way everything is.
@@ -51,7 +77,7 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
   let clock = 0, ahead: number | null = null, drawnAt = -Infinity;
   const known = new Map<string, Sample[]>();
   return (s, alpha, remote) => {
-    const things: { key: string; pos: Vec2 }[] = [...s.players.map(p => ({ key: `p${p.id}`, pos: p.pos })), ...s.vehicles.map(v => ({ key: `v${v.id}`, pos: v.pos }))];
+    const things: Thing[] = [...s.players.map(p => ({ key: `p${p.id}`, pos: p.pos, aim: p.aim, aimPoint: p.aimPoint })), ...s.vehicles.map(v => ({ key: `v${v.id}`, pos: v.pos }))];
     if (s !== of || s.tick < tick) {
       of = s;
       tick = -1;
@@ -64,11 +90,15 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
       tick = s.tick;
       arrived = false;
       for (const key of known.keys()) if (!things.some(t => t.key === key)) known.delete(key);
-      for (const { key, pos } of things) {
+      for (const { key, pos, aim, aimPoint } of things) {
         const samples = known.get(key) ?? [];
         const last = samples[samples.length - 1];
         if (last && Math.hypot(pos.x - last.x, pos.z - last.z) > TELEPORT) samples.length = 0;
-        samples.push({ tick, x: pos.x, z: pos.z });
+        const sample: Sample = { tick, x: pos.x, z: pos.z };
+        // (an aim that points nowhere yet is left as it is)
+        if (aim && Math.hypot(aim.x, aim.z) > 0.5) sample.aim = angleOf(aim);
+        if (aimPoint) sample.aimPoint = { x: aimPoint.x, z: aimPoint.z };
+        samples.push(sample);
         if (samples.length > KEPT) samples.shift();
         known.set(key, samples);
       }
@@ -84,18 +114,34 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
     // the moment to draw, in ticks; a client's never runs backwards, however its snapshots come in
     const at = remote ? Math.max(drawnAt, clock - (ahead ?? 0) - SNAPSHOT_DELAY) : arrived ? tick : tick - 1 + Math.max(0, Math.min(1, alpha));
     drawnAt = remote ? Math.min(at, tick) : -Infinity;
-    const real = things.map(t => ({ pos: t.pos, x: t.pos.x, z: t.pos.z }));
-    for (const { key, pos } of things) {
+    const real = things.map(t => ({ ...t, x: t.pos.x, z: t.pos.z, aimX: t.aim?.x, aimZ: t.aim?.z, pointX: t.aimPoint?.x, pointZ: t.aimPoint?.z }));
+    for (const { key, pos, aim, aimPoint } of things) {
       const samples = known.get(key);
       if (!samples) continue;
-      const { x, z } = where(samples, at);
-      pos.x = x;
-      pos.z = z;
+      const w = where(samples, at);
+      pos.x = w.x;
+      pos.z = w.z;
+      if (aim && w.aim !== undefined) {
+        aim.x = Math.sin(w.aim);
+        aim.z = Math.cos(w.aim);
+      }
+      if (aimPoint && w.aimPoint) {
+        aimPoint.x = w.aimPoint.x;
+        aimPoint.z = w.aimPoint.z;
+      }
     }
     return () => {
       for (const r of real) {
         r.pos.x = r.x;
         r.pos.z = r.z;
+        if (r.aim) {
+          r.aim.x = r.aimX!;
+          r.aim.z = r.aimZ!;
+        }
+        if (r.aimPoint) {
+          r.aimPoint.x = r.pointX!;
+          r.aimPoint.z = r.pointZ!;
+        }
       }
     };
   };

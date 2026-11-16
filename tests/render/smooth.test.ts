@@ -30,6 +30,52 @@ describe('smooth positions between sim ticks', () => {
     expect(s.players[0].pos.x).toBe(30);
   });
 
+  it('turns a player and slides its crosshair between the ticks as it does the body, and puts them back after', () => {
+    const s = state();
+    const p = s.players[0] as unknown as { aim: { x: number; z: number }; aimPoint: { x: number; z: number } };
+    p.aim = { x: 0, z: 1 };
+    p.aimPoint = { x: 0, z: 4 };
+    const smooth = createSmoother();
+    smooth(s, 0)();
+    s.tick = 1;
+    // a quarter turn to the right, the crosshair along with it
+    p.aim = { x: 1, z: 0 };
+    p.aimPoint = { x: 4, z: 0 };
+    const restore = smooth(s, 0.5);
+    expect(p.aim.x).toBeCloseTo(Math.SQRT1_2);
+    expect(p.aim.z).toBeCloseTo(Math.SQRT1_2);
+    expect(p.aimPoint.x).toBeCloseTo(2);
+    expect(p.aimPoint.z).toBeCloseTo(2);
+    restore();
+    expect(p.aim).toEqual({ x: 1, z: 0 });
+    expect(p.aimPoint).toEqual({ x: 4, z: 0 });
+  });
+
+  it('turns the short way round, not through a whole circle', () => {
+    const s = state();
+    const p = s.players[0] as unknown as { aim: { x: number; z: number } };
+    // from a little left of straight back to a little right of it
+    p.aim = { x: -0.1, z: -1 };
+    const smooth = createSmoother();
+    smooth(s, 0)();
+    s.tick = 1;
+    p.aim = { x: 0.1, z: -1 };
+    smooth(s, 0.5);
+    expect(p.aim.x).toBeCloseTo(0);
+    expect(p.aim.z).toBeCloseTo(-1);
+  });
+
+  it('leaves a player alone that has no aim yet', () => {
+    const s = state();
+    const smooth = createSmoother();
+    smooth(s, 0)();
+    s.tick = 1;
+    s.players[0].pos.z = 1;
+    smooth(s, 0.5);
+    expect(s.players[0].pos.z).toBeCloseTo(0.5);
+    expect((s.players[0] as unknown as { aim?: unknown }).aim).toBeUndefined();
+  });
+
   it('stands still while the game does (a pause, the countdown)', () => {
     const s = state();
     const smooth = createSmoother();

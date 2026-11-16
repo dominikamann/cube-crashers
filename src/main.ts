@@ -621,7 +621,8 @@ function startGame() {
         renderer.setMouseLook(0, { x: clamp((mouse.x - r.left - vw / 2) / (vw / 2)), y: clamp((mouse.y - r.top - r.height / 2) / (r.height / 2)) });
       } else renderer.setMouseLook(0, null);
       if (split) renderer.setLookAhead(1, true);
-      // players and vehicles are drawn between two ticks, so a fast kart glides instead of hopping
+      // players and vehicles are drawn between two ticks, so a fast kart glides instead of hopping, and so is
+      // where a player aims, so the figure turns and its crosshair slides as smoothly as the body runs
       const shown = replay ? replay.state : s;
       // (a LAN client's state comes in snapshots: there the smoother goes by the time between frames. So does the
       // kill cam's: its replay runs by its own clock, not by the ticks of the match that goes on behind it)
