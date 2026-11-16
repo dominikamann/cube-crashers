@@ -44,6 +44,13 @@ export const QUALITY: Record<GraphicsQuality, QualityDef> = {
 export interface GameRenderer {
   /** `alpha` is the fraction of a sim tick since the last step (positions are not interpolated yet). */
   render(s: SimState, alpha: number, events: SimEvent[], frameDt: number): void;
+  /** whether `s` is on a floor that is not built yet: the next render or prepare builds it */
+  needsBuild(s: SimState): boolean;
+  /**
+   * Builds the floor of `s` before it is first drawn, and has the graphics card compile what it needs to draw it
+   * without holding up the page: a loading screen keeps moving meanwhile. Done when the promise is.
+   */
+  prepare(s: SimState): Promise<void>;
   /** whose eyes we look through (the camera follows this player) */
   setLocalPlayer(id: number): void;
   /** split screen: one view per player id, side by side (one id = full screen) */
@@ -263,24 +270,33 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
   const wantPos = new THREE.Vector3();
   const wantLook = new THREE.Vector3();
 
+  /** a new floor: rebuild the static world and jump the camera to the new spawn */
+  function build(s: SimState) {
+    world.dispose();
+    world = createWorld(scene, s.map);
+    world.setDetail(quality === 'low');
+    actors.setMap(s.map);
+    mapId = s.map.id;
+    for (const v of views) {
+      v.camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
+      v.camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
+    }
+  }
+
   return {
+    needsBuild: s => s.map.id !== mapId,
+    async prepare(s) {
+      if (s.map.id !== mapId) build(s);
+      // (where the browser compiles in the background, the first frame of the floor does not stall on its shaders;
+      // where it cannot, this compiles them now, behind the loading screen, instead of in the first frame)
+      await renderer.compileAsync(scene, views[0].camera).catch(() => {});
+    },
     render(s, _alpha, events, frameDt) {
       time += frameDt;
       const wantNight = s.look === 'night' ? 1 : 0;
       const step = frameDt / LOOK_BLEND_SECONDS;
       night = wantNight > night ? Math.min(1, night + step) : Math.max(0, night - step);
-      if (s.map.id !== mapId) {
-        // a new floor: rebuild the static world and jump the camera to the new spawn
-        world.dispose();
-        world = createWorld(scene, s.map);
-        world.setDetail(quality === 'low');
-        actors.setMap(s.map);
-        mapId = s.map.id;
-        for (const v of views) {
-          v.camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
-          v.camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
-        }
-      }
+      if (s.map.id !== mapId) build(s);
       const palette = themeFor(s.theme);
       const theme = blendTheme(palette.day, palette.night, night);
 

@@ -6,6 +6,7 @@ export const en = {
   'menu.quit': 'Quit',
   'menu.resume': 'Resume',
   'menu.mainMenu': 'Main menu',
+  'loading.floor': 'Loading {name}',
   'menu.playAgain': 'Play again',
   'menu.back': 'Back',
   'menu.host': 'Host a game',

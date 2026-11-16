@@ -342,6 +342,30 @@ function startGame() {
   }
 
   createUpdateBanner(app, window.cubeCrashers?.updates, () => ensureAudio().mixer.play('uiClick'));
+  // the loading screen while a floor is built: a cube that turns (on the graphics card: it keeps turning while the
+  // page is busy building) and the floor's name. It fades in only after a moment, so a quick build shows nothing
+  const loading = document.createElement('div');
+  loading.className = 'loading';
+  loading.innerHTML = '<div class="loading-cube"><i></i><i></i><i></i><i></i><i></i><i></i></div><p class="txt"></p>';
+  loading.style.display = 'none';
+  app.append(loading);
+  /** a floor is being built behind the loading screen: nothing is drawn, and a game on this computer waits */
+  let preparing = false;
+  function prepareFloor(s: SimState) {
+    preparing = true;
+    const name = FLOORS[s.map.id]?.name;
+    loading.querySelector('p')!.textContent = t('loading.floor', { name: name ? t(name as 'floor.plaza') : '' });
+    loading.style.display = '';
+    // (two frames: the loading screen is on screen before building the floor holds up the page)
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        void renderer.prepare(view()).finally(() => {
+          preparing = false;
+          loading.style.display = 'none';
+        }),
+      ),
+    );
+  }
   // HUD layers: the left one fills the window, in split screen each player gets a half
   const hudRoots = (['left', 'right'] as const).map(side => {
     const d = document.createElement('div');
@@ -475,6 +499,8 @@ function startGame() {
   const loop = (import.meta.env.DEV ? createProbedLoop : createLoop)(
     () => {
       if (mode !== 'playing' && !(mode === 'paused' && role !== 'solo')) return;
+      // (a game on this computer waits for its floor to be built; one with others goes on, it is not ours to hold)
+      if (preparing && role === 'solo') return;
       const s = view();
       if (s.phase !== 'playing') return;
       keyboard.setAim(mode === 'playing' ? renderer.groundPoint(mouse.x, mouse.y) : null);
@@ -626,13 +652,17 @@ function startGame() {
       const shown = replay ? replay.state : s;
       // (a LAN client's state comes in snapshots: there the smoother goes by the time between frames. So does the
       // kill cam's: its replay runs by its own clock, not by the ticks of the match that goes on behind it)
-      const restore = smooth(shown, alpha, role === 'client' || replay ? { frameDt } : undefined);
-      try {
-        renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
-        // (the graphics test draws the picture a second time: see graphics-test.ts)
-        if (gfxTest) renderer.render(shown, alpha, [], 0);
-      } finally {
-        restore();
+      // a new floor is built behind the loading screen first, instead of in the middle of a frame, which stood still
+      if (!preparing && renderer.needsBuild(shown)) prepareFloor(shown);
+      if (!preparing) {
+        const restore = smooth(shown, alpha, role === 'client' || replay ? { frameDt } : undefined);
+        try {
+          renderer.render(shown, alpha, replay ? replay.takeEvents() : frameEvents, frameDt);
+          // (the graphics test draws the picture a second time: see graphics-test.ts)
+          if (gfxTest) renderer.render(shown, alpha, [], 0);
+        } finally {
+          restore();
+        }
       }
       countFrame();
       const menuOpen = padActive ? padCtl.buildMenuOpen : keyboard.buildMenuOpen;
