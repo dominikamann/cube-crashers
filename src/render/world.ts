@@ -12,11 +12,11 @@ import { logoSpots, type LogoSpot } from '../sim/map/logo-spots';
 import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
-import { buildDecor, HULL_COLOR } from './decor';
+import { buildDecor, HULL_TOP } from './decor';
 import { buildAmbience, type LifeSound } from './ambience';
 import { buildWaldseeTown, paintWaldseeFloor, paintWaldseeWall, waldseeBlockColor, waldseeBlockHeight, waldseeGround } from './waldsee-look';
 import { floorDef } from '../sim/config/floors';
-import { HELIPAD } from '../sim/config/floor-helipad';
+import { heliTile } from '../sim/config/floor-helipad';
 
 export const WALL_HEIGHT = 1.4;
 export const LOW_WALL_HEIGHT = 0.5;
@@ -39,9 +39,9 @@ export interface World {
 function wallHeight(map: FloorMap, tx: number, tz: number): number {
   // (Bad Waldsee: every block is a house with its own height and roof, a garden bed or the lake)
   if (map.id === 'waldsee') return waldseeBlockHeight(tx, tz);
-  // (the helicopter's hull on the helipad is one block of one height, whatever patches it lies across)
-  const { heli } = HELIPAD;
-  if (map.id === 'helipad' && tx >= heli.x0 && tx <= heli.x1 && tz >= heli.z0 && tz <= heli.z1) return WALL_HEIGHT;
+  // (the helicopter's hull on the helipad is one block of one height, whatever patches it lies across: as high as
+  // the top of its body, so who lands on it stands on its back; decor.ts draws the body, the block is not drawn)
+  if (map.id === 'helipad' && heliTile(tx, tz)) return HULL_TOP + 0.4;
   return map.id === 'race' ? 0.9 : WALL_HEIGHT * WALL_STEPS[Math.floor(hash(tx >> 2, (tz >> 2) * 5) * WALL_STEPS.length)];
 }
 
@@ -684,7 +684,10 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   // (in the Town there is floor under what stands in the way too: a tree, the fountain, a parked car)
   // (on the helipad the rotor wash is pad concrete like the rest: the wind shows in the air, not on the floor)
   const level = (t: Tile) => t === Tile.Floor || (look === 'helipad' && t >= Tile.ConveyorN && t <= Tile.ConveyorW);
-  const floorTiles = cells.filter(c => level(c.tile) || (map.id === 'waldsee' && c.tile === Tile.LowWall));
+  // (the helicopter's hull and tail boom on the helipad are wall blocks and barriers too, but not drawn: decor.ts
+  // builds the helicopter over them, and the pad goes on under it)
+  const hull = (tx: number, tz: number) => look === 'helipad' && heliTile(tx, tz, true);
+  const floorTiles = cells.filter(c => level(c.tile) || hull(c.tx, c.tz) || (map.id === 'waldsee' && c.tile === Tile.LowWall));
   // (the cobbles go on behind a barrier, where the street is only painted on: it is drawn as floor, but no
   // props grow there and it casts no shadow of its own)
   const paved = map.id === 'waldsee' ? [...floorTiles, ...cells.filter(c => c.tile === Tile.Wall && waldseeGround(c.tx, c.tz) === 'street')] : floorTiles;
@@ -696,6 +699,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       // (in the Town a wall tile under a paved street casts none: the real house stands along its own slanted
       // line, and a shadow along the tile edge would show the grid as steps on the cobbles)
       if (map.id === 'waldsee' && t === Tile.Wall && waldseeGround(tx, tz) === 'street') return 0;
+      // (nor does the helicopter's: it casts its own)
+      if (hull(tx, tz)) return 0;
       return t === Tile.Wall ? 0.34 : t === Tile.LowWall ? 0.2 : 0;
     };
     const reach = px * 0.6;
@@ -901,9 +906,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const town = look === 'waldsee';
   // (what moves in the Town: the boats and the sharks out on the lake)
   let townLife: { update(time: number): void } | null = null;
-  const walls = layer((t, c) => t === Tile.Wall && (!town || waldseeGround(c.tx, c.tz) === 'house'), [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
-  // (the helicopter's hull is wall blocks too: the same riveted plate, painted in the helicopter's colour)
-  const hull = (tx: number, tz: number) => look === 'helipad' && tx >= HELIPAD.heli.x0 && tx <= HELIPAD.heli.x1 && tz >= HELIPAD.heli.z0 && tz <= HELIPAD.heli.z1;
+  const walls = layer((t, c) => t === Tile.Wall && !hull(c.tx, c.tz) && (!town || waldseeGround(c.tx, c.tz) === 'house'), [wallSide, wallSide, wallTop, wallTop, wallSide, wallSide], wallH, -0.4, true, wallGeo);
   if (town) {
     const ground = new THREE.MeshLambertMaterial({ vertexColors: true });
     disposables.push(ground);
@@ -945,7 +948,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const barrierSide = new THREE.MeshLambertMaterial({ map: barrierTex });
   const barrierTop = lambert(0xe4e1da);
   // (in Bad Waldsee what is in the way on the floor is a tree or a fountain: drawn as that, see waldsee-look.ts)
-  if (!town) layer(t => t === Tile.LowWall, [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
+  if (!town) layer((t, c) => t === Tile.LowWall && !hull(c.tx, c.tz), [barrierSide, barrierSide, barrierTop, barrierTop, barrierSide, barrierSide], LOW_WALL_HEIGHT + 0.4, -0.4, true);
 
   // ---- glitch floor and boost tiles
   // the hazard tiles are glitch floor everywhere except where the map says otherwise: the jungle's
@@ -1093,11 +1096,12 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
 
   // ---- decoration: theme props along the walls and on the wall tops, never on the paths (see decor.ts)
   const keepClear = [map.spawn, map.elevator, ...map.pads.map(p => p.pos), ...map.nestSpots.flatMap(n => [n.pos, ...n.entries]), ...map.vehicleSpots, ...map.powerSpots, ...map.crateSpots];
-  const decor = buildDecor({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
+  const open = floorTiles.filter(c => !hull(c.tx, c.tz));
+  const decor = buildDecor({ map, look, floorTiles: open, wallTiles: walls.list, tileOf, wallTopY, keepClear });
   addToScene(decor.group);
   addToScene(decor.ladders);
   // ---- life: what moves and flies about in each world (see ambience.ts)
-  const ambience = buildAmbience({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
+  const ambience = buildAmbience({ map, look, floorTiles: open, wallTiles: walls.list, tileOf, wallTopY, keepClear });
   addToScene(ambience.group);
   disposables.push(ambience);
   let lowDetail = false;
@@ -1231,7 +1235,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
           }
         }
         col.needsUpdate = true;
-        walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : hull(c.tx, c.tz) ? HULL_COLOR : theme.wallA)));
+        walls.list.forEach((c, i) => walls.mesh.setColorAt(i, color.setHex(town ? waldseeBlockColor(c.tx, c.tz) : theme.wallA)));
         if (walls.mesh.instanceColor) walls.mesh.instanceColor.needsUpdate = true;
         for (let i = 0; i < trims.length; i++) trimMesh.setColorAt(i, color.setHex(town ? 0xffffff : theme.wallA).lerp(white, 0.6));
         if (trimMesh.instanceColor) trimMesh.instanceColor.needsUpdate = true;

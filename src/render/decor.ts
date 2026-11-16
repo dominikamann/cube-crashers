@@ -54,8 +54,14 @@ interface Spot {
 }
 
 const Q = Math.PI / 2;
-/** the helicopter on the helipad: the paint of its hull (world.ts paints its wall blocks in it) */
-export const HULL_COLOR = 0x24395f;
+/** the helicopter on the helipad: the paint of its hull */
+const HULL_COLOR = 0x24395f;
+/** how much bigger than the Maltecopter (heli-figure.ts) the helicopter parked on the helipad is: along it, across it, up */
+const HELI_SIZE = { l: 1.7, w: 2.8, v: 1.7 };
+/** the height of its middle: its skids stand on the floor */
+const HELI_MID = 0.8 * HELI_SIZE.v;
+/** the top of its cabin roof (world.ts: who lands on its hull stands there) */
+export const HULL_TOP = HELI_MID + 0.69 * HELI_SIZE.v;
 /** an edge spot sits 0.22 toward its wall, so the wall face is 0.28 behind it: nothing reaches further back */
 const AGAINST_WALL = -0.27;
 /** rails and rungs of the climbable ladders in each world */
@@ -562,61 +568,69 @@ export function buildDecor(input: DecorContext): Decor {
       props.box(0.14, 1.8, 0.14, steel, 0, 0.9, 0).box(0.9, 0.08, 0.08, steel, 0, 1.75, 0);
       for (const sx of [-0.3, 0.3]) props.box(0.36, 0.26, 0.2, dark, sx, 1.78, 0.12).box(0.3, 0.2, 0.04, floodMat, sx, 1.78, 0.23);
     }
-    // the helicopter, in the middle of the pad with its nose to the east. Its hull is the wall block (riveted plate
-    // in its navy, see world.ts); everything else stands on it or hangs flush on its sides: the cabin with its
-    // doors and windows, the cockpit glass round the nose, the engine with its exhausts, the mast and the main rotor
-    // going round under its blur, the skids at its foot, the tail boom lying on the barriers west of it with the fin
-    // and the tail rotor. Nav lights on the sides (red left, green right), strobes on the roof and the fin, a
-    // searchlight under the nose.
-    const hx = (heli.x0 + heli.x1 + 1) / 2, hz = (heli.z0 + heli.z1 + 1) / 2, hy = wallTopY(heli.x0, heli.z0);
+    // the helicopter, in the middle of the pad with its nose to the east: built like the Maltecopter (see
+    // heli-figure.ts), a gunship's slim hull with the stepped canopy, the stub wings with their pods, the chin
+    // turret, the skids and the long boom with the fin, only bigger and in rescue paint, navy and white. The wall
+    // blocks under it only stop who runs into it (world.ts does not draw them). The mast and the main rotor go round
+    // under their blur, the tail rotor at the fin. Nav lights on the sides (red left, green right), strobes on the
+    // roof and the fin, a searchlight in the nose, and the exhausts glowing at the back of the engine.
+    const hx = (heli.x0 + heli.x1 + 1) / 2, hz = (heli.z0 + heli.z1 + 1) / 2;
     const hl = (heli.x1 + 1 - heli.x0) / 2, hw = (heli.z1 + 1 - heli.z0) / 2;
-    props.at(hx, hy, hz);
-    // the cabin roof, rounded off by a narrower box on top, and the cockpit glass over the nose with its windscreen
-    props.box(hl * 2 - 0.3, 0.5, hw * 2 - 0.2, navy, -0.25, 0.25, 0).box(hl * 2 - 1.3, 0.3, hw * 2 - 0.9, navy, -0.5, 0.62, 0);
-    props.box(1.2, 0.5, hw * 2 - 0.5, glass, hl - 0.75, 0.25, 0).box(0.9, 0.05, hw * 2 - 0.45, glass, hl - 0.4, 0.3, 0, 0, -0.75);
-    props.box(0.03, 0.55, hw * 2 - 0.5, glass, hl + 0.015, -0.33, 0);
+    /** how much bigger than the Maltecopter it is: along it, across it, up */
+    const { l: L, w: W, v: V } = HELI_SIZE;
+    // (its hull ends at the back of the wall block, its feet stand on the floor)
+    const ox = heli.x0 + 1.0 * L, oy = HELI_MID;
+    /** a box in the Maltecopter's own frame (x across, y up, z ahead), scaled up and turned nose east */
+    const part = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => props.box(d * L, h * V, w * W, mat, z * L, y * V, x * W);
+    const cowl = lambert(0xe9edf3), canopy = new THREE.MeshStandardMaterial({ color: 0x14303a, emissive: 0x1f7f9a, emissiveIntensity: 0.35, roughness: 0.25 });
+    props.at(ox, oy, hz);
+    part(0.9, 0.8, 2.4, navy, 0, 0, 0.2);
+    part(0.7, 0.55, 0.7, navy, 0, -0.1, 1.65);
+    part(0.3, 0.2, 0.08, glowMat(0xfff1c8, 1.6), 0, -0.14, 2.02);
+    part(0.62, 0.42, 0.85, canopy, 0, 0.44, 0.5);
+    part(0.56, 0.34, 0.62, canopy, 0, 0.3, 1.2);
+    part(0.76, 0.34, 1.1, cowl, 0, 0.52, -0.4);
+    part(0.32, 0.34, 2.2, navy, 0, 0.12, -1.9);
+    part(0.34, 0.06, 2.2, white, 0, 0.2, -1.9);
+    part(0.12, 0.9, 0.5, navy, 0, 0.55, -2.85);
+    part(0.14, 0.18, 0.52, red, 0, 0.92, -2.85);
+    part(0.6, 0.08, 0.3, trim, 0, 0.15, -2.55);
     for (const side of [-1, 1]) {
-      const sz = side * (hw + 0.015);
-      // the stripes along the hull, two windows and the sliding door with its own window and handle
-      props.box(hl * 2 - 0.2, 0.14, 0.03, white, -0.1, -0.2, sz).box(hl * 2 - 0.2, 0.05, 0.03, yellow, -0.1, -0.31, sz);
-      for (const wx of [-1.9, -1.2]) props.box(0.5, 0.36, 0.03, glass, wx, -0.6, sz);
-      props.box(1.15, 0.92, 0.025, trim, 0.1, -0.5, sz).box(0.55, 0.36, 0.03, glass, 0.1, -0.6, sz).box(0.2, 0.04, 0.04, white, -0.3, -0.85, sz);
-      // the cockpit's side glass, and the nav light at the cabin's front corner
-      props.box(0.8, 0.5, 0.03, glass, hl - 0.6, -0.4, sz);
-      props.box(0.1, 0.1, 0.04, blink(side < 0 ? 0xff3b3b : 0x3bff7a, 1.2, 1), -0.3, 0.05, side * (hw - 0.08));
+      // the white stripe and the yellow pinstripe along the hull, the stub wing with its pod, the skid on its struts
+      part(0.02, 0.1, 2.3, white, side * 0.455, -0.08, 0.2);
+      part(0.02, 0.04, 2.3, yellow, side * 0.455, -0.16, 0.2);
+      // (the wings and pods are no wider than the Maltecopter's, only longer: they keep close to the hull's blocks)
+      part(0.29, 0.1, 0.55, trim, side * 0.57, -0.05, 0.1);
+      part(0.2, 0.3, 0.9, cowl, side * 0.7, -0.25, 0.15);
+      part(0.14, 0.2, 0.06, orange, side * 0.7, -0.25, 0.62);
+      part(0.1, 0.08, 1.9, steel, side * 0.5, -0.76, 0.2);
+      part(0.07, 0.36, 0.07, steel, side * 0.5, -0.56, 0.8);
+      part(0.07, 0.36, 0.07, steel, side * 0.5, -0.56, -0.4);
+      // the nav light at the wing's tip, the exhaust glowing at the back of the engine
+      part(0.02, 0.08, 0.1, blink(side < 0 ? 0xff3b3b : 0x3bff7a, 1.2, 1), side * 0.81, -0.25, 0.15);
+      part(0.14, 0.12, 0.2, dark, side * 0.3, 0.55, -1.0);
+      part(0.1, 0.08, 0.02, glowMat(0xff6a30, 0.8), side * 0.3, 0.55, -1.11);
     }
-    // the engine behind the mast, its exhausts pointing back over the tail, the antennas and the pitot tube
-    props.box(1.5, 0.32, 1.1, grille, -1.0, 0.93, 0).box(0.24, 0.55, 0.24, dark, 0, 1.0, 0);
-    for (const sz of [-0.35, 0.35]) props.box(0.5, 0.2, 0.2, dark, -1.9, 1.0, sz).box(0.04, 0.14, 0.14, glowMat(0xff6a30, 0.8), -2.14, 1.0, sz);
-    props.box(0.04, 0.5, 0.04, steel, 0.9, 0.95, 0.9).box(0.04, 0.35, 0.04, steel, -1.8, 0.9, -0.8).box(0.5, 0.04, 0.04, steel, hl + 0.25, -0.1, 0.5);
-    props.box(0.12, 0.12, 0.12, strobe(0xff2a2a, 1.9, 0), -2.1, 0.84, 0);
-    // the searchlight under the nose
-    props.box(0.3, 0.3, 0.4, dark, hl + 0.16, -0.75, 0).box(0.04, 0.22, 0.3, glowMat(0xfff1c8, 1.6), hl + 0.33, -0.75, 0);
-    // the skids: a tube along each side at the foot of the hull, on short struts
-    props.at(hx, 0, hz);
-    for (const side of [-1, 1]) {
-      props.box(hl * 2 - 0.6, 0.12, 0.12, steel, -0.1, 0.14, side * (hw + 0.22));
-      for (const sx of [-1.5, 1.3]) props.box(0.12, 0.42, 0.34, steel, sx, 0.3, side * (hw + 0.1));
-    }
+    // the chin turret (the searchlight's mount) with its sensor, the mast, the red strobe on the roof, the white on the fin
+    part(0.3, 0.2, 0.3, dark, 0, -0.45, 1.0);
+    part(0.13, 0.13, 0.8, steel, 0, -0.5, 1.4);
+    part(0.14, 0.34, 0.14, dark, 0, 0.8, -0.2);
+    part(0.12, 0.12, 0.12, strobe(0xff2a2a, 1.9, 0), 0, 0.74, -1.0);
+    part(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), 0, 1.04, -2.85);
     // the main rotor: four blades with yellow tips, going round fast, and the blur of them
-    const rotorY = hy + 1.33;
-    const rotor = spinner(hx, rotorY, hz, 24).bar(0.5, 0.18, 0.5, dark);
+    const rotorX = ox - 0.2 * L, rotorY = oy + 0.98 * V;
+    const rotor = spinner(rotorX, rotorY, hz, 24).bar(0.5, 0.18, 0.5, dark);
     for (const yaw of [0, Q]) {
       rotor.bar(hl * 3.5, 0.06, 0.38, rubber, 0, yaw).bar(hl * 3.5 + 0.5, 0.04, 0.2, yellow, -0.01, yaw);
       // (the rotor turns toward smaller yaws on screen, so the ghosts lie at larger ones, behind the blade)
       ghosts.forEach((g, i) => rotor.bar(hl * 3.5, 0.05, 0.5 + i * 0.2, g, -0.005, yaw + (i + 1) * 0.16));
     }
-    blur(hx, rotorY, hz, hl * 1.8, 0);
-    // the tail boom: on the barriers, with the fin, the stabiliser, the white strobe and the tail rotor at its end
-    const tx0 = heli.tailX0, tz = heli.tailZ + 0.5, boomY = lowTop + 0.3, boomL = heli.x0 - tx0;
-    props.at((tx0 + heli.x0) / 2, 0, tz);
-    props.box(boomL + 0.2, 0.42, 0.42, navy, 0, boomY, 0).box(boomL + 0.2, 0.08, 0.44, white, 0, boomY + 0.1, 0);
-    props.box(0.5, 1.0, 0.14, navy, -boomL / 2 + 0.35, boomY + 0.5, 0).box(0.3, 0.08, 1.3, navy, -boomL / 2 + 0.8, boomY + 0.25, 0);
-    props.box(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), -boomL / 2 + 0.35, boomY + 1.02, 0);
-    const tailY = boomY + 0.75, tailX = tx0 + 0.35, tailZ = tz + 0.12;
-    const tail = spinner(tailX, tailY, tailZ, 40, 'z').bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.3, 0.08, rubber).bar(1.3, 0.06, 0.08, rubber);
-    ghosts.forEach((g, i) => tail.bar(1.3, 0.08, 0.06, g, 0, 0, (i + 1) * 0.3).bar(0.08, 1.3, 0.06, g, 0, 0, (i + 1) * 0.3));
-    blur(tailX, tailY, tailZ + 0.02, 0.66, Q);
+    blur(rotorX, rotorY, hz, hl * 1.8, 0);
+    // the tail rotor beside the fin
+    const tailY = oy + 0.6 * V, tailX = ox - 2.9 * L, tailZ = hz + 0.2 * W;
+    const tail = spinner(tailX, tailY, tailZ, 40, 'z').bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.5, 0.08, rubber).bar(1.5, 0.06, 0.08, rubber);
+    ghosts.forEach((g, i) => tail.bar(1.5, 0.08, 0.06, g, 0, 0, (i + 1) * 0.3).bar(0.08, 1.5, 0.06, g, 0, 0, (i + 1) * 0.3));
+    blur(tailX, tailY, tailZ + 0.02, 0.76, Q);
     // the rotor wash: dust that comes out from under the hull and runs along the ground away from it on every side,
     // a few scraps of paper and leaves skittering with it, and the exhausts' smoke blown back over the tail; each
     // its own instance, moved every frame (see update). The floor shows nothing: the wind is in the air.
@@ -634,7 +648,7 @@ export function buildDecor(input: DecorContext): Decor {
       const a = hash(i, 11) * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a);
       gusts.push({ pool: scraps, kind: 'scrap', x: hx + dx * 2.6, y: 0, z: hz + dz * 2.6, dx, dz, phase: hash(i, 13), size: 0.12 + hash(i, 15) * 0.1, color: [0xf4f4f0, 0x9a6a30, 0xd6b24a, 0x6f8a3a][i % 4] });
     }
-    for (let i = 0; i < 8; i++) gusts.push({ pool: dust, kind: 'smoke', x: hx - 2.2, y: hy + 1.0, z: hz + (i % 2 ? 0.35 : -0.35), dx: -1, dz: 0, phase: i / 8, size: 0.14, color: 0x5c6069 });
+    for (let i = 0; i < 8; i++) gusts.push({ pool: dust, kind: 'smoke', x: ox - 1.15 * L, y: oy + 0.55 * V, z: hz + (i % 2 ? 0.3 : -0.3) * W, dx: -1, dz: 0, phase: i / 8, size: 0.14, color: 0x5c6069 });
     // the fuel tanks: eight-sided drums with a red band and a hatch, the pipe between them with a valve
     for (const t of HELIPAD.tanks) {
       props.at(t.x0 + 1, wallTopY(t.x0, t.z0), t.z0 + 1);

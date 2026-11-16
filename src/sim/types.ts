@@ -425,6 +425,8 @@ export interface Blast {
   hidden?: boolean;
   /** it comes down as a bolt of lightning (the strikes that fall with Angry Dominik's attacks) */
   bolt?: boolean;
+  /** it creeps after this player until it lands, this many tiles a tick at most (the helicopter's missiles) */
+  homing?: { target: number; speed: number };
 }
 
 export interface BossState {
@@ -813,7 +815,7 @@ export type SimEvent =
   /** a bolt of lightning strikes the floor */
   | { type: 'lightning'; pos: Vec2 }
   /** the attack helicopter fires missiles from where it flies (`from`) to the marked spots; they land from tick `at` on */
-  | { type: 'heliMissiles'; from: Vec2; to: Vec2[]; at: number }
+  | { type: 'heliMissiles'; from: Vec2; to: Vec2[]; at: number; ids?: number[] }
   /** its gun rattles along a line of strikes */
   | { type: 'heliGun'; pos: Vec2; dir: Vec2 }
   /** it comes down over `pos` (now it can be hurt), and climbs away again */

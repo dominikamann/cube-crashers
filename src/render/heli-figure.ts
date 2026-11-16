@@ -48,6 +48,8 @@ interface Rocket {
   tz: number;
   at: number;
   lands: number;
+  /** the blast it is to land on: its ring may creep after a player, and the missile turns after it */
+  id?: number;
 }
 
 interface Figure {
@@ -272,6 +274,7 @@ export function createHeliFigures(scene: THREE.Scene): HeliFigures {
               tz: to.z,
               at: time + i * 0.06,
               lands: time + (ev.at - s.tick + i * HELI.missileGap) / TICK_RATE,
+              id: ev.ids?.[i],
             });
           });
         } else if (ev.type === 'heliCrash') {
@@ -317,6 +320,9 @@ export function createHeliFigures(scene: THREE.Scene): HeliFigures {
           flying.splice(i, 1);
           continue;
         }
+        // (where its ring is now: a steering missile's ring creeps after its player)
+        const ring = r.id !== undefined ? s.blasts.find(x => x.id === r.id) : undefined;
+        if (ring) ((r.tx = ring.pos.x), (r.tz = ring.pos.z));
         if (time < r.at) continue;
         const t = (time - r.at) / Math.max(0.05, r.lands - r.at), e2 = t * t;
         const x = r.fx + (r.tx - r.fx) * t, z = r.fz + (r.tz - r.fz) * t, y = r.fy * (1 - e2) + 0.2 * e2;

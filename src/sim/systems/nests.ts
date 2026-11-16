@@ -26,7 +26,7 @@ import {
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
 import { BOSS_RUSH, floorDef } from '../config/floors';
-import { BLOCKS_WALKER, moveCircle, type FloorMap } from '../map/tilemap';
+import { BLOCKS_WALKER, isFree, moveCircle, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -343,7 +343,17 @@ function respawnNest(s: SimState, n: Nest): void {
 
 export function updateBlasts(s: SimState): void {
   s.blasts = s.blasts.filter(b => {
-    if (s.tick < b.at) return true;
+    if (s.tick < b.at) {
+      // (a missile that steers: its ring creeps after its player, slower than they run, so running still gets away)
+      const p = b.homing && s.players.find(q => q.id === b.homing!.target && q.downUntil === null && q.hp > 0);
+      if (p) {
+        const d = dist(b.pos, p.pos), step = Math.min(d, b.homing!.speed);
+        const next = d > 1e-6 ? { x: b.pos.x + ((p.pos.x - b.pos.x) / d) * step, z: b.pos.z + ((p.pos.z - b.pos.z) / d) * step } : b.pos;
+        // (not across a wall: round a corner it waits)
+        if (isFree(s.map, next, 0.3, BLOCKS_WALKER)) b.pos = next;
+      }
+      return true;
+    }
     const before = b.fling ? s.players.map(p => (p.downUntil === null ? p.hp : -1)) : [];
     explode(s, b.pos, b.radius, { player: b.damage }, 'explosion');
     if (b.bolt) s.events.push({ type: 'lightning', pos: { ...b.pos } });

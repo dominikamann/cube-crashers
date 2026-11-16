@@ -40,6 +40,11 @@ export const HELIPAD = {
   /** the walkway from the elevator up to the pad */
   walkway: { x: 30, z0: 37, z1: 45 },
 };
+/** a tile of the parked helicopter: its hull (wall blocks) or, with `tail`, also its tail boom (low walls) */
+export function heliTile(tx: number, tz: number, tail = false): boolean {
+  const { heli } = HELIPAD;
+  return (tx >= heli.x0 && tx <= heli.x1 && tz >= heli.z0 && tz <= heli.z1) || (tail && tx >= heli.tailX0 && tx <= heli.tailX1 && tz === heli.tailZ);
+}
 const b = new GridBuilder(W, H);
 // glitchy edge all around
 b.fill(1, W - 2, 1, 2, '~').fill(1, W - 2, H - 3, H - 2, '~').fill(1, 2, 1, H - 2, '~').fill(W - 3, W - 2, 1, H - 2, '~');

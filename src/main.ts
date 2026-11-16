@@ -401,15 +401,19 @@ function startGame() {
   /**
    * What the player of view `view` (player `id`) did and took this frame: a shot of theirs that landed on a rival
    * or the vehicle one sits in marks the crosshair and ticks (a kill louder), a hit they took glows red round
-   * the edge. Monsters show their own hits: they burst into pixels.
+   * the edge. A hit on a monster or a boss marks the crosshair too (red when it fell to it), without the tick:
+   * a horde is hit far too often for that.
    */
-  function hitFeedback(view: number, id: number, events: SimEvent[]) {
+  function hitFeedback(view: number, id: number, events: SimEvent[], s: SimState) {
     const kill = events.some(e => e.type === 'pvpKill' && e.killerId === id && e.victimId !== id);
     const hit = kill || events.some(e => (e.type === 'playerHit' || e.type === 'vehicleHit') && e.by === id && !(e.type === 'playerHit' && e.playerId === id));
+    const mobHits = events.filter(e => e.type === 'enemyHit' && e.by === id) as Extract<SimEvent, { type: 'enemyHit' }>[];
+    const living = mobHits.length > 0 ? new Set(s.enemies.filter(m => m.hp > 0).map(m => m.id)) : null;
+    const mobKill = mobHits.some(e => !living!.has(e.id));
     if (hit) {
       flash(fpCross[view], kill ? 'kill' : 'hit', ['hit', 'kill']);
       audio?.mixer.play(kill ? 'killConfirm' : 'hitConfirm');
-    }
+    } else if (mobHits.length > 0) flash(fpCross[view], mobKill ? 'kill' : 'hit', ['hit', 'kill']);
     if (events.some(e => e.type === 'playerHit' && e.playerId === id && e.amount >= 5)) flash(hurtGlow[view], 'on');
   }
   // the browser refuses to capture the mouse while it is outside the window: say how to get it back
@@ -677,8 +681,8 @@ function startGame() {
       buildMenu2.setPadLabels(true);
       hud.update(s, frameEvents, menuOpen, performance.now() / 1000, localId());
       if (mode === 'playing' && !replay) {
-        hitFeedback(0, localId(), frameEvents);
-        if (split) hitFeedback(1, 1, frameEvents);
+        hitFeedback(0, localId(), frameEvents, s);
+        if (split) hitFeedback(1, 1, frameEvents, s);
       }
       scoreboard.update(s, (boardHeld || padBoardHeld) && mode === 'playing' && s.run.stage === 'floor', localId(), s.versus ? t(`versus.${s.versus.rule}` as 'versus.score') : t(s.run.mode === 'brawl' ? 'brawl.title' : s.run.mode === 'bossrush' ? 'bossrush.title' : (`mode.${s.run.mode}` as 'mode.run')));
       markers.setVisible(mode === 'playing' || mode === 'paused');

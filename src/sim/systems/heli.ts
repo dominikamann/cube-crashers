@@ -47,12 +47,15 @@ export const HELI = {
   /** a salvo of missiles: how many by phase (and one more per further player), how long the rings warn, how far
    *  apart they land in time, the blast of each, and how far from the player the ones round them land */
   salvo: { 1: 3, 2: 5, 3: 7 } as Record<1 | 2 | 3, number>,
-  missileWarn: 70,
+  missileWarn: 60,
   missileGap: 6,
   missileRadius: 1.6,
   missileDamage: 30,
   missileLead: 3.2,
   missileSpread: 3.6,
+  /** the missile aimed straight at a player steers after them while it warns: tiles a second, by
+   *  phase (a player runs 6) */
+  missileSteer: { 1: 2.4, 2: 3.0, 3: 3.6 } as Record<1 | 2 | 3, number>,
   /** a strafing run (from phase 2): a line of gun strikes through a player, this many of them this far apart */
   strafeChance: { 1: 0, 2: 0.3, 3: 0.3 } as Record<1 | 2 | 3, number>,
   strafeLine: 9,
@@ -102,9 +105,11 @@ const ease = (t: number) => {
 const over = (s: SimState, q: Vec2): Vec2 => ({ x: Math.max(2, Math.min(s.map.w - 2, q.x)), z: Math.max(2, Math.min(s.map.h - 2, q.z)) });
 const living = (s: SimState) => s.players.filter(p => p.downUntil === null);
 
-function warn(s: SimState, pos: Vec2, radius: number, damage: number, delay: number): void {
-  s.blasts.push({ id: s.nextId++, pos: { ...pos }, radius, createdAt: s.tick, at: s.tick + delay, damage });
+function warn(s: SimState, pos: Vec2, radius: number, damage: number, delay: number, homing?: { target: number; speed: number }): number {
+  const id = s.nextId++;
+  s.blasts.push({ id, pos: { ...pos }, radius, createdAt: s.tick, at: s.tick + delay, damage, ...(homing ? { homing } : {}) });
   s.events.push({ type: 'blastWarning', pos: { ...pos }, radius });
+  return id;
 }
 
 /** Sets it up on its body: up in the air at once. `arrives`: it flies in from the edge of the map. */
@@ -181,10 +186,10 @@ function strike(s: SimState, at: Vec2, delay: number): void {
   warn(s, at, HELI.gunRadius, HELI.gunDamage, delay);
 }
 
-/** missiles from where it flies to the marked spots, one after the other */
-function fire(s: SimState, me: Enemy, to: Vec2[], delay: number): void {
-  to.forEach((q, i) => warn(s, q, HELI.missileRadius, HELI.missileDamage, delay + i * HELI.missileGap));
-  if (to.length > 0) s.events.push({ type: 'heliMissiles', from: { ...me.pos }, to, at: s.tick + delay });
+/** missiles from where it flies to the marked spots, one after the other; those with a player in `after` steer after them */
+function fire(s: SimState, me: Enemy, to: Vec2[], delay: number, after: (number | null)[] = [], steer = 0): void {
+  const ids = to.map((q, i) => warn(s, q, HELI.missileRadius, HELI.missileDamage, delay + i * HELI.missileGap, after[i] != null && steer > 0 ? { target: after[i]!, speed: steer / TICK_RATE } : undefined));
+  if (to.length > 0) s.events.push({ type: 'heliMissiles', from: { ...me.pos }, to, at: s.tick + delay, ids });
 }
 
 /**
@@ -196,7 +201,7 @@ function salvo(s: SimState, b: BossState, me: Enemy, alive: Player[]): void {
   const count = HELI.salvo[b.phase] + Math.min(3, alive.length - 1);
   const turn = s.rng.next() * Math.PI * 2;
   const round = Math.max(1, Math.ceil(count / aims.length) - 2);
-  const to: Vec2[] = [];
+  const to: Vec2[] = [], after: (number | null)[] = [];
   for (let i = 0; i < count; i++) {
     const p = aims[i % aims.length], nth = Math.floor(i / aims.length);
     const a = turn + ((nth - 2) * Math.PI * 2) / round + p.id;
@@ -204,8 +209,11 @@ function salvo(s: SimState, b: BossState, me: Enemy, alive: Player[]): void {
       nth === 0 ? { ...p.pos } : nth === 1 ? { x: p.pos.x + p.facing.x * HELI.missileLead, z: p.pos.z + p.facing.z * HELI.missileLead } : { x: p.pos.x + Math.cos(a) * HELI.missileSpread, z: p.pos.z + Math.sin(a) * HELI.missileSpread };
     if (!isFree(s.map, spot, 0.3, BLOCKS_WALKER) || to.some(t => dist(t, spot) < HELI.missileRadius * 2)) continue;
     to.push(spot);
+    // (the one at them steers; the one where they are heading and the ones round them stay put: the way out, and
+    // no two rings creep on top of each other)
+    after.push(nth === 0 ? p.id : null);
   }
-  fire(s, me, to, HELI.missileWarn);
+  fire(s, me, to, HELI.missileWarn, after, HELI.missileSteer[b.phase]);
 }
 
 /** A strafing run: a line of gun strikes through `p`, and it flies along the line as they go off. */
@@ -234,7 +242,7 @@ function swoop(s: SimState, b: BossState, me: Enemy, p: Player): void {
     const spot = { x: p.pos.x + Math.cos(a) * HELI.swoopRingRadius, z: p.pos.z + Math.sin(a) * HELI.swoopRingRadius };
     if (isFree(s.map, spot, 0.3, BLOCKS_WALKER)) to.push(spot);
   }
-  fire(s, me, to, HELI.missileWarn + 25);
+  fire(s, me, to, HELI.missileWarn + 35);
 }
 
 /** The helicopter swoops over `p` (or strafes them) now, whatever it was about to do. */

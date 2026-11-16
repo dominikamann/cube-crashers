@@ -6,6 +6,7 @@ import { buildDecor } from '../../src/render/decor';
 import { wallTop } from '../../src/render/world';
 import { logoSpots } from '../../src/sim/map/logo-spots';
 import { ladders } from '../../src/sim/map/ladders';
+import { heliTile } from '../../src/sim/config/floor-helipad';
 
 describe('decoration', () => {
   it('nothing sticks into a wall: trees, props and ladders stay in front of it or on top of it', () => {
@@ -37,6 +38,8 @@ describe('decoration', () => {
             // well inside a wall block's footprint and below its top (signs and tubes mounted flush on a wall
             // may sink in a little)
             if (tileOf(tx, tz) !== Tile.Wall || fx < 0.12 || fx > 0.88 || fz < 0.12 || fz > 0.88) continue;
+            // (the helicopter on the helipad stands in its hull's blocks: they are not drawn, it is)
+            if (map.id === 'helipad' && heliTile(tx, tz)) continue;
             if (v.y < top(tx, tz) - 0.05 && v.y > 0.02) inside.push(`${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)} top ${top(tx, tz).toFixed(2)} #${((o.material as THREE.MeshLambertMaterial).color?.getHexString?.() ?? "?")}`);
           }
         });

@@ -138,7 +138,7 @@ describe('the attack helicopter of the Sky Helipad', () => {
     expect(guns).toBeGreaterThanOrEqual(3);
   });
 
-  it('a missile hurts whoever stays in its ring, and nobody who steps out of it', () => {
+  it('a missile hurts whoever stays in its ring, and nobody who runs from it: its ring creeps after them, slower than they run', () => {
     const hurt = (dodge: boolean) => {
       const s = fight();
       const p = s.players[0];
@@ -152,9 +152,15 @@ describe('the attack helicopter of the Sky Helipad', () => {
       // (from here on they can be hurt)
       p.invulnUntil = 0;
       const hp = p.hp;
-      // (the player walks off to the side the moment the ring appears, at their own pace; other rings may lie there)
-      const clear = [{ x: 1, z: 0 }, { x: -1, z: 0 }, { x: 0, z: -1 }].find(d => s.blasts.every(b => Math.hypot(b.pos.x - (at.x + d.x * 3.3), b.pos.z - (at.z + d.z * 3.3)) > b.radius + 0.6))!;
-      until(s, () => s.tick > mine.at, 200, () => (dodge ? (Math.hypot(p.pos.x - at.x, p.pos.z - at.z) < 3.3 ? [{ type: 'move', playerId: 0, dir: clear }] : []) : []));
+      // (the player runs off to the side the moment the ring appears, at their own pace, and keeps running till it
+      // lands; other rings may lie there)
+      const clear = [{ x: 1, z: 0 }, { x: -1, z: 0 }, { x: 0, z: -1 }].find(d => s.blasts.every(b => b === mine || Math.hypot(b.pos.x - (at.x + d.x * 5), b.pos.z - (at.z + d.z * 5)) > b.radius + 0.6))!;
+      let crept = 0;
+      until(s, () => s.tick > mine.at, 200, () => {
+        crept = Math.max(crept, Math.hypot(mine.pos.x - at.x, mine.pos.z - at.z));
+        return dodge ? [{ type: 'move', playerId: 0, dir: clear }] : [];
+      });
+      if (dodge) expect(crept).toBeGreaterThan(1);
       return hp - p.hp;
     };
     expect(hurt(false)).toBeGreaterThan(0);
