@@ -557,5 +557,9 @@ describe('the map a server announces', () => {
     const run = setup({ mode: 'coop' });
     run.run(0.1);
     expect(run.cs[0].server?.fixed).toBeUndefined();
+    // a list of maps takes turns: it starts on the first
+    const turns2 = setup({ mode: 'quick', map: 'waldsee,jungle' });
+    turns2.run(0.1);
+    expect(turns2.cs[0].server).toMatchObject({ map: 'waldsee', fixed: false });
   });
 });

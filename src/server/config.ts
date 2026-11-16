@@ -1,7 +1,7 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, withoutTown } from '../maps';
 import type { Difficulty } from '../sim/types';
-import { SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
+import { isCoop, SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
 
 /** everything a server owner can set, by command line flag, environment variable or server.json */
 export interface ServerConfig {
@@ -136,8 +136,17 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
     const allowed = mapChoices(c.mode, c.view);
     // (the Tower Run and Endless bring their own floors: a map left in the settings is not an error, the server says it is unused)
     if (!allowed) c.map = String(raw.map);
-    else if (raw.map === TOWN && !allowed.includes(TOWN) && mapChoices(c.mode)!.includes(TOWN)) throw new Error(`map ${TOWN} (the Town) is walked in first person only: it cannot be played with view top (set view to both or fp, or pick another map)`);
-    else c.map = oneOf(`map for mode ${c.mode}`, raw.map, allowed);
+    else {
+      // a Single floor or a versus server can take turns between maps: "waldsee,jungle" plays them in this order
+      const maps = String(raw.map).split(',').map(m => m.trim());
+      const turns = maps.length > 1 && (c.mode === 'quick' || !isCoop(c.mode));
+      if (maps.length > 1 && !turns) throw new Error(`map for mode ${c.mode} must be one of: ${allowed.join(', ')} (a list of maps is for quick and versus) (got "${raw.map}")`);
+      for (const m of maps) {
+        if (m === TOWN && !allowed.includes(TOWN) && mapChoices(c.mode)!.includes(TOWN)) throw new Error(`map ${TOWN} (the Town) is walked in first person only: it cannot be played with view top (set view to both or fp, or pick another map)`);
+        oneOf(`map for mode ${c.mode}`, m, turns ? allowed.filter(a => a !== MAP_ROTATION) : allowed);
+      }
+      c.map = maps.join(',');
+    }
   }
   return c;
 }
@@ -149,7 +158,8 @@ export const HELP = `Cube Crashers dedicated server
   --mode <mode>        ${SERVER_MODES.join(' | ')} (default discovery)
                        co-op: coop (the Tower Run), quick (a Single floor), brawl (Boss Brawl), bossrush, endless;
                        versus: discovery (every rule in turn) or one rule
-  --map <map>          the map, by mode (${MAP_ROTATION} = a random one each time):
+  --map <map>          the map, by mode (${MAP_ROTATION} = a random one each time; for quick and versus also a list,
+                       comma apart, played in turn: waldsee,jungle):
                          versus:   ${VERSUS_MAPS.join(', ')}
                                    (default ${MAP_ROTATION}: a new arena each match)
                          quick:    ${QUICK_MAPS.join(', ')}

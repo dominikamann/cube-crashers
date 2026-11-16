@@ -56,6 +56,16 @@ describe('dedicated server settings', () => {
     expect(parseConfig([], {}, { mode: 'quick', map: 'lane' })).toMatchObject({ mode: 'quick', map: 'lane' });
   });
 
+  it('a list of maps, comma apart, is played in turn (Single floor and versus)', () => {
+    expect(parseConfig(['--mode', 'quick', '--map', 'waldsee,jungle'], {}, null).map).toBe('waldsee,jungle');
+    expect(parseConfig(['--mode', 'score', '--map', ' neon , arena '], {}, null).map).toBe('neon,arena');
+    expect(() => parseConfig(['--mode', 'quick', '--map', 'waldsee,nowhere'], {}, null)).toThrow(/map for mode quick/);
+    // (random in a list means nothing: it is a list or the rotation)
+    expect(() => parseConfig(['--mode', 'quick', '--map', 'waldsee,random'], {}, null)).toThrow(/map for mode quick/);
+    // (not where a mode takes one map for the whole match or none)
+    expect(() => parseConfig(['--mode', 'brawl', '--map', 'arena,neon'], {}, null)).toThrow(/map for mode brawl/);
+  });
+
   it('a Boss Brawl takes a map or random, a Boss Rush also its own floors', () => {
     expect(mapChoices('brawl')).toEqual(['random', ...BRAWL_MAPS]);
     expect(mapChoices('bossrush')).toEqual(['own', 'random', ...BRAWL_MAPS]);

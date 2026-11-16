@@ -36,8 +36,15 @@ export function rushMapsFor(choice: string, bosses: number, random: () => number
   return maps.includes(choice) ? Array.from({ length: bosses }, () => choice) : undefined;
 }
 
-/** one of `maps`: the chosen one, or with the rotation a random one that is not `last` */
+/**
+ * one of `maps`: the chosen one, with the rotation a random one that is not `last`, or with a list of them
+ * ("waldsee,jungle", a server's --map) the one after `last` in that order, from the start again after the last
+ */
 function pick(maps: string[], choice: string, last: string | null, random: () => number): string {
+  if (choice.includes(',')) {
+    const list = choice.split(',').filter(m => maps.includes(m));
+    if (list.length > 0) return list[(list.indexOf(last ?? '') + 1) % list.length];
+  }
   if (choice !== MAP_ROTATION) return maps.includes(choice) ? choice : maps[0];
   const pool = maps.filter(m => m !== last);
   return pool[Math.floor(random() * pool.length)];
