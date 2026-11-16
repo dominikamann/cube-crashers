@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CANDY, falloff, MAGNET, MINE, SWATTER, SWORD } from '../sim/config/weapons';
 import { Tile, tileAt } from '../sim/map/tilemap';
-import { shotHeight } from '../sim/systems/shot-height';
+import { shotHeight, SHOT_HEIGHT } from '../sim/systems/shot-height';
+import { wallTop } from './world';
 import { TICK_RATE, type DamageSource, type Player, type Projectile, type SimEvent, type SimState, type Vec2 } from '../sim/types';
 import { BLADE_COLORS, bladeFlicker, bladeReach, bladeStep } from './blade';
 import { palette } from './palette';
@@ -563,7 +564,8 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
     const who = shooter(s, e.pos, e.playerId);
     if (!who) return;
     const ax = who.aim.x, az = who.aim.z;
-    const y = HAND + (who.flying ? 2.5 : 0);
+    // (from where they are: up on a jetpack, or on top of the roof they stand on)
+    const y = HAND + (who.flying ? 2.5 : who.perched ? wallTop(s.map, who.pos.x, who.pos.z) : 0);
     // (a little way in front: in first person the eyes are where the shooter stands)
     const mx = e.pos.x + ax * 1.05, mz = e.pos.z + az * 1.05;
     const level = who.weapons[who.selected]?.level ?? 1;
@@ -726,7 +728,11 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
       for (const p of s.projectiles) {
         // (a monster's shot is drawn with the monsters; a missile has its own look, see lock-on.ts)
         if (p.hostile || p.behavior === 'missile') continue;
-        const up = shotHeight(p);
+        // (fired from a roof: the rules count every roof as high as `perch`, the buildings are drawn as high as they
+        // are; so the shot is drawn from the roof the shooter stands on, coming down as the rules say it does)
+        const arc = p.arc;
+        const roof = arc && arc.lift === SHOT_HEIGHT.perch ? wallTop(s.map, arc.x, arc.z) / SHOT_HEIGHT.perch : 1;
+        const up = shotHeight(p) * roof;
         const yaw = Math.atan2(p.vel.x, p.vel.z);
         let y = 0.6 + up, tint = 0xffffff;
         // (a shot grows out of the hand that fired it: it starts where its owner stands, which in first person

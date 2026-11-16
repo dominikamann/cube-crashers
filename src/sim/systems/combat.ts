@@ -14,7 +14,7 @@ import { damagePlayer } from './player';
 import { airborne, makeBubble } from './rare';
 import { stepMissile } from './missile';
 import { quadOf } from './bounty';
-import { aimShot, atHeightOf, shotHeight, SHOT_HEIGHT, upInTheAir } from './shot-height';
+import { aimShot, atHeightOf, shotHeight, shotLift, SHOT_HEIGHT, upInTheAir } from './shot-height';
 import { countHit, killCategory } from './stats';
 import { witchAloft, witchHit } from './witch';
 
@@ -29,14 +29,24 @@ const shotDamage = (p: Projectile, at: Vec2): number => {
   return p.damage * (d <= p.range ? 1 : (p.tiers.find(([upTo]) => d <= upTo)?.[1] ?? 0));
 };
 
+/** a shot this high (its lift: 0 on the floor, `perch` from a roof) passes over the walls: it is above the tops of
+ * the buildings, which stand as high as one on top of them stands (a floor shot flies `floor` above its feet). So one
+ * fired from a roof or a jetpack goes over the roofs, until it comes down onto what it was aimed at */
+// (worked out when needed: shot-height.ts is not loaded yet when this file is)
+const overWalls = () => SHOT_HEIGHT.perch - SHOT_HEIGHT.floor;
+
 /** a fast shot that met a wall on its way this tick stops at the first wall, not deeper in: back to where it came to
- * it (true), or nothing in its way (false) */
+ * it (true), or nothing in its way (false). A wall only stops a shot below its top: from a roof or a jetpack a shot
+ * flies over the roofs, and down onto what it was aimed at. */
 function wallOnFlight(s: SimState, p: Projectile): boolean {
   const ax = p.last?.x ?? p.pos.x, az = p.last?.z ?? p.pos.z;
   const steps = Math.max(1, Math.ceil(Math.hypot(p.pos.x - ax, p.pos.z - az) / 0.2));
   for (let i = 1; i <= steps; i++) {
     const x = ax + ((p.pos.x - ax) * i) / steps, z = az + ((p.pos.z - az) * i) / steps;
     if (tileAt(s.map, x, z) !== Tile.Wall) continue;
+    const a = p.arc;
+    // (only a shot fired from up there: one from the floor stays below the roofs, wherever the view points)
+    if (a && a.lift > 0 && shotLift(a.lift, Math.hypot(x - a.x, z - a.z), a.reach, a.end) >= overWalls()) continue;
     p.pos = { x, z };
     return true;
   }
@@ -354,6 +364,12 @@ export function updateProjectiles(s: SimState): void {
       // a shot that reaches a wall can still hit someone standing on top of it
       if (s.tick < p.until) {
         hitPerched(s, p);
+        // (and a monster up there, standing on the roof the shot came up to)
+        if (!p.hostile && p.ownerId >= 0) {
+          const up = targets(s).find(e => tileAt(s.map, e.pos.x, e.pos.z) === Tile.Wall && !(p.hitIds ?? []).includes(e.id) && dist(e.pos, p.pos) <= e.radius + HIT_PADDING + 0.3);
+          const dealt = up ? shotDamage(p, up.pos) : 0;
+          if (up && dealt > 0) hitEnemy(s, up, dealt, p.kind, p.ownerId);
+        }
         if (!p.hostile) shotAtWall(s, p.pos);
       }
       continue;

@@ -358,6 +358,49 @@ describe('reach', () => {
     expect(at(9.5)).toBe(0);
   });
 
+  /** the open floor with a block of wall (a building) from (bx, bz), w wide and d deep */
+  const withBlock = (bx: number, bz: number, w: number, d: number) => {
+    const s = open();
+    const m = s.map;
+    s.map = { ...m, tiles: m.tiles.map((t, i) => (i % m.w >= bx && i % m.w < bx + w && Math.floor(i / m.w) >= bz && Math.floor(i / m.w) < bz + d ? 1 : t) as typeof t) };
+    return s;
+  };
+
+  it('from the edge of a roof a bolt goes down onto a monster on the floor below, in first person too', () => {
+    const s = withBlock(20, 40, 8, 8);
+    const p = s.players[0];
+    p.pos = { x: 24.5, z: 47.7 };
+    p.perched = true;
+    const e = spawnEnemy(s, 'tank', { x: 24.5, z: 52.7 });
+    e.speed = 0;
+    stepSim(s, [{ type: 'aim', playerId: 0, point: e.pos, pitch: -0.35 }, fire]);
+    for (let i = 0; i < 40; i++) stepSim(s, [{ type: 'aim', playerId: 0, point: e.pos, pitch: -0.35 }]);
+    expect(e.hp).toBeLessThan(TANK);
+  });
+
+  it('from a jetpack a bolt flies over a building onto a monster behind it', () => {
+    const s = withBlock(20, 40, 4, 4);
+    const p = s.players[0];
+    p.pos = { x: 22, z: 46.5 };
+    Object.assign(p, { jetpack: true, jetFuel: 300, flying: true });
+    const e = spawnEnemy(s, 'tank', { x: 22, z: 36.5 });
+    e.speed = 0;
+    stepSim(s, [aimAt(e.pos), fire, { type: 'fly', playerId: 0 }]);
+    for (let i = 0; i < 40; i++) stepSim(s, [{ type: 'fly', playerId: 0 }]);
+    expect(e.hp).toBeLessThan(TANK);
+  });
+
+  it('from the floor a bolt stops at a building in its way', () => {
+    const s = withBlock(20, 40, 4, 4);
+    const p = s.players[0];
+    p.pos = { x: 22, z: 46.5 };
+    const e = spawnEnemy(s, 'tank', { x: 22, z: 36.5 });
+    e.speed = 0;
+    stepSim(s, [aimAt(e.pos), fire]);
+    run(s, 40);
+    expect(e.hp).toBe(TANK);
+  });
+
   it('the Pixel Rail hits with full damage as far as the first wall, however far that is', () => {
     const s = open();
     const p = s.players[0];
