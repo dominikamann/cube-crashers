@@ -324,7 +324,9 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     pushOutOfBosses(s, p);
     pushOutOfTowers(s, p, p.dashTicks > 0 ? p.dashDir : moveDir ?? null);
 
-    if (it.jump && p.air === 0 && p.dashTicks === 0 && !p.flying && s.run.stage !== 'maze') {
+    // running up a ramp at a barrier: a hop over it of itself, as a kart takes it
+    const hop = !!moveDir && p.vehicleId === null && tileAt(s.map, p.pos.x, p.pos.z) === Tile.Ramp && tileAt(s.map, p.pos.x + moveDir.x * 0.9, p.pos.z + moveDir.z * 0.9) === Tile.LowWall;
+    if ((it.jump || hop) && p.air === 0 && p.dashTicks === 0 && !p.flying && s.run.stage !== 'maze') {
       p.air = jumpTicks(s);
       s.events.push({ type: 'jump', playerId: p.id });
     } else if (p.air > 0) {
