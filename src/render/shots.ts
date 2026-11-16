@@ -461,6 +461,8 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
   let viewers = new Set<number>();
   let lastTick = 0;
   let mapId = '';
+  /** how fast each player runs (smoothed, from where they were the frame before): a spray they fire runs on with them */
+  const pace = new Map<number, { x: number; z: number; vx: number; vz: number }>();
   let wallColor = 0x888888;
   let rnd = 4711;
   const rand = () => ((rnd = (rnd * 16807) % 2147483647) / 2147483647);
@@ -668,8 +670,19 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
         seen.clear();
         mines.clear();
         pixels.length = hoopList.length = slashes.length = swats.length = rails.length = pulls.length = cuts.length = scorches.length = crackles.length = 0;
+        pace.clear();
       }
       const pal = palette();
+      for (const p of s.players) {
+        const was = pace.get(p.id);
+        if (!was || dt <= 0) {
+          pace.set(p.id, { x: p.pos.x, z: p.pos.z, vx: 0, vz: 0 });
+          continue;
+        }
+        // (a jump of more than a few tiles is a respawn or a teleport, not a run)
+        const vx = (p.pos.x - was.x) / dt, vz = (p.pos.z - was.z) / dt, k = Math.hypot(vx, vz) > 30 ? 0 : Math.min(1, dt * 12);
+        Object.assign(was, { x: p.pos.x, z: p.pos.z, vx: was.vx + (vx - was.vx) * k, vz: was.vz + (vz - was.vz) * k });
+      }
 
       for (const e of events) {
         if (e.type === 'shot') fired(e, s, events);
@@ -710,9 +723,12 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           if (!p) continue;
           const x = p.pos.x + p.aim.x * 0.8, z = p.pos.z + p.aim.z * 0.8;
           if (e.kind === 'slushMachine') {
-            // a cone of crushed ice: shards that glitter, and a cold mist
+            // a cone of crushed ice: shards that glitter, and a cold mist; it runs on with whoever fires it, as water
+            // from a hose does, so it stays in front of them while they run
+            const run = pace.get(p.id) ?? { vx: 0, vz: 0 }, n = pixels.length;
             spray(x, HAND, z, p.aim.x, p.aim.z, 0.7, some(12), 13, 0.36, 0.08, [0xffffff, 0x9fe8ff, 0x4fc8ff, 0xd8f6ff], { fall: 3 });
             for (let i = 0; i < some(3); i++) emit(x, HAND, z, p.aim.x * (5 + rand() * 4), 0.5, p.aim.z * (5 + rand() * 4), 0.5, 0.2, [0xffffff, 0xd8f6ff, 0x9fe8ff], { fall: -0.5, drag: 2, grow: 2.2 });
+            for (let i = n; i < pixels.length; i++) ((pixels[i].vx += run.vx), (pixels[i].vz += run.vz));
           } else if (e.kind === 'leafBlower') {
             // a gust: streaks of wind, and leaves tumbling in it
             spray(x, HAND, z, p.aim.x, p.aim.z, 0.8, some(6), 16, 0.3, 0.04, [0xffffff, 0xe8fff0], { long: 9, fall: 0 });
