@@ -133,7 +133,7 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const sway = Math.sin(time * 1.7 + c.seed * 40) * 0.9;
         const x = c.x + sway + time * 0.25 % W, z = c.z + Math.cos(time * 1.3 + c.seed * 30) * 0.6;
         // (not right before someone's eyes, as the jungle's leaves)
-        if (y < 3.5 && s.players.some(p => Math.hypot(p.pos.x - x, p.pos.z - z) < 2.2)) continue;
+        if (y < 3.5 && s.players.some(p => Math.hypot(p.pos.x - x, p.pos.z - z) < 1.6)) continue;
         confetti.addScaled(x, y, z, time * 2 + c.seed * 9, 0.22, 0.02, 0.12, c.color, Math.sin(time * 4 + c.seed * 20) * 1.2, Math.cos(time * 3 + c.seed * 11));
       }
       void s;
@@ -485,9 +485,12 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const u = (time * 0.12 + l.seed * 7) % 1;
         const x = l.x + Math.sin(time * 1.2 + l.seed * 30) * 0.8, y = 8 * (1 - u), z = l.z + Math.cos(time + l.seed * 9) * 0.5;
         // (not right before someone's eyes: in first person a leaf there fills a corner of the view, a big flat
-        // patch flicking past)
-        if (y < 3.5 && s.players.some(p => Math.hypot(p.pos.x - x, p.pos.z - z) < 2.2)) continue;
-        leaves.addScaled(x, y, z, time + l.seed * 6, 0.28, 0.02, 0.18, l.color, Math.sin(time * 2 + l.seed * 10) * 0.9);
+        // patch flicking past; it shrinks away as it comes near one, rather than vanishing at once)
+        const near = y < 3.5 ? Math.min(...s.players.map(p => Math.hypot(p.pos.x - x, p.pos.z - z))) : Infinity;
+        const k = Math.max(0, Math.min(1, (near - 1.4) / 1.6));
+        if (k === 0) continue;
+        // (it sails down slowly, tipping gently: tumbling fast, a thin leaf turns edge-on and back and seems to blink)
+        leaves.addScaled(x, y, z, time * 0.4 + l.seed * 6, 0.28 * k, 0.03, 0.18 * k, l.color, 0.25 + Math.sin(time * 0.9 + l.seed * 10) * 0.3);
       }
       void events;
       void dt;

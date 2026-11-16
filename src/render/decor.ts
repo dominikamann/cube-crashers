@@ -918,8 +918,11 @@ export function buildDecor(input: DecorContext): Decor {
       let rise = 0;
       for (let oz = -1; oz <= 1; oz++) for (let ox = -1; ox <= 1; ox++) if (isWall(c.tx + ox, c.tz + oz)) rise = Math.max(rise, wallTopY(c.tx + ox, c.tz + oz) - wallTopY(c.tx, c.tz));
       props.at(c.tx + 0.5, wallTopY(c.tx, c.tz), c.tz + 0.5);
-      props.box(1.6, 0.9, 1.6, h > 0.5 ? leafA : leafB, 0, 1.05 + h * 0.6 + rise, 0);
-      if (h > 0.7) props.box(1, 0.7, 1, leafA, 0, 1.85 + h * 0.3 + rise, 0);
+      // (neighbouring crowns overlap: of the same size their sides would lie in one plane and flicker against each
+      // other, so they are a little bigger and smaller by turns, as on a chessboard)
+      const odd = (c.tx + c.tz) % 2;
+      props.box(odd ? 1.52 : 1.6, 0.9, odd ? 1.52 : 1.6, h > 0.5 ? leafA : leafB, 0, 1.05 + h * 0.6 + rise, 0);
+      if (h > 0.7) props.box(odd ? 0.9 : 1, 0.7, odd ? 0.9 : 1, leafA, 0, 1.85 + h * 0.3 + rise, 0);
       for (const [ox, oz] of DIRS) {
         if (isWall(c.tx + ox, c.tz + oz) || hash(c.tx * 5 + ox, c.tz * 3 + oz) > 0.35) continue;
         const len = 0.5 + hash(c.tz, c.tx * 9) * 0.6;
