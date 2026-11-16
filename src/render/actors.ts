@@ -538,7 +538,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     // (a ladder, a landing) it is at once, those come up smoothly of themselves; and not after a jump across the
     // map (a respawn, a teleport)
     const stepped = Number.isNaN(v.lastX) ? Infinity : Math.hypot(p.pos.x - v.lastX, p.pos.z - v.lastZ);
-    if (perch >= v.perch || stepped > 1.5 || airborne) {
+    if (perch >= v.perch || stepped > 1.5 || airborne || down) {
       v.perch = perch;
       v.drop = 0;
     } else {

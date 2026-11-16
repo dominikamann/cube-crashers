@@ -5,20 +5,35 @@ import { createSim, stepSim } from '../../src/sim/sim';
 /** a lane with a barrier across it and a ramp up to it from the west */
 const MAP = parseMap('hop', ['##############', '#S....^=....E#', '##############']);
 
-function walkEast(from: { x: number; z: number }, ticks: number) {
+function walkEast(from: { x: number; z: number }, ticks: number, push = 1) {
   const s = createSim(MAP, 1, { mode: 'quick' });
   s.enemies = [];
   s.hordes = [];
   s.boss = null;
   s.players[0].pos = { ...from };
   s.players[0].invulnUntil = 1e9;
-  for (let i = 0; i < ticks; i++) stepSim(s, [{ type: 'move', playerId: 0, dir: { x: 1, z: 0 } }]);
+  for (let i = 0; i < ticks; i++) stepSim(s, [{ type: 'move', playerId: 0, dir: { x: push, z: 0 } }]);
   return s.players[0];
 }
 
 describe('a ramp up to a barrier', () => {
   it('a player running up it hops over the barrier of itself', () => {
     expect(walkEast({ x: 2.5, z: 1.5 }, 120).pos.x).toBeGreaterThan(8.5);
+  });
+
+  it('walking slowly up it (the stick pushed only a little) there is no hop, and no hopping again and again', () => {
+    const s = createSim(MAP, 1, { mode: 'quick' });
+    s.enemies = [];
+    s.hordes = [];
+    s.boss = null;
+    s.players[0].pos = { x: 2.5, z: 1.5 };
+    s.players[0].invulnUntil = 1e9;
+    let jumps = 0;
+    for (let i = 0; i < 300; i++) {
+      stepSim(s, [{ type: 'move', playerId: 0, dir: { x: 0.25, z: 0 } }]);
+      jumps += s.events.filter(e => e.type === 'jump').length;
+    }
+    expect(jumps).toBe(0);
   });
 
   it('a barrier with no ramp before it still stops whoever walks into it', () => {

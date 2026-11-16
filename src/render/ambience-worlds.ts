@@ -247,7 +247,7 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
   if (look === 'arena') {
     // the crowd on the stands: spectators of all sizes on the border walls (see drawFan), bobbing, and jumping up with every hit on
     // the boss (a cheer that runs round the stands)
-    const fans = t.solid(), beams = t.light(0.16), spots = t.soft(0.45, true);
+    const fans = t.solid(), beams = t.light(0.09), spots = t.soft(0.32, true);
     const seats = ctx.wallTiles.filter(c => (c.tx <= 1 || c.tz <= 1 || c.tx >= W - 2 || c.tz >= H - 2) && hash(c.tx * 7, c.tz * 3) < 0.75).map(c => ({ x: c.tx + 0.5, z: c.tz + 0.5, y: ctx.wallTopY(c.tx, c.tz), seed: hash(c.tx * 17, c.tz * 29) }));
     const cx = W / 2, cz = H / 2;
     let cheer = -10;
@@ -490,7 +490,7 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
 
   if (look === 'servers') {
     // pulses of data along the floor between the racks, and cold steam rising off the tops of the racks
-    const pulses = t.light(), mist = t.light(0.25);
+    const pulses = t.light(0.7), mist = t.light(0.25);
     const runs = floors(0.06, 31, 2).map(f => ({ ...f, along: f.seed > 0.5 ? 'x' : 'z' }));
     const vents = tops(0.04, 13);
     return (s, events, time, dt, low) => {
@@ -499,7 +499,11 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const off = (u - 0.5) * 6;
         const x = r.along === 'x' ? r.x + off : r.x, z = r.along === 'z' ? r.z + off : r.z;
         if (!isFloor(Math.floor(x), Math.floor(z))) continue;
-        pulses.addScaled(x, 0.04, z, r.along === 'x' ? Math.PI / 2 : 0, 0.08, 0.03, 0.7, r.seed > 0.7 ? 0x6aff8a : 0x3df0ff);
+        // (a train of little square bits, green or amber: not a streak of cyan, which would read as a shot)
+        for (let b = 0; b < 3; b++) {
+          const back = b * 0.26;
+          pulses.addScaled(x - (r.along === 'x' ? back : 0), 0.03, z - (r.along === 'x' ? 0 : back), 0, 0.11, 0.02, 0.11, r.seed > 0.7 ? 0xffb84a : 0x6aff8a);
+        }
       }
       if (low) return;
       for (const v of vents) {

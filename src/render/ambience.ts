@@ -144,7 +144,9 @@ export function buildAmbience(ctx: AmbienceContext): Ambience {
   };
   // (every map with such floor has it: the glitch on the plaza, in the factory, the city, the server farm, on the race
   // track (the no-ghost tiles) and in the lane; over the drop at the edge of the roofs and the helipad, a cloud mist)
-  if (['plaza', 'candy', 'neon', 'arena', 'servers', 'race', 'lane'].includes(look)) mist(tilesOf(t => t === Tile.Hazard), [0xb8a8d8, 0xd0b0e0, 0xa8c8e0, 0xc8c0d8], { per: 5, high: 1.7, size: 1.7, pace: 1, sparks: null }, 0.5);
+  if (['plaza', 'candy', 'neon', 'arena', 'servers', 'lane'].includes(look)) mist(tilesOf(t => t === Tile.Hazard), [0xb8a8d8, 0xd0b0e0, 0xa8c8e0, 0xc8c0d8], { per: 5, high: 1.7, size: 1.7, pace: 1, sparks: null }, 0.5);
+  // (on the race track low and thin: it must not hide the edge of the track from a driver)
+  if (look === 'race') mist(tilesOf(t => t === Tile.Hazard), [0xb8a8d8, 0xd0b0e0, 0xa8c8e0], { per: 2, high: 0.7, size: 1.3, pace: 1, sparks: null }, 0.35);
   if (look === 'rooftop' || look === 'helipad') mist(tilesOf(t => t === Tile.Hazard).filter(f => f.seed < 0.55), [0xf4f6ff, 0xe8ecf8, 0xffffff], { per: 2, high: 1.2, size: 2.4, pace: 0.5, sparks: null }, 0.42);
   mist(tilesOf(t => t === Tile.Boost), [0xffd23f, 0xfff2a0, 0xffb820], { per: 3, high: 0.9, size: 1.3, pace: 1.8, sparks: 0xfff4b0 }, 0.42, true);
   if (look === 'uplink') mist(tilesOf(t => t === Tile.Hazard), [0x6ac8ff, 0x3df0ff, 0xb8e8ff], { per: 3, high: 1.1, size: 1.4, pace: 1.4, sparks: 0xd8f4ff }, 0.35, true);
