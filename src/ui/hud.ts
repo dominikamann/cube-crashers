@@ -9,7 +9,8 @@ import { runProgress } from '../sim/systems/run';
 import { witchlingsLeft } from '../sim/systems/witch';
 import { BUILD_TICKS, MAX_TOWER_LEVEL, UPGRADE_TICKS } from '../sim/config/towers';
 import { Tile, tileAt } from '../sim/map/tilemap';
-import { t, type StringKey } from '../i18n';
+import { keyName, t, type StringKey } from '../i18n';
+import { WEAPON_ACTIONS } from '../input/bindings';
 import { cssColor, isColorBlind, palette, playerColor } from '../render/palette';
 import { RARE_GLYPH, WEAPON_GLYPH } from '../render/pickups';
 import { jetTank } from '../sim/config/rare';
@@ -24,6 +25,12 @@ import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
 import { bossHp } from '../sim/systems/boss';
 import { floorDef } from '../sim/config/floors';
+
+/** the keys that buy the four offers in the shop: the first four weapon keys, "1–4" while they are the plain digits */
+function buyKeys(): string {
+  const keys = WEAPON_ACTIONS.slice(0, 4).map(a => keyName(a));
+  return keys.every((k, i) => k === String(i + 1)) ? '1–4' : keys.join('/');
+}
 
 export interface Hud {
   update(s: SimState, events: SimEvent[], buildMenuOpen: boolean, time: number, localId: number): void;
@@ -302,7 +309,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           });
           shopReady.textContent = ready ? t('shop.waiting') : t('shop.ready', { key: padReady ?? 'Enter' });
           shopReady.classList.toggle('pad-focus', focus === offers.length);
-          shopHint.textContent = ready ? '' : padJump ? t('shop.padHint', { buy: padJump, ready: padReady! }) : t('shop.keyHint');
+          shopHint.textContent = ready ? '' : padJump ? t('shop.padHint', { buy: padJump, ready: padReady! }) : t('shop.keyHint', { keys: buyKeys() });
         }
       }
       alarmEls.forEach((a, i) => a.classList.toggle('on', i < s.alarm.level));

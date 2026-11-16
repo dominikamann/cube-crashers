@@ -300,7 +300,7 @@ export const en = {
   'shop.ready': 'Ready ({key})',
   'shop.waiting': 'Waiting for the others…',
   'shop.padHint': '◀ ▶ pick · {buy} buy · ▼ or {ready} ready',
-  'shop.keyHint': 'Click or press 1–4 to buy',
+  'shop.keyHint': 'Click or press {keys} to buy',
   'menu.credits': 'Credits & Legal',
   'credits.by': 'A game by',
   'credits.site': 'www.amannlabs.eu',
