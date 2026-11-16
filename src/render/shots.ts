@@ -722,18 +722,18 @@ export function createShots(scene: THREE.Scene, fx: ShotFx): Shots {
           const p = s.players.find(x => x.id === e.playerId);
           if (!p) continue;
           const x = p.pos.x + p.aim.x * 0.8, z = p.pos.z + p.aim.z * 0.8;
+          // (a stream runs on with whoever fires it, as water from a hose does, so it stays in front of them while they run)
+          const run = pace.get(p.id) ?? { vx: 0, vz: 0 }, n = pixels.length;
           if (e.kind === 'slushMachine') {
-            // a cone of crushed ice: shards that glitter, and a cold mist; it runs on with whoever fires it, as water
-            // from a hose does, so it stays in front of them while they run
-            const run = pace.get(p.id) ?? { vx: 0, vz: 0 }, n = pixels.length;
+            // a cone of crushed ice: shards that glitter, and a cold mist
             spray(x, HAND, z, p.aim.x, p.aim.z, 0.7, some(12), 13, 0.36, 0.08, [0xffffff, 0x9fe8ff, 0x4fc8ff, 0xd8f6ff], { fall: 3 });
             for (let i = 0; i < some(3); i++) emit(x, HAND, z, p.aim.x * (5 + rand() * 4), 0.5, p.aim.z * (5 + rand() * 4), 0.5, 0.2, [0xffffff, 0xd8f6ff, 0x9fe8ff], { fall: -0.5, drag: 2, grow: 2.2 });
-            for (let i = n; i < pixels.length; i++) ((pixels[i].vx += run.vx), (pixels[i].vz += run.vz));
           } else if (e.kind === 'leafBlower') {
             // a gust: streaks of wind, and leaves tumbling in it
             spray(x, HAND, z, p.aim.x, p.aim.z, 0.8, some(6), 16, 0.3, 0.04, [0xffffff, 0xe8fff0], { long: 9, fall: 0 });
             spray(x, HAND, z, p.aim.x, p.aim.z, 0.9, some(7), 11, 0.5, 0.1, [0x7cc56a, 0xb8e986, 0x4f9a3f, 0xd9a43a], { fall: 2 });
           }
+          if (e.kind === 'slushMachine' || e.kind === 'leafBlower') for (let i = n; i < pixels.length; i++) ((pixels[i].vx += run.vx), (pixels[i].vz += run.vz));
         }
       }
 
