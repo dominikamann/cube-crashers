@@ -37,7 +37,7 @@ import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
-import { TICK_RATE, type RunMode, type Command, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
+import { TICK_RATE, type RunMode, type Command, type KeepWeapons, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createEmotes } from './ui/emotes';
@@ -258,6 +258,7 @@ function startGame() {
     startVote: (option?: VersusOption) => {
       if (!host) return;
       const [a, b] = voteOptions();
+      host.keepWeapons = settings.versusKeep;
       host.startVote(option ? [option, b.map === option.map && b.rule === option.rule ? a : b] : [a, b]);
       // back to the lobby, where the vote is shown (the versus page would hide it)
       drawHostLobby();
@@ -266,6 +267,7 @@ function startGame() {
       if (!host) return;
       lanDiscovery = true;
       lanBots = [];
+      host.keepWeapons = settings.versusKeep;
       host.startVersus(discovery(discoveryStep++), Number(params.get('seed')) || randomSeed());
       enterPlay();
     },
@@ -273,6 +275,7 @@ function startGame() {
       if (!host) return;
       lanDiscovery = false;
       lanBots = [];
+      host.keepWeapons = settings.versusKeep;
       host.startVersus(option, Number(params.get('seed')) || randomSeed());
       enterPlay();
     },
@@ -302,6 +305,12 @@ function startGame() {
       lastLobby = '';
     },
     autoFill: () => autoFill,
+    setKeepWeapons: (k: KeepWeapons) => {
+      settings.versusKeep = k;
+      saveSettings(settings);
+      if (host) host.keepWeapons = k;
+      lastLobby = '';
+    },
     setViewMode: (v: 'both' | 'fp' | 'top') => {
       lanView = v;
       // (the Town is first person only: a Single floor there goes back to the first floor, a Brawl, a Boss Rush or a
@@ -883,7 +892,7 @@ function startGame() {
     const fixed = Number(params.get('seed'));
     // split screen in teams: player 1 is red, player 2 joins them or plays blue; bots even it out
     const teams = balanceTeams(names.map((_, i) => ({ id: i, bot: i >= humans, wish: i === 0 ? 0 : i === 1 ? (settings.splitTogether ? 0 : 1) : null })));
-    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], bots: names.map((_, i) => i >= humans), versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined }, countdown: !params.has('capture') && !(import.meta.env.DEV && params.has('nocount')) });
+    solo = createSim(map, fixed > 0 ? fixed : randomSeed(), { mode: 'versus', players: names.length, names, colors, characters: [ownedCharacter(profile, settings.character)], bots: names.map((_, i) => i >= humans), versus: { mode: vsMode, rule: vsRule, chaos: vsChaos, boss: vsBoss, teams: humans === 2 ? teams : undefined, keep: settings.versusKeep }, countdown: !params.has('capture') && !(import.meta.env.DEV && params.has('nocount')) });
     versusBots = solo.players.slice(humans).map(p => createVersusBot(p.id, settings.versusBots));
     // dev: ?versus=ffa|team&demo=win (&size=10, &nocount=1) ends the match right at GO with made-up scores, to
     // look at the result screen
@@ -969,6 +978,7 @@ function startGame() {
       role = 'host';
       setSplit(false);
       host = new HostSession(transport, { name: playerName(), color: settings.color, character: ownedCharacter(profile, settings.character), unlocked: profile.unlocked });
+      host.keepWeapons = settings.versusKeep;
       host.setAutoFill(autoFill);
       host.setDifficulty(settings.difficulty);
       showLobby();

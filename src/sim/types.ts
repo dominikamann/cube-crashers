@@ -590,9 +590,14 @@ export interface RunState {
   maze?: MazeState | null;
 }
 
+/** versus: what a player's weapons do when they fall: gone (the default), back one level lower, or back as they were */
+export type KeepWeapons = 'none' | 'level' | 'all';
+
 export interface VersusState {
   mode: VersusMode;
   rule: VersusRule;
+  /** what one's weapons do after a fall (left out: they are gone) */
+  keep?: KeepWeapons;
   /** score race: kills to win (per player, or per team) */
   limit: number;
   /** score race: the match ends at this tick */

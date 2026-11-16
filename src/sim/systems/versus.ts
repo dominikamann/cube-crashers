@@ -2,7 +2,7 @@ import { spawnWild, WILD } from './wild-boss';
 import { clearSpot, spotClear } from './ground';
 import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
-import { TICK_RATE, type CoinOpRule, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from '../types';
+import { TICK_RATE, type CoinOpRule, type KeepWeapons, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type HeldWeapon, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { addPlayer, removePlayer, syncCredits } from './coop';
 import { cardPositions, hiddenPrize, placeStartCrates } from './offers';
@@ -185,11 +185,23 @@ function equip(p: Player, s?: SimState): void {
   p.flying = false;
 }
 
+/**
+ * What comes back after a fall when the match keeps weapons: all of them as they were, or each a level lower (one
+ * at its first level is lost, the blaster never). Null where they are gone (the default, and always in Gun Game,
+ * which has its ladder).
+ */
+function keptWeapons(s: SimState, p: Player): HeldWeapon[] | null {
+  const keep = s.versus?.keep;
+  if (!keep || keep === 'none' || s.versus?.rule === 'gungame') return null;
+  if (keep === 'all') return p.weapons.map(w => ({ ...w, cooldown: 0 }));
+  return p.weapons.filter(w => w.kind === 'pixelBlaster' || w.level > 1).map(w => ({ ...w, level: Math.max(1, w.level - 1), cooldown: 0 }));
+}
+
 /** Sets up a versus match on the current map: teams, spread-out starts, a blaster each. */
 /** how long until the next boss: somewhere between `from` and `to` */
 const bossWait = (s: SimState, [from, to]: number[]) => Math.round(from + s.rng.next() * (to - from));
 
-export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>, boss = false): void {
+export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, chaos = false, teams?: Record<number, 0 | 1>, boss = false, keep?: KeepWeapons): void {
   // capture the cube needs two teams; gun game is everyone for themselves
   if (rule === 'capture') mode = 'team';
   if (rule === 'gungame') mode = 'ffa';
@@ -199,6 +211,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
   s.versus = {
     mode,
     rule,
+    ...(keep && keep !== 'none' ? { keep } : {}),
     limit: VERSUS.limit[mode],
     endsAt: s.tick + VERSUS.minutes[mode] * 60 * TICK_RATE,
     scores: {},
@@ -259,7 +272,11 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
 function startRound(s: SimState): void {
   const placed: Player[] = [];
   for (const p of s.players) {
+    // (a match that keeps weapons starts the next round with what each has now: the fallen lost theirs, or a
+    // level of them, when they fell)
+    const kept = keptWeapons(s, p) ? p.weapons.map(w => ({ ...w, cooldown: 0 })) : null;
     equip(p, s);
+    if (kept) p.weapons = kept;
     p.perched = false;
     p.climb = null;
     p.descent = 0;
@@ -413,8 +430,11 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     p.vehicleId = null;
   }
   dropCube(s, p);
-  dropLoot(s, p);
+  // (weapons that come back with the player are not dropped as well)
+  const kept = keptWeapons(s, p);
+  if (!kept) dropLoot(s, p);
   equip(p, s);
+  if (kept) p.weapons = kept;
   p.air = 0;
   p.dashTicks = 0;
   p.combo = 0;

@@ -4,7 +4,7 @@ import { FLOORS } from '../sim/config/floors';
 import { createSim, stepSim } from '../sim/sim';
 import { removePlayer } from '../sim/systems/coop';
 import { balanceTeams, joinRunning, takeSeat } from '../sim/systems/versus';
-import type { Command, Difficulty, Player, RunMode, SimEvent, SimState } from '../sim/types';
+import type { Command, Difficulty, KeepWeapons, Player, RunMode, SimEvent, SimState } from '../sim/types';
 import { APP_VERSION } from '../version';
 import { isCoop, MAX_NAME, MAX_SERVER_NAME, parseMessage, PROTOCOL_VERSION, sanitizeCommands, SNAPSHOT_EVERY_TICKS, type GameInfo, type HostMessage, type LobbyPlayer, type LobbyVote, type ServerMode, type ServerStatus, type VersusOption, type ViewMode } from './protocol';
 import { applySnapshot, serializeSnapshot } from './snapshot';
@@ -46,6 +46,8 @@ export class HostSession {
   difficulty: Difficulty = 'medium';
   /** first person only, from above only, or either: sent to everyone with the start */
   viewMode: ViewMode = 'both';
+  /** versus: what a player's weapons do after a fall */
+  keepWeapons: KeepWeapons = 'none';
   sim: SimState | null = null;
   /** everything the host's own screen should show this frame */
   events: SimEvent[] = [];
@@ -286,7 +288,7 @@ export class HostSession {
     if (!def) return;
     while (this.lobby.length < this.autoFill) this.addBot(BOT_NAMES[this.lobby.length % BOT_NAMES.length]);
     this.running(true);
-    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, boss: !!option.chaos && !!option.boss, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
+    const versus = { mode: option.rule === 'capture' ? ('team' as const) : option.rule === 'gungame' ? ('ffa' as const) : option.mode, rule: option.rule, chaos: !!option.chaos, boss: !!option.chaos && !!option.boss, keep: this.keepWeapons, teams: balanceTeams(this.lobby.map(p => ({ id: p.id, bot: p.bot, wish: p.team }))) };
     this.sim = createSim(def.map, seed, {
       mode: 'versus',
       versus,

@@ -1,6 +1,8 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, withoutTown } from '../maps';
-import type { Difficulty } from '../sim/types';
+import type { Difficulty, KeepWeapons } from '../sim/types';
+
+const KEEP_WEAPONS: KeepWeapons[] = ['none', 'level', 'all'];
 import { isCoop, SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
 
 /** everything a server owner can set, by command line flag, environment variable or server.json */
@@ -26,6 +28,8 @@ export interface ServerConfig {
   countdown: number;
   /** versus: monster hordes join in */
   monsters: boolean;
+  /** versus: what a player's weapons do after a fall: gone, back a level lower, or back as they were */
+  keep: KeepWeapons;
   /** players from the browser version may join (they reach the server through a TLS proxy) */
   web: boolean;
   /** squeeze what the server sends: a fraction of the upload, for more work per player */
@@ -65,7 +69,7 @@ export function mapChoices(mode: ServerMode, view: ViewMode = 'both'): string[] 
 const DIFFICULTIES: Difficulty[] = ['ultraLow', 'low', 'medium', 'high', 'ultraHigh'];
 
 export function defaultConfig(): ServerConfig {
-  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, web: false, compress: false };
+  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, keep: 'none', web: false, compress: false };
 }
 
 /** name of the setting, its flag and environment variable, and how to read it */
@@ -80,6 +84,7 @@ const FIELDS: { key: keyof ServerConfig; flag: boolean }[] = [
   { key: 'view', flag: false },
   { key: 'countdown', flag: false },
   { key: 'monsters', flag: true },
+  { key: 'keep', flag: false },
   { key: 'web', flag: true },
   { key: 'compress', flag: true },
 ];
@@ -130,6 +135,7 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
   if (raw.view !== undefined) c.view = oneOf('view', raw.view, VIEW_MODES);
   if (raw.countdown !== undefined) c.countdown = int('countdown', raw.countdown, 3, 600);
   if (raw.monsters !== undefined) c.monsters = bool(raw.monsters);
+  if (raw.keep !== undefined) c.keep = oneOf('keep', raw.keep, KEEP_WEAPONS);
   if (raw.web !== undefined) c.web = bool(raw.web);
   if (raw.compress !== undefined) c.compress = bool(raw.compress);
   if (raw.map !== undefined && raw.map !== null && raw.map !== '') {
@@ -176,6 +182,8 @@ export const HELP = `Cube Crashers dedicated server
                        the Town is walked in first person only: with top it is left out
   --countdown <secs>   wait this long for players before a match (default 30)
   --monsters           versus: monster hordes join in
+  --keep <what>        versus: weapons after a fall: none (gone, the default), level (back a level lower), all
+                       (back as they were); the jetpack and a rare weapon go with the fall, Gun Game keeps its ladder
   --web                let players from the browser version join (needs a TLS proxy, see the README)
   --compress           squeeze what the server sends: far less upload, more work for the processor
   --config <file>      read settings from a JSON file (default ./server.json if it exists)

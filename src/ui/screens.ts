@@ -15,7 +15,7 @@ import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { CHARACTERS, isCharacter } from '../characters';
 import { bossToBeat, browserStore, buyUnlock, claimBonus, ownedCharacter, UNLOCKS, type BonusId, type Profile } from '../profile';
-import type { Difficulty } from '../sim/types';
+import type { Difficulty, KeepWeapons } from '../sim/types';
 import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
 export interface Settings {
@@ -61,6 +61,8 @@ export interface Settings {
   /** versus: monster hordes join in */
   /** monsters in a versus match: none, hordes, or hordes and now and then a boss */
   versusChaos: boolean | 'boss';
+  /** versus: what one's weapons do after a fall (a LAN host's matches too) */
+  versusKeep: KeepWeapons;
   /** versus: discovery, a rotation through every mode instead of one fixed match */
   versusDiscovery: boolean;
   /** set once discovery became the versus default */
@@ -110,7 +112,8 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, showFps: false, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
+const KEEPS: KeepWeapons[] = ['none', 'level', 'all'];
+const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, showFps: false, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, versusKeep: 'none', splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
 export const FUN_NAMES = {
@@ -288,6 +291,8 @@ export interface LanActions {
   /** versus: fill matches up with bots to this many players (0 = off) */
   setAutoFill(n: number): void;
   autoFill(): number;
+  /** versus: what everyone's weapons do after a fall */
+  setKeepWeapons(k: KeepWeapons): void;
   /** how everyone may watch: first person only, from above only, or either */
   setViewMode(v: 'both' | 'fp' | 'top'): void;
   viewMode(): 'both' | 'fp' | 'top';
@@ -1010,6 +1015,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           choose(t('setup.mode'), [{ label: t('versus.ffa'), value: 'ffa' as const }, { label: t('versus.team'), value: 'team' as const }], settings.versusMode, v => (settings.versusMode = v));
         }
         choose<boolean | 'boss'>(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }, { label: t('versus.chaosBoss'), value: 'boss' }], settings.versusChaos, v => (settings.versusChaos = v));
+        // (Gun Game has its ladder: there the weapon after a fall is the ladder's)
+        if (settings.versusRule !== 'gungame' || settings.versusDiscovery) choose<KeepWeapons>(t('setup.keep'), KEEPS.map(k => ({ label: t(`keep.${k}`), value: k })), settings.versusKeep, v => (settings.versusKeep = v));
         const vsMaps = withoutTown(VERSUS_MAPS, lan?.viewMode() === 'top');
         if (!vsMaps.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = vsMaps[0];
         // "Rotation": a random arena, and a new one after every match
@@ -1370,6 +1377,9 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             chip(botsRow, '\u2212', false, () => stepTo(at - 1));
             text(botsRow, 'span', 'lobby-note', lan.autoFill() === 0 ? t('lobby.fillOff') : t('lobby.fill', { n: lan.autoFill() }));
             chip(botsRow, '+', false, () => stepTo(at + 1));
+            // what a weapon does after a fall: gone (as always), back a level lower, or back as it was
+            const keepRow = rowOf(t('setup.keep'));
+            for (const k of KEEPS) chip(keepRow, t(`keep.${k}`), settings.versusKeep === k, () => lan.setKeepWeapons(k));
           } else {
             if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), lan);
             if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'brawlMap', lan);

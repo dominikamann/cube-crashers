@@ -36,7 +36,7 @@ import { tryBuild, tryUpgrade, updateTowerWork, updateTowers } from './systems/t
 import { updateWeapons } from './systems/weapons';
 import { ALL_WEAPONS } from './config/weapons';
 import { handleEmote } from './systems/emotes';
-import { TICK_RATE, type Command, type Difficulty, type Intent, type Player, type RunMode, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from './types';
+import { TICK_RATE, type Command, type Difficulty, type Intent, type KeepWeapons, type Player, type RunMode, type SimState, type Vec2, type VersusMode, type VersusRule, type WeaponKind } from './types';
 
 export function createPlayer(id: number, pos: Vec2, name = defaultName(id), color = id % MAX_PLAYERS): Player {
   return {
@@ -105,7 +105,7 @@ export interface SimOptions {
   /** 'run' plays all floors of RUN_FLOORS (starting with the first), 'quick' just `map` */
   mode?: RunMode;
   /** versus (PvP): free for all or teams, score race or last cube standing */
-  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1> };
+  versus?: { mode: VersusMode; rule: VersusRule; chaos?: boolean; boss?: boolean; teams?: Record<number, 0 | 1>; keep?: KeepWeapons };
   /** Boss Rush: the map of each boss, instead of their own floors */
   rushMaps?: string[];
   /** the games between the floors, in order, instead of the ones the seed picks (tests, servers) */
@@ -196,7 +196,7 @@ export function createSim(firstMap: FloorMap, seed: number, opts: SimOptions = {
     if (opts.characters?.[i]) p.character = opts.characters[i];
     if (opts.bots?.[i]) p.bot = true;
   }
-  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.boss ?? false);
+  if (mode === 'versus') setupVersus(s, opts.versus?.mode ?? 'ffa', opts.versus?.rule ?? 'score', opts.versus?.chaos ?? false, opts.versus?.teams, opts.versus?.boss ?? false, opts.versus?.keep);
   else setupFloor(s);
   if (opts.countdown) s.countdown = COUNTDOWN_TICKS;
   return s;

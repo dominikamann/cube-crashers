@@ -40,6 +40,7 @@ export class DedicatedServer {
     this.log = opts.log ?? (() => {});
     host.viewMode = cfg.view;
     host.difficulty = cfg.difficulty;
+    host.keepWeapons = cfg.keep;
     host.setAutoFill(isCoop(cfg.mode) ? 0 : cfg.bots);
     if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
     if (isCoop(cfg.mode) && (cfg.monsters || cfg.teams)) this.log('note: --monsters and --teams are for versus');

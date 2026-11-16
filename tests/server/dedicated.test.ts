@@ -539,6 +539,14 @@ describe('the dedicated server', () => {
   });
 });
 
+describe('a server that keeps weapons', () => {
+  it('hands --keep to the match it starts', () => {
+    const { host, run } = setup({ mode: 'score', keep: 'all', countdown: 3 });
+    run(4);
+    expect(host.sim?.versus?.keep).toBe('all');
+  });
+});
+
 describe('the map a server announces', () => {
   it('says whether the server stays on it or picks another for the next match', () => {
     // (a versus server without --map goes through the arenas; with one it stays)

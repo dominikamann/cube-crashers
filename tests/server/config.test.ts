@@ -56,6 +56,14 @@ describe('dedicated server settings', () => {
     expect(parseConfig([], {}, { mode: 'quick', map: 'lane' })).toMatchObject({ mode: 'quick', map: 'lane' });
   });
 
+  it('--keep says what weapons do after a fall: gone unless asked for, a level lower, or kept', () => {
+    expect(parseConfig([], {}, null).keep).toBe('none');
+    expect(parseConfig(['--mode', 'score', '--keep', 'level'], {}, null).keep).toBe('level');
+    expect(parseConfig([], { CC_KEEP: 'all' }, null).keep).toBe('all');
+    expect(() => parseConfig(['--keep', 'some'], {}, null)).toThrow(/keep must be one of: none, level, all/);
+    expect(HELP).toContain('--keep');
+  });
+
   it('a list of maps, comma apart, is played in turn (Single floor and versus)', () => {
     expect(parseConfig(['--mode', 'quick', '--map', 'waldsee,jungle'], {}, null).map).toBe('waldsee,jungle');
     expect(parseConfig(['--mode', 'score', '--map', ' neon , arena '], {}, null).map).toBe('neon,arena');
