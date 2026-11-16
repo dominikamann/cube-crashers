@@ -91,6 +91,27 @@ describe('slush machine', () => {
   });
 });
 
+describe('every rare shot is seen and heard', () => {
+  it('the Slush Machine sprays whenever the trigger is pulled, not only when that falls on every sixth tick', () => {
+    for (let wait = 0; wait < 6; wait++) {
+      const s = armed('slushMachine');
+      run(s, wait);
+      const events = run(s, 24, () => [fire]);
+      expect(events.filter(e => e.type === 'rareFired').length, `pulled after ${wait} ticks`).toBe(4);
+    }
+  });
+
+  it('a single shot (the Bubblegum Bazooka, the Pizza Cutter, the Thunder Hammer) says so every time', () => {
+    for (const kind of ['bubblegumBazooka', 'pizzaCutter', 'thunderHammer'] as const)
+      for (let wait = 0; wait < 6; wait++) {
+        const s = armed(kind);
+        run(s, wait);
+        const events = run(s, 1, () => [fire]);
+        expect(events.filter(e => e.type === 'rareFired').length, `${kind} after ${wait} ticks`).toBe(1);
+      }
+  });
+});
+
 describe('bubblegum bazooka', () => {
   it('traps monsters in a bubble that pops after 3 seconds', () => {
     const s = armed('bubblegumBazooka');

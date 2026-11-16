@@ -238,8 +238,9 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
     if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
     if (p.rareSelected && p.rare) {
       const kind = p.rare.kind;
-      // (a stream says so now and then; a single shot each time)
-      if (fireRare(s, p) && (kind === 'missileLauncher' || s.tick % 6 === 0)) s.events.push({ type: 'rareFired', kind, playerId: p.id, pos: { ...p.pos } });
+      // (every shot says so, the Slush Machine's every sixth tick too, whenever the trigger was pulled; only the Leaf
+      // Blower, which blows every tick, says so every sixth)
+      if (fireRare(s, p) && (kind !== 'leafBlower' || s.tick % 6 === 0)) s.events.push({ type: 'rareFired', kind, playerId: p.id, pos: { ...p.pos } });
       continue;
     }
     const w = p.weapons[p.selected];
