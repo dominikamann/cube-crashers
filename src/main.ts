@@ -14,6 +14,7 @@ import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
 import { createRaceView, lookOf, yawOf } from './input/first-person';
 import { Keyboard } from './input/keyboard';
+import { loadKeyboardLayout } from './input/bindings';
 import { createVersusBot } from './bots/versus';
 import { locked } from './sim/systems/missile';
 import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
@@ -231,6 +232,8 @@ function startGame() {
     renderer.setDamageNumbers(settings.damageNumbers);
   }
   applySettings();
+  // the keys as this keyboard has them (a German one says Y where the bindings mean "KeyZ"), once the browser tells
+  void loadKeyboardLayout().then(known => known && setKeyBindings(settings.bindings));
   // the first start on a machine: the graphics test picks the setting once, by itself, on the title screen
   if (!settings.graphicsTested && [...params.keys()].length === 0) setTimeout(() => mode === 'title' && startGraphicsTest(), 2500);
 

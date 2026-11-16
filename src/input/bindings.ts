@@ -113,10 +113,32 @@ const NAMES: Record<string, string> = {
   PageDown: 'PgDn',
 };
 
-/** "KeyE" → "E", "ShiftLeft" → "Shift", "Digit1" → "1", "ArrowUp" → "↑" */
+/**
+ * What the keys say on this keyboard: the bindings are where a key sits (as on a US keyboard), so on a German one
+ * "KeyZ" is the key that says Y. Asked once from the browser where it can tell (Chrome and the desktop app);
+ * elsewhere the US letters stand.
+ */
+let layout: Map<string, string> | null = null;
+
+/** reads this keyboard's layout; true when it is known now (the hints are then to be made again) */
+export async function loadKeyboardLayout(): Promise<boolean> {
+  const kb = (navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> } }).keyboard;
+  if (!kb?.getLayoutMap) return false;
+  try {
+    layout = new Map(await kb.getLayoutMap());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** "KeyE" → "E", "ShiftLeft" → "Shift", "Digit1" → "1", "ArrowUp" → "↑"; on a German keyboard "KeyZ" → "Y" */
 export function keyLabel(code: string): string {
   if (NAMES[code]) return NAMES[code];
   let m = /^(?:Key|Digit)(.)$/.exec(code);
+  // (a letter or a digit as this keyboard has it, when known)
+  const own = layout?.get(code);
+  if (m && own && own.trim().length === 1) return own.toUpperCase();
   if (m) return m[1];
   m = /^Numpad(.+)$/.exec(code);
   if (m) return `Num ${m[1]}`;

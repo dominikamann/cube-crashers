@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, actionOf, assignKey, canBind, DEFAULT_BINDINGS, keyHints, keyLabel, validBindings } from '../src/input/bindings';
+import { loadKeyboardLayout, ACTIONS, actionOf, assignKey, canBind, DEFAULT_BINDINGS, keyHints, keyLabel, validBindings } from '../src/input/bindings';
 
 describe('key bindings', () => {
   it('the defaults are the keys the game always used, each once', () => {
@@ -91,5 +91,21 @@ describe('the map key', () => {
     expect(DEFAULT_BINDINGS.map).toBe('KeyM');
     const { bindings } = assignKey(DEFAULT_BINDINGS, 'map', 'KeyN');
     expect(bindings.map).toBe('KeyN');
+  });
+});
+
+describe('the keys as this keyboard has them', () => {
+  it('on a German keyboard the key the bindings call KeyZ says Y; without a layout the US letters stand', async () => {
+    expect(keyLabel('KeyZ')).toBe('Z');
+    const nav = globalThis.navigator as unknown as { keyboard?: unknown };
+    const had = Object.getOwnPropertyDescriptor(globalThis.navigator, 'keyboard');
+    Object.defineProperty(globalThis.navigator, 'keyboard', { configurable: true, value: { getLayoutMap: async () => new Map([['KeyZ', 'y'], ['KeyY', 'z'], ['KeyE', 'e'], ['Digit1', '1']]) } });
+    try {
+      expect(await loadKeyboardLayout()).toBe(true);
+      expect([keyLabel('KeyZ'), keyLabel('KeyY'), keyLabel('KeyE'), keyLabel('Digit1'), keyLabel('ShiftLeft')]).toEqual(['Y', 'Z', 'E', '1', 'Shift']);
+    } finally {
+      if (had) Object.defineProperty(globalThis.navigator, 'keyboard', had);
+      else delete nav.keyboard;
+    }
   });
 });
