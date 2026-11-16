@@ -81,6 +81,8 @@ export interface GameRenderer {
 }
 
 const LOOK_BLEND_SECONDS = 1.5;
+/** how long the loading screen waits at most for a floor's shaders to compile */
+const COMPILE_WAIT_MS = 5000;
 /** share of the aim distance the camera moves ahead, and the most it moves (tiles) */
 const LOOK_AHEAD = 0.45;
 const LOOK_AHEAD_MAX = 3;
@@ -272,11 +274,12 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
 
   /** a new floor: rebuild the static world and jump the camera to the new spawn */
   function build(s: SimState) {
+    // (taken as built even if building fails: else every frame would start it again, the loading screen flashing)
+    mapId = s.map.id;
     world.dispose();
     world = createWorld(scene, s.map);
     world.setDetail(quality === 'low');
     actors.setMap(s.map);
-    mapId = s.map.id;
     for (const v of views) {
       v.camPos.set(s.map.spawn.x, 15, s.map.spawn.z + 11);
       v.camLook.set(s.map.spawn.x, 0, s.map.spawn.z - 2);
@@ -289,7 +292,15 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       if (s.map.id !== mapId) build(s);
       // (where the browser compiles in the background, the first frame of the floor does not stall on its shaders;
       // where it cannot, this compiles them now, behind the loading screen, instead of in the first frame)
-      await renderer.compileAsync(scene, views[0].camera).catch(() => {});
+      // (but never longer than a few seconds: on a lost graphics context the compile never reports done, and the
+      // loading screen would stay for good; then the first frames compile what is left, as they did before)
+      await Promise.race([
+        renderer.compileAsync(scene, views[0].camera).catch(() => {}),
+        new Promise<void>(done => {
+          setTimeout(done, COMPILE_WAIT_MS);
+          canvas.addEventListener('webglcontextlost', () => done(), { once: true });
+        }),
+      ]);
     },
     render(s, _alpha, events, frameDt) {
       time += frameDt;

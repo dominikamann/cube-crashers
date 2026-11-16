@@ -359,10 +359,13 @@ function startGame() {
     // (two frames: the loading screen is on screen before building the floor holds up the page)
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
-        void renderer.prepare(view()).finally(() => {
-          preparing = false;
-          loading.style.display = 'none';
-        }),
+        void renderer
+          .prepare(view())
+          .catch(e => console.error('building the floor failed', e))
+          .finally(() => {
+            preparing = false;
+            loading.style.display = 'none';
+          }),
       ),
     );
   }
