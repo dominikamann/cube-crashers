@@ -206,10 +206,15 @@ function startClimb(s: SimState, p: Player, dir: Vec2): boolean {
   return true;
 }
 
+/** a throw (see Player.flung): each tick it covers `ease` of what is left, but at least `min` tiles a second; the
+ *  Rhino's nine tiles take a little over half a second */
+export const FLING = { ease: 0.1, min: 3.5 };
+
 function updateOne(s: SimState, p: Player, it: Intent): void {
   if (p.downUntil !== null) {
     if (s.tick < p.downUntil) return;
     p.downUntil = null;
+    p.flung = undefined;
     p.hp = p.maxHp;
     p.pos = { ...p.safePoint };
     p.perched = false;
@@ -258,6 +263,8 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
   if (moveDir) p.facing = moveDir;
 
   const flying = updateFlight(s, p, it.fly);
+  // (a throw ends when one is no longer on the floor on foot: in a vehicle, on a ladder, on a wall, flying)
+  if (p.flung && (p.vehicleId !== null || p.climb || p.perched || flying)) p.flung = undefined;
   const turbo = coinOpRule(s) === 'turbo' ? VERSUS.turbo : 1;
 
   // vehicles move their driver (see vehicles.ts)
@@ -304,7 +311,14 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
       s.events.push({ type: 'dash', playerId: p.id });
     }
 
-    if (p.dashTicks > 0) {
+    if (p.flung) {
+      // thrown: fast at first, slowing as it goes (a share of what is left each tick, never too slow); a wall ends it
+      const f = p.flung;
+      const step = Math.min(f.left, Math.max(FLING.min * DT, f.left * FLING.ease));
+      const hit = moveCircle(s.map, p.pos, f.dir.x * step, f.dir.z * step, PLAYER_RADIUS, BLOCKS_WALKER);
+      f.left -= step;
+      if (hit.hitX || hit.hitZ || f.left <= 0.01) p.flung = undefined;
+    } else if (p.dashTicks > 0) {
       p.dashTicks--;
       moveCircle(s.map, p.pos, p.dashDir.x * DASH_SPEED * DT, p.dashDir.z * DASH_SPEED * DT, PLAYER_RADIUS, BLOCKS_WALKER);
       for (const e of s.enemies) {

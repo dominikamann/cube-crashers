@@ -642,7 +642,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
         }
         if (e.kind === 'rammer') {
           if (!rhinoBoss) for (const side of [-1, 1]) horns.add(e.pos.x + Math.cos(yaw) * side * 0.4 + Math.sin(yaw) * 0.6, y + 0.1, e.pos.z - Math.sin(yaw) * side * 0.4 + Math.cos(yaw) * 0.6, yaw, scale);
-          if (e.state === 'windup' || e.state === 'charge') {
+          // (the Rhino gives no lane away: one has to watch it, it curves after its prey anyway)
+          if (!rhinoBoss && (e.state === 'windup' || e.state === 'charge')) {
             tmpFrom.set(e.pos.x, 0.06, e.pos.z);
             lanes.addStretched(tmpFrom, yaw, e.radius * 2, e.state === 'charge' ? e.chargeLeft : 12);
           }

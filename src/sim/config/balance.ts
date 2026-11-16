@@ -79,6 +79,10 @@ export const TELEPORTER = { min: 3, max: 10, windupTicks: 45, cooldownTicks: 300
 export const SHOOTER = { min: 5, max: 7, fireRange: 8, windupTicks: 24, cooldownTicks: 132, bulletSpeed: 6, damage: 10 };
 export const BOMBER = { trigger: 1.6, fuseTicks: 36, radius: 2, player: 25, enemy: 30, tower: 20, deathRadius: 1.8 };
 export const RAMMER = { range: 9, windupTicks: 48, speed: 14, distance: 12, damage: 30, towerDamage: 20, stunTicks: 90, hitStunTicks: 45, cooldownTicks: 180 };
+/** the Rhino boss charges like a rammer, but from further off, sooner, faster and further, and soon again; it turns
+ *  after its prey while it runs (`steer`, radians a second) and walks after it briskly between charges (`walk`:
+ *  times a rammer's pace) */
+export const RHINO = { range: 15, windupTicks: 30, speed: 20, distance: 20, damage: 35, towerDamage: 40, stunTicks: 50, hitStunTicks: 35, cooldownTicks: 75, steer: 1.3, walk: 2.6 };
 
 export const NESTS_PER_FLOOR = 4;
 export const ROAMING_HORDES = 6;
@@ -94,7 +98,8 @@ export const DOUBLE_RUSH_ALARM = 2;
 export const GUARD_FACTOR = 1.5;
 export const FIRST_RUSH_TICKS = 60;
 export const RUSH_BASE_SIZE = 8;
-export const RUSH_SIZE_PER_ALARM = 3;
+/** (a little under three: at the highest alarm a rush is a couple of monsters smaller) */
+export const RUSH_SIZE_PER_ALARM = 2.5;
 export const NEST_SPAWN_TICKS = 1200;
 export const NEST_BLAST = { radius: 6, damage: 250, coins: 25 };
 /** the crocodile's lunge: like a rammer's charge, but short and quick to come again */

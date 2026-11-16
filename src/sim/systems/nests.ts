@@ -20,13 +20,12 @@ import {
   RUSH_BASE_SIZE,
   RUSH_INTERVAL_TICKS,
   RUSH_SIZE_PER_ALARM,
-  PLAYER_RADIUS,
   START_CLEAR_RADIUS,
   TWIN_BOSS,
 } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
 import { BOSS_RUSH, floorDef } from '../config/floors';
-import { BLOCKS_WALKER, isFree, moveCircle, type FloorMap } from '../map/tilemap';
+import { BLOCKS_WALKER, isFree, type FloorMap } from '../map/tilemap';
 import type { Intent, Nest, SimState, Vec2 } from '../types';
 import { allBosses, dist } from '../util';
 import { dropCoins, explode } from './combat';
@@ -303,7 +302,7 @@ export function updateNests(s: SimState, intents: Map<number, Intent>): void {
       if (s.tick >= n.nextRushAt) {
         n.nextRushAt = s.tick + RUSH_INTERVAL_TICKS;
         const entries = s.map.nestSpots.find(x => x.id === n.spotId)?.entries ?? [];
-        const comp = rushComp(s, RUSH_BASE_SIZE + RUSH_SIZE_PER_ALARM * s.alarm.level);
+        const comp = rushComp(s, Math.round(RUSH_BASE_SIZE + RUSH_SIZE_PER_ALARM * s.alarm.level));
         const waves = s.alarm.level >= DOUBLE_RUSH_ALARM ? 2 : 1;
         const from = shuffled(s, entries).slice(0, waves);
         for (const entry of from) if (canSpawn(s, comp)) spawnHorde(s, entry, comp, { rush: true });
@@ -357,14 +356,14 @@ export function updateBlasts(s: SimState): void {
     const before = b.fling ? s.players.map(p => (p.downUntil === null ? p.hp : -1)) : [];
     explode(s, b.pos, b.radius, { player: b.damage }, 'explosion');
     if (b.bolt) s.events.push({ type: 'lightning', pos: { ...b.pos } });
-    // a blast that flings (Angry Dominik's hammer) throws whoever it hurt away from where the blow came from;
-    // in small steps, so a wall stops the flight
+    // a blast that flings (Angry Dominik's hammer) throws whoever it hurt away from where the blow came from:
+    // they fly off over the next moments (see player.ts), and a wall stops the flight
     if (b.fling)
       s.players.forEach((p, i) => {
         if (before[i] < 0 || (p.hp >= before[i] && p.downUntil === null)) return;
         const dx = p.pos.x - b.fling!.from.x, dz = p.pos.z - b.fling!.from.z, d = Math.hypot(dx, dz);
         const dir = d > 1e-6 ? { x: dx / d, z: dz / d } : { x: 0, z: 1 };
-        for (let k = 0; k < b.fling!.dist * 2; k++) moveCircle(s.map, p.pos, dir.x * 0.5, dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
+        if (p.vehicleId === null) p.flung = { dir, left: b.fling!.dist };
         s.events.push({ type: 'kartRam', pos: { ...p.pos } });
       });
     return false;
@@ -388,7 +387,7 @@ export function updateAlarm(s: SimState): void {
       if (alive.length > 0) {
         const p = s.rng.pick(alive);
         const spots = s.map.waypoints.filter(w => dist(w, p.pos) >= 15 && dist(w, p.pos) <= 30);
-        const comp = rushComp(s, RUSH_BASE_SIZE + RUSH_SIZE_PER_ALARM * ALARM_MAX);
+        const comp = rushComp(s, Math.round(RUSH_BASE_SIZE + RUSH_SIZE_PER_ALARM * ALARM_MAX));
         if (spots.length > 0 && canSpawn(s, comp)) spawnHorde(s, s.rng.pick(spots), comp, { rush: true });
       }
     }

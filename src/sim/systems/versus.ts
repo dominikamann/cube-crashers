@@ -439,6 +439,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   if (kept) p.weapons = kept;
   p.air = 0;
   p.dashTicks = 0;
+  p.flung = undefined;
   p.combo = 0;
   p.perched = false;
   p.climb = null;

@@ -153,6 +153,8 @@ export interface Player {
   lastCoinTick: number;
   /** ticks left in the air (0 = on the ground) */
   air: number;
+  /** thrown by a charge: which way, and how far it still flies (tiles); it slows as it goes */
+  flung?: { dir: Vec2; left: number };
   dashTicks: number;
   dashDir: Vec2;
   dashCharges: number;

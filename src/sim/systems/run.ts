@@ -153,6 +153,7 @@ function enterMap(s: SimState, def: (typeof FLOORS)[string]): void {
     p.jetFuel = 0;
     p.air = 0;
     p.dashTicks = 0;
+    p.flung = undefined;
     p.plantTicks = 0;
     p.reviveUntil = null;
     p.reviveProgress = 0;

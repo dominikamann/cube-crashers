@@ -124,8 +124,11 @@ describe('the Rhino', () => {
     };
     const hit = setup();
     const x = hit.p.pos.x, hp = hit.p.hp;
+    // (it flies off over the next moments, not all at once)
     stepSim(hit.s, []);
     stepSim(hit.s, []);
+    expect(hit.p.pos.x - x).toBeLessThan(3);
+    for (let i = 0; i < 60; i++) stepSim(hit.s, []);
     expect(hit.p.pos.x - x).toBeGreaterThan(5);
     expect(hit.p.hp).toBeLessThan(hp);
     const dodge = setup();

@@ -223,7 +223,8 @@ describe("Angry Dominik's hammer", () => {
     const before = { ...p.pos };
     stepSim(s, []);
     expect(s.blasts.some(b => b.fling)).toBe(true);
-    still(s, BOSS.warnTicks + 5);
+    // (they fly off over the next moments, not all at once)
+    still(s, BOSS.warnTicks + 40);
     expect(p.hp).toBeLessThan(p.maxHp);
     expect(Math.hypot(p.pos.x - from.x, p.pos.z - from.z) - Math.hypot(before.x - from.x, before.z - from.z)).toBeGreaterThan(3);
   });
@@ -237,7 +238,7 @@ describe("Angry Dominik's hammer", () => {
     const before = s.map.tiles.slice(row * s.map.w, (row + 1) * s.map.w);
     for (let x = 0; x < s.map.w; x++) s.map.tiles[row * s.map.w + x] = Tile.Wall;
     try {
-      still(s, BOSS.warnTicks + 5);
+      still(s, BOSS.warnTicks + 40);
       expect(p.hp).toBeLessThan(p.maxHp);
       expect(p.pos.z).toBeLessThan(row);
       expect(p.pos.z).toBeGreaterThan(from.z + BOSS.hammerRings[0]);

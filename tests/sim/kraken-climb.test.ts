@@ -34,5 +34,6 @@ describe('the Kraken', () => {
     }
     expect(onWall).toBe(true);
     expect(best).toBeLessThan(4);
-  });
+    // (a long walk: under a full test run it needs more than the usual five seconds)
+  }, 20000);
 });

@@ -1,10 +1,10 @@
 import { clearOfBorder, insideBorder } from '../map/border';
 import { spinWeb } from './webs';
-import { ALARM_SPEED_STEP, BOMBER, BROOM, CROC, SPIDERLING, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
+import { ALARM_SPEED_STEP, BOMBER, BROOM, CROC, SPIDERLING, CROWD_CONTACT_SHARE, MONKEY, SHARK, TREX, FLOW_REBUILD_TICKS, HEALER, PLAYER_RADIUS, RAMMER, RHINO, ROAM_SPEED_FACTOR, SHOOTER, TELEPORTER } from '../config/balance';
 import { ELITE, ENEMIES } from '../config/enemies';
 import { RARE } from '../config/rare';
 import { buildFlowField, flowDir } from '../map/flowfield';
-import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, moveCircle, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, hasLos, moveCircle, nearestFree } from '../map/tilemap';
 import { DT, type Enemy, type EnemyKind, type Horde, type Player, type SimState, type Vec2 } from '../types';
 import { dist, allBosses } from '../util';
 import { damageEnemy, explode, isBossBody, solidEdge } from './combat';
@@ -133,8 +133,9 @@ function heal(s: SimState, e: Enemy): void {
   if (healed.length > 0) s.events.push({ type: 'enemyHealed', pos: { ...e.pos }, targets: healed });
 }
 
-/** how far the Rhino's charge throws a player it hits */
+/** how far the Rhino's charge throws a player it hits, and a rammer's */
 export const RHINO_FLING = 9;
+export const RAMMER_FLING = 1.5;
 /** how far the Tarantula Queen's legs reach from her middle: that much of her stays clear of the wall round the map */
 export const QUEEN_REACH = 2.2;
 /** and the Kraken's arms */
@@ -143,8 +144,10 @@ export const KRAKEN_REACH = 2.4;
 export const CHARGE_STEER = 0.4;
 /** how wide a boss is to the walls while it squeezes through a gap */
 const SQUEEZE_RADIUS = 0.45;
-/** how this monster charges: the rammer's long run or the crocodile's short lunge */
-const chargeOf = (e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : e.kind === 'spiderling' ? SPIDERLING : ridesBroom(e) ? BROOM : RAMMER);
+/** whether this rammer is the Rhino boss */
+const isRhino = (s: SimState, e: Enemy): boolean => e.kind === 'rammer' && allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
+/** how this monster charges: the rammer's long run, the Rhino's wild one or the crocodile's short lunge */
+const chargeOf = (s: SimState, e: Enemy) => (e.kind === 'croc' ? CROC : e.kind === 'shark' ? SHARK : e.kind === 'spiderling' ? SPIDERLING : ridesBroom(e) ? BROOM : isRhino(s, e) ? RHINO : RAMMER);
 /** Every third little witch rides her broom instead of carrying it: she flies at the players and rams them.
  *  (By her id, so every screen of a LAN game agrees without a word on the wire.) */
 export const ridesBroom = (e: Enemy): boolean => e.kind === 'witchling' && e.id % 3 === 0;
@@ -164,16 +167,18 @@ function throwCoconut(s: SimState, e: Enemy, players: Player[]): void {
 
 /** Moves a charging rammer and resolves what it runs into. */
 function charge(s: SimState, e: Enemy, players: Player[]): void {
-  const RAMMER = chargeOf(e);
+  const rhino = isRhino(s, e);
+  const RAMMER = chargeOf(s, e);
   const step = RAMMER.speed * DT;
+  const steer = rhino ? RHINO.steer : CHARGE_STEER;
   // it follows whoever it is after a little: a small step aside is not enough, you have to run. Only toward
-  // someone still ahead of it, and never faster than CHARGE_STEER
+  // someone still ahead of it, and never faster than CHARGE_STEER (the Rhino turns sharper)
   const prey = nearestPlayer(players, e.pos);
   if (prey && prey.d > 0.5) {
     const to = unit(e.pos, prey.p.pos);
     const cross = e.dir.x * to.z - e.dir.z * to.x, dot = e.dir.x * to.x + e.dir.z * to.z;
     if (dot > 0) {
-      const a = Math.max(-CHARGE_STEER * DT, Math.min(CHARGE_STEER * DT, Math.atan2(cross, dot)));
+      const a = Math.max(-steer * DT, Math.min(steer * DT, Math.atan2(cross, dot)));
       const c = Math.cos(a), sn = Math.sin(a);
       e.dir = { x: e.dir.x * c - e.dir.z * sn, z: e.dir.x * sn + e.dir.z * c };
     }
@@ -202,10 +207,9 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     if (aloft(s, p) || p.perched || s.tick < p.invulnUntil) continue;
     if (dist(p.pos, e.pos) > e.radius + PLAYER_RADIUS + (p.vehicleId !== null ? 0.3 : 0)) continue;
     damagePlayer(s, p, RAMMER.damage, 'rammer');
-    // the Rhino (a rammer grown to boss size) throws whoever it hits across the arena; in small steps, so a
-    // wall stops the flight
-    const rhino = allBosses(s).some(b => b.kind === 'rhino' && b.enemyId === e.id);
-    for (let i = 0; i < (rhino ? RHINO_FLING * 2 : 3); i++) moveCircle(s.map, p.pos, e.dir.x * 0.5, e.dir.z * 0.5, PLAYER_RADIUS, BLOCKS_WALKER);
+    // it throws whoever it hits, the Rhino (a rammer grown to boss size) right across the arena: they fly off over
+    // the next moments, see player.ts (in a vehicle, the vehicle takes the hit where it is)
+    if (p.vehicleId === null) p.flung = { dir: { ...e.dir }, left: rhino ? RHINO_FLING : RAMMER_FLING };
     if (rhino) s.events.push({ type: 'kartRam', pos: { ...p.pos } });
     stun(RAMMER.hitStunTicks);
     return;
@@ -262,7 +266,7 @@ function think(s: SimState, e: Enemy, horde: Horde | undefined, players: Player[
     case 'croc':
     case 'spiderling':
     case 'shark': {
-      const c = chargeOf(e);
+      const c = chargeOf(s, e);
       if (los && d < c.range && s.tick >= e.cooldownUntil) {
         startWindup(s, e, p.pos, c.windupTicks, 'windup');
         return still;
@@ -399,7 +403,7 @@ export function updateEnemies(s: SimState): void {
         throwCoconut(s, e, players);
       } else if (e.state === 'windup' && (e.kind === 'rammer' || e.kind === 'croc' || e.kind === 'shark' || e.kind === 'spiderling' || ridesBroom(e))) {
         e.state = 'charge';
-        e.chargeLeft = chargeOf(e).distance;
+        e.chargeLeft = chargeOf(s, e).distance;
       } else {
         e.state = 'move';
       }

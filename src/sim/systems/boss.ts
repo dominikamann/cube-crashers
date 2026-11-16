@@ -2,7 +2,7 @@ import { clearSpot } from './ground';
 import { RARE } from '../config/rare';
 import { hiddenPrize } from './offers';
 import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFloor, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { AGGRO_RADIUS, BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, TEAM_HP_STEP } from '../config/balance';
+import { AGGRO_RADIUS, BOSS_HP, ENEMY_CAP, PLAYER_RADIUS, RHINO, TEAM_HP_STEP } from '../config/balance';
 import { damagePlayer } from './player';
 import { flowDir } from '../map/flowfield';
 import { DT, TICK_RATE, type Difficulty, type Blast, type BossKind, type BossState, type Enemy, type Horde, type Intent, type Player, type SimState, type Vec2 } from '../types';
@@ -156,10 +156,10 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2, share = 1): vo
     // (a boss's health goes by its own scale, not the monsters')
     e.hp = e.maxHp = ENEMIES[e.kind].hp * bossScale(s);
     if (kind === 'rhino') {
-      // the Rhino: a rammer grown to boss size, faster on its feet
+      // the Rhino: a rammer grown to boss size, brisk on its feet (and wild in its charge, see RHINO)
       e.hp = e.maxHp = BOSS.rhinoHp * bossScale(s);
       e.radius = 1.3;
-      e.speed *= 1.5;
+      e.speed *= RHINO.walk;
     }
     if (kind === 'rex') {
       // King Rex: a T-Rex grown to boss size
