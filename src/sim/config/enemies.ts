@@ -22,7 +22,7 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   splitling: { hp: 8, speed: 2.8, radius: 0.25, coins: 0, score: 5, contactDamage: 8 },
   shooter: { hp: 22, speed: 1.8, radius: 0.35, coins: 2, score: 25, contactDamage: 5 },
   bomber: { hp: 16, speed: 3.8, radius: 0.35, coins: 2, score: 25, contactDamage: 0 },
-  rammer: { hp: 70, speed: 1.6, radius: 0.55, coins: 4, score: 50, contactDamage: 15 },
+  rammer: { hp: 55, speed: 1.6, radius: 0.55, coins: 4, score: 50, contactDamage: 15 },
   // flies: ignores walls (shaft ride)
   swarmer: { hp: 6, speed: 4, radius: 0.3, coins: 1, score: 10, contactDamage: 8 },
   // Glitch Maze: chases, cannot be hurt by weapons (there are none), only crashed while powered up
@@ -51,4 +51,5 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   wormSegment: { hp: 100, speed: 0, radius: 0.5, coins: 1, score: 40, contactDamage: 30 },
 };
 
-export const ELITE = { hp: 5, radius: 1.4, contact: 1.5, score: 5 };
+/** an elite: `hp` times the health (more would make an elite rammer or tank a wall of health) */
+export const ELITE = { hp: 3.5, radius: 1.4, contact: 1.5, score: 5 };

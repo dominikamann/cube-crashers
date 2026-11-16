@@ -6,7 +6,7 @@ import { spawnEnemy } from '../../src/sim/systems/enemies';
 import { spawnHorde } from '../../src/sim/systems/hordes';
 import type { SimEvent, SimState, Vec2 } from '../../src/sim/types';
 import { quietSim, rel, run } from './helpers';
-import { ENEMIES } from '../../src/sim/config/enemies';
+import { ELITE, ENEMIES } from '../../src/sim/config/enemies';
 import { ENEMY_CAP } from '../../src/sim/config/balance';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -205,10 +205,11 @@ describe('splitter', () => {
 });
 
 describe('elite', () => {
-  it('has 5 times the hp and drops a crate', () => {
+  it('has three and a half times the hp and drops a crate', () => {
     const s = quietSim();
     const e = spawnEnemy(s, 'blob', rel(s.players[0].pos, 6, 0), { elite: true });
-    expect(e.hp).toBe(ENEMIES.blob.hp * 5);
+    expect(e.hp).toBe(ENEMIES.blob.hp * ELITE.hp);
+    expect(ELITE.hp).toBe(3.5);
     damageEnemy(s, e, 100, 'pixelBlaster', 0);
     expect(s.crates).toHaveLength(1);
     expect(s.score).toBe(ENEMIES.blob.score * 5);
