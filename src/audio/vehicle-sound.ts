@@ -335,3 +335,40 @@ export class BossSteps {
     return cues;
   }
 }
+
+/** the Mega Block's hum: heard from `hear` tiles off; `top`: the pace (tiles a second) at which it whines its highest */
+export const MEGA_HUM = { hear: 26, top: 3 };
+
+/**
+ * The Mega Block does not walk, it hums as it shoves itself along (pure, so it can be tested): how loud the hum
+ * is for the players on this screen (0 to 1: silent while it stands, in mid-leap, or nowhere near) and how hard it
+ * goes (0 to 1, with its pace). Its pace is eased, as the bosses' steps are.
+ */
+export class MegaHum {
+  private last = new Map<number, Vec2>();
+  private pace = new Map<number, number>();
+
+  frame(s: SimState, ids: readonly number[], live: boolean, dt: number): { level: number; speed: number } {
+    let best = { level: 0, speed: 0 };
+    const blocks = allBosses(s).flatMap(b => (b.kind === 'megaBlock' && b.enemyId !== null ? s.enemies.filter(e => e.id === b.enemyId && e.hp > 0).map(e => ({ e, aloft: !!b.leap })) : []));
+    for (const id of [...this.last.keys()]) if (!blocks.some(x => x.e.id === id)) { this.last.delete(id); this.pace.delete(id); }
+    const ears = s.players.filter(p => ids.includes(p.id) && p.downUntil === null && !p.out);
+    for (const { e, aloft } of blocks) {
+      const last = this.last.get(e.id);
+      this.last.set(e.id, { ...e.pos });
+      if (!last || dt <= 0) continue;
+      const raw = aloft ? 0 : Math.hypot(e.pos.x - last.x, e.pos.z - last.z) / dt;
+      const was = this.pace.get(e.id) ?? 0;
+      const pace = raw > MOVED ? 0 : was + (raw - was) * (1 - Math.exp(-dt / PACE_EASE));
+      this.pace.set(e.id, pace);
+      if (!live) continue;
+      let near = 0;
+      for (const p of ears) near = Math.max(near, 1 - Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) / MEGA_HUM.hear);
+      const k = Math.min(1, pace / MEGA_HUM.top);
+      // (only while it moves: a moment to swell up, and as it stands it dies away)
+      const level = near > 0 && pace > STILL ? near ** 1.4 * Math.min(1, 0.4 + 0.6 * k) : 0;
+      if (level > best.level) best = { level, speed: k };
+    }
+    return best;
+  }
+}

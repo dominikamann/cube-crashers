@@ -9,7 +9,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
-import { BossSteps, createEngineVoices, VehicleSound, type EngineVoices } from './audio/vehicle-sound';
+import { BossSteps, createEngineVoices, MegaHum, VehicleSound, type EngineVoices } from './audio/vehicle-sound';
 import { noiseBuffer } from './audio/synth';
 import { mazeAmbience, rotorDuck, rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
@@ -118,6 +118,8 @@ function startGame() {
   const vehicleSound = new VehicleSound();
   /** the feet of the big bosses (see vehicle-sound.ts) */
   const bossSteps = new BossSteps();
+  /** the Mega Block's hum while it moves (see vehicle-sound.ts) */
+  const megaHum = new MegaHum();
 
   // dev only (?bot=1): the test bot plays, e.g. to record gameplay
   let bot: ((s: SimState) => Command[]) | null = null;
@@ -754,6 +756,9 @@ function startGame() {
         const maze = mode === 'playing' || mode === 'paused' ? mazeAmbience(s) : { siren: 0, scared: 0, speed: 0 };
         audio.mixer.setAmbience('mazeSiren', maze.siren, maze.speed);
         audio.mixer.setAmbience('mazeScared', maze.scared);
+        // the Mega Block hums as it shoves itself along, louder the closer and higher the faster
+        const block = megaHum.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt);
+        audio.mixer.setAmbience('megaHum', block.level, block.speed);
         const quiet = maze.siren > 0 || maze.scared > 0;
         if (quiet !== mazeQuiet) {
           mazeQuiet = quiet;

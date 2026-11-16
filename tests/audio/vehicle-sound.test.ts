@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { OfflineAudioContext } from 'node-web-audio-api';
 import { SOUNDS } from '../../src/audio/sfx';
 import { noiseBuffer, playSynth, soundDuration } from '../../src/audio/synth';
-import { BossSteps, createEngineVoices, ENGINE, ENGINE_VOICES, ENGINES, GAITS, VehicleSound } from '../../src/audio/vehicle-sound';
+import { BossSteps, createEngineVoices, ENGINE, ENGINE_VOICES, ENGINES, GAITS, MEGA_HUM, MegaHum, VehicleSound } from '../../src/audio/vehicle-sound';
 import { FLOORS } from '../../src/sim/config/floors';
 import { createSim } from '../../src/sim/sim';
 import { addVehicle, VEHICLES } from '../../src/sim/systems/vehicles';
@@ -284,5 +284,57 @@ describe('the feet of the big bosses', () => {
       expect(r.peak, id).toBeGreaterThan(0.05);
       expect(r.peak, id).toBeLessThan(1);
     }
+  });
+});
+
+describe('the hum of the Mega Block', () => {
+  async function block() {
+    const { spawnBoss } = await import('../../src/sim/systems/boss');
+    const s = createSim(FLOORS.arena.map, 1, { mode: 'quick' });
+    s.enemies = [];
+    s.boss = null;
+    const p = s.players[0];
+    spawnBoss(s, 'megaBlock', { x: p.pos.x, z: p.pos.z - 10 });
+    return { s, body: s.enemies.find(e => e.id === s.boss!.enemyId)! };
+  }
+  function shove(hum: MegaHum, { s, body }: Awaited<ReturnType<typeof block>>, speed: number, seconds: number, live = true) {
+    let last = { level: 0, speed: 0 };
+    for (let i = 0; i < seconds * 60; i++) {
+      body.pos.x += speed * DT;
+      last = hum.frame(s, [0], live, DT);
+    }
+    return last;
+  }
+
+  it('hums while it moves, higher the faster, and dies away as it stands', async () => {
+    const b = await block();
+    const hum = new MegaHum();
+    const slow = shove(hum, b, 1, 1);
+    expect(slow.level).toBeGreaterThan(0);
+    const fast = shove(hum, b, MEGA_HUM.top, 1);
+    expect(fast.speed).toBeGreaterThan(slow.speed);
+    expect(fast.level).toBeGreaterThan(slow.level);
+    expect(shove(hum, b, 0, 1).level).toBe(0);
+  });
+
+  it('is silent in mid-leap, far off, and while the game is not played', async () => {
+    const b = await block();
+    expect(shove(new MegaHum(), b, 2, 1, false).level).toBe(0);
+    b.s.boss!.leap = { from: { ...b.body.pos }, to: { ...b.body.pos }, start: 0, land: 1e9 };
+    expect(shove(new MegaHum(), b, 2, 1).level).toBe(0);
+    b.s.boss!.leap = null;
+    b.body.pos.z -= MEGA_HUM.hear + 5;
+    expect(shove(new MegaHum(), b, 2, 1).level).toBe(0);
+  });
+
+  it('is heard, never clips, and stays well under the effects', async () => {
+    const { createMixer } = await import('../../src/audio/mixer');
+    const ctx = new OfflineAudioContext(2, 44100, 44100);
+    createMixer(ctx as unknown as BaseAudioContext).setAmbience('megaHum', 1, 1);
+    const buf = await ctx.startRendering();
+    let peak = 0;
+    for (const v of buf.getChannelData(0).slice(22050)) peak = Math.max(peak, Math.abs(v));
+    expect(peak).toBeGreaterThan(0.01);
+    expect(peak).toBeLessThan(0.2);
   });
 });

@@ -3,9 +3,10 @@ import type { Vec2 } from '../sim/types';
 
 /**
  * the sounds that go on and on while something is near or something is on: the helicopter's rotor on the Sky
- * Helipad; in the Glitch Maze the wailing siren of the hunting ghosts, and the wobble while they flee
+ * Helipad; in the Glitch Maze the wailing siren of the hunting ghosts, and the wobble while they flee; the
+ * Mega Block's hum while it shoves itself along
  */
-export type AmbienceId = 'rotor' | 'mazeSiren' | 'mazeScared';
+export type AmbienceId = 'rotor' | 'mazeSiren' | 'mazeScared' | 'megaHum';
 
 /** a sound that goes on and on: `out` is turned up and down from outside; `speed` (0 to 1) drives it harder */
 export interface Ambience {
@@ -101,6 +102,57 @@ export function startAmbience(ctx: BaseAudioContext, id: AmbienceId, noise: Audi
             swing.frequency.setTargetAtTime(2.2 + 2.6 * k, at, 0.4);
             tone.frequency.setTargetAtTime(380 + 140 * k, at, 0.4);
           },
+    };
+  }
+  if (id === 'megaHum') {
+    // a heavy electric hum: two low sawtooths a hair apart that beat, a square an octave up that small speakers
+    // still give, a grind of noise under it, all through a low filter that opens as it goes faster, and a quick
+    // glitchy flutter on its loudness
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 320;
+    filter.Q.value = 2;
+    const flutter = ctx.createGain();
+    flutter.gain.value = 1;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'square';
+    lfo.frequency.value = 7.5;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.18;
+    lfo.connect(depth).connect(flutter.gain);
+    const tones = [
+      { wave: 'sawtooth' as const, mul: 1, gain: 0.5 },
+      { wave: 'sawtooth' as const, mul: 1.012, gain: 0.4 },
+      { wave: 'square' as const, mul: 2, gain: 0.12 },
+    ].map(t => {
+      const osc = ctx.createOscillator();
+      osc.type = t.wave;
+      osc.frequency.value = 48 * t.mul;
+      const g = ctx.createGain();
+      g.gain.value = t.gain;
+      osc.connect(g).connect(filter);
+      osc.start();
+      return { osc, mul: t.mul };
+    });
+    const grind = ctx.createBufferSource();
+    grind.buffer = noise;
+    grind.loop = true;
+    grind.playbackRate.value = 0.35;
+    const grindGain = ctx.createGain();
+    grindGain.gain.value = 0.25;
+    grind.connect(grindGain).connect(filter);
+    const level = ctx.createGain();
+    level.gain.value = 0.085;
+    filter.connect(flutter).connect(level).connect(out);
+    for (const src of [lfo, grind]) src.start();
+    return {
+      out,
+      speed: (k, at) => {
+        // the faster it goes, the higher and brighter it whines
+        for (const t of tones) t.osc.frequency.setTargetAtTime(48 * t.mul * (1 + 0.5 * k), at, 0.15);
+        filter.frequency.setTargetAtTime(320 + 600 * k, at, 0.15);
+        lfo.frequency.setTargetAtTime(7.5 + 6 * k, at, 0.15);
+      },
     };
   }
   if (id === 'rotor') {
