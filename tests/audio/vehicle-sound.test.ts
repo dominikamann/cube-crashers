@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { OfflineAudioContext } from 'node-web-audio-api';
 import { SOUNDS } from '../../src/audio/sfx';
 import { noiseBuffer, playSynth, soundDuration } from '../../src/audio/synth';
-import { createEngineVoices, ENGINE, ENGINE_VOICES, ENGINES, RHINO_STEPS, RhinoSteps, VehicleSound } from '../../src/audio/vehicle-sound';
+import { BossSteps, createEngineVoices, ENGINE, ENGINE_VOICES, ENGINES, GAITS, VehicleSound } from '../../src/audio/vehicle-sound';
 import { FLOORS } from '../../src/sim/config/floors';
 import { createSim } from '../../src/sim/sim';
 import { addVehicle, VEHICLES } from '../../src/sim/systems/vehicles';
-import type { VehicleKind } from '../../src/sim/types';
+import type { BossKind, VehicleKind } from '../../src/sim/types';
 
 const DT = 1 / 60;
 
@@ -199,62 +199,90 @@ describe('the sounds of the vehicles, rendered', () => {
   });
 });
 
-describe('the Rhino\'s feet', () => {
-  async function arena() {
+describe('the feet of the big bosses', () => {
+  async function arena(kind: BossKind = 'rhino') {
     const { spawnBoss } = await import('../../src/sim/systems/boss');
     const s = createSim(FLOORS.arena.map, 1, { mode: 'quick' });
     s.enemies = [];
     s.boss = null;
     const p = s.players[0];
-    spawnBoss(s, 'rhino', { x: p.pos.x, z: p.pos.z - 20 });
-    const rhino = s.enemies.find(e => e.id === s.boss!.enemyId)!;
-    return { s, p, rhino };
+    spawnBoss(s, kind, { x: p.pos.x, z: p.pos.z - 20 });
+    const body = s.enemies.find(e => e.id === s.boss!.enemyId)!;
+    return { s, p, body };
   }
-  /** moves the Rhino toward the player for a while at this speed, and gathers its steps */
-  function trot(steps: RhinoSteps, s: Awaited<ReturnType<typeof arena>>['s'], rhino: Awaited<ReturnType<typeof arena>>['rhino'], speed: number, seconds: number) {
+  type Arena = Awaited<ReturnType<typeof arena>>;
+  /** moves the boss toward the player for a while at this speed, and gathers its steps */
+  function walk(steps: BossSteps, { s, body }: Arena, speed: number, seconds: number, live = true) {
     const cues: { id: string; pitch: number; volume: number }[] = [];
     for (let i = 0; i < seconds * 60; i++) {
-      rhino.pos.z += speed * DT;
-      cues.push(...steps.frame(s, [0], true, DT));
+      body.pos.z += speed * DT;
+      cues.push(...steps.frame(s, [0], live, DT));
     }
     return cues;
   }
 
-  it('trots after you, and gets louder as it comes closer', async () => {
-    const { s, rhino } = await arena();
-    const steps = new RhinoSteps();
-    const cues = trot(steps, s, rhino, 4, 4);
+  it('the Rhino trots after you, and gets louder as it comes closer', async () => {
+    const a = await arena();
+    const cues = walk(new BossSteps(), a, 4, 4);
     expect(cues.length).toBeGreaterThanOrEqual(12);
-    expect(cues.every(c => c.id === 'rhinoStep')).toBe(true);
+    expect(cues.every(c => c.id === 'bigStep')).toBe(true);
     expect(cues[cues.length - 1].volume).toBeGreaterThan(cues[0].volume * 2);
   });
 
-  it('thunders in a charge: more steps, and louder than a trot just as close', async () => {
-    const { s, rhino } = await arena();
-    const steps = new RhinoSteps();
-    const walk = trot(steps, s, rhino, 1, 1);
-    rhino.state = 'charge';
-    const charge = trot(steps, s, rhino, 1, 1);
-    expect(charge.length).toBeGreaterThan(walk.length * 2);
-    expect(Math.max(...charge.map(c => c.volume))).toBeGreaterThan(Math.max(...walk.map(c => c.volume)));
+  it('the Rhino thunders in a charge: more steps, and louder than a trot just as close', async () => {
+    const a = await arena();
+    const steps = new BossSteps();
+    const trot = walk(steps, a, 1, 1);
+    a.body.state = 'charge';
+    const charge = walk(steps, a, 1, 1);
+    expect(charge.length).toBeGreaterThan(trot.length * 2);
+    expect(Math.max(...charge.map(c => c.volume))).toBeGreaterThan(Math.max(...trot.map(c => c.volume)));
+  });
+
+  it('every big boss that walks is heard walking, each in its own way', async () => {
+    const heard = new Map<string, { id: string; pitch: number }>();
+    for (const kind of ['rhino', 'rex', 'spider', 'dominik'] as BossKind[]) {
+      const cues = walk(new BossSteps(), await arena(kind), 2, 2);
+      expect(cues.length, kind).toBeGreaterThan(0);
+      heard.set(kind, cues[0]);
+    }
+    // hooves, a giant's feet, eight legs, boots: each its own sound
+    expect([...heard.values()].map(c => c.id)).toEqual(['bigStep', 'rexStomp', 'skitter', 'bootStep']);
+    // the spider's eight legs patter: far more steps than the Rhino trots at the same pace
+    const a = await arena('spider'), b = await arena('rhino');
+    expect(walk(new BossSteps(), a, 2, 2).length).toBeGreaterThan(walk(new BossSteps(), b, 2, 2).length);
+  });
+
+  it('the Mega Block does not walk: no steps from it', async () => {
+    expect(walk(new BossSteps(), await arena('megaBlock'), 2, 2)).toEqual([]);
+  });
+
+  it('in a LAN game, where it moves only every other frame, it steps just as often', async () => {
+    const here = walk(new BossSteps(), await arena(), 4, 4);
+    const a = await arena();
+    const steps = new BossSteps();
+    const lan: typeof here = [];
+    for (let i = 0; i < 4 * 60; i++) {
+      if (i % 2 === 0) a.body.pos.z += 4 * DT * 2;
+      lan.push(...steps.frame(a.s, [0], true, DT));
+    }
+    expect(Math.abs(lan.length - here.length)).toBeLessThanOrEqual(2);
   });
 
   it('is still while it stands, far off, or while the game is not played', async () => {
-    const { s, rhino } = await arena();
-    expect(trot(new RhinoSteps(), s, rhino, 0, 1)).toEqual([]);
-    rhino.pos.z -= RHINO_STEPS.hear + 10;
-    expect(trot(new RhinoSteps(), s, rhino, 3, 1)).toEqual([]);
-    const steps = new RhinoSteps();
-    for (let i = 0; i < 60; i++) {
-      rhino.pos.z += 4 * DT;
-      expect(steps.frame(s, [0], false, DT)).toEqual([]);
-    }
+    const a = await arena();
+    expect(walk(new BossSteps(), a, 0, 1)).toEqual([]);
+    a.body.pos.z -= GAITS.rhino!.hear + 10;
+    expect(walk(new BossSteps(), a, 3, 1)).toEqual([]);
+    expect(walk(new BossSteps(), await arena(), 4, 1, false)).toEqual([]);
   });
 
-  it('a step is a short heavy thud that never clips', async () => {
-    expect(soundDuration(SOUNDS.rhinoStep)).toBeLessThan(0.25);
-    const r = await render((ctx, dest) => SOUNDS.rhinoStep.forEach(l => playSynth(ctx, dest, l, 0)), soundDuration(SOUNDS.rhinoStep) + 0.05);
-    expect(r.peak).toBeGreaterThan(0.1);
-    expect(r.peak).toBeLessThan(1);
+  it('a step is short, heard and never clips', async () => {
+    for (const id of ['bigStep', 'rexStomp', 'skitter', 'bootStep'] as const) {
+      expect(soundDuration(SOUNDS[id]), id).toBeLessThan(0.45);
+      const r = await render((ctx, dest) => SOUNDS[id].forEach(l => playSynth(ctx, dest, l, 0)), soundDuration(SOUNDS[id]) + 0.05);
+      expect(r.peak, id).toBeGreaterThan(0.05);
+      expect(r.peak, id).toBeLessThan(1);
+    }
   });
 });

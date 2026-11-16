@@ -64,7 +64,10 @@ export type SoundId =
   | 'kartEnter'
   | 'hoof'
   | 'hoofFar'
-  | 'rhinoStep'
+  | 'bigStep'
+  | 'skitter'
+  | 'rexStomp'
+  | 'bootStep'
   | 'kartRam'
   | 'kartJump'
   | 'kartLand'
@@ -344,11 +347,28 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'sine', freq: 480, freqEnd: 290, attack: 0.002, sustain: 0.01, decay: 0.06, volume: 0.05 },
     { wave: 'noise', freq: 1500, attack: 0.002, sustain: 0.005, decay: 0.025, volume: 0.025, lowpass: 2200 },
   ],
-  // the Rhino's feet: a heavy thud through the floor, with a crunch on top that small speakers still give
-  rhinoStep: [
+  // a big boss's feet (played deeper for the heavier ones): a heavy thud through the floor, with a crunch on top
+  // that small speakers still give
+  bigStep: [
     { wave: 'sine', freq: 95, freqEnd: 42, attack: 0.002, sustain: 0.04, decay: 0.2, volume: 0.62 },
     { wave: 'triangle', freq: 190, freqEnd: 90, attack: 0.002, sustain: 0.03, decay: 0.1, volume: 0.26 },
     { wave: 'noise', freq: 600, attack: 0.002, sustain: 0.025, decay: 0.09, volume: 0.24, lowpass: 900 },
+  ],
+  // King Rex's feet: a deep boom that the floor rolls on with
+  rexStomp: [
+    { wave: 'sine', freq: 72, freqEnd: 32, attack: 0.003, sustain: 0.05, decay: 0.34, volume: 0.6 },
+    { wave: 'triangle', freq: 150, freqEnd: 65, attack: 0.003, sustain: 0.03, decay: 0.13, volume: 0.2 },
+    { wave: 'noise', freq: 300, attack: 0.01, sustain: 0.05, decay: 0.28, volume: 0.22, lowpass: 480 },
+  ],
+  // Angry Dominik's boots: a click of the heel, then the sole
+  bootStep: [
+    { wave: 'noise', freq: 2600, attack: 0.001, sustain: 0.005, decay: 0.03, volume: 0.14, lowpass: 4200 },
+    { wave: 'sine', freq: 160, freqEnd: 80, attack: 0.002, sustain: 0.012, decay: 0.07, volume: 0.32, at: 0.012 },
+  ],
+  // the Tarantula Queen's legs: a dry click on the floor
+  skitter: [
+    { wave: 'noise', freq: 3500, attack: 0.001, sustain: 0.004, decay: 0.025, volume: 0.16, lowpass: 6500 },
+    { wave: 'square', freq: 1400, freqEnd: 900, attack: 0.001, sustain: 0.003, decay: 0.02, volume: 0.04 },
   ],
   kartRam: [
     { wave: 'noise', freq: 900, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.3, lowpass: 1600 },
@@ -629,7 +649,10 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'kartRam',
   'hoof',
   'hoofFar',
-  'rhinoStep',
+  'bigStep',
+  'skitter',
+  'rexStomp',
+  'bootStep',
   'enemyShot',
   'rare_slushMachine',
   'rare_leafBlower',

@@ -9,7 +9,7 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
-import { createEngineVoices, RhinoSteps, VehicleSound, type EngineVoices } from './audio/vehicle-sound';
+import { BossSteps, createEngineVoices, VehicleSound, type EngineVoices } from './audio/vehicle-sound';
 import { noiseBuffer } from './audio/synth';
 import { mazeAmbience, rotorDuck, rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
@@ -116,8 +116,8 @@ function startGame() {
   const swordHum = new SwordHum();
   /** the engines and hooves of the vehicles heard on this screen (see vehicle-sound.ts) */
   const vehicleSound = new VehicleSound();
-  /** the Rhino's feet (see vehicle-sound.ts) */
-  const rhinoSteps = new RhinoSteps();
+  /** the feet of the big bosses (see vehicle-sound.ts) */
+  const bossSteps = new BossSteps();
 
   // dev only (?bot=1): the test bot plays, e.g. to record gameplay
   let bot: ((s: SimState) => Command[]) | null = null;
@@ -725,8 +725,9 @@ function startGame() {
         const ride = vehicleSound.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt);
         for (const cue of ride.cues) audio.mixer.play(cue.id, cue.pitch);
         audio.engines.set(ride.voices);
-        // the Rhino trotting after you and thundering in its charge, louder the closer it is
-        for (const step of rhinoSteps.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt)) audio.mixer.play(step.id, step.pitch, true, step.volume);
+        // the big bosses' feet: the Rhino trotting and thundering in its charge, King Rex, the Tarantula Queen,
+        // Angry Dominik; louder the closer they are
+        for (const step of bossSteps.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt)) audio.mixer.play(step.id, step.pitch, true, step.volume);
         // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after a player on this screen
         for (const [view, id] of [[0, localId()], [1, 1]] as const) {
           const mine = view === 0 || split ? s.players.find(p => p.id === id) : undefined;

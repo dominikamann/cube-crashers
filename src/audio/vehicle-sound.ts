@@ -1,5 +1,5 @@
 import { VEHICLES } from '../sim/systems/vehicles';
-import type { SimState, Vec2, Vehicle, VehicleKind } from '../sim/types';
+import type { BossKind, Enemy, SimState, Vec2, Vehicle, VehicleKind } from '../sim/types';
 import { allBosses } from '../sim/util';
 import type { SoundId } from './sfx';
 
@@ -226,14 +226,52 @@ export function createEngineVoices(ctx: BaseAudioContext, dest: AudioNode, noise
   };
 }
 
-/** the Rhino's feet: heard from `hear` tiles off, louder the closer it is (and louder still in a charge, `charge`);
- *  `strides`: strides a second at a walk and in a charge */
-export const RHINO_STEPS = { hear: 30, charge: 1.3, strides: { walk: 1.9, charge: 3.4 }, still: 0.5 };
-/** where in a stride each foot falls at a walk (a heavy trot) and in a charge (a gallop) */
-const TROT = [{ at: 0, pitch: 1 }, { at: 0.5, pitch: 0.92 }];
-const STAMPEDE = [{ at: 0, pitch: 1.04 }, { at: 0.12, pitch: 0.98 }, { at: 0.24, pitch: 0.9 }, { at: 0.36, pitch: 0.86 }];
+/** a step, how high it rings, and when in a stride it falls (0 to 1) */
+interface Beat {
+  at: number;
+  pitch: number;
+}
 
-/** what the Rhino's feet should play this frame: a step, how high, and how loud */
+/**
+ * How a big boss walks and how its feet sound. `id`: the sound of a step and `pitch`: how deep (lower is
+ * heavier); `beats`: the steps of a stride; `stride`: tiles a stride covers, so it steps faster the faster it
+ * goes, between `rate` strides a second; `charge`: its gallop when it charges (the Rhino), with strides a second
+ * and how much louder; `hear`: from how far off (tiles) one hears it, and `loud`: how loud right next to you.
+ */
+export interface Gait {
+  id: SoundId;
+  pitch: number;
+  beats: Beat[];
+  stride: number;
+  rate: [number, number];
+  charge?: { beats: Beat[]; rate: number; loud: number };
+  hear: number;
+  loud: number;
+}
+
+export const GAITS: Partial<Record<BossKind, Gait>> = {
+  // a heavy trot after its prey, and a stampede of four feet when it charges
+  rhino: {
+    id: 'bigStep', pitch: 1, beats: [{ at: 0, pitch: 1 }, { at: 0.5, pitch: 0.92 }], stride: 2.2, rate: [1.4, 2.2],
+    charge: { beats: [{ at: 0, pitch: 1.04 }, { at: 0.12, pitch: 0.98 }, { at: 0.24, pitch: 0.9 }, { at: 0.36, pitch: 0.86 }], rate: 3.4, loud: 1.3 },
+    hear: 30, loud: 1,
+  },
+  // two huge feet, slow and deep: the ground shakes
+  rex: { id: 'rexStomp', pitch: 1, beats: [{ at: 0, pitch: 1 }, { at: 0.5, pitch: 0.95 }], stride: 1.8, rate: [0.9, 1.6], hear: 28, loud: 1 },
+  // eight legs: four at a time, one just after the other, then the other four; a dry ripple of clicks
+  spider: {
+    id: 'skitter', pitch: 1,
+    beats: [0, 0.055, 0.11, 0.165, 0.5, 0.555, 0.61, 0.665].map((at, i) => ({ at, pitch: [1, 1.14, 0.92, 1.07, 1.03, 0.9, 1.16, 0.96][i] })),
+    stride: 1.4, rate: [1.3, 3], hear: 20, loud: 0.85,
+  },
+  // a man in heavy boots
+  dominik: { id: 'bootStep', pitch: 1, beats: [{ at: 0, pitch: 1 }, { at: 0.5, pitch: 0.96 }], stride: 1.5, rate: [1.2, 2.4], hear: 18, loud: 0.8 },
+};
+/** (below this speed a boss stands; above the other it was moved, not walking; its pace is eased over `PACE_EASE`
+ *  seconds, so a LAN game, where it moves only every other frame, steps as evenly as one played here) */
+const STILL = 0.5, MOVED = 60, PACE_EASE = 0.12;
+
+/** what the feet of the bosses should play this frame: a step, how high, and how loud */
 export interface StepCue {
   id: SoundId;
   pitch: number;
@@ -241,41 +279,57 @@ export interface StepCue {
 }
 
 /**
- * The feet of every Rhino in the game, from frame to frame (pure, so it can be tested): it trots after its prey
- * and thunders when it charges, and the closer it is to a player on this screen, the louder; a charge coming
- * straight at you swells as it comes.
+ * The feet of every big boss in the game, from frame to frame (pure, so it can be tested): each walks in its
+ * own way (see GAITS), the Rhino thunders when it charges, and the closer one is to a player on this screen, the
+ * louder: a boss coming straight at you swells as it comes.
  */
-export class RhinoSteps {
+export class BossSteps {
   private last = new Map<number, Vec2>();
   private stride = new Map<number, number>();
+  private pace = new Map<number, number>();
 
   frame(s: SimState, ids: readonly number[], live: boolean, dt: number): StepCue[] {
     const cues: StepCue[] = [];
-    const rhinos = allBosses(s).filter(b => b.kind === 'rhino' && b.enemyId !== null).map(b => s.enemies.find(e => e.id === b.enemyId && e.hp > 0)).filter(e => e !== undefined);
-    for (const id of [...this.last.keys()]) if (!rhinos.some(e => e.id === id)) { this.last.delete(id); this.stride.delete(id); }
+    const walkers: { e: Enemy; gait: Gait; aloft: boolean }[] = [];
+    for (const b of allBosses(s)) {
+      const gait = GAITS[b.kind];
+      const e = gait && b.enemyId !== null ? s.enemies.find(x => x.id === b.enemyId && x.hp > 0) : undefined;
+      // (one in mid-leap is in the air: no steps)
+      if (gait && e) walkers.push({ e, gait, aloft: !!b.leap });
+    }
+    for (const id of [...this.last.keys()]) if (!walkers.some(w => w.e.id === id)) { this.last.delete(id); this.stride.delete(id); this.pace.delete(id); }
     const ears = s.players.filter(p => ids.includes(p.id) && p.downUntil === null && !p.out);
-    for (const e of rhinos) {
+    for (const { e, gait, aloft } of walkers) {
       const last = this.last.get(e.id);
       this.last.set(e.id, { ...e.pos });
       if (!live || !last || dt <= 0) continue;
-      const speed = Math.hypot(e.pos.x - last.x, e.pos.z - last.z) / dt;
-      // (standing, or a jump of its position: no steps, and the next one starts the stride afresh)
-      if (speed < RHINO_STEPS.still || speed > 60) {
+      const raw = Math.hypot(e.pos.x - last.x, e.pos.z - last.z) / dt;
+      // (flying or moved: no steps, and the next one starts the stride afresh)
+      if (aloft || raw > MOVED) {
+        this.stride.set(e.id, 0.999);
+        this.pace.set(e.id, 0);
+        continue;
+      }
+      const speed = (this.pace.get(e.id) ?? raw) + (raw - (this.pace.get(e.id) ?? raw)) * (1 - Math.exp(-dt / PACE_EASE));
+      this.pace.set(e.id, speed);
+      // (standing: no steps, and the next one starts the stride afresh)
+      if (speed < STILL) {
         this.stride.set(e.id, 0.999);
         continue;
       }
-      let near = 0;
-      for (const p of ears) near = Math.max(near, 1 - Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) / RHINO_STEPS.hear);
-      const charging = e.state === 'charge';
+      const charge = e.state === 'charge' ? gait.charge : undefined;
+      const rate = charge ? charge.rate : Math.min(gait.rate[1], Math.max(gait.rate[0], speed / gait.stride));
       const at = this.stride.get(e.id) ?? 0.999;
-      const next = at + (charging ? RHINO_STEPS.strides.charge : RHINO_STEPS.strides.walk) * dt;
+      const next = at + rate * dt;
       this.stride.set(e.id, next % 1);
+      let near = 0;
+      for (const p of ears) near = Math.max(near, 1 - Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) / gait.hear);
       if (near <= 0) continue;
       // (it falls off slowly with the distance: a beast that size is heard across the arena)
-      const volume = Math.min(1, near ** 1.4 * (charging ? RHINO_STEPS.charge : 1));
-      for (const b of charging ? STAMPEDE : TROT) {
+      const volume = Math.min(1, near ** 1.4 * gait.loud * (charge ? charge.loud : 1));
+      for (const b of charge ? charge.beats : gait.beats) {
         const t = b.at < at % 1 ? b.at + 1 : b.at;
-        if (t > at && t <= next) cues.push({ id: 'rhinoStep', pitch: b.pitch, volume });
+        if (t > at && t <= next) cues.push({ id: gait.id, pitch: b.pitch * gait.pitch, volume });
       }
     }
     return cues;
