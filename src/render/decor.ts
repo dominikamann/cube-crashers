@@ -57,11 +57,13 @@ const Q = Math.PI / 2;
 /** the helicopter on the helipad: the paint of its hull */
 const HULL_COLOR = 0x24395f;
 /** how much bigger than the Maltecopter (heli-figure.ts) the helicopter parked on the helipad is: along it, across it, up */
-const HELI_SIZE = { l: 1.7, w: 2.8, v: 1.7 };
+const HELI_SIZE = { l: 1.7, w: 1.8, v: 1.7 };
 /** the height of its middle: its skids stand on the floor */
 const HELI_MID = 0.8 * HELI_SIZE.v;
 /** the top of its cabin roof (world.ts: who lands on its hull stands there) */
 export const HULL_TOP = HELI_MID + 0.69 * HELI_SIZE.v;
+/** how far out from its middle its pods reach: as far as the hull's blocks, so nobody walks through them */
+const POD_OUT = 1.5;
 /** an edge spot sits 0.22 toward its wall, so the wall face is 0.28 behind it: nothing reaches further back */
 const AGAINST_WALL = -0.27;
 /** rails and rungs of the climbable ladders in each world */
@@ -580,6 +582,8 @@ export function buildDecor(input: DecorContext): Decor {
     const { l: L, w: W, v: V } = HELI_SIZE;
     // (its hull ends at the back of the wall block, its feet stand on the floor)
     const ox = heli.x0 + 1.0 * L, oy = HELI_MID;
+    /** how much lower its tail is than the Maltecopter's: the boom's underside on the barriers' top */
+    const DROP = (lowTop - oy) / V + 0.17 - 0.12;
     /** a box in the Maltecopter's own frame (x across, y up, z ahead), scaled up and turned nose east */
     const part = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => props.box(d * L, h * V, w * W, mat, z * L, y * V, x * W);
     const cowl = lambert(0xe9edf3), canopy = new THREE.MeshStandardMaterial({ color: 0x14303a, emissive: 0x1f7f9a, emissiveIntensity: 0.35, roughness: 0.25 });
@@ -590,24 +594,27 @@ export function buildDecor(input: DecorContext): Decor {
     part(0.62, 0.42, 0.85, canopy, 0, 0.44, 0.5);
     part(0.56, 0.34, 0.62, canopy, 0, 0.3, 1.2);
     part(0.76, 0.34, 1.1, cowl, 0, 0.52, -0.4);
-    part(0.32, 0.34, 2.2, navy, 0, 0.12, -1.9);
-    part(0.34, 0.06, 2.2, white, 0, 0.2, -1.9);
-    part(0.12, 0.9, 0.5, navy, 0, 0.55, -2.85);
-    part(0.14, 0.18, 0.52, red, 0, 0.92, -2.85);
-    part(0.6, 0.08, 0.3, trim, 0, 0.15, -2.55);
+    // (the tail boom hangs lower than the Maltecopter's: it lies on the barriers under it, so who jumps them jumps it)
+    part(0.32, 0.34, 2.2, navy, 0, 0.12 + DROP, -1.9);
+    part(0.34, 0.06, 2.2, white, 0, 0.2 + DROP, -1.9);
+    part(0.12, 0.9, 0.5, navy, 0, 0.55 + DROP, -2.85);
+    part(0.14, 0.18, 0.52, red, 0, 0.92 + DROP, -2.85);
+    part(0.6, 0.08, 0.3, trim, 0, 0.15 + DROP, -2.55);
     for (const side of [-1, 1]) {
       // the white stripe and the yellow pinstripe along the hull, the stub wing with its pod, the skid on its struts
       part(0.02, 0.1, 2.3, white, side * 0.455, -0.08, 0.2);
       part(0.02, 0.04, 2.3, yellow, side * 0.455, -0.16, 0.2);
-      // (the wings and pods are no wider than the Maltecopter's, only longer: they keep close to the hull's blocks)
-      part(0.29, 0.1, 0.55, trim, side * 0.57, -0.05, 0.1);
-      part(0.2, 0.3, 0.9, cowl, side * 0.7, -0.25, 0.15);
-      part(0.14, 0.2, 0.06, orange, side * 0.7, -0.25, 0.62);
+      // (the wings reach out to the edge of the hull's blocks and the pods hang at their tips, inside it: the wings
+      // fill the blocks out, nothing sticks out of them)
+      const body = 0.45 * W, pod = 0.4, tip = POD_OUT - pod / 2;
+      part((tip - body + 0.1) / W, 0.1, 0.55, trim, (side * (body + tip - 0.1)) / 2 / W, -0.05, 0.1);
+      part(pod / W, 0.3, 0.9, cowl, (side * tip) / W, -0.25, 0.15);
+      part((pod * 0.7) / W, 0.2, 0.06, orange, (side * tip) / W, -0.25, 0.62);
       part(0.1, 0.08, 1.9, steel, side * 0.5, -0.76, 0.2);
       part(0.07, 0.36, 0.07, steel, side * 0.5, -0.56, 0.8);
       part(0.07, 0.36, 0.07, steel, side * 0.5, -0.56, -0.4);
       // the nav light at the wing's tip, the exhaust glowing at the back of the engine
-      part(0.02, 0.08, 0.1, blink(side < 0 ? 0xff3b3b : 0x3bff7a, 1.2, 1), side * 0.81, -0.25, 0.15);
+      part(0.02 / W, 0.08, 0.1, blink(side < 0 ? 0xff3b3b : 0x3bff7a, 1.2, 1), (side * (POD_OUT - 0.02)) / W, -0.25, 0.15);
       part(0.14, 0.12, 0.2, dark, side * 0.3, 0.55, -1.0);
       part(0.1, 0.08, 0.02, glowMat(0xff6a30, 0.8), side * 0.3, 0.55, -1.11);
     }
@@ -616,7 +623,7 @@ export function buildDecor(input: DecorContext): Decor {
     part(0.13, 0.13, 0.8, steel, 0, -0.5, 1.4);
     part(0.14, 0.34, 0.14, dark, 0, 0.8, -0.2);
     part(0.12, 0.12, 0.12, strobe(0xff2a2a, 1.9, 0), 0, 0.74, -1.0);
-    part(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), 0, 1.04, -2.85);
+    part(0.1, 0.1, 0.1, strobe(0xffffff, 1.6, 0.5), 0, 1.04 + DROP, -2.85);
     // the main rotor: four blades with yellow tips, going round fast, and the blur of them
     const rotorX = ox - 0.2 * L, rotorY = oy + 0.98 * V;
     const rotor = spinner(rotorX, rotorY, hz, 24).bar(0.5, 0.18, 0.5, dark);
@@ -627,7 +634,7 @@ export function buildDecor(input: DecorContext): Decor {
     }
     blur(rotorX, rotorY, hz, hl * 1.8, 0);
     // the tail rotor beside the fin
-    const tailY = oy + 0.6 * V, tailX = ox - 2.9 * L, tailZ = hz + 0.2 * W;
+    const tailY = oy + (0.6 + DROP) * V, tailX = ox - 2.9 * L, tailZ = hz + 0.2 * W;
     const tail = spinner(tailX, tailY, tailZ, 40, 'z').bar(0.14, 0.14, 0.14, dark).bar(0.06, 1.5, 0.08, rubber).bar(1.5, 0.06, 0.08, rubber);
     ghosts.forEach((g, i) => tail.bar(1.5, 0.08, 0.06, g, 0, 0, (i + 1) * 0.3).bar(0.08, 1.5, 0.06, g, 0, 0, (i + 1) * 0.3));
     blur(tailX, tailY, tailZ + 0.02, 0.76, Q);

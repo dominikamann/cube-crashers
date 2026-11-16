@@ -39,7 +39,7 @@ describe('decoration', () => {
             // may sink in a little)
             if (tileOf(tx, tz) !== Tile.Wall || fx < 0.12 || fx > 0.88 || fz < 0.12 || fz > 0.88) continue;
             // (the helicopter on the helipad stands in its hull's blocks: they are not drawn, it is)
-            if (map.id === 'helipad' && heliTile(tx, tz)) continue;
+            if (map.id === 'helipad' && heliTile(tx, tz, true)) continue;
             if (v.y < top(tx, tz) - 0.05 && v.y > 0.02) inside.push(`${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)} top ${top(tx, tz).toFixed(2)} #${((o.material as THREE.MeshLambertMaterial).color?.getHexString?.() ?? "?")}`);
           }
         });
