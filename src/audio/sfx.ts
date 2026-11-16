@@ -28,6 +28,12 @@ export type SoundId =
   | 'vehicleHit'
   | 'hitConfirm'
   | 'killConfirm'
+  /** the life in the worlds (render/ambience.ts): a bird's chirp, wings taking off, a bird or cat that was hit, a cat, the arena's crowd */
+  | 'birdChirp'
+  | 'birdFlutter'
+  | 'critterPuff'
+  | 'catMeow'
+  | 'crowdCheer'
   | 'playerDown'
   | 'playerRespawn'
   | 'creditLost'
@@ -119,6 +125,31 @@ const siren = (count: number, a: number, b: number, step: number, volume: number
   }));
 
 export const SOUNDS: Record<SoundId, SynthParams[]> = {
+  // a sparrow's chirp: three quick whistles up and down (quiet: it is far off, somewhere on the roofs)
+  birdChirp: [
+    { wave: 'sine', freq: 3400, freqEnd: 4600, attack: 0.004, sustain: 0.025, decay: 0.03, volume: 0.025 },
+    { wave: 'sine', freq: 4200, freqEnd: 3300, attack: 0.004, sustain: 0.02, decay: 0.04, volume: 0.022, at: 0.08 },
+    { wave: 'sine', freq: 3600, freqEnd: 4900, attack: 0.004, sustain: 0.03, decay: 0.05, volume: 0.025, at: 0.15 },
+  ],
+  // wings clapping as it takes off: soft beats of air
+  birdFlutter: [0, 0.06, 0.12, 0.18, 0.25].map((at, i) => ({ wave: 'noise' as const, freq: 800, attack: 0.004, sustain: 0.01, decay: 0.05, volume: 0.05 - i * 0.006, lowpass: 1600, at })),
+  // a puff: a soft burst of air and a little squeak
+  critterPuff: [
+    { wave: 'noise', freq: 900, attack: 0.003, sustain: 0.03, decay: 0.16, volume: 0.09, lowpass: 2600, lowpassEnd: 600 },
+    { wave: 'sine', freq: 1500, freqEnd: 2400, attack: 0.003, sustain: 0.02, decay: 0.05, volume: 0.03, at: 0.02 },
+  ],
+  // a cat: "mi-aau", up and down, a little nasal
+  catMeow: [
+    { wave: 'sawtooth', freq: 560, freqEnd: 820, attack: 0.04, sustain: 0.12, decay: 0.05, volume: 0.035, lowpass: 2000, vibrato: { rate: 7, depth: 12 } },
+    { wave: 'sawtooth', freq: 820, freqEnd: 470, attack: 0.02, sustain: 0.16, decay: 0.14, volume: 0.035, lowpass: 1800, vibrato: { rate: 6, depth: 14 }, at: 0.2 },
+  ],
+  // the crowd on the stands: a roar that swells and dies away, with a whistle or two in it
+  crowdCheer: [
+    { wave: 'noise', freq: 700, attack: 0.18, sustain: 0.5, decay: 0.9, volume: 0.07, lowpass: 900, lowpassEnd: 2200, resonance: 2 },
+    { wave: 'noise', freq: 1600, attack: 0.25, sustain: 0.35, decay: 0.7, volume: 0.035, lowpass: 3000 },
+    { wave: 'sine', freq: 2100, freqEnd: 2700, attack: 0.02, sustain: 0.18, decay: 0.08, volume: 0.02, at: 0.3 },
+    { wave: 'sine', freq: 2600, freqEnd: 2000, attack: 0.02, sustain: 0.12, decay: 0.08, volume: 0.016, at: 0.62 },
+  ],
   shot_pixelBlaster: [{ wave: 'square', freq: 880, freqEnd: 440, attack: 0.002, sustain: 0.03, decay: 0.06, volume: 0.12 }],
   // the Laser Sword cuts the air: the blade's buzz is pushed up as it swings out and falls back as it slows, two
   // voices a little apart that beat; under it the air itself, noise through a ringing filter that sweeps up and down

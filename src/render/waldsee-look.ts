@@ -1014,8 +1014,7 @@ export function buildWaldseeTown(add: (o: THREE.Object3D) => void, disposables: 
     box(rx, 0.25, z, 0.5, 0.5, 0.5, shade(granite, 0.8));
     for (const turn of [0, Math.PI / 4]) box(rx, 0.82, z, 0.9, 0.66, 0.9, granite, turn);
     for (const turn of [0, Math.PI / 4]) box(rx, 1.2, z, 0.56, 0.12, 0.56, shade(granite, 1.06), turn);
-    // three jets of water
-    for (const [dx, dz, hgt] of [[-0.45, 0.1, 0.5], [-0.2, -0.25, 0.36], [0.05, 0.2, 0.62]]) lamp(x + dx, 0.85 + hgt / 2, z + dz, 0.1, hgt, 0.1, 0xdff3ff);
+    // (the jets of water that leap up from the basin under him move: see ambience-worlds.ts)
     // the pole and the Federle on it
     const px = x + 0.25;
     box(px, 2, z, 0.07, 3.2, 0.07, bronze);

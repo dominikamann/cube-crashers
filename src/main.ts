@@ -677,6 +677,11 @@ function startGame() {
         }
         // (a Disco Ball near a player on this screen: its track, for as long as it hangs there)
         const ears = s.players.filter(p => p.id === localId() || (split && p.id === 1)).map(p => p.pos);
+        // the life in the world: a bird's chirp, a cat, the crowd, near a player on this screen (the crowd fills the arena)
+        for (const l of renderer.takeLifeSounds()) {
+          const near = l.id === 'crowdCheer' || ears.some(e => Math.hypot(e.x - l.x, e.z - l.z) < (l.id === 'birdChirp' ? 16 : 12));
+          if (near && mode === 'playing') audio.mixer.play(l.id, 0.92 + Math.random() * 0.16);
+        }
         // the helicopter on the helipad: its rotor is heard by whoever is on the pad, louder the nearer
         // (an attack helicopter near them is the rotor to listen for: the parked one sinks under its beat)
         const gunships = allBosses(s).flatMap(b => (b.heli ? s.enemies.filter(e => e.id === b.enemyId).map(e => ({ pos: e.pos, low: e.fly === 'low' })) : []));

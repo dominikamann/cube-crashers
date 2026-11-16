@@ -19,6 +19,7 @@ import { createHealthBars } from './health-bars';
 import { AmbientPass, FinishPass, GlowPass, SmoothScenePass } from './post';
 import { attachPerfRenderer } from '../dev/perf-probe';
 import { screenPoint } from './project';
+import type { LifeSound } from './ambience';
 
 export type GraphicsQuality = 'low' | 'medium' | 'high' | 'ultra';
 export const GRAPHICS_QUALITIES: GraphicsQuality[] = ['low', 'medium', 'high', 'ultra'];
@@ -62,6 +63,8 @@ export interface GameRenderer {
   setFirstPerson(view: number, look: { yaw: number; pitch: number } | null): void;
   setQuality(q: GraphicsQuality): void;
   setDamageNumbers(on: boolean): void;
+  /** the sounds the world's life made since the last call (birds, cats, the crowd), and where (see ambience.ts) */
+  takeLifeSounds(): LifeSound[];
   /** Where a ground point appears on screen in view `view`, in CSS pixels of the canvas. */
   /** a point on screen (client pixels); `y` is the height above the ground; `behind` = behind the camera */
   project(x: number, z: number, view?: number, y?: number): { x: number; y: number; behind: boolean };
@@ -489,6 +492,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
       fx.setParticleScale(QUALITY[q].particles);
       entities.setParticleScale(QUALITY[q].particles);
       buildComposer();
+    },
+    takeLifeSounds() {
+      return world.takeSounds();
     },
     setDamageNumbers(on) {
       entities.setDamageNumbers(on);

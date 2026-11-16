@@ -13,6 +13,7 @@ import { logoAwake } from '../sim/systems/logo-spin';
 import markUrl from './amannlabs-mark.png';
 import { hash } from './props';
 import { buildDecor, HULL_COLOR } from './decor';
+import { buildAmbience, type LifeSound } from './ambience';
 import { buildWaldseeTown, paintWaldseeFloor, paintWaldseeWall, waldseeBlockColor, waldseeBlockHeight, waldseeGround } from './waldsee-look';
 import { floorDef } from '../sim/config/floors';
 import { HELIPAD } from '../sim/config/floor-helipad';
@@ -28,6 +29,8 @@ export interface World {
   update(s: SimState, theme: Theme, time: number, events?: SimEvent[]): void;
   /** low graphics: the decoration stays off, so weak machines only draw the tiles */
   setDetail(low: boolean): void;
+  /** the sounds of the world's life since the last call (birds, cats, the crowd), and where */
+  takeSounds(): LifeSound[];
   /** removes everything this world added to the scene */
   dispose(): void;
 }
@@ -1093,6 +1096,11 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
   const decor = buildDecor({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
   addToScene(decor.group);
   addToScene(decor.ladders);
+  // ---- life: what moves and flies about in each world (see ambience.ts)
+  const ambience = buildAmbience({ map, look, floorTiles, wallTiles: walls.list, tileOf, wallTopY, keepClear });
+  addToScene(ambience.group);
+  disposables.push(ambience);
+  let lowDetail = false;
 
   // Kart Rally: a chequered start/finish line with an arch, glowing gates at the other checkpoints
   if (map.id === 'race') {
@@ -1281,6 +1289,7 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       wallSide.emissiveIntensity = 0.35 * glow;
       // hidden on low graphics: nothing to animate
       if (decor.group.visible) decor.update(time, glow);
+      ambience.update(s, events ?? [], time, glow, lowDetail);
 
       const activePads = new Set(s.players.filter(p => p.downUntil === null).map(p => padAt(s, p.pos)).filter(id => id !== null));
       const occupied = new Set(s.towers.map(t => t.padId));
@@ -1293,8 +1302,12 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       padMat.emissiveIntensity = (0.5 + 0.15 * Math.sin(time * 2)) * Math.min(theme.glow, 1.3);
       padMatActive.emissiveIntensity = 1.4 * Math.min(theme.glow, 1.3);
     },
+    takeSounds() {
+      return ambience.takeSounds();
+    },
     setDetail(low) {
       decor.group.visible = !low;
+      lowDetail = low;
     },
     dispose() {
       disposed = true;
