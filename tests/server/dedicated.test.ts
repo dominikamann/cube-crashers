@@ -545,6 +545,12 @@ describe('the dedicated server', () => {
 });
 
 describe('a server that keeps weapons', () => {
+  it('says where --keep does nothing', () => {
+    expect(setup({ mode: 'gungame', keep: 'all' }).lines.join('\n')).toMatch(/--keep does nothing in gungame/);
+    expect(setup({ mode: 'coop', keep: 'level' }).lines.join('\n')).toMatch(/--keep does nothing in coop/);
+    expect(setup({ mode: 'score', keep: 'level' }).lines.join('\n')).not.toMatch(/--keep/);
+  });
+
   it('hands --keep to the match it starts', () => {
     const { host, cs, run } = setup({ mode: 'score', keep: 'all', countdown: 3 });
     run(4);

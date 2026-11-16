@@ -44,6 +44,7 @@ export class DedicatedServer {
     host.setAutoFill(isCoop(cfg.mode) ? 0 : cfg.bots);
     if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
     if (isCoop(cfg.mode) && (cfg.monsters || cfg.teams)) this.log('note: --monsters and --teams are for versus');
+    if ((isCoop(cfg.mode) || cfg.mode === 'gungame') && cfg.keep !== 'none') this.log(`note: --keep does nothing in ${cfg.mode}${cfg.mode === 'gungame' ? ', whose ladder decides the weapon after a fall' : ', it is for versus'}`);
     if ((cfg.mode === 'coop' || cfg.mode === 'endless') && cfg.map) this.log(`note: --map does nothing in ${cfg.mode}, which brings its own floors`);
   }
 
