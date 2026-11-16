@@ -62,6 +62,9 @@ export type SoundId =
   | 'powerupSpawned'
   | 'powerupPicked'
   | 'kartEnter'
+  | 'hoof'
+  | 'hoofFar'
+  | 'rhinoStep'
   | 'kartRam'
   | 'kartJump'
   | 'kartLand'
@@ -331,6 +334,21 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
   powerupPicked: [{ wave: 'square', freq: 440, freqEnd: 1760, attack: 0.005, sustain: 0.12, decay: 0.2, volume: 0.12 }],
   kartEnter: [
     { wave: 'sawtooth', freq: 80, freqEnd: 220, attack: 0.02, sustain: 0.25, decay: 0.2, volume: 0.16, lowpass: 1200, vibrato: { rate: 30, depth: 12 } },
+  ],
+  // the unicorn's hooves on the floor: a hollow knock and a click of the shoe; someone else's further off, softer
+  hoof: [
+    { wave: 'sine', freq: 520, freqEnd: 300, attack: 0.001, sustain: 0.012, decay: 0.07, volume: 0.13 },
+    { wave: 'noise', freq: 1800, attack: 0.001, sustain: 0.006, decay: 0.03, volume: 0.07, lowpass: 3200 },
+  ],
+  hoofFar: [
+    { wave: 'sine', freq: 480, freqEnd: 290, attack: 0.002, sustain: 0.01, decay: 0.06, volume: 0.05 },
+    { wave: 'noise', freq: 1500, attack: 0.002, sustain: 0.005, decay: 0.025, volume: 0.025, lowpass: 2200 },
+  ],
+  // the Rhino's feet: a heavy thud through the floor, with a crunch on top that small speakers still give
+  rhinoStep: [
+    { wave: 'sine', freq: 95, freqEnd: 42, attack: 0.002, sustain: 0.04, decay: 0.2, volume: 0.62 },
+    { wave: 'triangle', freq: 190, freqEnd: 90, attack: 0.002, sustain: 0.03, decay: 0.1, volume: 0.26 },
+    { wave: 'noise', freq: 600, attack: 0.002, sustain: 0.025, decay: 0.09, volume: 0.24, lowpass: 900 },
   ],
   kartRam: [
     { wave: 'noise', freq: 900, attack: 0.001, sustain: 0.03, decay: 0.1, volume: 0.3, lowpass: 1600 },
@@ -609,6 +627,9 @@ export const JITTER: ReadonlySet<SoundId> = new Set<SoundId>([
   'hitConfirm',
   'explosion',
   'kartRam',
+  'hoof',
+  'hoofFar',
+  'rhinoStep',
   'enemyShot',
   'rare_slushMachine',
   'rare_leafBlower',

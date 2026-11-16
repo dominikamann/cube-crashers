@@ -26,7 +26,8 @@ export class VoiceLimiter {
 }
 
 export interface Mixer {
-  play(id: SoundId, pitch?: number, bypassLimiter?: boolean): void;
+  /** (`volume`: a share of the sound's own loudness, for one heard from further off) */
+  play(id: SoundId, pitch?: number, bypassLimiter?: boolean, volume?: number): void;
   /** no new sounds while the window is hidden */
   setMuted(on: boolean): void;
   setMusicVolume(v: number): void;
@@ -96,7 +97,7 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
       muted = on;
       loopBus.gain.value = on ? 0 : 0.8 * sfxVolume;
     },
-    play(id, pitch = 1, bypassLimiter = false) {
+    play(id, pitch = 1, bypassLimiter = false, volume = 1) {
       // a hidden window is silent: sounds started now would all go off at once when it comes back
       if (muted) return;
       const layers = SOUNDS[id];
@@ -107,7 +108,7 @@ export function createMixer(ctx: BaseAudioContext): Mixer {
         jitterSeed = (jitterSeed * 16807) % 2147483647;
         p *= 0.92 + (jitterSeed / 2147483647) * 0.16;
       }
-      for (const layer of layers) playSynth(ctx, sfxBus, layer, now, p);
+      for (const layer of layers) playSynth(ctx, sfxBus, volume === 1 ? layer : { ...layer, volume: layer.volume * volume }, now, p);
     },
     setMusicVolume(v) {
       musicVolume = v;

@@ -9,6 +9,8 @@ import { createMixer, type Mixer } from './audio/mixer';
 import { createMusic, DISCO_FADE_S, DISCO_TAIL_S, discoHeard, trackToPlay, type MusicPlayer, type TrackId } from './audio/music';
 import { soundsForEvent, swordClashes } from './audio/sfx';
 import { createHumVoices, SwordHum, type HumVoices } from './audio/sword-hum';
+import { createEngineVoices, RhinoSteps, VehicleSound, type EngineVoices } from './audio/vehicle-sound';
+import { noiseBuffer } from './audio/synth';
 import { mazeAmbience, rotorDuck, rotorLoudness } from './audio/ambience';
 import { setColorBlindWords, setKeyBindings, t } from './i18n';
 import { setColorBlind } from './render/palette';
@@ -109,9 +111,13 @@ function startGame() {
   let frameEvents: SimEvent[] = [];
   let lastLobby = '';
   const mouse = { x: innerWidth / 2, y: innerHeight / 3 };
-  let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer; hum: HumVoices } | null = null;
+  let audio: { ctx: AudioContext; mixer: Mixer; music: MusicPlayer; hum: HumVoices; engines: EngineVoices } | null = null;
   /** the Laser Swords of the players on this screen, from frame to frame (see sword-hum.ts) */
   const swordHum = new SwordHum();
+  /** the engines and hooves of the vehicles heard on this screen (see vehicle-sound.ts) */
+  const vehicleSound = new VehicleSound();
+  /** the Rhino's feet (see vehicle-sound.ts) */
+  const rhinoSteps = new RhinoSteps();
 
   // dev only (?bot=1): the test bot plays, e.g. to record gameplay
   let bot: ((s: SimState) => Command[]) | null = null;
@@ -149,7 +155,7 @@ function startGame() {
     if (!audio) {
       const ctx = new AudioContext();
       const mixer = createMixer(ctx);
-      audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus), hum: createHumVoices(ctx, mixer.loopBus) };
+      audio = { ctx, mixer, music: createMusic(ctx, mixer.musicBus), hum: createHumVoices(ctx, mixer.loopBus), engines: createEngineVoices(ctx, mixer.loopBus, noiseBuffer(ctx)) };
       applySettings();
     }
     // silent while the window is minimised or hidden (see the visibilitychange listener)
@@ -715,6 +721,12 @@ function startGame() {
         const hum = swordHum.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt);
         for (const cue of hum.cues) audio.mixer.play(cue);
         audio.hum.set(hum.voices);
+        // the vehicles: engines that rev with the speed, the unicorn's hooves (same rule: only while it is played and shown)
+        const ride = vehicleSound.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt);
+        for (const cue of ride.cues) audio.mixer.play(cue.id, cue.pitch);
+        audio.engines.set(ride.voices);
+        // the Rhino trotting after you and thundering in its charge, louder the closer it is
+        for (const step of rhinoSteps.frame(s, split ? [localId(), 1] : [localId()], mode === 'playing' && !replay && s.phase === 'playing', frameDt)) audio.mixer.play(step.id, step.pitch, true, step.volume);
         // the Lock-On Launcher: a tone when the lock is there, an alarm when a missile is after a player on this screen
         for (const [view, id] of [[0, localId()], [1, 1]] as const) {
           const mine = view === 0 || split ? s.players.find(p => p.id === id) : undefined;
@@ -1254,6 +1266,7 @@ function startGame() {
     audio?.mixer.setPaused(true);
     // (the frames go on behind the menu and keep it quiet too; this only does it at once)
     audio?.hum.silence();
+    audio?.engines.silence();
     screens.pause(role !== 'solo', wayOut());
   }
 
@@ -1271,6 +1284,7 @@ function startGame() {
       audio.mixer.setPaused(false);
       audio.mixer.cutEffects();
       audio.hum.silence();
+      audio.engines.silence();
       mazeQuiet = false;
       playBase('menu');
     }
@@ -1643,6 +1657,15 @@ function applyDemo(sim: SimState) {
         for (const [dx, dz, kind] of [[0, -6, 'tank'], [-4, -7, 'rammer'], [4, -5, 'shooter']] as const) m.spawnEnemy(sim, kind, { x: p.x + dx, z: p.z + dz }).speed = 0;
       });
     }
+  }
+  // ?demo=ride&kind=unicorn: one of each vehicle (that kind first) parked by the player, to hear them
+  if (params.get('demo') === 'ride') {
+    void import('./sim/systems/vehicles').then(m => {
+      const p = sim.players[0].pos;
+      const first = (params.get('kind') as VehicleKind | null) ?? 'kart';
+      const kinds = [first, ...(['kart', 'unicorn', 'roller', 'hoverboard', 'police'] as const).filter(k => k !== first)];
+      kinds.forEach((kind, i) => m.addVehicle(sim, kind, { x: p.x + (i - 2) * 1.6, z: p.z + 1.5 }, 0));
+    });
   }
   const floorParam = Number(params.get('floor'));
   if (floorParam > 0 && sim.run.mode === 'run') void import('./sim/systems/run').then(m => m.enterFloor(sim, Math.min(floorParam, sim.run.floors.length - 1)));
