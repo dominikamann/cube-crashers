@@ -522,6 +522,11 @@ describe('the dedicated server', () => {
     const run = ask({ mode: 'coop', difficulty: 'ultraLow' });
     expect(run.map).toBeUndefined();
     expect(run.difficulty).toBe('ultraLow');
+    // weapons after a fall: said by a versus server, not by a co-op one nor by Gun Game (its ladder decides)
+    expect(turns.keep).toBe('none');
+    expect(ask({ mode: 'score', keep: 'level' }).keep).toBe('level');
+    expect(run.keep).toBeUndefined();
+    expect(ask({ mode: 'gungame', keep: 'all' }).keep).toBeUndefined();
   });
 
   it('a LAN host tells its lobby what it is about to start', () => {
@@ -541,9 +546,11 @@ describe('the dedicated server', () => {
 
 describe('a server that keeps weapons', () => {
   it('hands --keep to the match it starts', () => {
-    const { host, run } = setup({ mode: 'score', keep: 'all', countdown: 3 });
+    const { host, cs, run } = setup({ mode: 'score', keep: 'all', countdown: 3 });
     run(4);
     expect(host.sim?.versus?.keep).toBe('all');
+    // (and the lobby says so, for its badge)
+    expect(cs[0].server?.keep).toBe('all');
   });
 });
 

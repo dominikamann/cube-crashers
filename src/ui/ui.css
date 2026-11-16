@@ -629,6 +629,7 @@ input[type=range].pad-focus, a.pad-focus, .swatch.pad-focus, .vote-card.pad-focu
 .badge.mode { color: var(--cyan); }
 .badge.rule { color: #ff8be6; }
 .badge.map { color: var(--gold); }
+.badge.keep { color: #ffb36b; }
 .badge.live { color: var(--green); }
 .badge.humans.here { color: #0b2a16; background: var(--green); border-color: var(--green); }
 .badge.bots, .badge.ping { color: rgba(255, 255, 255, 0.55); }

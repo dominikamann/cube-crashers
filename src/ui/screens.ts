@@ -370,7 +370,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
    * server's lobby and in a LAN lobby. The server list adds who is there (`seats`: places taken, people and bots
    * among them) and the ping.
    */
-  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; running?: boolean; fixed?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
+  const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; keep?: KeepWeapons; running?: boolean; fixed?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
     const row = document.createElement('div');
     row.className = 'badges';
     const add = (kind: string, label_: string) => text(row, 'span', `badge ${kind}`, label_);
@@ -386,6 +386,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     // (not on a server that takes turns between the rules: there teams come and go)
     if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
+    // (a versus server: what one's weapons do after a fall; an older server does not say)
+    if (g.keep && KEEPS.includes(g.keep)) add('keep', `\u2694 ${t(`badge.keep.${g.keep}`)}`);
     if (g.seats) {
       const humans = g.seats.players - g.seats.bots;
       add(humans > 0 ? 'humans here' : 'humans', humans === 1 ? t('online.human') : t('online.humans', { n: humans }));

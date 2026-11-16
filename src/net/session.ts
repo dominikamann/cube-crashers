@@ -136,7 +136,7 @@ export class HostSession {
   }
 
   private broadcastLobby(): void {
-    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ?? undefined, game: this.gameNow() ?? undefined });
+    this.send('all', { type: 'lobby', players: this.lobby, difficulty: this.difficulty, vote: this.voteInfo() ?? undefined, server: this.server ? { ...this.server, ...this.keepBadge() } : undefined, game: this.gameNow() ?? undefined });
   }
 
   /** a LAN host: the game picked in its lobby, so everyone in it sees what Start will begin */
@@ -156,6 +156,11 @@ export class HostSession {
     if (!this.server || this.server.startsIn === seconds) return;
     this.server.startsIn = seconds;
     this.broadcastLobby();
+  }
+
+  /** a versus server's weapons after a fall, for the badges (not Gun Game, whose ladder decides) */
+  private keepBadge(): { keep?: KeepWeapons } {
+    return this.server && !isCoop(this.server.mode) && this.server.mode !== 'gungame' ? { keep: this.keepWeapons } : {};
   }
 
   /** dedicated server: where the next match is played, and by which rule if the server takes turns (see ServerStatus) */
@@ -330,6 +335,7 @@ export class HostSession {
         ...(this.server?.fixed !== undefined ? { fixed: this.server.fixed } : {}),
         ...(this.server && isCoop(this.server.mode) ? { difficulty: this.difficulty } : {}),
         ...(this.server && this.viewMode !== 'both' ? { view: this.viewMode } : {}),
+        ...this.keepBadge(),
       });
       this.net.kick(from);
     } else if (m.type === 'hello') {
