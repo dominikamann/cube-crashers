@@ -1285,7 +1285,8 @@ export function createWorld(scene: THREE.Scene, map: FloorMap): World {
       }
       boostMat.emissiveIntensity = (0.45 + 0.25 * Math.abs(Math.sin(time * 3))) * glow;
       // 2.5 tiles per second, like the sim
-      beltTex.offset.y = (time * 2.5) % 1;
+      // (a growing offset moves the picture the other way: so it counts down, and the chevrons run the way they point)
+      beltTex.offset.y = 1 - ((time * 2.5) % 1);
       wallSide.emissiveIntensity = 0.35 * glow;
       // hidden on low graphics: nothing to animate
       if (decor.group.visible) decor.update(time, glow);

@@ -21,10 +21,63 @@ export type WorldLife = (s: SimState, events: SimEvent[], time: number, dt: numb
 
 const DIRS: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+const SHIRTS = [0xe04040, 0x3a6ae0, 0xf2c02a, 0x3ac04a, 0xf28a2a, 0xa04ae0, 0xffffff];
+const SKINS = [0xf0c8a0, 0xd8a070, 0x8a5a3a];
+const HAIRS = [0x2a1a10, 0x5a3a1a, 0xc89a50, 0x1a1a1a, 0xa04a20];
+const FLAGS: [number, number][] = [[0xe04040, 0xffffff], [0x3a6ae0, 0xf2c02a], [0x3ac04a, 0xffffff], [0xa04ae0, 0xf2c02a], [0xf28a2a, 0x1a1a1a]];
+
+/**
+ * A spectator standing at (x, y, z) facing yaw: a body as stocky or as tall as its seed makes it, a head with a cap, a
+ * hat, long or short hair (or nothing), arms down or (cheering) up, and one in five waves a flag, harder in a cheer.
+ */
+function drawFan(pool: InstancedPool, x: number, y: number, z: number, yaw: number, seed: number, cheering: boolean, time: number) {
+  const wide = 0.85 + hash(seed * 91, 3) * 0.45, tall = 0.8 + hash(seed * 53, 7) * 0.4;
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  const at = (r: number, f: number) => [x + rx * r + fx * f, z + rz * r + fz * f] as const;
+  const bh = 0.46 * tall, bw = 0.34 * wide;
+  const shirt = SHIRTS[Math.floor(seed * SHIRTS.length)], hair = HAIRS[Math.floor(hash(seed * 7, 5) * HAIRS.length)];
+  pool.addScaled(x, y + bh / 2, z, yaw, bw, bh, 0.26 * wide, shirt);
+  const hy = y + bh + 0.14;
+  pool.addScaled(x, hy, z, yaw, 0.26, 0.26, 0.26, SKINS[Math.floor(seed * 7) % 3]);
+  const kind = Math.floor(hash(seed * 37, 11) * 5), cap = SHIRTS[Math.floor(hash(seed * 3, 13) * SHIRTS.length)];
+  if (kind === 1) {
+    // a cap, its peak to the front
+    pool.addScaled(x, hy + 0.15, z, yaw, 0.28, 0.08, 0.28, cap);
+    const [px, pz] = at(0, 0.18);
+    pool.addScaled(px, hy + 0.12, pz, yaw, 0.24, 0.03, 0.14, cap);
+  } else if (kind === 2) {
+    // a hat: a wide brim and a crown
+    pool.addScaled(x, hy + 0.14, z, yaw, 0.44, 0.03, 0.44, 0x3a2a1a);
+    pool.addScaled(x, hy + 0.22, z, yaw, 0.26, 0.14, 0.26, 0x3a2a1a);
+  } else if (kind === 3) {
+    // long hair: on top and down the back to the shoulders
+    pool.addScaled(x, hy + 0.14, z, yaw, 0.28, 0.06, 0.28, hair);
+    const [px, pz] = at(0, -0.14);
+    pool.addScaled(px, hy - 0.06, pz, yaw, 0.3, 0.36, 0.06, hair);
+  } else if (kind === 4) pool.addScaled(x, hy + 0.14, z, yaw, 0.27, 0.05, 0.27, hair);
+  // the arms: down at the sides, or up in a cheer
+  for (const side of [-1, 1]) {
+    const [px, pz] = at(side * (bw / 2 + 0.05), 0);
+    if (cheering) pool.addScaled(px, y + bh + 0.14, pz, yaw, 0.08, 0.34, 0.08, shirt);
+    else pool.addScaled(px, y + bh * 0.55, pz, yaw, 0.08, bh * 0.6, 0.08, shirt);
+  }
+  if (hash(seed * 13, 17) >= 0.2) return;
+  // a flag on a pole in the right hand, its cloth flapping
+  const [hx, hz] = at(bw / 2 + 0.05, 0.04);
+  const top = y + bh + (cheering ? 1.15 : 0.95);
+  pool.addScaled(hx, top - 0.5, hz, yaw, 0.04, 1.0, 0.04, 0xd8d8d8);
+  const w = yaw + Math.sin(time * (cheering ? 9 : 2.5) + seed * 20) * (cheering ? 0.7 : 0.25);
+  const [a, b] = FLAGS[Math.floor(hash(seed * 29, 19) * FLAGS.length)];
+  const cx = hx + Math.cos(w) * 0.26, cz = hz - Math.sin(w) * 0.26;
+  pool.addScaled(cx, top - 0.08, cz, w, 0.5, 0.15, 0.03, a);
+  pool.addScaled(cx, top - 0.23, cz, w, 0.5, 0.15, 0.03, b);
+}
+
 /**
  * Each world's own life, all drawn only:
  * - plaza: chasing lights round the planters, confetti tickets drifting down
- * - candy: steam from the factory's pipes, chocolate puddles that blub
+ * - candy: steam from the factory's pipes, a few chocolate puddles here and there (the sweets tumbling in the
+ *   machines' domes are in decor.ts)
  * - neon (Neon City and the Highway): rain with splashes, and cars rushing past outside as streaks of light
  * - arena: a crowd of cubes on the stands that cheers and jumps with every hit on the boss, searchlights over the floor
  * - rooftop: clouds drifting past below the roofs
@@ -87,31 +140,35 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
   }
 
   if (look === 'candy') {
-    const steam = t.light(0.35), choc = t.solid(), drops = t.solid();
+    const steam = t.soft(0.4), choc = t.solid(), drops = t.solid();
     const pipes = tops(0.05, 7);
-    const puddles = floors(0.03, 5, 3.5);
+    // a few chocolate puddles, here and there: never two close together
+    const puddles: { x: number; z: number; seed: number }[] = [];
+    for (const f of floors(0.05, 5, 3.5).sort((a, b) => a.seed - b.seed)) {
+      if (puddles.length >= 5) break;
+      if (puddles.every(p => Math.hypot(p.x - f.x, p.z - f.z) > 14)) puddles.push(f);
+    }
     return (s, events, time, dt, low) => {
       // steam from the pipes on the roofs: puffs that swell and drift as they rise
       for (const p of pipes) {
         for (let k = 0; k < (low ? 1 : 4); k++) {
           const u = (time * 0.4 + p.seed * 7 + k / 4) % 1;
-          const size = 0.25 + u * 0.9;
-          steam.addScaled(p.x + Math.sin(time + p.seed * 9) * 0.3 * u, p.y + 0.3 + u * 2.8, p.z + u * 0.6, time * 0.5 + k, size, size * 0.8, size, 0xfff4fa);
+          const size = (0.5 + u * 1.6) * Math.min(1, u * 5) * (1 - u * 0.5);
+          steam.addScaled(p.x + Math.sin(time + p.seed * 9) * 0.3 * u, p.y + 0.3 + u * 2.8, p.z + u * 0.6, 0, size, 1, size, 0xfff4fa);
         }
       }
-      // chocolate puddles: a disc of chocolate with bubbles that swell and pop
+      // (round: the same slab turned three times over itself; bubbles swell on it and pop)
       for (const p of puddles) {
-        // (round: the same slab turned three times over itself)
-        for (let k = 0; k < 3; k++) choc.addScaled(p.x, 0.03, p.z, p.seed * 6 + (k * Math.PI) / 6, 1.05, 0.04, 1.05, 0x5a2a14);
-        for (let k = 0; k < 3; k++) choc.addScaled(p.x + 0.15, 0.045, p.z - 0.1, p.seed * 6 + (k * Math.PI) / 6, 0.55, 0.03, 0.55, 0x7a3a1c);
+        for (let k = 0; k < 3; k++) choc.addScaled(p.x, 0.03, p.z, p.seed * 6 + (k * Math.PI) / 6, 0.95, 0.04, 0.95, 0x5a2a14);
+        for (let k = 0; k < 3; k++) choc.addScaled(p.x + 0.12, 0.045, p.z - 0.08, p.seed * 6 + (k * Math.PI) / 6, 0.5, 0.03, 0.5, 0x7a3a1c);
         if (low) continue;
-        for (let k = 0; k < 3; k++) {
-          const u = (time * 0.9 + p.seed * 5 + k * 0.33) % 1;
-          const r = u < 0.85 ? 0.08 + u * 0.18 : 0;
-          if (r) drops.addScaled(p.x + Math.cos(k * 2.1 + p.seed * 9) * 0.35, 0.05 + r * 0.5, p.z + Math.sin(k * 2.1 + p.seed * 9) * 0.3, 0, r, r * 0.8, r, 0x8a4a24);
+        for (let k = 0; k < 2; k++) {
+          const u = (time * 0.9 + p.seed * 5 + k * 0.5) % 1;
+          const r = u < 0.85 ? 0.06 + u * 0.14 : 0;
+          if (r) drops.addScaled(p.x + Math.cos(k * 2.1 + p.seed * 9) * 0.25, 0.05 + r * 0.5, p.z + Math.sin(k * 2.1 + p.seed * 9) * 0.22, 0, r, r * 0.8, r, 0x8a4a24);
         }
       }
-      void s;
+        void s;
       void events;
       void dt;
     };
@@ -153,14 +210,50 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
     };
   }
 
+  if (look === 'race') {
+    // spectators: here and there a little crowd on the walls by the track, cheering as the karts race past
+    const fans = t.solid();
+    const spots = rims(1, 77);
+    const groups: { x: number; z: number; y: number; ox: number; oz: number; seed: number }[][] = [];
+    for (const r of spots.sort((a, b) => a.seed - b.seed)) {
+      if (groups.length >= 9) break;
+      if (groups.some(g => Math.hypot(g[0].x - r.tx, g[0].z - r.tz) < 11)) continue;
+      // (a few of them on the wall tiles next to this one, facing the track)
+      const near = spots.filter(o => Math.hypot(o.tx - r.tx, o.tz - r.tz) < 2.2 && o.ox === r.ox && o.oz === r.oz);
+      groups.push(near.flatMap(o => [0, 1].map(k => ({ x: o.tx + 0.5 + (k ? 0.22 : -0.22) * Math.abs(o.oz), z: o.tz + 0.5 + (k ? 0.22 : -0.22) * Math.abs(o.ox), y: o.y, ox: o.ox, oz: o.oz, seed: hash(o.tx * 7 + k, o.tz * 3) }))));
+    }
+    const cheerAt = groups.map(() => -10);
+    return (s, events, time, dt, low) => {
+      groups.forEach((g, i) => {
+        // a kart going past: they cheer (a jump, arms up), and the crowd is heard if a player is near
+        const kart = s.vehicles.some(v => Math.hypot(v.pos.x - g[0].x, v.pos.z - g[0].z) < 4.5 && Math.hypot(v.vel.x, v.vel.z) > 2);
+        if (kart && time - cheerAt[i] > 1.5) {
+          cheerAt[i] = time;
+          t.sound('crowdCheer', g[0].x, g[0].z);
+        }
+        for (const f of g) {
+          const since = time - cheerAt[i] - f.seed * 0.3;
+          const jump = since > 0 && since < 0.9 ? Math.abs(Math.sin((since / 0.45) * Math.PI)) * 0.35 : 0;
+          const y = f.y + jump + Math.abs(Math.sin(time * 2 + f.seed * 20)) * 0.04;
+          drawFan(fans, f.x, y, f.z, Math.atan2(f.ox, f.oz), f.seed, jump > 0.05, time);
+        }
+      });
+      void dt;
+      void low;
+      void events;
+    };
+  }
+
   if (look === 'arena') {
-    // the crowd on the stands: cubes in all colours on the border walls, bobbing, and jumping up with every hit on
+    // the crowd on the stands: spectators of all sizes on the border walls (see drawFan), bobbing, and jumping up with every hit on
     // the boss (a cheer that runs round the stands)
-    const fans = t.solid(), heads = t.solid(), beams = t.light(0.16), spots = t.soft(0.45, true);
+    const fans = t.solid(), beams = t.light(0.16), spots = t.soft(0.45, true);
     const seats = ctx.wallTiles.filter(c => (c.tx <= 1 || c.tz <= 1 || c.tx >= W - 2 || c.tz >= H - 2) && hash(c.tx * 7, c.tz * 3) < 0.75).map(c => ({ x: c.tx + 0.5, z: c.tz + 0.5, y: ctx.wallTopY(c.tx, c.tz), seed: hash(c.tx * 17, c.tz * 29) }));
-    const SHIRTS = [0xe04040, 0x3a6ae0, 0xf2c02a, 0x3ac04a, 0xf28a2a, 0xa04ae0, 0xffffff];
     const cx = W / 2, cz = H / 2;
     let cheer = -10;
+    // the searchlights themselves: on masts at the edge of the stands, a housing that turns after its spot, a lens
+    const lampAt = [0, 1, 2].map(k => ({ x: cx + Math.cos(k * 2.1) * (W / 2 - 0.5), y: 9, z: cz + Math.sin(k * 2.1) * (H / 2 - 0.5) }));
+    const masts = t.solid(), lenses = t.light(), glows = t.soft(0.6, true);
     return (s, events, time, dt, low) => {
       // (a big hit is cheered; small ones only now and then, the crowd does not roar at every bolt)
       const big = events.some(e => e.type === 'bossPhase' || e.type === 'bossDead') || events.some(e => e.type === 'enemyHit' && s.boss && e.id === s.boss.enemyId && e.amount >= 20);
@@ -175,10 +268,8 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const jump = since > 0 && since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 0.6 : 0;
         const bob = Math.abs(Math.sin(time * 3 + f.seed * 20)) * 0.08;
         const y = f.y + bob + jump;
-        fans.addScaled(f.x, y + 0.3, f.z, a, 0.42, 0.5, 0.32, SHIRTS[Math.floor(f.seed * SHIRTS.length)]);
-        heads.addScaled(f.x, y + 0.7, f.z, a, 0.3, 0.3, 0.3, [0xf0c8a0, 0xd8a070, 0x8a5a3a][Math.floor(f.seed * 7) % 3]);
-        // arms up in the cheer
-        if (jump > 0.1) heads.addScaled(f.x, y + 0.85, f.z, a, 0.5, 0.08, 0.08, SHIRTS[Math.floor(f.seed * SHIRTS.length)]);
+        // (facing the middle of the arena)
+        drawFan(fans, f.x, y, f.z, Math.atan2(cx - f.x, cz - f.z), f.seed, jump > 0.1, time);
       }
       if (low) return;
       // searchlights: two beams from high up, their spots sweeping over the sand
@@ -187,9 +278,16 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const r = 4 + 6 * (0.5 + 0.5 * Math.sin(time * 0.4 + k * 1.7));
         const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
         spots.addScaled(x, 0.3, z, 0, 3.6, 1, 3.6, [0xfff2c0, 0xc0e8ff, 0xffc0e8][k]);
-        const from = { x: cx + Math.cos(k * 2.1) * (W / 2 + 1), y: 16, z: cz + Math.sin(k * 2.1) * (H / 2 + 1) };
+        const from = lampAt[k];
         const dx = x - from.x, dy = 0 - from.y, dz = z - from.z, len = Math.hypot(dx, dy, dz);
         beams.addScaled((from.x + x) / 2, from.y / 2, (from.z + z) / 2, Math.atan2(dx, dz), 0.6, 0.6, len, [0xfff2c0, 0xc0e8ff, 0xffc0e8][k], Math.atan2(-dy, Math.hypot(dx, dz)));
+        // its mast up from the stands, the housing pointing down at the spot, the lit lens and its glare
+        masts.addScaled(from.x, from.y / 2, from.z, 0, 0.18, from.y, 0.18, 0x3a3f4a);
+        const yaw = Math.atan2(dx, dz), pitch = Math.atan2(-dy, Math.hypot(dx, dz));
+        masts.addScaled(from.x, from.y + 0.25, from.z, yaw, 0.7, 0.7, 0.9, 0x2a2e36, pitch);
+        const lx = from.x + Math.sin(yaw) * Math.cos(pitch) * 0.46, ly = from.y + 0.25 - Math.sin(pitch) * 0.46, lz = from.z + Math.cos(yaw) * Math.cos(pitch) * 0.46;
+        lenses.addScaled(lx, ly, lz, yaw, 0.56, 0.56, 0.06, 0xfffbe8, pitch);
+        glows.addScaled(lx, ly, lz, 0, 2.2, 1, 2.2, [0xfff2c0, 0xc0e8ff, 0xffc0e8][k]);
       }
       void dt;
     };
@@ -262,7 +360,10 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
       if (!pedestal || d < Math.hypot(pedestal.tx + 1 - W / 2, pedestal.tz + 1 - H / 2)) pedestal = c;
     }
     if (!pedestal) return null;
-    const bowl = { x: pedestal.tx + 1, y: ctx.wallTopY(pedestal.tx, pedestal.tz) + 6.5, z: pedestal.tz + 1 };
+    // (as decor.ts builds it: the bowl's middle 6.3 over the block, its axis tipped 0.6 toward the north, the whole head
+    // turning at DISH_TURN; its feed and the rings of its signal lie along that axis, from about 3.6 out)
+    const bowl = { x: pedestal.tx + 1, y: ctx.wallTopY(pedestal.tx, pedestal.tz) + 6.3, z: pedestal.tz + 1 };
+    const TILT = 0.6, TURN = 0.3, FEED = 3.6;
     /** every this many seconds a burst, lasting this long */
     const EVERY = 7, BURST = 1.4;
     return (s, events, time, dt, low) => {
@@ -273,10 +374,14 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const leave = (i / 16) * BURST;
         const age = since - leave;
         if (age < 0 || age > 1.2) continue;
-        const y = bowl.y + age * 28;
-        const x = bowl.x + Math.sin(i * 2.4) * 0.35, z = bowl.z + Math.cos(i * 2.4) * 0.35;
-        packets.addScaled(x, y, z, 0, 0.16, 0.7, 0.16, i % 3 ? 0x3df0ff : 0xfff2a0);
-        if (!low) trail.addScaled(x, y - 0.8, z, 0, 0.7, 1, 0.7, 0x3da8ff);
+        // out of the feed, along the beam through the rings, and on up into the sky
+        const turn = time * TURN;
+        const d = { x: -Math.sin(TILT) * Math.sin(turn), y: Math.cos(TILT), z: -Math.sin(TILT) * Math.cos(turn) };
+        const along = FEED + age * 28;
+        const off = 0.18 * Math.sin(i * 2.4);
+        const x = bowl.x + d.x * along + off * Math.cos(turn), y = bowl.y + d.y * along, z = bowl.z + d.z * along - off * Math.sin(turn);
+        packets.addScaled(x, y, z, -turn, 0.16, 0.7, 0.16, i % 3 ? 0x3df0ff : 0xfff2a0, -TILT);
+        if (!low) trail.addScaled(x - d.x * 0.8, y - d.y * 0.8, z - d.z * 0.8, 0, 0.7, 1, 0.7, 0x3da8ff);
       }
       void s;
       void events;
@@ -287,9 +392,78 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
   if (look === 'jungle') {
     // fireflies drifting low, blinking; leaves sailing down from the canopy
     const flies = t.light(), leaves = t.solid(), glowFlies = t.soft(0.35, true);
+    // a waterfall: down the rock at the map's edge (a stretch of the border with open floor before it, nearest the
+    // middle of an edge), into a small pool at its foot: a sheet of falling water, foam and spray, ripples, a mist
+    let falls: { x: number; z: number; ox: number; oz: number; top: number } | null = null;
+    for (let i = 2; i < Math.max(W, H) - 2; i++)
+      for (const [tx, tz, ox, oz] of [[i, 0, 0, 1], [i, H - 1, 0, -1], [0, i, 1, 0], [W - 1, i, -1, 0]] as const) {
+        if (tx >= W || tz >= H || !isWall(tx, tz)) continue;
+        // three tiles of the edge side by side with floor two deep before them
+        const side = (k: number) => (ox === 0 ? [tx + k, tz] : [tx, tz + k]) as [number, number];
+        const ok = [-1, 0, 1].every(k => {
+          const [sx, sz] = side(k);
+          return isWall(sx, sz) && isFloor(sx + ox, sz + oz) && isFloor(sx + ox * 2, sz + oz * 2) && clearOf(sx + ox + 0.5, sz + oz + 0.5, 3);
+        });
+        if (!ok) continue;
+        const d = ox === 0 ? Math.abs(tx - W / 2) : Math.abs(tz - H / 2);
+        if (!falls || d < (falls.ox === 0 ? Math.abs(falls.x - 0.5 - W / 2) : Math.abs(falls.z - 0.5 - H / 2))) falls = { x: tx + 0.5, z: tz + 0.5, ox, oz, top: ctx.wallTopY(tx, tz) + 3.4 };
+      }
+    const sheet = t.light(0.7), foam = t.soft(0.55), rocks = t.solid(), pool = t.light(0.75), ripple = t.light(0.5);
     const swarm = Array.from({ length: 80 }, (_, i) => ({ x: hash(i, 7) * W, z: hash(7, i) * H, seed: hash(i, 3) }));
     const fall = Array.from({ length: 50 }, (_, i) => ({ x: hash(i, 11) * W, z: hash(11, i) * H, seed: hash(i, 19), color: [0x3a9a3a, 0x5ab040, 0x8ac040, 0xa07a2a][i % 4] }));
     return (s, events, time, dt, low) => {
+      if (falls) {
+        const { x, z, ox, oz, top } = falls;
+        // the face of the rock it comes over: the water leaves it a little out from the wall
+        const fx = x + ox * 0.55, fz = z + oz * 0.55;
+        const across = (k: number) => ({ x: fx + (ox === 0 ? k : 0), z: fz + (oz === 0 ? k : 0) });
+        const yaw = Math.atan2(ox, oz);
+        // the cliff it comes down: a rock face right behind the water from the floor to the lip, rising in steps
+        // behind it, and stepping down to the wall on both sides, moss on the ledges
+        const cliff = (side: number, back: number, w: number, h: number, color: number) => {
+          const cx = x + ox * (0.2 - back) + (ox === 0 ? side : 0), cz = z + oz * (0.2 - back) + (oz === 0 ? side : 0);
+          rocks.addScaled(cx, h / 2, cz, yaw, w, h, 0.9, color);
+          rocks.addScaled(cx, h + 0.04, cz, yaw, w * 0.92, 0.08, 0.8, 0x4a7a3a);
+        };
+        cliff(0, 0, 3.0, top, 0x5a5a52);
+        cliff(0, 0.9, 3.6, top + 0.7, 0x6a6a60);
+        cliff(0.3, 1.8, 2.8, top + 1.5, 0x5a5a52);
+        for (const side of [-1, 1]) {
+          cliff(side * 2.0, 0.2, 1.1, top * 0.75, 0x6a6a60);
+          cliff(side * 2.9, 0.4, 0.9, top * 0.5, 0x5a5a52);
+          cliff(side * 3.6, 0.6, 0.8, top * 0.3, 0x6a6a60);
+        }
+        rocks.addScaled(fx - ox * 0.15, top + 0.1, fz - oz * 0.15, yaw, 3.2, 0.3, 0.5, 0x6a6a60);
+        for (let i = 0; i < 9; i++) {
+          // strips of water side by side, each streaming down at its own pace, broken into pieces with gaps
+          const k = -1.2 + i * 0.3;
+          for (let j = 0; j < 7; j++) {
+            const u = (time * (1.4 + (i % 3) * 0.2) + j / 7 + i * 0.13) % 1;
+            const y = top - u * top;
+            const p = across(k + Math.sin(time * 3 + i + j) * 0.03);
+            sheet.addScaled(p.x + ox * u * 0.25, y, p.z + oz * u * 0.25, yaw, 0.24, top / 7 * 0.8, 0.06, j % 3 ? 0x9fd8ff : 0xe8f8ff);
+          }
+        }
+        // the pool at its foot: water in a ring of stones, ripples spreading from where the water comes down
+        const px = x + ox * 1.6, pz = z + oz * 1.6;
+        for (let k = 0; k < 3; k++) pool.addScaled(px, 0.04, pz, yaw + (k * Math.PI) / 6, 3.2, 0.03, 2.1, 0x3a8ab8);
+        for (let k = 0; k < 9; k++) {
+          const a = (k / 8) * Math.PI;
+          rocks.addScaled(px + Math.cos(a + yaw) * 1.6 * (ox === 0 ? 1 : 0.7) + ox * Math.sin(a) * 1.0, 0.1, pz + Math.sin(a + yaw) * 1.6 * (oz === 0 ? 1 : 0.7) + oz * Math.sin(a) * 1.0, a, 0.42, 0.22, 0.36, k % 2 ? 0x6a6a60 : 0x7a7a6e);
+        }
+        if (!low) {
+          for (let k = 0; k < 3; k++) {
+            const u = (time * 0.7 + k / 3) % 1;
+            ripple.addScaled(px - ox * 0.5, 0.06, pz - oz * 0.5, 0, 0.4 + u * 2, 0.01, 0.3 + u * 1.4, 0xd8f4ff);
+          }
+          // foam and spray where it lands, a mist rising off it
+          for (let k = 0; k < 6; k++) {
+            const u = (time * 0.9 + k / 6) % 1;
+            const p = across(-1 + (k / 5) * 2);
+            foam.addScaled(p.x + ox * (0.3 + u * 0.5), 0.15 + u * 1.2, p.z + oz * (0.3 + u * 0.5), 0, (0.6 + u * 1.2) * (1 - u * 0.6), 1, (0.6 + u * 1.2) * (1 - u * 0.6), 0xffffff);
+          }
+        }
+      }
       for (const f of low ? swarm.slice(0, 25) : swarm) {
         const x = f.x + Math.sin(time * 0.5 + f.seed * 30) * 1.5, z = f.z + Math.cos(time * 0.4 + f.seed * 20) * 1.5;
         const on = Math.sin(time * 2.5 + f.seed * 40) > 0.2;

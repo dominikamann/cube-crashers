@@ -106,6 +106,8 @@ function makePlayer(color: number, look: Look) {
   return {
     color, pal, look, figure, held, heldKind: null as HeldKind | null, dizzy, marks, root, body, swatter, paddle, light, pack, flame, glint,
     swatT: 1, yaw: 0, lastX: NaN, lastZ: NaN, lift: 0,
+    // the height of the block it stands on as drawn, and how fast it is falling off one
+    perch: 0, drop: 0,
     // the sword's blade: how far it is out of the hilt, and the blade itself while a sword is in the hand
     blade: 0, bladeObj: null as THREE.Object3D | null,
     // what the animation remembers from frame to frame
@@ -130,6 +132,8 @@ const scaffoldGeo = (() => {
 
 /** how fast a figure rises to its flying height and sinks from it, in tiles a second */
 const LIFT_PACE = 6;
+/** how fast a figure falls off a block it walked off (tiles per second, each second) */
+const DROP_PULL = 30;
 
 /** geometries and materials shared by many actors: never disposed with one of them */
 const SHARED = new Set<object>();
@@ -530,7 +534,18 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     const airborne = p.flying || sinking;
     const want = airborne ? fly : jump;
     v.lift = airborne ? v.lift + Math.max(-LIFT_PACE * frameDt, Math.min(LIFT_PACE * frameDt, want - v.lift)) : want;
-    v.root.position.set(x, perch + v.lift + (driving ? mount : 0), z);
+    // walking off a block: it falls to the floor (or the lower block), speeding up, not in one step; up onto a block
+    // (a ladder, a landing) it is at once, those come up smoothly of themselves; and not after a jump across the
+    // map (a respawn, a teleport)
+    const stepped = Number.isNaN(v.lastX) ? Infinity : Math.hypot(p.pos.x - v.lastX, p.pos.z - v.lastZ);
+    if (perch >= v.perch || stepped > 1.5 || airborne) {
+      v.perch = perch;
+      v.drop = 0;
+    } else {
+      v.drop += DROP_PULL * frameDt;
+      v.perch = Math.max(perch, v.perch - v.drop * frameDt);
+    }
+    v.root.position.set(x, v.perch + v.lift + (driving ? mount : 0), z);
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying || sinking;
     // a short braking flame on the way down

@@ -98,6 +98,9 @@ export function buildDecor(input: DecorContext): Decor {
   const breathers: THREE.MeshStandardMaterial[] = [];
   /** (the Uplink's big dish is one of them: it turns on its tower, once round in about twenty seconds) */
   const spinners: { mesh: THREE.Object3D; speed: number; axis?: 'z' }[] = [];
+  /** the glass domes of the candy machines, and the pool their tumbling sweets are drawn in */
+  const jars: { x: number; y: number; z: number; seed: number }[] = [];
+  let sweets: InstancedPool | null = null;
   /** lights that come on one after the other: the rings of the dish's signal */
   const pulses: { mat: THREE.MeshStandardMaterial; phase: number }[] = [];
   /** lights that flash short and bright: the strobes of the helicopter */
@@ -253,6 +256,7 @@ export function buildDecor(input: DecorContext): Decor {
       else props.box(0.06, 1.2, 0.06, metal, 0, 0.6, 0).box(0.5, 0.04, 0.04, metal, 0, 1.0, 0).box(0.3, 0.04, 0.04, metal, 0, 0.8, 0).box(0.1, 0.1, 0.1, blink(0xff3b3b, 1.2, 0), 0, 1.25, 0);
     }
   } else if (look === 'candy') {
+    sweets = pool(lambert(0xffffff));
     const pink = lambert(0xff8fc8), mint = lambert(0x7fe0c8), lemon = lambert(0xfff07a), lilac = lambert(0xc49bff), sky = lambert(0x8fd8ff);
     const red = lambert(0xff4d6d), white = lambert(0xfff8fb), choc = lambert(0x6b4030), stick = lambert(0xfff4ee), cream = lambert(0xfff0f6);
     const pastels = [pink, mint, lemon, lilac, sky];
@@ -299,7 +303,8 @@ export function buildDecor(input: DecorContext): Decor {
       props.at(c.tx + 0.5, y, c.tz + 0.5, Math.floor(r * 4) * Q);
       props.box(2.7, 0.14, 2.7, white, 0, 0.07, 0).box(1.3, 0.5, 1.3, a, 0, 0.39, 0).box(0.3, 0.2, 0.12, choc, 0, 0.35, 0.68);
       props.box(1.2, 1.0, 1.2, glass, 0, 1.14, 0).box(0.6, 0.18, 0.6, red, 0, 1.73, 0).box(0.16, 0.2, 0.16, red, 0, 1.92, 0);
-      for (let i = 0; i < 14; i++) props.box(0.24, 0.24, 0.24, [red, ...pastels][Math.floor(hash(i, c.tx + c.tz) * 6)], -0.38 + hash(c.tx, i) * 0.76, 0.78 + hash(i * 3, c.tz) * 0.6 * (i < 9 ? 0.5 : 1), -0.38 + hash(c.tz, i * 7) * 0.76);
+      // (the sweets in it tumble round, as if the machine churned them: see the update below)
+      jars.push({ x: c.tx + 0.5, y: y + 1.14, z: c.tz + 0.5, seed: r });
       // a lollipop sign on a corner and a candy-cane stripe round the base
       props.box(0.08, 1.0, 0.08, stick, 1.05, 0.6, 1.05).box(0.5, 0.5, 0.1, pastels[(Math.floor(r * 5) + 2) % 5], 1.05, 1.25, 1.05).box(0.25, 0.25, 0.12, white, 1.05, 1.25, 1.05, Math.PI / 4);
     }
@@ -657,16 +662,7 @@ export function buildDecor(input: DecorContext): Decor {
     // the container: locking bars on its doors, at the east end
     props.at(container.x1 + 1.02, 0, (container.z0 + container.z1 + 1) / 2, Q);
     for (const sx of [-0.7, -0.3, 0.3, 0.7]) props.box(0.06, 1.2, 0.06, dark, sx, 0.6, 0);
-    // the railing along the roof's edge: posts with a yellow top rail, missing in places
-    for (const c of ctx.floorTiles) {
-      const dir = DIRS.find(([ox, oz]) => tileOf(c.tx + ox, c.tz + oz) === Tile.Hazard);
-      if (!dir || !clear(c.tx, c.tz)) continue;
-      const [ox, oz] = dir;
-      props.at(c.tx + 0.5, 0, c.tz + 0.5, Math.atan2(ox, oz));
-      props.box(0.06, 0.95, 0.06, steel, -0.5, 0.48, 0.42);
-      if (hash(c.tx * 7, c.tz * 3) < 0.14) continue;
-      props.box(1.0, 0.05, 0.05, yellow, 0, 0.93, 0.42).box(1.0, 0.04, 0.04, steel, 0, 0.5, 0.42).box(1.0, 0.1, 0.03, dark, 0, 0.06, 0.42);
-    }
+    // (no railing along the edge: one can walk off it, and a railing there only misled)
     // what stands about: traffic cones, fire extinguishers, a toolbox, a ground power unit on wheels (not in the
     // rotor wash: the floor tiles there are the wash, and the wind would have taken all of it)
     for (const s of edgeSpots(0.14, 19).filter(s => isFloor(s.tx, s.tz))) {
@@ -1097,6 +1093,17 @@ export function buildDecor(input: DecorContext): Decor {
       for (const p of pulses) p.mat.emissiveIntensity = (0.25 + 0.95 * Math.max(0, Math.sin(time * 2.2 - p.phase))) * glow;
       for (const s of strobes) s.mat.emissiveIntensity = ((time / s.period + s.phase) % 1 < 0.07 ? 1 : 0.05) * s.base * glow;
       for (const p of pools) p.begin();
+      if (sweets) {
+        const COLORS = [0xff4d6d, 0xff8fc8, 0x7fe0c8, 0xfff07a, 0xc49bff, 0x8fd8ff];
+        for (const j of jars)
+          for (let i = 0; i < 14; i++) {
+            // round and round in the dome, tossed up and falling back, each tumbling over itself
+            const a = time * (1.1 + (i % 4) * 0.25) + i * 0.9 + j.seed * 20;
+            const r = 0.12 + 0.26 * ((i * 0.37 + j.seed) % 1);
+            const hop = Math.abs(Math.sin(time * (2.2 + (i % 3) * 0.4) + i * 1.3 + j.seed * 9));
+            sweets.add(j.x + Math.cos(a) * r, j.y - 0.36 + hop * (0.25 + (i % 5) * 0.08), j.z + Math.sin(a) * r, a * 1.7, 0.22, COLORS[(i + Math.floor(j.seed * 6)) % 6], a * 1.3, a * 0.9);
+          }
+      }
       for (const g of gusts) {
         if (g.kind === 'dust') {
           // out from under the hull and along the ground, curling up a little and drifting sideways, thinning out
