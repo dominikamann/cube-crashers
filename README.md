@@ -120,6 +120,7 @@ from the copyright holder. For commercial licensing, publishing or platform enqu
 
 - [Download and install](#download-and-install)
 - [How to play](#how-to-play)
+- [Tips and tricks](#tips-and-tricks)
 - [The run: five floors, a different game between them, shop, bosses](#the-run-five-floors-a-different-game-between-them-shop-bosses)
 - [Boss Rush](#boss-rush)
 - [Daily Run](#daily-run)
@@ -238,6 +239,49 @@ best weapon, best combo, towers built, coins collected, revives and downs.
   rarely a **golden card** gives you a rare weapon for 60 seconds. They are scarce: one or two lie around on a
   floor, every second nest leaves one (the first one does), and only one or two elites of a floor drop one
   (see [Difficulty](#difficulty)).
+
+---
+
+## Tips and tricks
+
+**Go for the nests, not for the monsters.** The floor is won by its nests, never by a kill count. The alarm
+climbs on its own every minute or so, and every step makes the hordes bigger and nastier: at alarm 0 a rush
+while you hold a nest is about eight monsters from one side, at alarm 4 it is two rushes of nearly twenty at
+once. Each nest you destroy brings the alarm down one step. So head for the first nest right away while the
+alarm is still low, and keep going from nest to nest. Hunting monsters all over the map only lets the alarm run
+away from you.
+
+**Build before you plant.** The pads next to a nest are there for towers. Put up two or three before you hold
+E on the nest: a Laser Tower or Popcorn Mortar for damage, a Frost Machine to slow the rush down, a Medic
+Station so you heal while you hold. They fight every wave with you, and coins you do not spend win you
+nothing.
+
+**Watch the approaches.** The rushes always come in through the same ways into the zone. Lay Banana Mines
+there and throw bombs into them as they bunch up in the gap: one Party Bomb clears more than a whole magazine.
+
+**Stay in the zone, but keep moving.** The zone is the whole framed area round the nest, not one spot. Walk
+round in it, dodge, take cover behind a wall. If you have to step out, the counter runs back only half as
+fast as it went up, and the charge stays.
+
+**Never let them close in.** Most damage comes from monsters touching you, not from their shots. Dash out of a
+crowd (it makes you invulnerable for a moment) and shoot into it from the side. Jumping onto monsters stomps
+them.
+
+**Ride whenever you can.** A kart takes the hits instead of you and rams through small monsters. It is the
+fastest way from one nest to the next.
+
+**Keep the combo going.** Kills without a three-second gap raise the multiplier, and with it your score and
+the worth of each coin. Pick coins up quickly: they are gone after eight seconds.
+
+**Read the bosses.** Every boss shows what comes before it hits: red rings and lines on the floor, a roar, a
+lowered head. Keep running when a ring follows you, and keep an eye on the Rhino: it gives no warning on the
+ground, it turns after you as it charges, and whoever it hits flies.
+
+**Open the crates.** A crate is a new weapon, a level-up or a perk. One lies near the start, and every second
+nest leaves one. An extra dash or regeneration early on carries you through the whole run.
+
+**Look up.** A hidden heart on top of a block now and then gives everyone a life back. A ladder or the
+jetpack gets you there.
 
 ---
 
@@ -777,6 +821,10 @@ Steamroller's cab over its drum, from behind the police car's dashboard, down th
 the unicorn's ears with its mane and horn in front of you. The wheel turns as you steer, and a boost presses you
 back into the seat.
 
+Each one sounds like itself: the kart's little engine putters at rest and screams at full tilt, the police car
+hums deeper, the Steamroller chugs like a diesel over its rumbling drum, the Hoverboard whines on a rush of
+air, and the unicorn's hooves clip-clop at a walk and drum at a gallop.
+
 ### Power-ups
 
 Every 30 seconds one appears somewhere (shown on the minimap): **Coin Magnet**, **Rapid Fire**,
@@ -814,7 +862,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **The Kraken** | Boss of the Sunken Arcade. Crawls straight at you over walls and barriers, slaps, grabs and drags you in. | Marked lines and rings; dash out of its grip |
 | **Tarantula Queen** | Boss of the Boss Rush (Server Farm) and the Boss Brawl, and the final boss of some Tower Runs. She climbs over walls straight at you, pounces, spins webs that slow you to a crawl (dash through, or jump them) and strikes with her fangs. When she falls she bursts into a brood of 21 small spiders that pounce and spin small webs of their own: the fight is over when the last of them is gone. | Red rings; the webs spread before they stick |
 | **Angry Dominik** | The very last boss of the Boss Rush, the boss of a Single floor under the Uplink Dish, and now and then the last wave of the Boss Brawl. His eyes burn a beam across the floor (jump it or keep ahead of it), his hammer flies out and back without a warning on the floor and throws whoever it hits across the map, his slam sends three rings of shockwaves, and lightning strikes where you stand with every attack. | Red rings; the beam aims before it burns; watch the hammer |
-| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Charges like mad and flings whoever it hits. | Red lane on the ground |
+| **Rhino** | Boss of the Boss Rush (Pixel Jungle) and the Boss Brawl; in the Tower Run the boss of floor 3 in some runs and a wild boss in others. Hunts you down at a brisk trot and charges from far off, again and again, turning after you as it runs; whoever it hits flies across the arena. | It lowers its head (no lane on the ground) |
 | **King Rex** | Boss of the Boss Rush (Neon City); in the Tower Run the final boss of some runs and a wild boss in others. Fast, and faster the more it is hurt. Roars (a ring around it, a second wider one once hurt), snaps at you (a line of strikes that comes quickly) and stomps where you stand and where you are running to. When it falls, three eggs fly out of the explosion and a baby dino hatches from each: quick, and it stomps like the big ones, but a few hits finish it. | Red rings and lines |
 | **The Schrättele** | Boss of the Town; like every boss also in the Boss Rush and the Boss Brawl, and in versus chaos, as a wild boss and on the boss floors of some runs; off the Town she lights her own bonfire first. A witch with a two-faced carved wooden mask and a birch broom: she crouches and looks about, then charges or hops at you and steers in the air (no mark shows where she lands), pins a player to the ground (press jump to shake her off, or let a friend hit her), sweeps with her burning broom and throws burning twigs. At two thirds and one third of her health she dances round her fire with a ring of little Schrättele and takes little damage until they are beaten; at half health she turns her mask to the angry face and gets faster. The fire burns whoever comes too close: jump over the flames. *Schrättele* is a Swabian word for a spirit that presses down on sleepers (a nightmare: *s'Schrättele hot mi druckt*), common across the region; her colours match no witch of any Waldsee guild. | Her crouch and her cackle; a fan of strikes before the sweep |
 | **Mega Block** | Boss of floor 3 (in some runs the Rhino, the Schrättele or the Kraken takes its place). | Red rings, marked lines |
