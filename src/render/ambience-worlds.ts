@@ -398,12 +398,16 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
     for (let i = 2; i < Math.max(W, H) - 2; i++)
       for (const [edge, [tx, tz, ox, oz]] of ([[i, 0, 0, 1], [i, H - 1, 0, -1], [0, i, 1, 0], [W - 1, i, -1, 0]] as const).entries()) {
         if (tx >= W || tz >= H || !isWall(tx, tz)) continue;
-        // three tiles of the edge side by side with floor two deep before them
+        // three tiles of the edge side by side, plain floor three deep and five wide before them (where the pool goes),
+        // and nothing kept clear (a pad, a spawn, a nest) anywhere near the pool
         const side = (k: number) => (ox === 0 ? [tx + k, tz] : [tx, tz + k]) as [number, number];
-        const ok = [-1, 0, 1].every(k => {
-          const [sx, sz] = side(k);
-          return isWall(sx, sz) && isFloor(sx + ox, sz + oz) && isFloor(sx + ox * 2, sz + oz * 2) && clearOf(sx + ox + 0.5, sz + oz + 0.5, 3);
-        });
+        const ok =
+          [-1, 0, 1].every(k => isWall(...side(k))) &&
+          [-2, -1, 0, 1, 2].every(k => [1, 2, 3].every(n => {
+            const [sx, sz] = side(k);
+            return isFloor(sx + ox * n, sz + oz * n);
+          })) &&
+          clearOf(tx + 0.5 + ox * 1.6, tz + 0.5 + oz * 1.6, 4.5);
         if (!ok) continue;
         const d = ox === 0 ? Math.abs(tx - W / 2) : Math.abs(tz - H / 2);
         if (!best[edge] || d < best[edge]!.d) best[edge] = { x: tx + 0.5, z: tz + 0.5, ox, oz, top: ctx.wallTopY(tx, tz) + 3.4, d };
@@ -447,14 +451,17 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         // the pool at its foot: water in a ring of stones, ripples spreading from where the water comes down
         const px = x + ox * 1.6, pz = z + oz * 1.6;
         for (let k = 0; k < 3; k++) pool.addScaled(px, 0.04, pz, yaw + (k * Math.PI) / 6, 3.2, 0.03, 2.1, 0x3a8ab8);
-        for (let k = 0; k < 9; k++) {
-          const a = (k / 8) * Math.PI;
-          rocks.addScaled(px + Math.cos(a + yaw) * 1.6 * (ox === 0 ? 1 : 0.7) + ox * Math.sin(a) * 1.0, 0.1, pz + Math.sin(a + yaw) * 1.6 * (oz === 0 ? 1 : 0.7) + oz * Math.sin(a) * 1.0, a, 0.42, 0.22, 0.36, k % 2 ? 0x6a6a60 : 0x7a7a6e);
+        // (a ring of stones round its front half, laid out across the edge and out from it, whichever edge it is on)
+        const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+        for (let k = 0; k < 11; k++) {
+          const a = -0.15 * Math.PI + (k / 10) * 1.3 * Math.PI;
+          const sx = px + rx * Math.cos(a) * 1.7 + ox * Math.sin(a) * 1.15, sz = pz + rz * Math.cos(a) * 1.7 + oz * Math.sin(a) * 1.15;
+          rocks.addScaled(sx, 0.1, sz, yaw + a, 0.42, 0.22, 0.36, k % 2 ? 0x6a6a60 : 0x7a7a6e);
         }
         if (!low) {
           for (let k = 0; k < 3; k++) {
             const u = (time * 0.7 + k / 3) % 1;
-            ripple.addScaled(px - ox * 0.5, 0.06, pz - oz * 0.5, 0, 0.4 + u * 2, 0.01, 0.3 + u * 1.4, 0xd8f4ff);
+            ripple.addScaled(px - ox * 0.5, 0.06, pz - oz * 0.5, yaw, 0.4 + u * 2, 0.01, 0.3 + u * 1.4, 0xd8f4ff);
           }
           // foam and spray where it lands, a mist rising off it
           for (let k = 0; k < 6; k++) {
