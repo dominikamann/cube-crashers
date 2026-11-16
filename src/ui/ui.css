@@ -627,6 +627,8 @@ input[type=range].pad-focus, a.pad-focus, .swatch.pad-focus, .vote-card.pad-focu
 .screen > .badges { justify-content: center; margin-top: 0; }
 .badge { padding: 4px 7px 3px; border: 1.5px solid currentColor; border-radius: 4px; background: rgba(0, 0, 0, 0.35); font-size: 8px; line-height: 1.2; letter-spacing: 0.5px; text-shadow: none; white-space: nowrap; color: rgba(255, 255, 255, 0.8); }
 .badge.mode { color: var(--cyan); }
+.badge:has(.ico) { display: inline-flex; align-items: center; gap: 6px; }
+.badge .ico { font-style: normal; font-size: 1.3em; line-height: 0; }
 .badge.rule { color: #ff8be6; }
 .badge.map { color: var(--gold); }
 .badge.keep { color: #ffb36b; }

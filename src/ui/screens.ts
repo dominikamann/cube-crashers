@@ -373,13 +373,23 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
   const gameBadges = (parent: HTMLElement, g: { mode: ServerMode | 'lan'; rule?: string; map?: string; difficulty?: string; teams?: boolean; view?: string; keep?: KeepWeapons; running?: boolean; fixed?: boolean; seats?: { players: number; max: number; bots: number }; ping?: number }) => {
     const row = document.createElement('div');
     row.className = 'badges';
-    const add = (kind: string, label_: string) => text(row, 'span', `badge ${kind}`, label_);
+    // (an icon stands in a box of its own: the pixel font has none, and the one the browser takes instead sits lower)
+    const add = (kind: string, label_: string, icon?: string) => {
+      const el = text(row, 'span', `badge ${kind}`, label_);
+      if (icon) {
+        const i = document.createElement('i');
+        i.className = 'ico';
+        i.textContent = icon;
+        el.prepend(i);
+      }
+      return el;
+    };
     add('mode', modeName(g.mode));
     if (g.rule && g.rule !== g.mode) add('rule', t(`versus.${g.rule}` as 'versus.score'));
     if (g.map) {
       // (a server says whether it stays on its map, a lock, or picks another for the next match, the arrows)
       const name = g.map === MAP_ROTATION ? t('setup.random') : FLOORS[g.map] ? t(FLOORS[g.map].name as 'floor.plaza') : g.map;
-      const el = add('map', g.map === MAP_ROTATION || g.fixed === undefined ? name : `${g.fixed ? '🔒' : '🔀'} ${name}`);
+      const el = add('map', name, g.map === MAP_ROTATION || g.fixed === undefined ? undefined : g.fixed ? '🔒' : '🔀');
       if (g.map !== MAP_ROTATION && g.fixed !== undefined) el.title = t(g.fixed ? 'badge.mapFixed' : 'badge.mapTurns');
     }
     if (g.difficulty && (g.mode === 'lan' || isCoop(g.mode))) add('diff', t(`difficulty.${g.difficulty}` as 'difficulty.medium'));
@@ -387,7 +397,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
     // (a versus server: what one's weapons do after a fall; an older server does not say)
-    if (g.keep && KEEP_WEAPONS.includes(g.keep)) add('keep', `\u2694 ${t(`badge.keep.${g.keep}`)}`);
+    if (g.keep && KEEP_WEAPONS.includes(g.keep)) add('keep', t(`badge.keep.${g.keep}`), '\u2694\ufe0f');
     if (g.seats) {
       const humans = g.seats.players - g.seats.bots;
       add(humans > 0 ? 'humans here' : 'humans', humans === 1 ? t('online.human') : t('online.humans', { n: humans }));
