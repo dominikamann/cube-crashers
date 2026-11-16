@@ -142,9 +142,11 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         const y = 9 * (1 - fall);
         const sway = Math.sin(time * 1.7 + c.seed * 40) * 0.9;
         // (drifting east with the breeze, round the plaza and in again from the west)
-        const x = ((c.x + time * 0.25) % W) + sway, z = c.z + Math.cos(time * 1.3 + c.seed * 30) * 0.6;
-        // (not right before someone's eyes, as the jungle's leaves: it shrinks away as it comes near)
-        const k = y < 3.5 ? nearEyes(s, x, z) : 1;
+        const along = (c.x + time * 0.25) % W;
+        const x = along + sway, z = c.z + Math.cos(time * 1.3 + c.seed * 30) * 0.6;
+        // (not right before someone's eyes, as the jungle's leaves: it shrinks away as it comes near; and it shrinks
+        // away at the east edge and grows again at the west, so its way round is never seen as a jump across)
+        const k = (y < 3.5 ? nearEyes(s, x, z) : 1) * Math.min(1, Math.min(along, W - along) / 2);
         if (k === 0) continue;
         confetti.addScaled(x, y, z, time * 2 + c.seed * 9, 0.22 * k, 0.02, 0.12 * k, c.color, Math.sin(time * 4 + c.seed * 20) * 1.2, Math.cos(time * 3 + c.seed * 11));
       }
