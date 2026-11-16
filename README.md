@@ -868,7 +868,7 @@ move. Every dangerous attack is announced first: the eyes glow red, and the grou
 | **Mega Block** | Boss of floor 3 (in some runs the Rhino, the Schrättele or the Kraken takes its place). | Red rings, marked lines |
 | **Maltecopter** | Boss of the Sky Helipad; also in the Boss Rush and the Boss Brawl, and the final boss of some Tower Runs that end on the helipad. An attack helicopter that circles out of reach, fires missiles, strafes with its gun and swoops down to blow you about with its rotor wash; it can only be hurt while it hovers low between its attack runs. From three players on two of them come and take turns coming down. | A ring for every missile and every gun strike; a yellow ring where it is about to come down |
 | **Segment Worm** | One of the final bosses of floor 5, a giant centipede. Splits when hit in the middle, and the shorter a piece is, the faster it crawls. Lunges with its head (a line of strikes) and, once hurt, whips its tail (a ring around it). | Marked strike areas |
-| **Elite** | Any monster, bigger and glowing, five times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
+| **Elite** | Any monster, bigger and glowing, three and a half times the health, three times the coins. The first one or two of a floor drop a crate. | Magenta ring |
 
 ---
 
