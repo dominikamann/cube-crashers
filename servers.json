@@ -2,7 +2,7 @@
   "servers": [
     {"name": "AmannLabs Versus Discovery Chaos", "address": "92.5.153.196:47800"},
     {"name": "AmannLabs Tower Run Easy", "address": "158.101.168.15:47800"},
-    {"name": "AmannLabs The Town", "address": "158.101.168.15:47801"},
+    {"name": "AmannLabs Town & Jungle", "address": "158.101.168.15:47801"},
     {"name": "AmannLabs Gun Game Chaos", "address": "92.5.153.196:47801"},
     {"name": "AmannLabs Boss Rush", "address": "92.5.153.196:47802"},
     {"name": "AmannLabs Capture the Cube", "address": "158.101.168.15:47802"}
