@@ -33,10 +33,23 @@ export const BOSS = {
   wormLunge: 5,
   wormWhip: 8,
   wormWhipRadius: 2.2,
+  /** how far ahead of a running player the worm strikes a second time (from its second phase) */
+  wormLead: 3,
   /** share of Mega Block attacks that are stomps (the rest are shockwave lines) */
   stompChance: 0.6,
-  /** the Mega Block's leap: from phase 2 on, this share of its attacks; where it lands, how long the jump takes */
+  /** the Mega Block's leap: this share of its attacks (`leapChanceFirst` in its first phase); where it lands, how long the jump takes */
   leapChance: 0.3,
+  leapChanceFirst: 0.15,
+  /** the Mega Block: how much sooner it attacks again than the others, how much faster it walks, and how far ahead
+   *  of a running player its second stomp comes down */
+  megaHaste: 0.8,
+  megaSpeed: 1.3,
+  megaLead: 3.2,
+  /** from its second phase: this many more stomps scattered round each player, up to `megaScatter` tiles off */
+  megaScattered: 3,
+  megaScatter: 3.5,
+  /** its stomps come down sooner than other bosses' (ticks of warning) */
+  megaWarnTicks: 45,
   leapRadius: 3.2,
   leapTicks: 75,
   /** it gets this much faster with every phase */
@@ -161,6 +174,8 @@ export function spawnBoss(s: SimState, kind: BossKind, at?: Vec2, share = 1): vo
       e.radius = 1.3;
       e.speed *= RHINO.walk;
     }
+    // the Mega Block: it shoves its way after you a little quicker than a block that size should
+    if (kind === 'megaBlock') e.speed *= BOSS.megaSpeed;
     if (kind === 'rex') {
       // King Rex: a T-Rex grown to boss size
       e.hp = e.maxHp = BOSS.rexHp * bossScale(s);
@@ -354,14 +369,23 @@ function attack(s: SimState, b: BossState): void {
   const voice = () => s.events.push({ type: 'bossAttack', kind: b.kind });
   if (b.kind === 'megaBlock') {
     const boss = byId(s, b.enemyId!);
-    // stomps under every player (and a tower now and then), a leap at one of them (from phase 2), or
-    // shockwave lines toward one player (in phase 3 a cross of four)
+    // stomps under every player and where they are running to (and a tower now and then), a leap at one of them,
+    // or shockwave lines toward one player (in phase 3 a cross of four)
     const roll = s.rng.next();
-    if (boss && b.phase >= 2 && roll > 1 - BOSS.leapChance) {
+    if (boss && roll > 1 - (b.phase >= 2 ? BOSS.leapChance : BOSS.leapChanceFirst)) {
       voice();
       megaLeap(s, s.rng.pick(alive), b);
     } else if (!boss || roll < BOSS.stompChance) {
-      for (const p of alive) telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage);
+      for (const p of alive) {
+        telegraph(s, p.pos, BOSS.stompRadius, BOSS.stompDamage, BOSS.megaWarnTicks);
+        telegraph(s, { x: p.pos.x + p.facing.x * BOSS.megaLead, z: p.pos.z + p.facing.z * BOSS.megaLead }, BOSS.stompRadius * 0.8, BOSS.stompDamage, BOSS.megaWarnTicks + 12);
+        // once hurt, the ground round them shakes too: wherever they dodge to may come down next
+        if (b.phase >= 2)
+          for (let i = 0; i < BOSS.megaScattered; i++) {
+            const a = s.rng.next() * Math.PI * 2, r = 1.5 + s.rng.next() * (BOSS.megaScatter - 1.5);
+            telegraph(s, { x: p.pos.x + Math.cos(a) * r, z: p.pos.z + Math.sin(a) * r }, BOSS.stompRadius * 0.7, BOSS.stompDamage, BOSS.megaWarnTicks + 20 + i * 8);
+          }
+      }
       if (s.towers.length > 0 && s.rng.next() < 0.5) telegraph(s, s.rng.pick(s.towers).pos, BOSS.stompRadius, BOSS.stompDamage);
     } else {
       voice();
@@ -519,8 +543,12 @@ function attack(s: SimState, b: BossState): void {
       // a strike at a player or a tower (from the second phase on: under every player)
       const tower = s.towers.length > 0 && s.rng.next() < 0.35;
       if (tower) telegraph(s, s.rng.pick(s.towers).pos, BOSS.strikeRadius, BOSS.strikeDamage);
-      else if (b.phase >= 2) for (const p of alive) telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
-      else telegraph(s, s.rng.pick(alive).pos, BOSS.strikeRadius, BOSS.strikeDamage);
+      else
+        for (const p of b.phase >= 2 ? alive : [s.rng.pick(alive)]) {
+          // under them, and once hurt a moment later where they are running to as well
+          telegraph(s, p.pos, BOSS.strikeRadius, BOSS.strikeDamage);
+          if (b.phase >= 2) telegraph(s, { x: p.pos.x + p.facing.x * BOSS.wormLead, z: p.pos.z + p.facing.z * BOSS.wormLead }, BOSS.strikeRadius, BOSS.strikeDamage, BOSS.warnTicks + 10);
+        }
     } else if (roll < 0.75 || b.phase < 2) {
       voice();
       // a lunge: every head snaps at the nearest player, a line of strikes ahead of it
@@ -918,7 +946,7 @@ function updateOne(s: SimState, b: BossState, intents?: Map<number, Intent>): vo
       return;
     }
     attack(s, b);
-    const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : b.kind === 'heli' ? HELI.haste : 1;
+    const haste = b.kind === 'rex' ? BOSS.rexHaste : b.kind === 'megaBlock' ? BOSS.megaHaste : b.kind === 'dominik' ? BOSS.dominikHaste : b.kind === 'witch' ? WITCH.haste * (b.witch?.face === 'glare' ? WITCH.glareHaste : 1) : b.kind === 'heli' ? HELI.haste : 1;
     b.nextAttackAt = s.tick + Math.round(BOSS.attackSeconds[b.phase] * TICK_RATE * haste);
   }
 }

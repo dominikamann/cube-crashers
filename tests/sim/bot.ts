@@ -33,10 +33,28 @@ export function createBot(): (s: SimState) => Command[] {
   let circle = 1;
   let circling = false;
   let lastPos: Vec2 | null = null;
+  // how long it has got nowhere while going round a boss, and how long it then takes the way round to it instead
+  // (pressed against a parked helicopter by its wash, say, with the boss on the other side)
+  let anchor: Vec2 | null = null;
+  let since = 0;
+  let detour = 0;
 
   return s => {
     const p = s.players[0];
     if (circling && lastPos && d(lastPos, p.pos) < 0.01) circle = -circle;
+    // (a second of going round that got it less than a step anywhere)
+    if (detour > 0) detour--;
+    else if (circling) {
+      if (!anchor) anchor = { ...p.pos };
+      if (++since >= 60) {
+        if (d(anchor, p.pos) < 0.5) detour = 120;
+        anchor = { ...p.pos };
+        since = 0;
+      }
+    } else {
+      anchor = null;
+      since = 0;
+    }
     circling = false;
     lastPos = { ...p.pos };
     if (s.run.stage === 'shop') {
@@ -147,7 +165,7 @@ export function createBot(): (s: SimState) => Command[] {
     } else if (boss && !card && !crate && !s.elevatorOpen) {
       const rx = p.pos.x - boss.pos.x, rz = p.pos.z - boss.pos.z;
       const r = Math.hypot(rx, rz) || 1;
-      if (r > 8) move = flowDir(s.map, buildFlowField(s.map, [boss.pos], BLOCKS_ENEMY, towerTiles(s)), p.pos);
+      if (r > 8 || detour > 0) move = flowDir(s.map, buildFlowField(s.map, [boss.pos], BLOCKS_ENEMY, towerTiles(s)), p.pos);
       else {
         const pull = (6 - r) * 0.6;
         move = { x: (-rz / r) * circle + (rx / r) * pull, z: (rx / r) * circle + (rz / r) * pull };
