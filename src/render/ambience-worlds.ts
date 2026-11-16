@@ -392,11 +392,11 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
   if (look === 'jungle') {
     // fireflies drifting low, blinking; leaves sailing down from the canopy
     const flies = t.light(), leaves = t.solid(), glowFlies = t.soft(0.35, true);
-    // a waterfall: down the rock at the map's edge (a stretch of the border with open floor before it, nearest the
-    // middle of an edge), into a small pool at its foot: a sheet of falling water, foam and spray, ripples, a mist
-    let falls: { x: number; z: number; ox: number; oz: number; top: number } | null = null;
+    // waterfalls, one on each side of the map: down the rock at its edge (a stretch of the border with open floor
+    // before it, nearest the middle of that edge), into a small pool at its foot: falling water, foam and spray, ripples
+    const best: ({ x: number; z: number; ox: number; oz: number; top: number; d: number } | null)[] = [null, null, null, null];
     for (let i = 2; i < Math.max(W, H) - 2; i++)
-      for (const [tx, tz, ox, oz] of [[i, 0, 0, 1], [i, H - 1, 0, -1], [0, i, 1, 0], [W - 1, i, -1, 0]] as const) {
+      for (const [edge, [tx, tz, ox, oz]] of ([[i, 0, 0, 1], [i, H - 1, 0, -1], [0, i, 1, 0], [W - 1, i, -1, 0]] as const).entries()) {
         if (tx >= W || tz >= H || !isWall(tx, tz)) continue;
         // three tiles of the edge side by side with floor two deep before them
         const side = (k: number) => (ox === 0 ? [tx + k, tz] : [tx, tz + k]) as [number, number];
@@ -406,14 +406,14 @@ export function buildWorldLife(t: LifeTools): WorldLife | null {
         });
         if (!ok) continue;
         const d = ox === 0 ? Math.abs(tx - W / 2) : Math.abs(tz - H / 2);
-        if (!falls || d < (falls.ox === 0 ? Math.abs(falls.x - 0.5 - W / 2) : Math.abs(falls.z - 0.5 - H / 2))) falls = { x: tx + 0.5, z: tz + 0.5, ox, oz, top: ctx.wallTopY(tx, tz) + 3.4 };
+        if (!best[edge] || d < best[edge]!.d) best[edge] = { x: tx + 0.5, z: tz + 0.5, ox, oz, top: ctx.wallTopY(tx, tz) + 3.4, d };
       }
+    const falls = best.filter(f => f !== null);
     const sheet = t.light(0.7), foam = t.soft(0.55), rocks = t.solid(), pool = t.light(0.75), ripple = t.light(0.5);
     const swarm = Array.from({ length: 80 }, (_, i) => ({ x: hash(i, 7) * W, z: hash(7, i) * H, seed: hash(i, 3) }));
     const fall = Array.from({ length: 50 }, (_, i) => ({ x: hash(i, 11) * W, z: hash(11, i) * H, seed: hash(i, 19), color: [0x3a9a3a, 0x5ab040, 0x8ac040, 0xa07a2a][i % 4] }));
     return (s, events, time, dt, low) => {
-      if (falls) {
-        const { x, z, ox, oz, top } = falls;
+      for (const { x, z, ox, oz, top } of falls) {
         // the face of the rock it comes over: the water leaves it a little out from the wall
         const fx = x + ox * 0.55, fz = z + oz * 0.55;
         const across = (k: number) => ({ x: fx + (ox === 0 ? k : 0), z: fz + (oz === 0 ? k : 0) });
