@@ -855,7 +855,8 @@ function startGame() {
         ? { label: t('lobby.back'), action: () => backToLobby() }
         : role === 'client'
           ? { label: t('lobby.back'), action: () => backToLobby() }
-          : undefined;
+          : // the same game again: a Single floor on the same map, a Boss Rush, a Brawl… (not a new run from the first floor)
+            { label: t('menu.playAgain'), action: () => newSoloGame() };
     setTimeout(() => {
       if (mode !== 'over') return;
       setHudVisible(false);
