@@ -158,9 +158,10 @@ export class HostSession {
     this.broadcastLobby();
   }
 
-  /** a versus server's weapons after a fall, for the badges (not Gun Game, whose ladder decides) */
+  /** a versus server's weapons after a fall, for the badges (not Gun Game, whose ladder decides, also not when a
+   * Discovery server's next match is one) */
   private keepBadge(): { keep?: KeepWeapons } {
-    return this.server && !isCoop(this.server.mode) && this.server.mode !== 'gungame' ? { keep: this.keepWeapons } : {};
+    return this.server && !isCoop(this.server.mode) && this.server.mode !== 'gungame' && this.server.rule !== 'gungame' ? { keep: this.keepWeapons } : {};
   }
 
   /** dedicated server: where the next match is played, and by which rule if the server takes turns (see ServerStatus) */

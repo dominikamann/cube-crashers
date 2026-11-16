@@ -185,15 +185,17 @@ function equip(p: Player, s?: SimState): void {
   p.flying = false;
 }
 
+/** whether weapons come back after a fall in this match (never in Gun Game, which has its ladder) */
+const keepsWeapons = (s: SimState): boolean => !!s.versus?.keep && s.versus.keep !== 'none' && s.versus.rule !== 'gungame';
+
 /**
  * What comes back after a fall when the match keeps weapons: all of them as they were, or each a level lower (one
  * at its first level is lost, the blaster never). Null where they are gone (the default, and always in Gun Game,
  * which has its ladder).
  */
 function keptWeapons(s: SimState, p: Player): HeldWeapon[] | null {
-  const keep = s.versus?.keep;
-  if (!keep || keep === 'none' || s.versus?.rule === 'gungame') return null;
-  if (keep === 'all') return p.weapons.map(w => ({ ...w, cooldown: 0 }));
+  if (!keepsWeapons(s)) return null;
+  if (s.versus?.keep === 'all') return p.weapons.map(w => ({ ...w, cooldown: 0 }));
   return p.weapons.filter(w => w.kind === 'pixelBlaster' || w.level > 1).map(w => ({ ...w, level: Math.max(1, w.level - 1), cooldown: 0 }));
 }
 
@@ -274,7 +276,7 @@ function startRound(s: SimState): void {
   for (const p of s.players) {
     // (a match that keeps weapons starts the next round with what each has now: the fallen lost theirs, or a
     // level of them, when they fell)
-    const kept = keptWeapons(s, p) ? p.weapons.map(w => ({ ...w, cooldown: 0 })) : null;
+    const kept = keepsWeapons(s) ? p.weapons.map(w => ({ ...w, cooldown: 0 })) : null;
     equip(p, s);
     if (kept) p.weapons = kept;
     p.perched = false;
@@ -381,13 +383,13 @@ export function takeSeat(s: SimState, p: Player, was: Player, score?: number): v
  * What a fallen player leaves behind for whoever gets there first: their two best extra weapons as cards and
  * their jetpack. In gun game the ladder decides the weapons, so there it is a few coins.
  */
-function dropLoot(s: SimState, p: Player): void {
+function dropLoot(s: SimState, p: Player, kept: HeldWeapon[] | null = null): void {
   const at = isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER) ? { ...p.pos } : nearestFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER);
   if (s.versus?.rule === 'gungame') {
     dropCoins(s, at, VERSUS.lootCoins);
     return;
   }
-  const extra = p.weapons.filter(w => w.kind !== 'pixelBlaster').sort((a, b) => b.level - a.level).slice(0, 2);
+  const extra = p.weapons.filter(w => w.kind !== 'pixelBlaster' && !kept?.some(k => k.kind === w.kind)).sort((a, b) => b.level - a.level).slice(0, 2);
   if (extra.length > 0) {
     s.offers.push({
       id: s.nextId++,
@@ -430,9 +432,9 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
     p.vehicleId = null;
   }
   dropCube(s, p);
-  // (weapons that come back with the player are not dropped as well)
+  // (weapons that come back with the player are not dropped as well; the jetpack and what is lost still are)
   const kept = keptWeapons(s, p);
-  if (!kept) dropLoot(s, p);
+  dropLoot(s, p, kept);
   equip(p, s);
   if (kept) p.weapons = kept;
   p.air = 0;

@@ -592,6 +592,7 @@ export interface RunState {
 
 /** versus: what a player's weapons do when they fall: gone (the default), back one level lower, or back as they were */
 export type KeepWeapons = 'none' | 'level' | 'all';
+export const KEEP_WEAPONS: KeepWeapons[] = ['none', 'level', 'all'];
 
 export interface VersusState {
   mode: VersusMode;

@@ -2,7 +2,7 @@ import { isCharacter } from '../characters';
 import { FLOORS } from '../sim/config/floors';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { TOWER_ORDER } from '../sim/config/towers';
-import type { Command, Difficulty, EmoteId, KeepWeapons, RunMode, SimEvent, VersusMode, VersusRule } from '../sim/types';
+import { KEEP_WEAPONS, type Command, type Difficulty, type EmoteId, type KeepWeapons, type RunMode, type SimEvent, type VersusMode, type VersusRule } from '../sim/types';
 import { isEmote } from '../sim/systems/emotes';
 import { clampAimPitch } from '../sim/systems/shot-height';
 import type { SnapState } from './snapshot';
@@ -215,7 +215,7 @@ export function parseMessage(raw: string): Message | null {
       // the probe has no fields; the answer has all of them
       if (m.name === undefined) return { type: 'info' };
       if (typeof m.name !== 'string' || !(SERVER_MODES.includes(m.mode as ServerMode) || m.mode === 'lan') || !isNum(m.players) || !(m.bots === undefined || isNum(m.bots)) || !isNum(m.max) || typeof m.version !== 'string' || !isNum(m.protocol) || typeof m.playing !== 'boolean' || !optText(m.map) || !optText(m.rule) || !optText(m.difficulty) || !optView(m.view)) return null;
-      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing, ...(m.map ? { map: m.map as string } : {}), ...(m.rule ? { rule: m.rule as string } : {}), ...(typeof m.fixed === 'boolean' ? { fixed: m.fixed } : {}), ...(m.difficulty ? { difficulty: m.difficulty as string } : {}), ...(m.view ? { view: m.view as ViewMode } : {}), ...(m.keep === 'none' || m.keep === 'level' || m.keep === 'all' ? { keep: m.keep } : {}) };
+      return { type: 'info', name: m.name.slice(0, MAX_SERVER_NAME), mode: m.mode as ServerMode, players: m.players, bots: Math.min(m.players, (m.bots as number | undefined) ?? 0), max: m.max, version: m.version.slice(0, 16), protocol: m.protocol, playing: m.playing, ...(m.map ? { map: m.map as string } : {}), ...(m.rule ? { rule: m.rule as string } : {}), ...(typeof m.fixed === 'boolean' ? { fixed: m.fixed } : {}), ...(m.difficulty ? { difficulty: m.difficulty as string } : {}), ...(m.view ? { view: m.view as ViewMode } : {}), ...(KEEP_WEAPONS.includes(m.keep as KeepWeapons) ? { keep: m.keep as KeepWeapons } : {}) };
     case 'leave':
       return { type: 'leave' };
     case 'welcome':

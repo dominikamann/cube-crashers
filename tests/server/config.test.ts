@@ -68,6 +68,7 @@ describe('dedicated server settings', () => {
     expect(parseConfig(['--mode', 'quick', '--map', 'waldsee,jungle'], {}, null).map).toBe('waldsee,jungle');
     expect(parseConfig(['--mode', 'score', '--map', ' neon , arena '], {}, null).map).toBe('neon,arena');
     expect(() => parseConfig(['--mode', 'quick', '--map', 'waldsee,nowhere'], {}, null)).toThrow(/map for mode quick/);
+    expect(() => parseConfig(['--mode', 'quick', '--map', 'jungle,jungle,arena'], {}, null)).toThrow(/each map once/);
     // (random in a list means nothing: it is a list or the rotation)
     expect(() => parseConfig(['--mode', 'quick', '--map', 'waldsee,random'], {}, null)).toThrow(/map for mode quick/);
     // (not where a mode takes one map for the whole match or none)

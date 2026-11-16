@@ -15,7 +15,7 @@ import { WEAPONS } from '../sim/config/weapons';
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { CHARACTERS, isCharacter } from '../characters';
 import { bossToBeat, browserStore, buyUnlock, claimBonus, ownedCharacter, UNLOCKS, type BonusId, type Profile } from '../profile';
-import type { Difficulty, KeepWeapons } from '../sim/types';
+import { KEEP_WEAPONS, type Difficulty, type KeepWeapons } from '../sim/types';
 import { ACTIONS, assignKey, canBind, DEFAULT_BINDINGS, keyLabel, validBindings, type Action, type Bindings } from '../input/bindings';
 
 export interface Settings {
@@ -112,7 +112,6 @@ const ICONS = {
 };
 const SETTINGS_KEY = 'cube-crashers.settings';
 const SCORES_KEY = 'cube-crashers.scores';
-const KEEPS: KeepWeapons[] = ['none', 'level', 'all'];
 const DEFAULTS: Settings = { music: 0.8, sfx: 0.9, name: '', difficulty: 'ultraLow', versusBots: 'low', lanGame: 'run', brawlMap: 'arena', rushMap: 'own', steerWithMouse: false, mouseSensitivity: 1, showMap: true, graphics: 'high', damageNumbers: true, showFps: false, killCam: true, color: null, character: null, localPlayers: 1, quickMap: 'floor01', versusMode: 'ffa', versusRule: 'score', versusMap: 'neon', versusSize: 4, versusChaos: false, versusKeep: 'none', splitTogether: true, versusDiscovery: true, servers: [], bindings: { ...DEFAULT_BINDINGS }, colorBlind: false };
 
 /** words for the name of a player who did not pick one */
@@ -138,6 +137,7 @@ export function loadSettings(): Settings {
     if (raw) loaded = { ...DEFAULTS, ...JSON.parse(raw) };
     // a fresh start is always one player: split screen is chosen again each time
     loaded.localPlayers = 1;
+    if (!KEEP_WEAPONS.includes(loaded.versusKeep)) loaded.versusKeep = 'none';
     if (![0.5, 1, 1.5, 2, 3].includes(loaded.mouseSensitivity)) loaded.mouseSensitivity = 1;
     loaded.bindings = validBindings(loaded.bindings);
     loaded.colorBlind = loaded.colorBlind === true;
@@ -387,7 +387,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (g.teams && g.mode !== 'discovery') add('teams', t('badge.teams'));
     if (g.view === 'fp' || g.view === 'top') add('view', t(`lobby.view.${g.view}` as 'lobby.view.fp'));
     // (a versus server: what one's weapons do after a fall; an older server does not say)
-    if (g.keep && KEEPS.includes(g.keep)) add('keep', `\u2694 ${t(`badge.keep.${g.keep}`)}`);
+    if (g.keep && KEEP_WEAPONS.includes(g.keep)) add('keep', `\u2694 ${t(`badge.keep.${g.keep}`)}`);
     if (g.seats) {
       const humans = g.seats.players - g.seats.bots;
       add(humans > 0 ? 'humans here' : 'humans', humans === 1 ? t('online.human') : t('online.humans', { n: humans }));
@@ -1018,7 +1018,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         }
         choose<boolean | 'boss'>(t('setup.chaos'), [{ label: t('settings.off'), value: false }, { label: t('versus.chaosOn'), value: true }, { label: t('versus.chaosBoss'), value: 'boss' }], settings.versusChaos, v => (settings.versusChaos = v));
         // (Gun Game has its ladder: there the weapon after a fall is the ladder's)
-        if (settings.versusRule !== 'gungame' || settings.versusDiscovery) choose<KeepWeapons>(t('setup.keep'), KEEPS.map(k => ({ label: t(`keep.${k}`), value: k })), settings.versusKeep, v => (settings.versusKeep = v));
+        if (settings.versusRule !== 'gungame' || settings.versusDiscovery) choose<KeepWeapons>(t('setup.keep'), KEEP_WEAPONS.map(k => ({ label: t(`keep.${k}`), value: k })), settings.versusKeep, v => (settings.versusKeep = v));
         const vsMaps = withoutTown(VERSUS_MAPS, lan?.viewMode() === 'top');
         if (!vsMaps.includes(settings.versusMap) && settings.versusMap !== MAP_ROTATION) settings.versusMap = vsMaps[0];
         // "Rotation": a random arena, and a new one after every match
@@ -1381,7 +1381,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             chip(botsRow, '+', false, () => stepTo(at + 1));
             // what a weapon does after a fall: gone (as always), back a level lower, or back as it was
             const keepRow = rowOf(t('setup.keep'));
-            for (const k of KEEPS) chip(keepRow, t(`keep.${k}`), settings.versusKeep === k, () => lan.setKeepWeapons(k));
+            for (const k of KEEP_WEAPONS) chip(keepRow, t(`keep.${k}`), settings.versusKeep === k, () => lan.setKeepWeapons(k));
           } else {
             if (settings.lanGame === 'quick') quickMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), lan);
             if (settings.lanGame === 'brawl') brawlMapChip(rowOf(t('setup.map')), () => api.lobby(players, difficulty, isHost, me, lan, vote, server), 'brawlMap', lan);

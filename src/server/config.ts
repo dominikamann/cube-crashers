@@ -1,8 +1,6 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, withoutTown } from '../maps';
-import type { Difficulty, KeepWeapons } from '../sim/types';
-
-const KEEP_WEAPONS: KeepWeapons[] = ['none', 'level', 'all'];
+import { KEEP_WEAPONS, type Difficulty, type KeepWeapons } from '../sim/types';
 import { isCoop, SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
 
 /** everything a server owner can set, by command line flag, environment variable or server.json */
@@ -146,6 +144,7 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
       // a Single floor or a versus server can take turns between maps: "waldsee,jungle" plays them in this order
       const maps = String(raw.map).split(',').map(m => m.trim());
       const turns = maps.length > 1 && (c.mode === 'quick' || !isCoop(c.mode));
+      if (new Set(maps).size < maps.length) throw new Error(`map for mode ${c.mode}: each map once in a list (got "${raw.map}")`);
       if (maps.length > 1 && !turns) throw new Error(`map for mode ${c.mode} must be one of: ${allowed.join(', ')} (a list of maps is for quick and versus) (got "${raw.map}")`);
       for (const m of maps) {
         if (m === TOWN && !allowed.includes(TOWN) && mapChoices(c.mode)!.includes(TOWN)) throw new Error(`map ${TOWN} (the Town) is walked in first person only: it cannot be played with view top (set view to both or fp, or pick another map)`);

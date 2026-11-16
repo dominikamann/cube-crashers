@@ -28,18 +28,21 @@ describe('weapons after a fall in versus', () => {
 
   it('"keep" brings every weapon back with its level, and nothing is dropped', () => {
     const s = match('all');
+    const jetpacks = s.jetpacks.length;
     versusDeath(s, s.players[0], s.players[1].id);
     expect(held(s)).toEqual([['pixelBlaster', 2], ['candyCannon', 3], ['bomb', 1]]);
     expect(dropped(s)).toEqual([]);
-    // (the jetpack and a rare weapon still go with the fall)
+    // (the jetpack and a rare weapon still go with the fall: the jetpack lies where one fell, for anyone)
     expect(s.players[0].jetpack).toBe(false);
+    expect(s.jetpacks).toHaveLength(jetpacks + 1);
   });
 
   it('"one level less" brings them back a level lower; one at its first level is lost, the blaster never', () => {
     const s = match('level');
     versusDeath(s, s.players[0], s.players[1].id);
     expect(held(s)).toEqual([['pixelBlaster', 1], ['candyCannon', 2]]);
-    expect(dropped(s)).toEqual([]);
+    // (the bomb, at its first level, is lost to its owner: it lies there like any dropped weapon)
+    expect(dropped(s)).toEqual(['bomb']);
     const again = match('level');
     again.players[0].weapons = [{ kind: 'pixelBlaster', level: 1, cooldown: 0 }];
     versusDeath(again, again.players[0], again.players[1].id);
