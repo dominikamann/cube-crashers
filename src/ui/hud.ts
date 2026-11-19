@@ -93,6 +93,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let lastTeam = '';
   let teamUntil = 0;
   let lastTime = 0;
+  /** when the 'your cube is not home' hint last showed (seconds) */
+  let cubeHintAt = -Infinity;
   const seenLives = new Map<number, number>();
   const outBanner = el('div', 'out-banner txt', layer);
   const nestText = el('div', 'sub', runBox);
@@ -694,7 +696,20 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           raceMain.textContent = t('versus.hudGun', { me: me + 1, n: vs.limit, weapon: held ? t(`weapon.${held}` as 'weapon.bomb') : '', lead: Math.max(0, ...Object.values(vs.scores)) + 1, time });
         } else if (vs.mode === 'team') raceMain.textContent = t('versus.hudTeam', { red: vs.teamScores[0], blue: vs.teamScores[1], time });
         else raceMain.textContent = t('versus.hudFfa', { me, lead: Math.max(0, ...Object.values(vs.scores)), time });
-        raceSub.textContent = vs.coinop ? t('versus.hudCoinOp', { rule: t(`coinop.${vs.coinop.rule}` as 'coinop.turbo') }) : vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
+        if (vs.flags && p.team !== undefined) {
+          // capture the cube: where your own cube is, so a carrier at home knows why nothing happens
+          const own = vs.flags[p.team], carrying = vs.flags[1 - p.team].carrier === p.id;
+          const home = own.carrier === null && Math.hypot(own.pos.x - own.base.x, own.pos.z - own.base.z) < 0.01;
+          raceSub.textContent = !home
+            ? own.carrier !== null ? t('versus.ownStolen', { name: s.players.find(x => x.id === own.carrier)?.name ?? '' }) : t('versus.ownOut')
+            : carrying ? t('versus.carryHome') : t('versus.ownHome');
+          // standing at home with the enemy cube while your own is away: say so (every few seconds, not every frame)
+          const atHome = Math.hypot(p.pos.x - own.base.x, p.pos.z - own.base.z) <= 2.5;
+          if (carrying && atHome && !home && lastTime - cubeHintAt > 3) {
+            cubeHintAt = lastTime;
+            toast(t('versus.cubeNotHome'), 'warn');
+          }
+        } else raceSub.textContent = vs.coinop ? t('versus.hudCoinOp', { rule: t(`coinop.${vs.coinop.rule}` as 'coinop.turbo') }) : vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
       }
       const race = s.run.stage === 'race' ? s.run.race : null;
       const lane = s.run.stage === 'lane' ? s.run.lane : null;

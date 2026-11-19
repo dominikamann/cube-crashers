@@ -879,6 +879,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         c.cube.position.set(f.pos.x, carried ? 2.2 : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
         c.cube.rotation.set(time * 0.8, time * 1.3, 0);
         c.base.position.set(f.base.x, 0.05, f.base.z);
+        // a base whose cube is away blinks: nobody scores there until it is home again
+        const home = !carried && Math.hypot(f.pos.x - f.base.x, f.pos.z - f.base.z) < 0.01;
+        c.base.visible = home || Math.sin(time * 6) > 0;
       });
       reticles.forEach((r, i) => {
         const p0 = i < localIds.length ? (s.players.find(p => p.id === localIds[i]) ?? (i === 0 ? s.players[0] : undefined)) : undefined;
