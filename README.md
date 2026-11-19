@@ -10,7 +10,6 @@
 ![LAN and online](https://img.shields.io/badge/LAN%20%26%20online-up%20to%2010%20players-ff7a2f)
 ![Controller](https://img.shields.io/badge/controller-Xbox%20%7C%20PlayStation-3bd16f)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm_Noncommercial-blue)](LICENSE)
-[![Commercial licensing](https://img.shields.io/badge/commercial-licensing_available-success)](https://amannlabs.eu)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 **A fast voxel action game for one to ten players.** Fight your way up a tower, floor by floor. Hordes of
