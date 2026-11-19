@@ -4,7 +4,7 @@ import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type KeepWeapons, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type HeldWeapon, type WeaponKind } from '../types';
 import { dist } from '../util';
-import { addPlayer, removePlayer, syncCredits } from './coop';
+import { addPlayer, removePlayer, spotNear, syncCredits } from './coop';
 import { cardPositions, hiddenPrize, placeStartCrates } from './offers';
 import { RARE } from '../config/rare';
 import { crowned, endStreak, killBonus, updateQuad } from './bounty';
@@ -23,6 +23,10 @@ export const VERSUS = {
   respawnTicks: 5 * TICK_RATE,
   /** safe for a moment after (re)spawning */
   spawnInvulnTicks: Math.round(1.5 * TICK_RATE),
+  /** how far apart the two team bases must be (on a smaller map teams spawn like everyone for themselves) */
+  baseApart: 10,
+  /** an enemy this close to a team's base: its players come back somewhere safer instead */
+  baseCamp: 6,
   /**
    * weapons do this much of their monster damage to players (about 13 blaster hits down a player), but one
    * hit never takes more than `maxHit`, so a bomb hurts without wiping someone out on its own
@@ -140,15 +144,41 @@ function spawnSpots(s: SimState): Vec2[] {
   return [s.map.spawn, ...s.map.waypoints, ...s.map.vehicleSpots, ...s.map.powerSpots];
 }
 
-/** a free spot close to a team's base, apart from players already placed there */
-function nearBase(s: SimState, base: Vec2, placed: Player[]): Vec2 {
-  for (let r = 1.5; r < 6; r += 0.5) {
-    for (let a = 0; a < 8; a++) {
-      const at = { x: base.x + Math.cos((a * Math.PI) / 4) * r, z: base.z + Math.sin((a * Math.PI) / 4) * r };
-      if (isFree(s.map, at, PLAYER_RADIUS, BLOCKS_WALKER) && placed.every(o => dist(o.pos, at) > 1)) return at;
-    }
+/** the two places on the map furthest apart: the teams' bases (none on a map too small for two) */
+function basePair(s: SimState, apart = VERSUS.baseApart): [Vec2, Vec2] | null {
+  const spots = spawnSpots(s);
+  let a = spots[0], b = spots[0], best = -1;
+  for (const x of spots) for (const y of spots) if (dist(x, y) > best) {
+    best = dist(x, y);
+    a = x;
+    b = y;
   }
-  return nearestFree(s.map, base, PLAYER_RADIUS, BLOCKS_WALKER);
+  return best >= apart ? [a, b] : null;
+}
+
+/** players still in the match apart from `p`: everyone who stands, and the fallen waiting to get back up */
+const inPlay = (s: SimState, p: Player) => s.players.filter(o => o !== p && o.downUntil !== Number.MAX_SAFE_INTEGER);
+
+/** where everyone else stands, or (when down) will get back up */
+function taken(s: SimState, p: Player): Vec2[] {
+  return inPlay(s, p).map(o => (o.downUntil === null ? o.pos : o.safePoint));
+}
+
+/** where the players who could hurt `p` stand */
+function threats(s: SimState, p: Player): Vec2[] {
+  return inPlay(s, p).filter(o => o.downUntil === null && (s.versus?.mode !== 'team' || o.team !== p.team)).map(o => o.pos);
+}
+
+/**
+ * Where `p` (re)enters a match, apart from the spots in `others`: in teams next to the team mates at the own base
+ * (in capture the cube a step off the flag), unless an enemy waits there; everyone for themselves as far from the
+ * others as the map allows. `enemies`: where those who could hurt `p` stand.
+ */
+function spawnFor(s: SimState, p: Player, others: Vec2[], enemies: Vec2[]): Vec2 {
+  const v = s.versus;
+  const base = v?.mode === 'team' ? (v.flags?.[p.team ?? 0]?.base ?? basePair(s)?.[p.team ?? 0]) : undefined;
+  if (!base || enemies.some(e => dist(e, base) < VERSUS.baseCamp)) return safeSpawn(s, enemies, others);
+  return spotNear(s, base, others, v?.flags ? 1.5 : 0);
 }
 
 /** where the king zone can be: nest spots, plazas and power spots of the map */
@@ -157,17 +187,17 @@ function kingSpots(s: SimState): Vec2[] {
   return list.length > 0 ? list : [s.map.spawn];
 }
 
-/** the spot furthest from every player who could hurt `p` */
-export function safeSpawn(s: SimState, p: Player, others: Player[]): Vec2 {
+/** the spot furthest from all of `enemies`, not inside any of `others` (where the rest stand or get up) */
+export function safeSpawn(s: SimState, enemies: Vec2[], others: Vec2[] = enemies): Vec2 {
   let best = s.map.spawn, bestD = -1;
   for (const spot of spawnSpots(s)) {
-    const near = Math.min(Infinity, ...others.filter(o => o !== p).map(o => dist(o.pos, spot)));
+    const near = Math.min(Infinity, ...(enemies.length > 0 ? enemies : others).map(o => dist(o, spot)));
     if (near > bestD) {
       bestD = near;
       best = spot;
     }
   }
-  return isFree(s.map, best, PLAYER_RADIUS, BLOCKS_WALKER) ? { ...best } : nearestFree(s.map, best, PLAYER_RADIUS, BLOCKS_WALKER);
+  return spotNear(s, best, others);
 }
 
 /** gun game: the weapons from first to last; a kill with the last one wins */
@@ -244,13 +274,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     v.limit = VERSUS.captureLimit;
     v.endsAt = s.tick + VERSUS.captureMinutes * 60 * TICK_RATE;
     // the two bases: the pair of places furthest apart
-    const spots = spawnSpots(s);
-    let a = spots[0], b = spots[1], best = -1;
-    for (const x of spots) for (const y of spots) if (dist(x, y) > best) {
-      best = dist(x, y);
-      a = x;
-      b = y;
-    }
+    const [a, b] = basePair(s, 0)!;
     v.flags = [a, b].map(base => ({ base: { ...base }, pos: { ...base }, carrier: null }));
   }
   s.players.forEach((p, i) => {
@@ -272,7 +296,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
 
 /** everyone back on their feet, spread out, with just the blaster */
 function startRound(s: SimState): void {
-  const placed: Player[] = [];
+  const placed: Vec2[] = [];
   for (const p of s.players) {
     // (a match that keeps weapons starts the next round with what each has now: the fallen lost theirs, or a
     // level of them, when they fell)
@@ -288,12 +312,11 @@ function startRound(s: SimState): void {
     p.reviveUntil = null;
     p.hp = p.maxHp;
     p.disco = null;
-    // capture the cube: each team starts at its own base
-    const base = s.versus?.flags?.[p.team ?? 0]?.base;
-    p.pos = base && s.versus?.rule === 'capture' ? nearBase(s, base, placed) : safeSpawn(s, p, placed);
+    // teams start together at their own base, everyone for themselves spread over the map
+    p.pos = spawnFor(s, p, placed, s.versus?.mode === 'team' ? [] : placed);
     p.safePoint = { ...p.pos };
     p.invulnUntil = s.tick + VERSUS.spawnInvulnTicks;
-    placed.push(p);
+    placed.push(p.pos);
   }
   for (const v of s.vehicles) v.driverId = null;
 }
@@ -328,8 +351,7 @@ export function joinRunning(s: SimState, who: { id: number; name: string; color?
     }
     v.scores[p.id] = 0;
     equip(p, s);
-    const base = v.flags?.[p.team ?? 0]?.base;
-    p.pos = base && v.rule === 'capture' ? nearBase(s, base, []) : safeSpawn(s, p, []);
+    p.pos = spawnFor(s, p, taken(s, p), threats(s, p));
     p.safePoint = { ...p.pos };
     p.invulnUntil = s.tick + VERSUS.spawnInvulnTicks;
   }
@@ -364,8 +386,7 @@ export function takeSeat(s: SimState, p: Player, was: Player, score?: number): v
   if (v.mode === 'team' && was.team !== undefined && was.team !== p.team) {
     p.team = was.team;
     p.color = p.team === 0 ? 1 : 0;
-    const base = v.flags?.[p.team]?.base;
-    p.pos = base && v.rule === 'capture' ? nearBase(s, base, []) : safeSpawn(s, p, []);
+    p.pos = spawnFor(s, p, taken(s, p), threats(s, p));
     p.safePoint = { ...p.pos };
   }
   v.scores[p.id] = score ?? 0;
@@ -452,8 +473,7 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   }
   p.downUntil = s.tick + VERSUS.respawnTicks;
   p.invulnUntil = p.downUntil + VERSUS.spawnInvulnTicks;
-  const base = v.rule === 'capture' ? v.flags?.[p.team ?? 0]?.base : undefined;
-  p.safePoint = base ? nearBase(s, base, []) : safeSpawn(s, p, s.players.filter(o => o !== p && o.downUntil === null));
+  p.safePoint = spawnFor(s, p, taken(s, p), threats(s, p));
   // coin-op chaos: whoever goes down blows up and may take others along (only once they are down themselves,
   // so the blast cannot catch them again; the blast counts as nobody's kill)
   if (v.coinop?.rule === 'boom') explode(s, { ...p.pos }, VERSUS.boomRadius, { player: VERSUS.boomDamage }, 'explosion');

@@ -64,7 +64,7 @@ export function enterMaze(s: SimState): void {
   const pixels = MAZE_DOTS.map((_, i) => i);
   s.run.maze = { pixels, total: pixels.length, collected: {}, cubes: MAZE_CUBES.map((_, i) => i), powerUntil: 0, respawns: [] };
   s.players.forEach((p, i) => {
-    p.pos = spawnPoint(s, i);
+    p.pos = spawnPoint(s, s.players.slice(0, i).map(o => o.pos));
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;

@@ -41,7 +41,7 @@ export function enterShaft(s: SimState): void {
   s.flow = null;
   s.elevatorOpen = false;
   s.players.forEach((p, i) => {
-    p.pos = spawnPoint(s, i);
+    p.pos = spawnPoint(s, s.players.slice(0, i).map(o => o.pos));
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;

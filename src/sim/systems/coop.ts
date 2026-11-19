@@ -1,6 +1,6 @@
 import { DOWN_COIN_LOSS, MAX_PLAYERS, PLAYER_NAMES, PLAYER_RADIUS, RESPAWN_TICKS, REVIVE_HOLD_TICKS, REVIVE_INVULN_TICKS, REVIVE_RANGE, TEAM_HORDE_STEP, TEAM_HP_STEP } from '../config/balance';
 import { DIFFICULTY } from '../config/difficulty';
-import { BLOCKS_WALKER, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, BLOCKS_WALKER, hasLos, isFree, nearestFree } from '../map/tilemap';
 import type { Intent, Player, SimState, Vec2 } from '../types';
 import { dist } from '../util';
 
@@ -14,12 +14,25 @@ export function hpScale(s: SimState): number {
   return (1 + TEAM_HP_STEP * (s.players.length - 1)) * DIFFICULTY[s.difficulty].enemyHp;
 }
 
-/** Players start on a small ring around the spawn point. */
-export function spawnPoint(s: SimState, index: number): Vec2 {
-  if (index === 0) return { ...s.map.spawn };
-  const a = (index / MAX_PLAYERS) * Math.PI * 2;
-  const want = { x: s.map.spawn.x + Math.cos(a) * 1.2, z: s.map.spawn.z + Math.sin(a) * 1.2 };
-  return nearestFree(s.map, want, PLAYER_RADIUS, BLOCKS_WALKER);
+/**
+ * The free spot closest to `at` (from `from` on outward, in rings) that keeps a step away from every spot in
+ * `taken`, so nobody is placed inside someone else (and never on a hazard or past a low wall).
+ */
+export function spotNear(s: SimState, at: Vec2, taken: Vec2[], from = 0): Vec2 {
+  for (let r = from; r < 6; r += 0.6) {
+    const n = r === 0 ? 1 : Math.max(6, Math.round(r * 5));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const c = { x: at.x + Math.cos(a) * r, z: at.z + Math.sin(a) * r };
+      if (isFree(s.map, c, PLAYER_RADIUS, BLOCKS_ENEMY) && hasLos(s.map, at, c) && taken.every(t => dist(t, c) >= 1)) return c;
+    }
+  }
+  return nearestFree(s.map, at, PLAYER_RADIUS, BLOCKS_WALKER);
+}
+
+/** Players start next to each other around the spawn point, apart from those already placed (`taken`). */
+export function spawnPoint(s: SimState, taken: Vec2[]): Vec2 {
+  return spotNear(s, s.map.spawn, taken);
 }
 
 export function freeColor(s: SimState): number {
@@ -133,7 +146,7 @@ export function updateRevives(s: SimState, intents: Map<number, Intent>): void {
 
 export function addPlayer(s: SimState, id: number, name?: string): Player {
   // late import cycle guard: createPlayer lives in sim.ts
-  const p = makePlayer(id, spawnPoint(s, s.players.length), name ?? defaultName(s.players.length), freeColor(s));
+  const p = makePlayer(id, spawnPoint(s, s.players.map(o => o.pos)), name ?? defaultName(s.players.length), freeColor(s));
   p.lives = startLives(s);
   s.players.push(p);
   syncCredits(s);

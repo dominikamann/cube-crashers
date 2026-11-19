@@ -3,7 +3,6 @@ import { enterLane } from './lane';
 import { enterMaze } from './maze';
 import { CREDIT_BONUS, PAR_SECONDS, TIME_BONUS_PER_SECOND } from '../config/balance';
 import { floorDef, FLOORS } from '../config/floors';
-import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type Intent, type RunMode, type SimState } from '../types';
 import { spawnPoint, backIn } from './coop';
 import { setupFloor } from './nests';
@@ -139,8 +138,7 @@ function enterMap(s: SimState, def: (typeof FLOORS)[string]): void {
   s.elevatorOpen = false;
   s.witchlingsWait = false;
   s.players.forEach((p, i) => {
-    p.pos = spawnPoint(s, i);
-    if (!isFree(s.map, p.pos, 0.4, BLOCKS_WALKER)) p.pos = nearestFree(s.map, p.pos, 0.4, BLOCKS_WALKER);
+    p.pos = spawnPoint(s, s.players.slice(0, i).map(o => o.pos));
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;

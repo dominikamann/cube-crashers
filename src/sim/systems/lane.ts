@@ -80,7 +80,7 @@ export function enterLane(s: SimState): void {
   s.elevatorOpen = false;
   s.nextPowerupAt = s.tick + 10 * TICK_RATE;
   s.players.forEach((p, i) => {
-    p.pos = spawnPoint(s, i);
+    p.pos = spawnPoint(s, s.players.slice(0, i).map(o => o.pos));
     p.safePoint = { ...p.pos };
     p.vehicleId = null;
     p.flying = false;
