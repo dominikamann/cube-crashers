@@ -1,7 +1,7 @@
 import { BLASTER, WEAPONS } from '../sim/config/weapons';
 import { buildFlowField, towerTiles, flowDir } from '../sim/map/flowfield';
 import { BLOCKS_WALKER, hasLos } from '../sim/map/tilemap';
-import { rivals } from '../sim/systems/versus';
+import { cubeHome, rivals } from '../sim/systems/versus';
 import type { Command, Difficulty, SimState, Vec2 } from '../sim/types';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -94,7 +94,7 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
     if (v.flags && p.team !== undefined) {
       const own = v.flags[p.team], enemy = v.flags[1 - p.team];
       if (enemy.carrier === p.id) objective = own.base;
-      else if (own.carrier === null && d(own.pos, own.base) > 0.5) objective = own.pos;
+      else if (own.carrier === null && !cubeHome(own)) objective = own.pos;
       else if (enemy.carrier === null) objective = enemy.pos;
       else if (own.carrier !== null) objective = s.players.find(x => x.id === own.carrier)?.pos ?? null;
     }

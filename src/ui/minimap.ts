@@ -1,5 +1,6 @@
 import { Tile } from '../sim/map/tilemap';
 import { crowned } from '../sim/systems/bounty';
+import { cubeHome } from '../sim/systems/versus';
 import { cssColor, palette, playerColor } from '../render/palette';
 import type { SimState } from '../sim/types';
 
@@ -112,10 +113,22 @@ export function createMinimap(parent: HTMLElement): Minimap {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.strokeRect(f.base.x * SCALE - 6, f.base.z * SCALE - 6, 12, 12);
-        const home = f.carrier === null && Math.hypot(f.pos.x - f.base.x, f.pos.z - f.base.z) < 0.01;
-        if (!home && !blink) return;
+        if (!cubeHome(f) && !blink) return;
         dot(f.pos.x, f.pos.z, 9, '#ffffff');
         dot(f.pos.x, f.pos.z, 6, color);
+        // colour-blind mode: the team's shape on the cube as well (team 0 a triangle, team 1 a round dot)
+        if (shapes) {
+          const x = f.pos.x * SCALE, z = f.pos.z * SCALE;
+          ctx.beginPath();
+          if (team === 0) {
+            ctx.moveTo(x, z - 3);
+            ctx.lineTo(x + 3, z + 2.4);
+            ctx.lineTo(x - 3, z + 2.4);
+            ctx.closePath();
+          } else ctx.arc(x, z, 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = '#1b1440';
+          ctx.fill();
+        }
       });
     },
   };

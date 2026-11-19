@@ -173,6 +173,7 @@ export const en = {
   'versus.cubeNotHome': 'Your cube is not home: get it back first!',
   'versus.ownHome': 'Your cube is home',
   'versus.ownStolen': '{name} has your cube!',
+  'versus.ownOutNoTimer': 'Your cube lies out: touch it to bring it home',
   'versus.ownOut': 'Your cube lies out: touch it to bring it home (or wait {s} s)',
   'versus.carryHome': 'You have the cube: carry it home!',
   'versus.kingMoved': 'The zone moved!',

@@ -716,7 +716,9 @@ function startGame() {
       }
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
-        const myTeam = s.players.find(p => p.id === localId())?.team;
+        // (two players on one screen in different teams: cube events sound neutral, nobody hears the other's side)
+        const screenTeams = new Set((split ? [localId(), 1] : [localId()]).map(id => s.players.find(p => p.id === id)?.team));
+        const myTeam = screenTeams.size === 1 ? [...screenTeams][0] : undefined;
         for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam)) audio.mixer.play(snd.id, snd.pitch);
         for (const snd of swordClashes(frameEvents)) audio.mixer.play(snd.id, snd.pitch);
         // the Laser Sword in a hand on this screen: it lights and goes out, and hums while it is drawn; only while a

@@ -20,7 +20,7 @@ import { barStart } from './weapon-bar';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
-import { VERSUS } from '../sim/systems/versus';
+import { CAPTURE_RANGE, cubeHome, VERSUS } from '../sim/systems/versus';
 import { KART, VEHICLES } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
@@ -700,12 +700,13 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
         if (vs.flags && p.team !== undefined) {
           // capture the cube: where your own cube is, so a carrier at home knows why nothing happens
           const own = vs.flags[p.team], carrying = vs.flags[1 - p.team].carrier === p.id;
-          const home = own.carrier === null && Math.hypot(own.pos.x - own.base.x, own.pos.z - own.base.z) < 0.01;
+          const home = cubeHome(own);
           raceSub.textContent = !home
-            ? own.carrier !== null ? t('versus.ownStolen', { name: s.players.find(x => x.id === own.carrier)?.name ?? '' }) : t('versus.ownOut', { s: Math.max(0, Math.ceil(((own.downAt ?? s.tick) + VERSUS.cubeReturnTicks - s.tick) / TICK_RATE)) })
+            ? own.carrier !== null ? t('versus.ownStolen', { name: s.players.find(x => x.id === own.carrier)?.name ?? '' }) : own.downAt === undefined ? t('versus.ownOutNoTimer') : t('versus.ownOut', { s: Math.max(0, Math.ceil((own.downAt + VERSUS.cubeReturnTicks - s.tick) / TICK_RATE)) })
             : carrying ? t('versus.carryHome') : t('versus.ownHome');
-          // standing at home with the enemy cube while your own is away: say so (every few seconds, not every frame)
-          const atHome = Math.hypot(p.pos.x - own.base.x, p.pos.z - own.base.z) <= 2.5;
+          // standing at home with the enemy cube while your own is away: say so (every few seconds, not every frame;
+          // from a little further out than a capture counts, so it shows as the carrier arrives)
+          const atHome = Math.hypot(p.pos.x - own.base.x, p.pos.z - own.base.z) <= CAPTURE_RANGE + 1;
           if (carrying && atHome && !home && lastTime - cubeHintAt > 3) {
             cubeHintAt = lastTime;
             toast(t('versus.cubeNotHome'), 'warn');

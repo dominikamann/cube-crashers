@@ -481,6 +481,14 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   if (v.coinop?.rule === 'boom') explode(s, { ...p.pos }, VERSUS.boomRadius, { player: VERSUS.boomDamage }, 'explosion');
 }
 
+/** whether a capture-the-cube cube lies at its base (nobody carries it, it is not out in the field) */
+export function cubeHome(f: { base: Vec2; pos: Vec2; carrier: number | null }): boolean {
+  return f.carrier === null && dist(f.pos, f.base) < 0.01;
+}
+
+/** how close to the own base a carrier scores */
+export const CAPTURE_RANGE = VERSUS.touch * 1.5;
+
 /** the cube `p` carries falls where they stand */
 function dropCube(s: SimState, p: Player): void {
   const flags = s.versus?.flags;
@@ -489,6 +497,7 @@ function dropCube(s: SimState, p: Player): void {
     if (f.carrier !== p.id) return;
     f.carrier = null;
     f.pos = { ...p.pos };
+    f.downAt = s.tick;
     s.events.push({ type: 'cubeDropped', team: team as 0 | 1, pos: { ...p.pos } });
   });
 }
@@ -524,11 +533,12 @@ function updateFlags(s: SimState): void {
   flags.forEach((f, team) => {
     if (f.carrier === null || s.players.some(p => p.id === f.carrier)) return;
     f.carrier = null;
+    f.downAt = s.tick;
     s.events.push({ type: 'cubeDropped', team: team as 0 | 1, pos: { ...f.pos } });
   });
   // a cube left lying out in the field goes home by itself after a while
   flags.forEach((f, team) => {
-    if (f.carrier !== null || dist(f.pos, f.base) < 0.01) {
+    if (f.carrier !== null || cubeHome(f)) {
       delete f.downAt;
       return;
     }
@@ -551,13 +561,13 @@ function updateFlags(s: SimState): void {
       s.events.push({ type: 'cubeTaken', team: (1 - p.team) as 0 | 1, playerId: p.id });
     }
     // touch the own cube lying out in the field: it goes home
-    if (own.carrier === null && dist(own.pos, own.base) > 0.01 && dist(own.pos, p.pos) <= VERSUS.touch) {
+    if (own.carrier === null && !cubeHome(own) && dist(own.pos, p.pos) <= VERSUS.touch) {
       own.pos = { ...own.base };
       delete own.downAt;
       s.events.push({ type: 'cubeReturned', team: p.team });
     }
     // home with the enemy cube while the own one is at home: a capture
-    if (enemy.carrier === p.id && dist(p.pos, own.base) <= VERSUS.touch * 1.5 && own.carrier === null && dist(own.pos, own.base) < 0.01) {
+    if (enemy.carrier === p.id && dist(p.pos, own.base) <= CAPTURE_RANGE && cubeHome(own)) {
       enemy.carrier = null;
       enemy.pos = { ...enemy.base };
       v.teamScores[p.team]++;
