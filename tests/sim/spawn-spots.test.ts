@@ -3,7 +3,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { floorNeon } from '../../src/sim/config/floor-neon';
 import { createSim } from '../../src/sim/sim';
 import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
-import { joinRunning, versusDeath } from '../../src/sim/systems/versus';
+import { joinRunning, updateVersus, VERSUS, versusDeath } from '../../src/sim/systems/versus';
 import type { SimState, Vec2 } from '../../src/sim/types';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -62,5 +62,23 @@ describe('spawn spots', () => {
     mate.pos = { ...fallen.pos };
     versusDeath(s, fallen, camper.id);
     expect(d(fallen.safePoint, camper.pos)).toBeGreaterThan(6);
+  });
+});
+
+describe('capture the cube', () => {
+  it('a cube left lying out in the field goes home by itself after 30 seconds', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'team', rule: 'capture' } });
+    const f = s.versus!.flags![0];
+    const [a, b] = s.versus!.flags!.map(x => x.base);
+    f.pos = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+    for (const p of s.players) p.pos = { ...s.versus!.flags![p.team === 0 ? 1 : 0].base };
+    updateVersus(s);
+    s.tick += VERSUS.cubeReturnTicks - 1;
+    updateVersus(s);
+    expect(d(f.pos, f.base)).toBeGreaterThan(1);
+    s.tick += 1;
+    updateVersus(s);
+    expect(d(f.pos, f.base)).toBeLessThan(0.01);
+    expect(f.downAt).toBeUndefined();
   });
 });

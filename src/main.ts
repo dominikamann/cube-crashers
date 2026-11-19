@@ -716,7 +716,8 @@ function startGame() {
       }
       markers2.setVisible(split && (mode === 'playing' || mode === 'paused'));
       if (audio) {
-        for (const e of frameEvents) for (const snd of soundsForEvent(e)) audio.mixer.play(snd.id, snd.pitch);
+        const myTeam = s.players.find(p => p.id === localId())?.team;
+        for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam)) audio.mixer.play(snd.id, snd.pitch);
         for (const snd of swordClashes(frameEvents)) audio.mixer.play(snd.id, snd.pitch);
         // the Laser Sword in a hand on this screen: it lights and goes out, and hums while it is drawn; only while a
         // match is played and shown (not paused, not in a menu, not over, not in the kill cam)

@@ -193,3 +193,19 @@ describe('soundsForEvent', () => {
     expect(soundsForEvent({ type: 'alarmChanged', level: 2 })[0].id).toBe('alarm');
   });
 });
+
+describe('capture the cube sounds', () => {
+  const ids = (e: Parameters<typeof soundsForEvent>[0], team?: 0 | 1) => soundsForEvent(e, team).map(x => x.id);
+
+  it('sound from the side of the player on this screen', () => {
+    expect(ids({ type: 'cubeTaken', team: 0, playerId: 1 }, 0)).toEqual(['alarm']);
+    expect(ids({ type: 'cubeTaken', team: 1, playerId: 0 }, 0)).toEqual(['powerupPicked']);
+    expect(ids({ type: 'cubeCaptured', team: 0, playerId: 0 }, 0)).toEqual(['gameWon']);
+    expect(ids({ type: 'cubeCaptured', team: 1, playerId: 1 }, 0)).toEqual(['gameLost']);
+    expect(ids({ type: 'cubeReturned', team: 1 }, 0)).toEqual(['buildDenied']);
+  });
+
+  it('without a team every capture is cheered', () => {
+    expect(ids({ type: 'cubeCaptured', team: 1, playerId: 1 })).toEqual(['gameWon']);
+  });
+});

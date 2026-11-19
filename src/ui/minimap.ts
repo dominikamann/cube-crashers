@@ -105,6 +105,18 @@ export function createMinimap(parent: HTMLElement): Minimap {
         dot(p.pos.x, p.pos.z, me ? 9 : 7, '#1b1440');
         dot(p.pos.x, p.pos.z, me ? 6 : 4, color);
       }
+      // capture the cube: each base a frame in its team's colour, each cube a square on top (over its carrier's
+      // dot, blinking while carried or lying out, so everyone can find it)
+      s.versus?.flags?.forEach((f, team) => {
+        const color = cssColor(palette().teams[team]);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(f.base.x * SCALE - 6, f.base.z * SCALE - 6, 12, 12);
+        const home = f.carrier === null && Math.hypot(f.pos.x - f.base.x, f.pos.z - f.base.z) < 0.01;
+        if (!home && !blink) return;
+        dot(f.pos.x, f.pos.z, 9, '#ffffff');
+        dot(f.pos.x, f.pos.z, 6, color);
+      });
     },
   };
 }

@@ -691,7 +691,11 @@ export function swordClashes(events: readonly SimEvent[]): { id: SoundId; pitch:
   return out;
 }
 
-export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
+/**
+ * The sounds for one event. `team`: the team of the player on this screen, so capture the cube sounds from their
+ * side (their cube taken is an alarm, the enemy's a win); without one, every cube event sounds neutral.
+ */
+export function soundsForEvent(e: SimEvent, team?: 0 | 1): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];
   switch (e.type) {
     case 'shot':
@@ -846,14 +850,15 @@ export function soundsForEvent(e: SimEvent): { id: SoundId; pitch: number }[] {
     case 'coinOpRule':
       // an arcade jingle: the rules just changed
       return one('cardPicked', 1.15);
+    // (`e.team` is whose cube it is, or for a capture the team that scored)
     case 'cubeTaken':
-      return one('powerupPicked', 0.8);
+      return team === e.team ? one('alarm', 0.8) : one('powerupPicked', 0.8);
     case 'cubeDropped':
-      return one('buildDenied');
+      return team === e.team ? one('comboUp') : one('buildDenied');
     case 'cubeReturned':
-      return one('select');
+      return team === undefined || team === e.team ? one('select') : one('buildDenied');
     case 'cubeCaptured':
-      return one('gameWon');
+      return team === undefined || team === e.team ? one('gameWon') : one('gameLost');
     case 'mazePixel':
       // (up, down, up, down: chewing along the row, and the whole run still climbs)
       return one(e.streak % 2 === 0 ? 'mazeChomp' : 'mazePixel', SEMITONE ** (Math.min(e.streak - 1, MAX_MAZE_STREAK_STEPS) / 2));

@@ -49,6 +49,8 @@ export const VERSUS = {
   /** capture the cube */
   captureLimit: 3,
   captureMinutes: 8,
+  /** a cube lying out in the field this long goes home by itself */
+  cubeReturnTicks: 30 * TICK_RATE,
   /** carrying a cube slows you down */
   carrySpeed: 0.8,
   touch: 1.1,
@@ -524,6 +526,18 @@ function updateFlags(s: SimState): void {
     f.carrier = null;
     s.events.push({ type: 'cubeDropped', team: team as 0 | 1, pos: { ...f.pos } });
   });
+  // a cube left lying out in the field goes home by itself after a while
+  flags.forEach((f, team) => {
+    if (f.carrier !== null || dist(f.pos, f.base) < 0.01) {
+      delete f.downAt;
+      return;
+    }
+    f.downAt ??= s.tick;
+    if (s.tick < f.downAt + VERSUS.cubeReturnTicks) return;
+    f.pos = { ...f.base };
+    delete f.downAt;
+    s.events.push({ type: 'cubeReturned', team: team as 0 | 1 });
+  });
   for (const p of s.players) {
     if (p.downUntil !== null || p.team === undefined) continue;
     const own = flags[p.team];
@@ -533,11 +547,13 @@ function updateFlags(s: SimState): void {
     // touch the enemy cube: take it (not from a kart)
     if (enemy.carrier === null && p.vehicleId === null && dist(enemy.pos, p.pos) <= VERSUS.touch) {
       enemy.carrier = p.id;
+      delete enemy.downAt;
       s.events.push({ type: 'cubeTaken', team: (1 - p.team) as 0 | 1, playerId: p.id });
     }
     // touch the own cube lying out in the field: it goes home
     if (own.carrier === null && dist(own.pos, own.base) > 0.01 && dist(own.pos, p.pos) <= VERSUS.touch) {
       own.pos = { ...own.base };
+      delete own.downAt;
       s.events.push({ type: 'cubeReturned', team: p.team });
     }
     // home with the enemy cube while the own one is at home: a capture

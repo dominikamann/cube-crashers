@@ -20,6 +20,7 @@ import { barStart } from './weapon-bar';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
+import { VERSUS } from '../sim/systems/versus';
 import { KART, VEHICLES } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
@@ -701,7 +702,7 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           const own = vs.flags[p.team], carrying = vs.flags[1 - p.team].carrier === p.id;
           const home = own.carrier === null && Math.hypot(own.pos.x - own.base.x, own.pos.z - own.base.z) < 0.01;
           raceSub.textContent = !home
-            ? own.carrier !== null ? t('versus.ownStolen', { name: s.players.find(x => x.id === own.carrier)?.name ?? '' }) : t('versus.ownOut')
+            ? own.carrier !== null ? t('versus.ownStolen', { name: s.players.find(x => x.id === own.carrier)?.name ?? '' }) : t('versus.ownOut', { s: Math.max(0, Math.ceil(((own.downAt ?? s.tick) + VERSUS.cubeReturnTicks - s.tick) / TICK_RATE)) })
             : carrying ? t('versus.carryHome') : t('versus.ownHome');
           // standing at home with the enemy cube while your own is away: say so (every few seconds, not every frame)
           const atHome = Math.hypot(p.pos.x - own.base.x, p.pos.z - own.base.z) <= 2.5;
