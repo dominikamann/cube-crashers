@@ -784,13 +784,17 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
       layer.classList.toggle('has-bar', !!s.boss || holdBox.style.display === '');
       if (s.boss) {
         bossBox.style.display = '';
+        document.body.classList.add('boss-on');
         // a brawl: the bosses of the wave share the bar, with both names
         const all = allBosses(s);
         const name = all.map(b => bossLabel(b.kind)).join(' + ');
         bossName.textContent = isFinalFloor(s) ? t('boss.final', { name }) : name;
         bossBox.classList.toggle('final', isFinalFloor(s));
         bossFill.style.width = `${Math.max(0, bossHp(s) / all.reduce((n, b) => n + b.maxHp, 0)) * 100}%`;
-      } else bossBox.style.display = 'none';
+      } else {
+        bossBox.style.display = 'none';
+        document.body.classList.remove('boss-on');
+      }
       minimap.update(s, time, p.id);
     },
   };
