@@ -49,16 +49,29 @@ function options(s: SimState, p: Player): Card[] {
   return cards;
 }
 
-/** Spots around the crate, on free floor and at least MIN_CARD_GAP apart, so every card can be chosen. */
-export function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
+/** Spots around the crate, on free floor and at least MIN_CARD_GAP apart, so every card can be chosen. Given the way
+ *  the opener looks, they stand in a row a few steps ahead of them, left and right of the way on: in first person
+ *  they show without turning round, and walking straight on does not take one by mistake. */
+export function cardPositions(s: SimState, pos: Vec2, n: number, ahead?: Vec2): Vec2[] {
   const out: Vec2[] = [];
+  const fits = (c: Vec2) => isFree(s.map, c, PLAYER_RADIUS, BLOCKS_WALKER) && !out.some(o => dist(o, c) < MIN_CARD_GAP);
+  if (ahead) {
+    // a row across the way on, a few steps ahead: one each side of the way, then further out; straight ahead last
+    const len = Math.hypot(ahead.x, ahead.z) || 1, fx = ahead.x / len, fz = ahead.z / len;
+    for (const on of [2.8, 3.6, 2.0, 4.4])
+      for (const side of [1, -1, 2.6, -2.6, 4.2, -4.2, 0]) {
+        if (out.length >= n) break;
+        const c = { x: pos.x + fx * on - fz * side, z: pos.z + fz * on + fx * side };
+        if (fits(c)) out.push(c);
+      }
+    if (out.length === n) return out;
+  }
   for (const dist_ of [CARD_DISTANCE, CARD_DISTANCE + 0.8, CARD_DISTANCE + 1.6, CARD_DISTANCE + 2.4]) {
-    for (let i = 0; i < 24 && out.length < n; i++) {
+    for (let i = 0; i < 24; i++) {
       const a = -Math.PI / 2 + (i * Math.PI * 2) / 24;
+      if (out.length >= n) break;
       const c = { x: pos.x + Math.cos(a) * dist_, z: pos.z + Math.sin(a) * dist_ };
-      if (!isFree(s.map, c, PLAYER_RADIUS, BLOCKS_WALKER)) continue;
-      if (out.some(o => dist(o, c) < MIN_CARD_GAP)) continue;
-      out.push(c);
+      if (fits(c)) out.push(c);
     }
     if (out.length === n) return out;
   }
@@ -88,7 +101,7 @@ function openCrate(s: SimState, crate: Crate, p: Player): void {
     id: s.nextId++,
     pos: { ...crate.pos },
     cards,
-    cardPos: cardPositions(s, crate.pos, cards.length),
+    cardPos: cardPositions(s, crate.pos, cards.length, p.facing),
     armedAt: s.tick + CARD_ARM_TICKS,
     expiresAt: s.tick + OFFER_TICKS,
   });

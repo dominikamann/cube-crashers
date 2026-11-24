@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { POWERUP } from '../sim/systems/powerups';
+import { CARD_ARM_TICKS } from '../sim/systems/offers';
 import type { Card, PerkKind, PowerupKind, RareKind, SimState, WeaponKind } from '../sim/types';
 import { POWERUP_COLOR } from './fx';
 import { glowMat } from './pool';
@@ -129,8 +130,8 @@ export function createPickups(scene: THREE.Scene): Pickups {
     }
     return t;
   };
-  const cardGeo = new THREE.PlaneGeometry(1.0, 1.25);
-  const glowGeo = new THREE.CircleGeometry(0.7, 20).rotateX(-Math.PI / 2);
+  const cardGeo = new THREE.PlaneGeometry(0.85, 1.06);
+  const glowGeo = new THREE.CircleGeometry(0.45, 20).rotateX(-Math.PI / 2);
   const cubeGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
   const ringGeo = new THREE.RingGeometry(0.85, 1, 28).rotateX(-Math.PI / 2);
 
@@ -149,23 +150,26 @@ export function createPickups(scene: THREE.Scene): Pickups {
             const tex = texFor(cardKey(card), () => cardTexture(card));
             const glowColor = card.type === 'weapon' ? 0xb07cff : card.type === 'perk' ? 0x3bffb0 : 0xffc928;
             const mesh = new THREE.Mesh(cardGeo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
-            mesh.rotation.x = -0.75;
+            // (it always turns to whoever looks at it: upright in first person, readable from above)
+            mesh.onBeforeRender = (_r, _s, camera) => mesh.quaternion.copy(camera.quaternion);
             mesh.position.set(o.cardPos[i].x, 1.1, o.cardPos[i].z);
             mesh.userData.phase = i;
-            const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.5, depthWrite: false }));
+            const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.35, depthWrite: false }));
             glow.position.set(o.cardPos[i].x, 0.04, o.cardPos[i].z);
             g!.add(mesh, glow);
           });
           scene.add(g);
           offers.set(o.id, g);
         }
-        const armed = s.tick >= o.armedAt;
+        // (they grow to their size while they cannot be taken yet, easing in, and stay so: no jump when they can)
+        const grown = Math.min(1, Math.max(0, 1 - (o.armedAt - s.tick) / CARD_ARM_TICKS));
+        const size = 1 - (1 - grown) ** 3;
         const leaving = o.expiresAt - s.tick < 180 && Math.floor(time * 6) % 2 === 0;
         g.visible = !leaving;
         g.children.forEach(child => {
           if (child.userData.phase === undefined) return;
           child.position.y = 1.1 + Math.sin(time * 3 + child.userData.phase * 2) * 0.12;
-          child.scale.setScalar(armed ? 1 : 0.6);
+          child.scale.setScalar(0.2 + 0.8 * size);
         });
       }
       for (const [id, g] of offers) {
