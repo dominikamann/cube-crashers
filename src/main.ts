@@ -2,7 +2,7 @@ import type { GameInfo, VersusOption } from './net/protocol';
 import { allBosses } from './sim/util';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
 import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from './sim/config/balance';
-import { BLOCKS_WALKER, nearestFree } from './sim/map/tilemap';
+import { BLOCKS_WALKER, nearestFree, Tile } from './sim/map/tilemap';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
@@ -41,7 +41,10 @@ import { floorsCleared } from './sim/systems/run';
 import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
-import { TICK_RATE, type RunMode, type Command, type KeepWeapons, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
+import { damageEnemy } from './sim/systems/combat';
+import { spawnEnemy } from './sim/systems/enemies';
+import { ENEMIES } from './sim/config/enemies';
+import { TICK_RATE, type EnemyKind, type RunMode, type Command, type KeepWeapons, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
 import { createBuildMenu } from './ui/build-menu';
 import { createHud } from './ui/hud';
 import { createEmotes } from './ui/emotes';
@@ -553,6 +556,41 @@ function startGame() {
       }
       if (role === 'solo') {
         stepSim(s, cmds);
+        // dev (?die=n[,seconds[,pad|wall]], for screenshots): after so many seconds, n monsters fall in a ring round
+        // the first player (or along the edge of the nearest tower pad, or along the nearest wall), to look at what
+        // they leave on the floor
+        if (import.meta.env.DEV && params.has('die') && !devDied) {
+          const [n, after, near] = params.get('die')!.split(',');
+          const count = Number(n) || 4;
+          if (s.phase === 'playing' && s.tick >= Math.round((Number(after) || 1.5) * TICK_RATE)) {
+            devDied = true;
+            const p = s.players[0], kinds = Object.keys(ENEMIES) as EnemyKind[];
+            const at = (i: number): { x: number; z: number } => {
+              const a = (i / count) * Math.PI * 2;
+              if (near === 'pad') {
+                const pad = [...s.map.pads].sort((u, v) => Math.hypot(u.pos.x - p.pos.x, u.pos.z - p.pos.z) - Math.hypot(v.pos.x - p.pos.x, v.pos.z - p.pos.z))[0];
+                if (pad) return { x: pad.pos.x + Math.cos(a) * 1.1, z: pad.pos.z + Math.sin(a) * 1.1 };
+              }
+              if (near === 'wall') {
+                let best: { x: number; z: number; d: number } | null = null;
+                for (let tz = 1; tz < s.map.h - 1; tz++)
+                  for (let tx = 1; tx < s.map.w - 1; tx++) {
+                    if (s.map.tiles[tz * s.map.w + tx] !== Tile.Wall) continue;
+                    const d = Math.hypot(tx + 0.5 - p.pos.x, tz + 0.5 - p.pos.z);
+                    if (!best || d < best.d) best = { x: tx + 0.5, z: tz + 0.5, d };
+                  }
+                if (best) {
+                  // (in a row along the face that looks at the player, a little way off it)
+                  const dx = p.pos.x - best.x, dz = p.pos.z - best.z, side = Math.abs(dx) > Math.abs(dz);
+                  const nx = side ? Math.sign(dx) : 0, nz = side ? 0 : Math.sign(dz), k = (i - (count - 1) / 2) * 0.9;
+                  return { x: best.x + nx * 0.75 + nz * k, z: best.z + nz * 0.75 + nx * k };
+                }
+              }
+              return { x: p.pos.x + Math.cos(a) * 2.4, z: p.pos.z + Math.sin(a) * 2.4 };
+            };
+            for (let i = 0; i < count; i++) damageEnemy(s, spawnEnemy(s, kinds[i % kinds.length], at(i)), 1e9, 'stomp', p.id);
+          }
+        }
         keyboard.onEvents(s.events);
         padCtl.onEvents(s.events);
         padCtl2.onEvents(s.events);
@@ -953,6 +991,7 @@ function startGame() {
   let versusBots: ((s: SimState) => Command[])[] = [];
   /** dev: player 1 played by a bot (?bot=1 in versus) */
   let selfBot: ((s: SimState) => Command[]) | null = null;
+  let devDied = false;
   /** bots of a LAN versus match (they run on the host) */
   let lanBots: ((s: SimState) => Command[])[] = [];
   /** fill LAN versus matches up with bots to this many players */
@@ -1567,6 +1606,15 @@ function startGame() {
         // (&walk=1: and straight into the own base with it, for recordings without anyone at the keys)
         if (params.has('walk')) setTimeout(() => (p.pos = { ...flags[p.team!].base, x: flags[p.team!].base.x + 0.6 }), 1000);
       }, 500);
+    }
+    // dev: &elites=3 sets that many elite monsters (rammers, blobs, tanks) in a row in front of the player, to look at them
+    if (import.meta.env.DEV && params.has('elites')) {
+      const p0 = solo.players[0], n = Number(params.get('elites')) || 3;
+      const kinds = ['rammer', 'blob', 'tank'] as const;
+      for (let i = 0; i < n; i++) {
+        const at = { x: p0.pos.x + p0.facing.x * 4 + -p0.facing.z * (i - (n - 1) / 2) * 1.8, z: p0.pos.z + p0.facing.z * 4 + p0.facing.x * (i - (n - 1) / 2) * 1.8 };
+        spawnEnemy(solo, kinds[i % kinds.length], nearestFree(solo.map, at, 0.6, BLOCKS_WALKER), { elite: true });
+      }
     }
     // dev: &rule=king&tozone=1 puts the player in the zone, to look at it
     if (import.meta.env.DEV && params.has('tozone') && solo.versus?.king) solo.players[0].pos = { x: solo.versus.king.pos.x + 1, z: solo.versus.king.pos.z };

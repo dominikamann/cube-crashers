@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { TICK_RATE, type BossKind, type PowerupKind, type SimEvent, type SimState, type Vec2 } from '../sim/types';
 import { BOSS, laserReach } from '../sim/systems/boss';
 import { VERSUS } from '../sim/systems/versus';
+import { PAD_SIZE } from '../sim/systems/towers';
+import { type FloorMap, Tile, tileAt } from '../sim/map/tilemap';
+import { wallTop } from './world';
 import { createDisco } from './disco';
 import { createShots } from './shots';
 import { ENEMY_LOOK } from './entities';
@@ -47,6 +50,14 @@ interface Splat {
   size: number;
   color: number;
   turn: number;
+  /** a wet puddle (droplets round it, a gloss on it) rather than a dry scorch mark */
+  wet: boolean;
+  /** 0..1: the shape of this one */
+  seed: number;
+  /** the raised, flat things it lies over as well (a tower pad): the part of it over each one is drawn again on top */
+  tops: { x: number; z: number; y: number; w: number }[];
+  /** the wall faces it reached: the liquid splashed up them (x, z at the foot of the face, facing `yaw`, `h` high) */
+  walls: { x: number; z: number; yaw: number; h: number; seed: number }[];
 }
 
 interface Beam {
@@ -113,17 +124,211 @@ export function createFx(scene: THREE.Scene): Fx {
   const flashes = new InstancedPool(scene, new THREE.IcosahedronGeometry(0.5, 1), light(0xffffff), 64, false);
   const waves = new InstancedPool(scene, new THREE.RingGeometry(0.42, 0.5, 40).rotateX(-Math.PI / 2), light(0xffffff), 64, false);
   const sparks = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), light(0xffffff), 512, false);
-  // (a stain is a ragged blot: a disc with an uneven edge)
-  const blot = new THREE.CircleGeometry(0.5, 14).rotateX(-Math.PI / 2);
-  {
-    const at = blot.getAttribute('position');
-    for (let i = 1; i < at.count; i++) {
-      const k = 0.72 + 0.4 * Math.abs(Math.sin(i * 2.7));
-      at.setXYZ(i, at.getX(i) * k, at.getY(i), at.getZ(i) * k);
-    }
-  }
-  const stains = new InstancedPool(scene, blot, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), 64, false);
+  // a stain is a square whose shader paints the puddle: a soft-edged pool with a thick darker rim and a wet gloss,
+  // and a few droplets thrown out round it (a dry scorch is the same without droplets and shine). The pool is
+  // painted in world coordinates, so a second square over a raised pad shows just the part of the same puddle that
+  // lies over the pad. Where it reaches a wall, an upright square on the wall face shows the splash that went up
+  // it, with drips running down. Each instance brings, besides its place and colour, two sets of four numbers:
+  // aSplat (its seed, with +2 for wet and +4 for a wall splash; how far it has spread; dried; faded) and
+  // aFrame (the puddle's centre x, z, the width of its square and its turn).
   const MAX_SPLATS = 48;
+  const SPLAT_TOPS = 2, SPLAT_WALLS = 2;
+  const stainMat = new THREE.ShaderMaterial({
+    vertexShader: `
+      attribute vec4 aSplat;
+      attribute vec4 aFrame;
+      varying vec2 vUv;
+      varying vec3 vColor;
+      varying vec4 vSplat;
+      varying vec2 vLocal;
+      varying float vWidth;
+      void main() {
+        vUv = uv;
+        vWidth = aFrame.z;
+        vColor = vec3(1.0);
+        #ifdef USE_INSTANCING_COLOR
+          vColor = instanceColor;
+        #endif
+        vSplat = aSplat;
+        vec4 wp = modelMatrix * instanceMatrix * vec4(position, 1.0);
+        // where this corner lies in the puddle's own frame: -1..1 across the puddle's square
+        vec2 d = wp.xz - aFrame.xy;
+        float c = cos(aFrame.w), s = sin(aFrame.w);
+        vLocal = vec2(c * d.x - s * d.y, s * d.x + c * d.y) / (0.5 * aFrame.z);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying vec3 vColor;
+      varying vec4 vSplat;
+      varying vec2 vLocal;
+      varying float vWidth;
+      float hash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
+      // the soft union of two distances: where a droplet nears the pool, the liquid bridges over
+      float smin(float a, float b, float k) {
+        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+        return mix(b, a, h) - k * h * (1.0 - h);
+      }
+      float capsule(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+        vec2 ab = b - a, ap = p - a;
+        float h = clamp(dot(ap, ab) / dot(ab, ab), 0.0, 1.0);
+        return length(ap - ab * h) - mix(ra, rb, h);
+      }
+      void main() {
+        float seed = fract(vSplat.x), wet = mod(floor(vSplat.x), 4.0) >= 2.0 ? 1.0 : 0.0, wall = step(4.0, vSplat.x);
+        float spread = vSplat.y, dry = vSplat.z, fade = vSplat.w;
+        float d, R, glossK = 0.0;
+        vec2 p;
+        if (wall < 0.5) {
+          // (on the floor the liquid is snapped to a grid of 5 cm texels in the world, blocky like the voxels round
+          // it; the grid is the puddle's own, so the part drawn again over a pad lines up with the rest)
+          float cell = 0.1 / max(vWidth, 0.01);
+          p = (floor(vLocal / cell) + 0.5) * cell;
+          // the pool: a disc with a few gentle bulges that grows out as the liquid spreads and shrinks as it dries
+          float ang = atan(p.y, p.x);
+          float wob = 1.0 + 0.11 * sin(2.0 * ang + seed * 6.2832) + 0.08 * sin(3.0 * ang + seed * 17.0) + 0.045 * sin(5.0 * ang - seed * 31.0);
+          R = 0.5 * wob * spread * (1.0 - 0.35 * dry * dry);
+          d = length(p) - R;
+          // the droplets: up to six round it, flung out with the spread, each with a tail back toward the pool
+          if (wet > 0.5) {
+            for (int i = 0; i < 6; i++) {
+              float fi = float(i);
+              float h1 = hash(seed * 91.0 + fi * 7.3), h2 = hash(seed * 53.0 + fi * 3.1), h3 = hash(seed * 17.0 + fi * 11.7);
+              if (h3 < 0.15) continue;
+              float a = (fi + h1 * 0.7) * 1.0472 + seed * 6.2832;
+              float far = (0.58 + 0.36 * h2) * (0.4 + 0.6 * spread);
+              vec2 c = vec2(cos(a), sin(a)) * far;
+              float r = (0.07 + 0.1 * h1) * min(1.0, spread * 1.6) * (1.0 - 0.6 * dry);
+              float drop = length(p - c) - r;
+              float tail = capsule(p, c * (1.0 - 1.8 * r / far), c, r * 0.3, r * 0.85);
+              d = smin(d, min(drop, tail), 0.08);
+            }
+          }
+          glossK = wet;
+        } else {
+          // a splash up a wall: a blob at the foot, a few streaks that shot up it, and drips that run back down
+          p = vUv * 2.0 - 1.0;
+          float ang = atan(p.y + 0.55, p.x);
+          float wob = 1.0 + 0.1 * sin(3.0 * ang + seed * 9.0) + 0.06 * sin(5.0 * ang + seed * 23.0);
+          vec2 q = (p - vec2(0.0, -0.55)) * vec2(1.0, 1.35);
+          R = 0.55 * wob * spread;
+          d = length(q) - R;
+          float run = min(1.0, dry * 5.0);
+          for (int i = 0; i < 3; i++) {
+            float fi = float(i);
+            float h1 = hash(seed * 41.0 + fi * 5.3), h2 = hash(seed * 29.0 + fi * 2.7);
+            float x = -0.4 + 0.4 * fi + (h1 - 0.5) * 0.3;
+            // (rounded tongues of liquid thrown up the wall, a loose drop flung above each)
+            float top = -0.35 + (0.3 + 0.4 * h2) * spread;
+            d = smin(d, capsule(p, vec2(x, -0.55), vec2(x * 1.1, top), 0.26 + 0.06 * h2, 0.1 + 0.06 * h1), 0.12);
+            d = smin(d, length(p - vec2(x * 1.2 + (h2 - 0.5) * 0.2, top + 0.22 + 0.1 * h1)) - 0.05 * min(1.0, spread * 1.5), 0.04);
+            // (the drip: it runs down from the tongue's side, a drop at its end)
+            if (i != 1) {
+              float fall = (0.3 + 0.45 * h1) * run;
+              vec2 from = vec2(x * 1.1 + 0.16, top - 0.15), to = from - vec2(0.0, fall);
+              d = min(d, capsule(p, from, to, 0.02, 0.03));
+              d = smin(d, length(p - to) - 0.055 * run, 0.03);
+            }
+          }
+        }
+        // (a texel of the floor puddle is wholly in or out: hard edges, no blur between them; the wall splash is smooth)
+        float aa = wall < 0.5 ? 0.001 : max(fwidth(d), 0.004);
+        float fill = smoothstep(aa, -aa, d);
+        if (fill <= 0.002) discard;
+        // the colour: a thick darker rim, the body a little deeper (darker) toward its middle, and on the wet pool a
+        // soft gloss toward one side with a bright spot in it, and a thin light along the far rim
+        vec3 col = vColor;
+        float rim = smoothstep(-0.12, -0.02, d);
+        float depth = smoothstep(-0.08, -0.45, d);
+        col *= mix(1.0, 0.86, depth * wet);
+        col = mix(col, col * 0.58, rim * (0.5 + 0.3 * wet));
+        if (glossK > 0.5) {
+          vec2 g = p - vec2(-0.2, 0.26) * R;
+          g = vec2(g.x * 0.8 + g.y * 0.35, g.y * 0.9 - g.x * 0.3);
+          float e = length(g / (R * vec2(0.46, 0.3)));
+          float gloss = (1.0 - smoothstep(0.3, 1.0, e)) * 0.5 + (1.0 - smoothstep(0.0, 0.35, e)) * 0.5;
+          float far = smoothstep(-0.14, -0.03, d) * max(0.0, dot(normalize(p + 0.0001), vec2(0.55, -0.83)));
+          gloss = (gloss * 0.6 + far * 0.3) * (1.0 - 0.75 * dry) * (1.0 - rim * 0.6);
+          col = mix(col, vec3(1.0), gloss * (0.55 + 0.35 * dot(vColor, vec3(0.33))));
+        }
+        float alpha = fill * (0.86 - 0.16 * dry) * fade;
+        gl_FragColor = vec4(col, alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+  });
+  /** a pool of such squares with its two per-instance attributes (the pool never grows: each is given room for its cap) */
+  const splatPool = (geometry: THREE.BufferGeometry, capacity: number) => {
+    const info = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4), frame = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
+    for (const at of [info, frame]) at.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('aSplat', info);
+    geometry.setAttribute('aFrame', frame);
+    const pool = new InstancedPool(scene, geometry, stainMat, capacity, false);
+    let n = 0;
+    return {
+      begin() {
+        pool.begin();
+        n = 0;
+      },
+      add(b: Splat, x: number, y: number, z: number, yaw: number, sx: number, sy: number, sz: number, spread: number, dry: number, fade: number, wall: boolean, seed = b.seed) {
+        pool.addScaled(x, y, z, yaw, sx, sy, sz, b.color);
+        info.setXYZW(n, seed + (b.wet ? 2 : 0) + (wall ? 4 : 0), spread, dry, fade);
+        frame.setXYZW(n, b.x, b.z, b.size * 1.7, b.turn);
+        n++;
+      },
+      end() {
+        for (const at of [info, frame]) {
+          at.clearUpdateRanges();
+          at.addUpdateRange(0, n * 4);
+          at.needsUpdate = n > 0;
+        }
+        pool.end();
+      },
+    };
+  };
+  const stains = splatPool(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), MAX_SPLATS * (1 + SPLAT_TOPS));
+  const splashes = splatPool(new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), MAX_SPLATS * SPLAT_WALLS);
+  /** the map the stains lie on (set at each update: what is raised or a wall round a new stain is found from it) */
+  let map: FloorMap | null = null;
+  /** a stain on the floor: `wet` is a puddle of liquid (a monster's or a player's colour), else a dry scorch mark */
+  function addSplat(x: number, z: number, size: number, color: number, life: number, wet: boolean) {
+    if (splats.length >= MAX_SPLATS) splats.shift();
+    const b: Splat = { x, z, age: 0, life, size, color, turn: rand() * Math.PI * 2, wet, seed: rand(), tops: [], walls: [] };
+    if (map) {
+      // (how far the pool itself reaches: half its square, less the margin the shape leaves)
+      const reach = size * 0.47;
+      // over a tower pad: the part of the puddle over the pad is drawn again on the pad's top
+      for (const pad of map.pads) {
+        if (b.tops.length >= SPLAT_TOPS) break;
+        if (Math.abs(pad.pos.x - x) < PAD_SIZE / 2 + reach && Math.abs(pad.pos.z - z) < PAD_SIZE / 2 + reach) b.tops.push({ x: pad.pos.x, z: pad.pos.z, y: 0.15, w: PAD_SIZE });
+      }
+      // against a wall (or a low barrier): up the face that looks at the puddle, no higher than the wall is
+      const tx = Math.floor(x), tz = Math.floor(z);
+      const faces: [number, number, number, number, number][] = [
+        [tx + 1, tz, tx + 1 - x, tx + 1, z],
+        [tx - 1, tz, x - tx, tx, z],
+        [tx, tz + 1, tz + 1 - z, x, tz + 1],
+        [tx, tz - 1, z - tz, x, tz],
+      ];
+      faces.forEach(([wx, wz, gap, fx, fz], side) => {
+        if (b.walls.length >= SPLAT_WALLS || gap > reach * 0.9) return;
+        const t = tileAt(map!, wx + 0.5, wz + 0.5);
+        if (t !== Tile.Wall && t !== Tile.LowWall) return;
+        const top = t === Tile.LowWall ? 0.5 : wallTop(map!, wx + 0.5, wz + 0.5);
+        if (top < 0.2) return;
+        // (the face looks back at the puddle: toward -x, +x, -z, +z in turn)
+        const yaw = [-Math.PI / 2, Math.PI / 2, Math.PI, 0][side];
+        // (a hair off the face, so it is drawn in front of the wall)
+        b.walls.push({ x: fx + Math.sin(yaw) * 0.012, z: fz + Math.cos(yaw) * 0.012, yaw, h: Math.min(size * 0.75, top - 0.02), seed: rand() });
+      });
+    }
+    splats.push(b);
+  }
   const tone = (color: number, k: number) => {
     // k < 1 darkens, k > 1 mixes toward white
     const r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
@@ -176,8 +381,7 @@ export function createFx(scene: THREE.Scene): Fx {
       const life = 0.22 + rand() * 0.22;
       particles.push({ x: pos.x, y: height * 0.5, z: pos.z, vx: Math.cos(a) * sp, vy: up * 5, vz: Math.sin(a) * sp, life, maxLife: life, size: 0.07 + rand() * 0.05, color: elite && i % 2 ? 0xff5ae0 : i % 3 ? glow : 0xffffff, spin: 0, spark: true });
     }
-    if (splats.length >= MAX_SPLATS) splats.shift();
-    splats.push({ x: pos.x, z: pos.z, age: 0, life: 5 + rand() * 2, size: (0.9 + size * 1.1) * (elite ? 1.4 : 1), color: dark, turn: rand() * Math.PI * 2 });
+    addSplat(pos.x, pos.z, (0.9 + size * 1.1) * (elite ? 1.4 : 1), tone(color, 0.78), 5 + rand() * 2, true);
     if (elite) addShake(0.22);
   }
 
@@ -374,10 +578,7 @@ export function createFx(scene: THREE.Scene): Fx {
     burst,
     chunks,
     flash: (x, y, z, size, color, life, ring) => pops.push({ x, y, z, age: 0, life, size, color, ring }),
-    stain(x, z, size, color, life) {
-      if (splats.length >= MAX_SPLATS) splats.shift();
-      splats.push({ x, z, age: 0, life, size, color, turn: rand() * Math.PI * 2 });
-    },
+    stain: (x, z, size, color, life) => addSplat(x, z, size, color, life, true),
     shake: addShake,
   });
 
@@ -386,6 +587,7 @@ export function createFx(scene: THREE.Scene): Fx {
 
   return {
     update(s, events, theme, dt, time) {
+      map = s.map;
       readFloor(theme);
       if (later.length > 0) {
         const due = later.filter(l => time >= l.at);
@@ -447,9 +649,13 @@ export function createFx(scene: THREE.Scene): Fx {
             burst(e.pos, 0.6, Math.round(7 + hard * 10), v?.kind === 'unicorn' ? RAINBOW : [0xffffff, 0xffe14a, 0xff8c42], 4.5 + hard * 2, 0.06, 1.3);
             break;
           }
-          case 'playerDown':
+          case 'playerDown': {
             addShake(0.3);
+            // a fallen player leaves a puddle in the colour of their suit
+            const p = s.players.find(x => x.id === e.playerId);
+            if (p) addSplat(p.pos.x, p.pos.z, 1.6, tone(playerColor(p.color), 0.8), 6, true);
             break;
+          }
           case 'explosion': {
             // a ball of fire that flashes and is gone, a shockwave as wide as the blast, sparks, a little
             // rubble and smoke, and a scorch mark on the floor
@@ -467,8 +673,7 @@ export function createFx(scene: THREE.Scene): Fx {
             }
             tearFloor(e.pos, Math.min(3, 0.5 + r * 0.5));
             burst(e.pos, 0.9, Math.round(2 + r * 1.5), [0x3a3438, 0x55504f], 0.7, 0.24, 1.8);
-            if (splats.length >= MAX_SPLATS) splats.shift();
-            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 4, size: r * 1.5, color: 0x241c1c, turn: rand() * Math.PI * 2 });
+            addSplat(e.pos.x, e.pos.z, r * 1.5, 0x241c1c, 4, false);
             addShake(Math.min(0.4, 0.08 * r));
             break;
           }
@@ -490,7 +695,7 @@ export function createFx(scene: THREE.Scene): Fx {
                 const a = rand() * Math.PI * 2, r = rand() * 0.8, life = 0.8 + rand() * 1.6;
                 particles.push({ x: e.pos.x + Math.cos(a) * r, y: 0.3 + rand() * 1.8, z: e.pos.z + Math.sin(a) * r, vx: Math.cos(a) * 1.4, vy: 4 + rand() * 8, vz: Math.sin(a) * 1.4, life, maxLife: life, size: 0.06 + rand() * 0.1, color: FIRE[i % FIRE.length], spin: 0, spark: true });
               }
-              splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 12, size: 3.5, color: 0x1e1410, turn: rand() * Math.PI * 2 });
+              addSplat(e.pos.x, e.pos.z, 3.5, 0x1e1410, 12, false);
               ring(e.pos, 5, [0xffd040, 0xff7a14]);
               addShake(0.6);
               break;
@@ -508,7 +713,7 @@ export function createFx(scene: THREE.Scene): Fx {
             pops.push({ x: e.pos.x, y: 1.6, z: e.pos.z, age: 0, life: 0.3, size: 9, color: 0xffffff, ring: false });
             pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: 0, life: 0.55, size: 16, color: tone(body[0], 1.6), ring: true });
             pops.push({ x: e.pos.x, y: 0.07, z: e.pos.z, age: -0.12, life: 0.6, size: 11, color: 0xffffff, ring: true });
-            splats.push({ x: e.pos.x, z: e.pos.z, age: 0, life: 9, size: 5.5, color: tone(body[0], 0.5), turn: rand() * Math.PI * 2 });
+            addSplat(e.pos.x, e.pos.z, 5.5, tone(body[0], 0.5), 9, true);
             chunks(e.pos, 1.6, 46, body, 10, 0.34, 0.75);
             chunks(e.pos, 1.2, 150, body, 7, 0.12, 0.24);
             burst(e.pos, 1.5, 30, [0xffffff, 0xffe9a8], 6, 0.2);
@@ -731,8 +936,7 @@ export function createFx(scene: THREE.Scene): Fx {
             const a = (c / 9) * Math.PI * 2 + rand() * 0.4, d = 0.9 + rand() * 0.5;
             chunks({ x: hit.x + Math.cos(a) * d, z: hit.z + Math.sin(a) * d }, 0.1, 2, floorChips, 2.2, 0.2, 0.34);
           }
-          if (splats.length >= MAX_SPLATS) splats.shift();
-          splats.push({ x: hit.x, z: hit.z, age: 0, life: 7, size: 3.4, color: floorDark, turn: rand() * Math.PI * 2 });
+          addSplat(hit.x, hit.z, 3.4, floorDark, 7, false);
           burst(hit, 0.3, 34, [0xffffff, 0x7dfcff, 0x9fd0ff], 9, 0.09, 1.1);
           ring(hit, 2.4, [0xffffff, 0x7dfcff]);
           for (let c = 0; c < 8; c++) {
@@ -766,7 +970,7 @@ export function createFx(scene: THREE.Scene): Fx {
         const body = BOSS_WRECK.heli;
         pops.push({ x: w.at.x, y: 1.2, z: w.at.z, age: 0, life: 0.32, size: 9, color: 0xffd27a, ring: false });
         pops.push({ x: w.at.x, y: 0.07, z: w.at.z, age: 0, life: 0.55, size: 14, color: 0xff7a2e, ring: true });
-        splats.push({ x: w.at.x, z: w.at.z, age: 0, life: 12, size: 5, color: 0x1c1a18, turn: rand() * Math.PI * 2 });
+        addSplat(w.at.x, w.at.z, 5, 0x1c1a18, 12, false);
         chunks(w.at, 1.2, 40, body, 10, 0.3, 0.7);
         chunks(w.at, 1.4, 110, body, 8, 0.1, 0.24);
         burst(w.at, 1.2, 50, [0xffd040, 0xff7a14, 0xff4a0a], 8, 0.2);
@@ -898,6 +1102,7 @@ export function createFx(scene: THREE.Scene): Fx {
       flashes.end();
       waves.end();
       stains.begin();
+      splashes.begin();
       for (let i = splats.length - 1; i >= 0; i--) {
         const b = splats[i];
         b.age += dt;
@@ -905,11 +1110,18 @@ export function createFx(scene: THREE.Scene): Fx {
           splats.splice(i, 1);
           continue;
         }
-        // it spreads in a blink, lies there, and shrinks away at the end
-        const k = Math.min(1, b.age / 0.12) * Math.min(1, (b.life - b.age) / 1.2);
-        stains.add(b.x, 0.035, b.z, b.turn, b.size * k, b.color);
+        // it spreads out in a quarter second (fast first, then settling), lies there drying and fades away at the end
+        const t = Math.min(1, b.age / 0.25), spread = 1 - (1 - t) ** 3;
+        const dry = b.age / b.life, fade = Math.min(1, (b.life - b.age) / 1.5);
+        // (the square is wider than the pool: room for the droplets round it)
+        const w = b.size * 1.7;
+        stains.add(b, b.x, 0.035, b.z, b.turn, w, 1, w, spread, dry, fade, false);
+        // (again on top of whatever raised thing it lies over, and up the wall faces it reached)
+        for (const top of b.tops) stains.add(b, top.x, top.y, top.z, 0, top.w, 1, top.w, spread, dry, fade, false);
+        for (const f of b.walls) splashes.add(b, f.x, 0.01, f.z, f.yaw, b.size * 0.9, f.h, 1, spread, dry, fade, true, f.seed);
       }
       stains.end();
+      splashes.end();
       for (let i = twigs.length - 1; i >= 0; i--) {
         const w = twigs[i];
         w.age += dt;
