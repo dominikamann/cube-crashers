@@ -5,7 +5,7 @@ import { BOSS, laserReach } from '../sim/systems/boss';
 import { createDisco } from './disco';
 import { createShots } from './shots';
 import { ENEMY_LOOK } from './entities';
-import { playerColor } from './palette';
+import { palette, playerColor } from './palette';
 import { glowMat, InstancedPool } from './pool';
 import type { Theme } from './theme';
 
@@ -56,6 +56,8 @@ interface Beam {
 }
 
 const MAX_PARTICLES = 3000;
+/** a captured cube lies on the scorer's base this long (seconds) before it shatters (see actors.ts) */
+export const CUBE_SHOWN = 0.75;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
 
@@ -378,9 +380,17 @@ export function createFx(scene: THREE.Scene): Fx {
     shake: addShake,
   });
 
+  /** effects that come a moment after their event (a cube laid down on its base shatters a little later) */
+  let later: { at: number; run: () => void }[] = [];
+
   return {
     update(s, events, theme, dt, time) {
       readFloor(theme);
+      if (later.length > 0) {
+        const due = later.filter(l => time >= l.at);
+        later = later.filter(l => time < l.at);
+        for (const l of due) l.run();
+      }
       // a galloping unicorn leaves a rainbow behind it
       for (const v of s.vehicles) {
         if (v.kind !== 'unicorn' || Math.hypot(v.vel.x, v.vel.z) < 3 || Math.floor(time * 30) % 2 !== 0) continue;
@@ -617,6 +627,37 @@ export function createFx(scene: THREE.Scene): Fx {
             if (e.kind === 'frost') burst(e.pos, 1.8, 12, [0xc8f4ff, 0x7fdcff], 5, 0.1);
             if (e.kind === 'bumper') ring(e.pos, 2.4, [0xff2bd6, 0xffe14a]);
             break;
+          case 'cubeCaptured': {
+            // the cube lies on the scorer's base for a moment (see actors.ts), then shatters: a flash, a shockwave in
+            // the scorer's colour, and pieces of the cube flying off
+            const base = s.versus?.flags?.[e.team]?.base;
+            if (!base) break;
+            const at = { ...base }, mine = palette().teams[e.team], theirs = palette().teams[1 - e.team];
+            later.push({
+              at: time + CUBE_SHOWN,
+              run: () => {
+                pops.push({ x: at.x, y: 1, z: at.z, age: 0, life: 0.25, size: 3, color: 0xffffff, ring: false });
+                pops.push({ x: at.x, y: 0.06, z: at.z, age: 0, life: 0.5, size: 5, color: mine, ring: true });
+                chunks(at, 1, 26, [theirs, theirs, 0xffffff], 7, 0.12, 0.3);
+                burst(at, 1, 40, [mine, 0xfff3a0, 0xffffff], 6, 0.1);
+                addShake(0.25);
+              },
+            });
+            break;
+          }
+          case 'cubeDropped':
+            // the cube thuds onto the floor
+            ring(e.pos, 1.4, [palette().teams[e.team], 0xffffff]);
+            break;
+          case 'cubeReturned': {
+            // and lights up back home
+            const base = s.versus?.flags?.[e.team]?.base;
+            if (base) {
+              pops.push({ x: base.x, y: 0.9, z: base.z, age: 0, life: 0.3, size: 2.2, color: palette().teams[e.team], ring: false });
+              burst(base, 0.9, 20, [palette().teams[e.team], 0xffffff], 3, 0.1);
+            }
+            break;
+          }
           case 'bubblePop':
             burst(e.pos, 0.9, 50, [0xff7fc8, 0xffb3df, 0xffffff], 6, 0.14);
             break;

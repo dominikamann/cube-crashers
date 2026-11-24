@@ -11,7 +11,8 @@ import { BOMB, HOTDOG } from '../sim/config/weapons';
 import type { FloorMap } from '../sim/map/tilemap';
 import { zoneTiles } from '../sim/systems/nests';
 import { KART_PAINT, vehicleHop } from './cockpit';
-import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vehicle, VehicleKind } from '../sim/types';
+import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vec2, Vehicle, VehicleKind } from '../sim/types';
+import { CUBE_SHOWN } from './fx';
 import { box, glowMat, lambert, setGlow } from './pool';
 import { looksFor, type Look } from '../characters';
 import { animate, buildFigure, DANCE_SECONDS } from './cast';
@@ -479,6 +480,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   kingWave.position.y = 0.01;
   kingRing.add(kingWave);
   kingRing.visible = false;
+  /** a captured cube shown on the scorer's base before it shatters (see CUBE_SHOWN): whose cube, where, since when */
+  let captured: { cube: number; at: Vec2; from: number } | null = null;
   /** how far the held zone's beat has come (whole beats, the fraction is the running wave) */
   let kingPhase = 0;
   scene.add(kingRing);
@@ -905,6 +908,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         kingFillMat.opacity = opacity;
         if (kingEdgeMat.color.getHex() !== color) (kingEdgeMat.color.setHex(color), kingEdgeMat.emissive.setHex(color));
       }
+      for (const e of events) {
+        const base = e.type === 'cubeCaptured' ? vs?.flags?.[e.team]?.base : undefined;
+        if (e.type === 'cubeCaptured' && base) captured = { cube: 1 - e.team, at: { ...base }, from: time };
+      }
+      if (captured && time - captured.from >= CUBE_SHOWN) captured = null;
       cubes.forEach((c, team) => {
         const f = vs?.flags?.[team];
         const tc = palette().teams[team];
@@ -914,6 +922,15 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         const carried = f.carrier !== null;
         c.cube.position.set(f.pos.x, carried ? 2.2 : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
         c.cube.rotation.set(time * 0.8, time * 1.3, 0);
+        c.cube.scale.setScalar(1);
+        // just captured: it is laid down on the scorer's base, on top of their own cube (which has to be home for a
+        // capture), spinning faster and swelling, before it shatters (fx.ts)
+        if (captured?.cube === team) {
+          const k = (time - captured.from) / CUBE_SHOWN;
+          c.cube.position.set(captured.at.x, 2.4 - 0.7 * k, captured.at.z);
+          c.cube.rotation.set(time * 4, time * 6, 0);
+          c.cube.scale.setScalar(1 + 0.5 * k + 0.12 * Math.sin(k * Math.PI * 6));
+        }
         c.base.position.set(f.base.x, 0.05, f.base.z);
         // a base whose cube is away blinks: nobody scores there until it is home again
         c.base.visible = cubeHome(f) || Math.sin(time * 6) > 0;
