@@ -487,6 +487,9 @@ export function createCockpit(): Cockpit {
       const dim = Math.max(0.5, Math.min(1, theme.sunIntensity / 1.7));
       ambient.intensity = 1.4 * dim;
       sun.intensity = 1.6 * dim;
+      // (in the floor's colours too, so the kart from inside has the paint it has from outside: bluish at night)
+      ambient.color.setHex(theme.hemiSky);
+      sun.color.setHex(theme.sunColor);
       const g = Math.min(theme.glow, 1.4);
       for (const mat of m.glows) mat.emissiveIntensity = mat.userData.baseGlow * g;
     },
