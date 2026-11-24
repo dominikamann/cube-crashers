@@ -227,8 +227,9 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const plateMat = lambert(0x5f6478);
   const plates = new InstancedPool(scene, new THREE.BoxGeometry(1.35, 0.18, 1.35), plateMat, 128);
 
-  const eliteMat = new THREE.MeshBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.8, side: THREE.DoubleSide, forceSinglePass: true });
-  const eliteRings = new InstancedPool(scene, new THREE.RingGeometry(0.85, 1, 20).rotateX(-Math.PI / 2), eliteMat, 32, false);
+  // an elite wears gold: a band round its body, a frame along its top edges and two studs, bright and glinting
+  const eliteGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd447, metalness: 0.35, roughness: 0.3, emissive: 0xffa800, emissiveIntensity: 0.45 });
+  const eliteGold = new InstancedPool(scene, new THREE.BoxGeometry(1, 1, 1), eliteGoldMat, 128);
   const hornMat = glowMat(0xffe14a, 1.2);
   const horns = new InstancedPool(scene, new THREE.BoxGeometry(0.16, 0.16, 0.5), hornMat, 64);
   // the shielder's shield, and the healer's green cross
@@ -438,7 +439,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       // where each segment sits in its worm: [index, length]
       const wormAt = new Map<number, [number, number]>();
       for (const b of allBosses(s)) for (const w of b.worms) w.forEach((id, i) => wormAt.set(id, [i, w.length]));
-      const extra = [shields, crosses, bossHorns, redEyes, eliteRings, horns, fuses, lanes, blastRings, hostile, jetGlow, gums, ice];
+      const extra = [shields, crosses, bossHorns, redEyes, eliteGold, horns, fuses, lanes, blastRings, hostile, jetGlow, gums, ice];
       for (const p of extra) p.begin();
       blastFills.begin();
       warnMat.opacity = pal.blinkWarnings ? (flash ? 0.7 : 0.12) : 0.35 + 0.25 * Math.abs(Math.sin(time * 14));
@@ -662,6 +663,29 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
         }, rhinoBoss ? RHINO_PARTS : spiderBoss ? SPIDER_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
+        if (e.elite && !dominik && !rhinoBoss && !spiderBoss) {
+          // the gold sits on the body as it leans: a point `up` above the middle moves forward with the lean
+          const w = l.w * scale * pulse * sxz, h = l.h * scale * pulse * squash, d = l.d * scale * pulse * sxz;
+          const fx = Math.sin(yaw), fz = Math.cos(yaw), sx = Math.cos(yaw), sz = -Math.sin(yaw);
+          const at = (up: number, ahead: number, aside: number) => ({
+            x: e.pos.x + fx * (Math.sin(lean) * up + ahead) + sx * aside,
+            y: y * pulse + Math.cos(lean) * up,
+            z: e.pos.z + fz * (Math.sin(lean) * up + ahead) + sz * aside,
+          });
+          const band = at(-h * 0.08, 0, 0);
+          eliteGold.addScaled(band.x, band.y, band.z, yaw, w * 1.07, h * 0.16, d * 1.07, undefined, lean, tilt);
+          // (the frame: a bar along each top edge)
+          const bar = 0.07 * scale;
+          for (const side of [-1, 1]) {
+            const across = at(h / 2 + bar / 2, side * d / 2, 0), along = at(h / 2 + bar / 2, 0, side * w / 2);
+            eliteGold.addScaled(across.x, across.y, across.z, yaw, w + bar, bar, bar, undefined, lean, tilt);
+            eliteGold.addScaled(along.x, along.y, along.z, yaw, bar, bar, d + bar, undefined, lean, tilt);
+          }
+          for (const side of [-1, 1]) {
+            const stud = at(h / 2 + 0.1, d * 0.22, side * w * 0.3);
+            eliteGold.add(stud.x, stud.y, stud.z, yaw + Math.PI / 4, 0.14 * scale, undefined, lean, tilt);
+          }
+        }
         if (e.frozenUntil > s.tick) ice.add(e.pos.x, y, e.pos.z, yaw, Math.max(l.w, l.h, l.d) * scale * 1.3);
         if (e.kind === 'wormSegment' || e.kind === 'megaBlock') {
           const big = e.kind === 'megaBlock';
@@ -675,10 +699,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
             const ez = e.pos.z + fz * ((l.d / 2) * scale + 0.03) + sz * side * (big ? 0.7 : 0.22);
             redEyes.add(ex, y + (big ? 0.4 : 0.1), ez, yaw, big ? 2.2 : 1);
           }
-          if (big) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 1.5, 3.4 * (1 + 0.06 * Math.sin(time * 5)));
           continue;
         }
-        if (e.elite) eliteRings.add(e.pos.x, 0.05, e.pos.z, time * 2, e.radius * 2.2 * (1 + 0.08 * Math.sin(time * 6)));
         if (e.kind === 'croc' && (e.state === 'windup' || e.state === 'charge')) {
           tmpFrom.set(e.pos.x, 0.06, e.pos.z);
           lanes.addStretched(tmpFrom, yaw, e.radius * 2, e.state === 'charge' ? e.chargeLeft : 5.5);
@@ -863,6 +885,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
       coins.begin();
       coinInner.begin();
       coinMat.emissiveIntensity = 0.35 * theme.glow;
+      eliteGoldMat.emissiveIntensity = 0.45 * theme.glow;
       for (const c of s.coins) {
         // about to vanish: blink
         if (c.expiresAt - s.tick < 180 && Math.floor(time * 8) % 2 === 0) continue;
