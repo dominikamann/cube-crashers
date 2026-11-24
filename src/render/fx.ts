@@ -636,10 +636,10 @@ export function createFx(scene: THREE.Scene): Fx {
             later.push({
               at: time + CUBE_SHOWN,
               run: () => {
-                pops.push({ x: at.x, y: e.pos ? 0.9 : 1.7, z: at.z, age: 0, life: 0.25, size: 3, color: 0xffffff, ring: false });
+                pops.push({ x: at.x, y: 2.1, z: at.z, age: 0, life: 0.25, size: 3, color: 0xffffff, ring: false });
                 pops.push({ x: at.x, y: 0.06, z: at.z, age: 0, life: 0.5, size: 5, color: mine, ring: true });
-                chunks(at, 1, 26, [theirs, theirs, 0xffffff], 7, 0.12, 0.3);
-                burst(at, 1, 40, [mine, 0xfff3a0, 0xffffff], 6, 0.1);
+                chunks(at, 2.1, 26, [theirs, theirs, 0xffffff], 7, 0.12, 0.3);
+                burst(at, 2.1, 40, [mine, 0xfff3a0, 0xffffff], 6, 0.1);
                 addShake(0.25);
               },
             });

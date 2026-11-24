@@ -1,7 +1,7 @@
 import { spawnWild, WILD } from './wild-boss';
 import { clearSpot, spotClear } from './ground';
 import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
-import { BLOCKS_WALKER, hasLos, isFree, nearestFree } from '../map/tilemap';
+import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type KeepWeapons, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type HeldWeapon, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { addPlayer, removePlayer, spotNear, syncCredits } from './coop';
@@ -697,10 +697,8 @@ function updateFlags(s: SimState): void {
       enemy.pos = { ...enemy.base };
       v.teamScores[p.team]++;
       v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
-      // (laid down just in front of the scorer, where they look: in first person they see it land and shatter)
-      const front = { x: p.pos.x + p.facing.x * 1.4, z: p.pos.z + p.facing.z * 1.4 };
-      const pos = hasLos(s.map, p.pos, front) ? front : { ...p.pos };
-      s.events.push({ type: 'cubeCaptured', team: p.team, playerId: p.id, pos });
+      // (it is laid down on top of the scorer's own cube at the base, where it dances a moment before it shatters)
+      s.events.push({ type: 'cubeCaptured', team: p.team, playerId: p.id, pos: { ...own.base } });
     }
   }
 }

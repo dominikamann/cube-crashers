@@ -1,7 +1,8 @@
 import type { GameInfo, VersusOption } from './net/protocol';
 import { allBosses } from './sim/util';
 import { EARNED_CHARACTERS, FREE_CHARACTERS } from './characters';
-import { JUMP_TICKS, MAX_PLAYERS } from './sim/config/balance';
+import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from './sim/config/balance';
+import { BLOCKS_WALKER, nearestFree } from './sim/map/tilemap';
 import { ALL_WEAPONS, DISCO } from './sim/config/weapons';
 import '@fontsource/press-start-2p/400.css';
 import './ui/ui.css';
@@ -1542,15 +1543,17 @@ function startGame() {
       const p0 = solo.players[0];
       solo.crates.push({ id: solo.nextId++, pos: { x: p0.pos.x + p0.facing.x * 2.2, z: p0.pos.z + p0.facing.z * 2.2 }, coins: 25 });
     }
-    // dev: &rule=capture&capdemo=1 makes the player capture the enemy cube every four seconds, to look at it
+    // dev: &rule=capture&capdemo=1 starts the player a few steps from their base and hands them the enemy cube
+    // whenever they carry none, to walk it home and look at the capture
     if (import.meta.env.DEV && params.has('capdemo') && solo.versus?.flags) {
       const game = solo;
+      const p0 = game.players[0], home = game.versus!.flags![p0.team ?? 0].base;
+      p0.pos = nearestFree(game.map, { x: home.x + 4, z: home.z }, PLAYER_RADIUS, BLOCKS_WALKER);
       setInterval(() => {
         const p = game.players[0], flags = game.versus?.flags;
-        if (!flags || p.team === undefined || game.phase !== 'playing') return;
+        if (!flags || p.team === undefined || game.phase !== 'playing' || flags.some(f => f.carrier === p.id)) return;
         flags[1 - p.team].carrier = p.id;
-        p.pos = { ...flags[p.team].base, x: flags[p.team].base.x + 0.5 };
-      }, 4000);
+      }, 500);
     }
     // dev: &all=1 hands the player every weapon of the game, at level 3
     if (import.meta.env.DEV && params.has('all')) solo.players[0].weapons = ALL_WEAPONS.map(kind => ({ kind, level: 3, cooldown: 0 }));

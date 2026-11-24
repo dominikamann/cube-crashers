@@ -481,7 +481,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   kingRing.add(kingWave);
   kingRing.visible = false;
   /** a captured cube shown on the scorer's base before it shatters (see CUBE_SHOWN): whose cube, where, since when */
-  let captured: { cube: number; at: Vec2; from: number; laid: boolean } | null = null;
+  let captured: { cube: number; at: Vec2; from: number } | null = null;
   /** how far the held zone's beat has come (whole beats, the fraction is the running wave) */
   let kingPhase = 0;
   scene.add(kingRing);
@@ -910,7 +910,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       }
       for (const e of events) {
         const at = e.type === 'cubeCaptured' ? (e.pos ?? vs?.flags?.[e.team]?.base) : undefined;
-        if (e.type === 'cubeCaptured' && at) captured = { cube: 1 - e.team, at: { ...at }, from: time, laid: !!e.pos };
+        if (e.type === 'cubeCaptured' && at) captured = { cube: 1 - e.team, at: { ...at }, from: time };
       }
       if (captured && time - captured.from >= CUBE_SHOWN) captured = null;
       cubes.forEach((c, team) => {
@@ -923,13 +923,14 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         c.cube.position.set(f.pos.x, carried ? 2.2 : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
         c.cube.rotation.set(time * 0.8, time * 1.3, 0);
         c.cube.scale.setScalar(1);
-        // just captured: it is laid down in front of the scorer (an older host does not say where: then on top of
-        // their own cube at the base), spinning faster and swelling, before it shatters (fx.ts)
+        // just captured: it comes down onto the scorer's own cube at the base and dances on top of it, hopping and
+        // spinning faster and faster, before it shatters (fx.ts)
         if (captured?.cube === team) {
           const k = (time - captured.from) / CUBE_SHOWN;
-          c.cube.position.set(captured.at.x, captured.laid ? 1.8 - 0.9 * Math.min(1, k * 2) : 2.4 - 0.7 * k, captured.at.z);
+          const land = 1 - (1 - Math.min(1, k * 2.5)) ** 2;
+          c.cube.position.set(captured.at.x, 3 - 0.95 * land + 0.25 * Math.abs(Math.sin(k * Math.PI * 4)) * land, captured.at.z);
           c.cube.rotation.set(time * 4, time * 6, 0);
-          c.cube.scale.setScalar(1 + 0.5 * k + 0.12 * Math.sin(k * Math.PI * 6));
+          c.cube.scale.setScalar(1 + 0.25 * k + 0.08 * Math.sin(k * Math.PI * 6));
         }
         c.base.position.set(f.base.x, 0.05, f.base.z);
         // a base whose cube is away blinks: nobody scores there until it is home again

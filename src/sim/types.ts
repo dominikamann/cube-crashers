@@ -722,7 +722,7 @@ export type SimEvent =
   | { type: 'cubeTaken'; team: 0 | 1; playerId: number }
   | { type: 'cubeDropped'; team: 0 | 1; pos: Vec2 }
   | { type: 'cubeReturned'; team: 0 | 1 }
-  /** `pos`: where the captured cube is laid down, just in front of whoever brought it home (in their view) */
+  /** `pos`: where the captured cube is laid down (on top of the scorer's own cube at their base) */
   | { type: 'cubeCaptured'; team: 0 | 1; playerId: number; pos?: Vec2 }
   | { type: 'kingMoved'; pos: Vec2 }
   /** zone conquest: `side` (a team when `teams`, else a player) took the zone; `taken` zones have gone so far */

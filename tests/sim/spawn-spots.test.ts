@@ -111,3 +111,21 @@ describe('players do not stand in one another', () => {
     for (const p of [a, b]) expect(isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)).toBe(true);
   });
 });
+
+describe('a captured cube', () => {
+  it('is laid down on top of the scorer\'s own cube at the base', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'team', rule: 'capture', teams: { 0: 0, 1: 1 } } });
+    const red = s.players.find(p => p.team === 0)!;
+    const flags = s.versus!.flags!;
+    const base = flags[0].base;
+    // standing at the edge of the base, looking right at its middle
+    red.pos = { x: base.x + 1, z: base.z };
+    red.facing = { x: -1, z: 0 };
+    flags[1].carrier = red.id;
+    s.events = [];
+    updateVersus(s);
+    const e = s.events.find(x => x.type === 'cubeCaptured');
+    expect(e && e.type === 'cubeCaptured' && e.pos).toBeTruthy();
+    if (e?.type === 'cubeCaptured' && e.pos) expect(d(e.pos, base)).toBeLessThan(0.01);
+  });
+});
