@@ -13,6 +13,7 @@ import { zoneTiles } from '../sim/systems/nests';
 import { KART_PAINT, vehicleHop } from './cockpit';
 import type { Nest, Player, SimEvent, SimState, Tower, TowerKind, Vec2, Vehicle, VehicleKind } from '../sim/types';
 import { CUBE_SHOWN } from './fx';
+import { softPool } from './ambience';
 import { box, glowMat, lambert, setGlow } from './pool';
 import { looksFor, type Look } from '../characters';
 import { animate, buildFigure, DANCE_SECONDS } from './cast';
@@ -430,70 +431,29 @@ function makeNest(map: FloorMap, pos: { x: number; z: number }) {
   return { root, cubes, zone, zoneMat, fill, tiles: tiles.length, lit: -1, dark, glow, charge, chargeLight, beacon, beaconMat, mark, plantedAt: -1 };
 }
 
-/** a soft round puff for the mist: white in the middle, nothing at the edge */
-let puffTexture: THREE.Texture | null = null;
-function puff(): THREE.Texture {
-  if (puffTexture) return puffTexture;
-  // drawn on a canvas in the game; worked out pixel by pixel where there is no page (the tests)
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = c.height = 64;
-    const g = c.getContext('2d')!;
-    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.45, 'rgba(255,255,255,0.45)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-    puffTexture = new THREE.CanvasTexture(c);
-    return puffTexture;
-  }
-  const N = 64, data = new Uint8Array(N * N * 4);
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const r = Math.min(1, Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) / (N / 2));
-      const i = (y * N + x) * 4;
-      data[i] = data[i + 1] = data[i + 2] = 255;
-      data[i + 3] = Math.round(255 * (1 - r) ** 1.6);
-    }
-  }
-  puffTexture = new THREE.DataTexture(data, N, N);
-  puffTexture.needsUpdate = true;
-  return puffTexture;
-}
-
 /**
- * A coloured mist over a round spot (a zone, a base): soft puffs that drift slowly round it and breathe, see-through
- * so the fight in it stays in sight. update() sets where, how wide, its colour and how thick.
+ * A coloured mist over a round spot (a zone, a base): soft glowing puffs that drift slowly round it and breathe,
+ * see-through so the fight in it stays in sight. They are the same soft quads as the mist over the special floors
+ * (ambience.ts: worked out in a shader, no picture), added onto the scene, so how thick a puff is goes in its colour.
+ * update() sets where, how wide, the colour and how thick.
  */
 function createMist(count: number): { group: THREE.Group; update: (at: { x: number; z: number }, radius: number, color: number, opacity: number, time: number) => void } {
   const group = new THREE.Group();
-  const puffs = Array.from({ length: count }, (_, i) => {
-    // (it blends its colour in and leaves the picture's own alpha alone: Safari shows soft edges that lower it as
-    // black squares wherever a blurred panel lies over the game, as the results do)
-    const mat = new THREE.SpriteMaterial({ map: puff(), transparent: true, depthWrite: false, opacity: 0 });
-    mat.blending = THREE.CustomBlending;
-    mat.blendSrc = THREE.SrcAlphaFactor;
-    mat.blendDst = THREE.OneMinusSrcAlphaFactor;
-    mat.blendSrcAlpha = THREE.ZeroFactor;
-    mat.blendDstAlpha = THREE.OneFactor;
-    const sprite = new THREE.Sprite(mat);
-    group.add(sprite);
-    // where in the spot it drifts (out from the middle, round it), how high, how big, how fast
-    // (a mist on the ground: low and small enough to stay under the eyes of whoever stands in it, so it never fills
-    // a first-person view)
-    return { sprite, mat, out: 0.15 + ((i * 0.618) % 1) * 0.85, angle: i * 2.399, y: 0.12 + ((i * 0.37) % 1) * 0.3, size: 0.9 + ((i * 0.53) % 1) * 0.7, speed: 0.08 + ((i * 0.29) % 1) * 0.12 };
-  });
+  const pool = softPool(group, [], [], 1, THREE.AdditiveBlending);
+  // (a mist on the ground: low and small enough to stay under the eyes of whoever stands in it, so it never fills
+  // a first-person view)
+  const puffs = Array.from({ length: count }, (_, i) => ({ out: 0.15 + ((i * 0.618) % 1) * 0.85, angle: i * 2.399, y: 0.12 + ((i * 0.37) % 1) * 0.3, size: 0.9 + ((i * 0.53) % 1) * 0.7, speed: 0.08 + ((i * 0.29) % 1) * 0.12 }));
+  const tint = new THREE.Color();
   return {
     group,
     update(at, radius, color, opacity, time) {
+      pool.begin();
       for (const p of puffs) {
         const a = p.angle + time * p.speed;
-        p.sprite.position.set(at.x + Math.cos(a) * radius * p.out, p.y + Math.sin(time * 0.7 + p.angle) * 0.06, at.z + Math.sin(a) * radius * p.out);
-        p.sprite.scale.setScalar(Math.min(1.7, p.size * (0.85 + 0.15 * Math.sin(time * 0.9 + p.angle))));
-        p.mat.color.setHex(color);
-        p.mat.opacity = opacity * (0.7 + 0.3 * Math.sin(time * 1.3 + p.angle * 2));
+        tint.setHex(color).multiplyScalar(opacity * (0.7 + 0.3 * Math.sin(time * 1.3 + p.angle * 2)));
+        pool.add(at.x + Math.cos(a) * radius * p.out, p.y + Math.sin(time * 0.7 + p.angle) * 0.06, at.z + Math.sin(a) * radius * p.out, 0, Math.min(1.7, p.size * (0.85 + 0.15 * Math.sin(time * 0.9 + p.angle))), tint.getHex());
       }
+      pool.end();
     },
   };
 }
@@ -550,7 +510,53 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const kingWave = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2), kingWaveMat);
   kingWave.position.y = 0.01;
   kingRing.add(kingWave);
+  // a ring of light segments over the edge, turning the other way
+  const kingSegments = new THREE.Group();
+  for (let i = 0; i < 12; i++) kingSegments.add(new THREE.Mesh(new THREE.RingGeometry(0.85, 0.91, 4, 1, (i * Math.PI) / 6, Math.PI / 10).rotateX(-Math.PI / 2), kingEdgeMat));
+  kingSegments.position.y = 0.012;
+  kingRing.add(kingSegments);
   kingRing.visible = false;
+  // a curtain of light round the edge, fading upwards, with bands rising through it: in first person it shows where
+  // the zone begins and that you stand in it
+  const kingCurtainMat = new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(0xffcf3a) }, opacity: { value: 0.35 }, time: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform vec3 color; uniform float opacity; uniform float time; varying vec2 vUv;
+      void main() {
+        // (kept in range: a NaN here would smear into black blocks through the bloom)
+        float up = clamp(1.0 - vUv.y, 0.0, 1.0);
+        float fade = up * up;
+        float bands = 0.7 + 0.3 * sin((vUv.y * 5.0 - time * 0.8) * 6.2832);
+        gl_FragColor = vec4(color * clamp(fade * bands * opacity, 0.0, 1.0), 1.0);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const kingCurtain = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64, 1, true).translate(0, 0.5, 0), kingCurtainMat);
+  kingCurtain.visible = false;
+  scene.add(kingCurtain);
+  // zone conquest: how far the hold has come, as an arc round the edge that fills clockwise in the colour of who takes it
+  const kingArcMat = new THREE.ShaderMaterial({
+    uniforms: { color: { value: new THREE.Color(0xffffff) }, progress: { value: 0 } },
+    vertexShader: 'varying vec2 vPos; void main() { vPos = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform vec3 color; uniform float progress; varying vec2 vPos;
+      void main() {
+        if (dot(vPos, vPos) < 1e-6) discard;
+        float a = fract(atan(vPos.x, -vPos.y) / 6.2832 + 1.0);
+        if (a > progress) discard;
+        gl_FragColor = vec4(color, 0.95);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const kingArc = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.1, 96).rotateX(-Math.PI / 2), kingArcMat);
+  kingArc.visible = false;
+  scene.add(kingArc);
   // a mist in the zone that takes its colour
   const kingMist = createMist(34);
   kingMist.group.visible = false;
@@ -999,22 +1005,24 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
       // versus: the king zone and the two cubes with their bases
       const vs = s.versus;
-      // (the mist only while the match is played: behind the results it is not wanted, and Safari draws it as dark
-      // bars under their blurred panel)
-      const misty = s.phase === 'playing';
-      kingRing.visible = !!vs?.king;
-      kingMist.group.visible = !!vs?.king && misty;
+      kingRing.visible = kingMist.group.visible = kingCurtain.visible = !!vs?.king;
+      kingArc.visible = !!vs?.conquest && !!vs.king;
       if (vs?.king) {
         kingRing.position.set(vs.king.pos.x, 0.06, vs.king.pos.z);
         kingRing.scale.setScalar(vs.king.radius);
         kingRing.rotation.y = time * 0.6;
+        kingSegments.rotation.y = -time * 1.6;
+        kingCurtain.position.set(vs.king.pos.x, 0.02, vs.king.pos.z);
+        kingCurtain.scale.set(vs.king.radius, 1.1, vs.king.radius);
+        kingCurtainMat.uniforms.time.value = time;
         // empty it glows gold; held it takes the colour of who holds it (a team, or a player's suit) and pulses,
         // faster and faster the closer they come to winning; fought over it flashes white, nobody's colour
         const zone = kingZone(s);
-        let color = 0xffcf3a, opacity = 0.22 + 0.08 * Math.sin(time * 4);
+        // (the floor only a tint: the edge, the curtain and the waves tell the zone, not a painted disc)
+        let color = 0xffcf3a, opacity = 0.09 + 0.03 * Math.sin(time * 4);
         if (zone.state === 'contested') {
           color = 0xffffff;
-          opacity = Math.sin(time * 14) > 0 ? 0.45 : 0.1;
+          opacity = Math.sin(time * 14) > 0 ? 0.22 : 0.05;
         }
         // whose it is: who holds it, or in zone conquest whose hold is building up (also while they stepped out);
         // how near: to the win, or to taking the zone
@@ -1027,7 +1035,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
           // beats a second: from one every 1.7 s to four a second near the win (the phase runs on at its own
           // rate, so speeding up never makes a wave jump)
           kingPhase += frameDt * (0.6 + 3.4 * near * near);
-          opacity = 0.3 + 0.06 * Math.cos(kingPhase * Math.PI * 2);
+          opacity = 0.13 + 0.04 * Math.cos(kingPhase * Math.PI * 2);
         }
         const beat = kingPhase % 1;
         kingWave.visible = owner !== null;
@@ -1038,6 +1046,16 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         kingFillMat.opacity = opacity;
         kingMist.update(vs.king.pos, vs.king.radius, color, zone.state === 'contested' ? (Math.sin(time * 14) > 0 ? 0.26 : 0.1) : owner !== null ? 0.24 : 0.15, time);
         if (kingEdgeMat.color.getHex() !== color) (kingEdgeMat.color.setHex(color), kingEdgeMat.emissive.setHex(color));
+        kingCurtainMat.uniforms.color.value.setHex(color);
+        kingCurtainMat.uniforms.opacity.value = zone.state === 'contested' ? (Math.sin(time * 14) > 0 ? 0.5 : 0.15) : owner !== null ? 0.4 : 0.25;
+        if (cq) {
+          const lead = conquestLead(s);
+          const taker = zone.state === 'held' ? zone.side : (lead?.side ?? null);
+          kingArc.position.set(vs.king.pos.x, 0.07, vs.king.pos.z);
+          kingArc.scale.setScalar(vs.king.radius);
+          kingArcMat.uniforms.progress.value = taker === null ? 0 : Math.min(1, (cq.holds[taker] ?? 0) / conquestHold(s));
+          kingArcMat.uniforms.color.value.setHex(color);
+        }
       }
       for (const e of events) {
         const at = e.type === 'cubeCaptured' ? (e.pos ?? vs?.flags?.[e.team]?.base) : undefined;
@@ -1052,8 +1070,7 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
           mat.color.setHex(tc);
           if ('emissive' in mat) (mat as THREE.MeshStandardMaterial).emissive.setHex(tc);
         }
-        c.cube.visible = c.base.visible = !!f;
-        c.mist.group.visible = !!f && misty;
+        c.cube.visible = c.base.visible = c.mist.group.visible = !!f;
         c.ghost.visible = false;
         if (!f) return;
         const carried = f.carrier !== null;

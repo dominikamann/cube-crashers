@@ -51,6 +51,9 @@ export class SmoothScenePass extends Pass {
  * drawing of the scene, and every drawing of a scene renews the shadows of its lights. They are the same ones
  * the picture itself was just drawn with.
  */
+/** what the ambient occlusion leaves out for a moment (see AmbientPass.renderOverride), kept to spare a list a frame */
+const hidden: THREE.Object3D[] = [];
+
 export class AmbientPass extends GTAOPass {
   /** where the picture to shade comes from, if not from the composer's buffer (it is only read) */
   source: SmoothScenePass | null = null;
@@ -63,7 +66,16 @@ export class AmbientPass extends GTAOPass {
     const auto = renderer.shadowMap.autoUpdate, due = renderer.shadowMap.needsUpdate;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = false;
+    // mist, glows, glass and other see-through things are no surfaces: drawn with the override's solid normal
+    // material they would shade what lies behind them (soft wisps of mist came out as hard stepped rectangles)
+    hidden.length = 0;
+    this.scene.traverseVisible(o => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (m && !Array.isArray(m) && m.transparent) hidden.push(o);
+    });
+    for (const o of hidden) o.visible = false;
     super.renderOverride(renderer, overrideMaterial, renderTarget, clearColor, clearAlpha);
+    for (const o of hidden) o.visible = true;
     renderer.shadowMap.autoUpdate = auto;
     renderer.shadowMap.needsUpdate = due;
   }

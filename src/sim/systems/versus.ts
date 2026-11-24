@@ -1,7 +1,7 @@
 import { spawnWild, WILD } from './wild-boss';
 import { clearSpot, spotClear } from './ground';
 import { JUMP_TICKS, MAX_PLAYERS, PLAYER_RADIUS } from '../config/balance';
-import { BLOCKS_WALKER, isFree, nearestFree } from '../map/tilemap';
+import { BLOCKS_WALKER, isFree, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { TICK_RATE, type CoinOpRule, type KeepWeapons, type Player, type SimState, type Vec2, type VersusMode, type VersusRule, type HeldWeapon, type WeaponKind } from '../types';
 import { dist } from '../util';
 import { addPlayer, removePlayer, spotNear, syncCredits } from './coop';
@@ -227,7 +227,22 @@ function spawnFor(s: SimState, p: Player, others: Vec2[], enemies: Vec2[]): Vec2
 /** where the king zone can be: nest spots, plazas and power spots of the map */
 function kingSpots(s: SimState): Vec2[] {
   const list = [...s.map.nestSpots.map(n => n.pos), ...s.map.powerSpots];
-  return list.length > 0 ? list : [s.map.spawn];
+  // (a zone over a conveyor, a boost pad, glitch floor, a ramp or a tower pad mixes up two things on the floor: those
+  // spots only where the map has none clear of them)
+  const plain = list.filter(at => plainFloor(s, at, VERSUS.kingRadius) && s.map.pads.every(p => dist(p.pos, at) > VERSUS.kingRadius + 0.5));
+  return plain.length > 0 ? plain : list.length > 0 ? list : [s.map.spawn];
+}
+
+/** nothing but plain floor (and walls) within `radius` of a spot: no conveyor, boost pad, glitch floor or ramp */
+function plainFloor(s: SimState, at: Vec2, radius: number): boolean {
+  for (let dz = -radius; dz <= radius; dz += 0.5) {
+    for (let dx = -radius; dx <= radius; dx += 0.5) {
+      if (dx * dx + dz * dz > radius * radius) continue;
+      const tile = tileAt(s.map, at.x + dx, at.z + dz);
+      if (tile !== Tile.Floor && tile !== Tile.Wall && tile !== Tile.LowWall) return false;
+    }
+  }
+  return true;
 }
 
 /** the spot furthest from all of `enemies`, not inside any of `others` (where the rest stand or get up) */

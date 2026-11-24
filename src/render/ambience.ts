@@ -450,7 +450,7 @@ function drawBird(b: Bird, time: number, size: number, flying: boolean, bodies: 
 
 /** a pool of soft round puffs that always face the camera (a radial fade, drawn as billboards): fog and smoke
  * without corners, from above and in first person alike. An instance's size is its x scale. */
-function softPool(group: THREE.Group, owned: { dispose(): void }[], pools: InstancedPool[], opacity: number, blending: THREE.Blending = THREE.NormalBlending): InstancedPool {
+export function softPool(group: THREE.Group, owned: { dispose(): void }[], pools: InstancedPool[], opacity: number, blending: THREE.Blending = THREE.NormalBlending): InstancedPool {
   const geo = new THREE.PlaneGeometry(1, 1);
   const mat = new THREE.ShaderMaterial({
     uniforms: { opacity: { value: opacity } },
