@@ -305,8 +305,12 @@ export interface Screens {
   /** `live`: a game with others that goes on while this menu is open */
   pause(live?: boolean, leave?: { label: string; action: () => void }): void;
   /** `leave`: in a game with others, the way out of it (back to the list one came from) instead of "Main menu" */
-  /** `again.auto`: seconds until it goes on by itself (online and on the LAN: the game goes on for whoever is away) */
-  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void; auto?: number }, leave?: { label: string; action: () => void }): void;
+  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }, leave?: { label: string; action: () => void }): void;
+  /**
+   * Online and on the LAN a match ends straight in the lobby, which shows how it went until the next one starts.
+   * `next`: what a host's lobby does by itself at `at` (ms, Date.now()) unless it is clicked first: the next match.
+   */
+  setLastMatch(m: { won: boolean; summary: RunSummary; next?: { label: string; action: () => void; at: number } } | null): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
   lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null, game?: GameInfo | null): void;
   /** the online server list; update() fills it in as servers answer */
@@ -340,6 +344,125 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     build(screen);
     layer.append(screen);
     screen.querySelector<HTMLButtonElement>('button')?.focus();
+  }
+
+  /** what a match came to: the headline, time, score, what was won, and the ranking (the results, and the lobby's last match) */
+  /** the match that just ended, for the lobby (see setLastMatch); its `next` goes once */
+  let lastMatch: { won: boolean; summary: RunSummary; next?: { label: string; action: () => void; at: number; done?: boolean } } | null = null;
+
+  /** the lobby's box with the last match, and a host's button for the next one that presses itself when its time is up */
+  function lastMatchBox(s: HTMLElement): void {
+    if (!lastMatch) return;
+    const box = document.createElement('div');
+    box.className = 'last-match';
+    text(box, 'p', 'last-match-title', t('lobby.lastMatch'));
+    resultBody(box, lastMatch.won, lastMatch.summary);
+    s.append(box);
+    const next = lastMatch.next;
+    if (!next || next.done) return;
+    const go = () => {
+      if (next.done) return;
+      next.done = true;
+      next.action();
+    };
+    const b = button(box, next.label, go, true);
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((next.at - Date.now()) / 1000));
+      b.textContent = `${next.label} (${left})`;
+      return left;
+    };
+    tick();
+    // (the lobby is drawn anew whenever something changes: each drawing's timer stops once its button is gone)
+    const timer = setInterval(() => {
+      if (!b.isConnected || next.done) return clearInterval(timer);
+      if (tick() === 0) {
+        clearInterval(timer);
+        go();
+      }
+    }, 250);
+  }
+
+  function resultBody(s: HTMLElement, won: boolean, r: RunSummary): void {
+    // a won Tower Run gets its own headline: the whole tower is done
+    const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && (r.mode === 'bossrush' || r.mode === 'brawl') ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
+    text(s, 'h2', '', title);
+    if (!won) text(s, 'p', '', t('lost.subtitle'));
+    const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
+    const versus = r.mode === 'versus';
+    if (r.daily) text(s, 'p', 'daily-best', t('daily.result', { date: r.daily }));
+    if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors, total: r.floorsTotal })}` : ''}`);
+    if (versus) text(s, 'p', '', t('result.time', { time: `${m}:${sec}` }));
+    else text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
+    if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
+    for (const u of r.unlocked) text(s, 'p', 'newbest', t('result.unlocked', { name: t(`unlock.${u}` as 'unlock.endless') }));
+    if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
+
+    // the table: in a team match red and blue apart, the winning team first; the winners' rows in gold with a
+    // star, the player's own row marked. A wrapper scrolls sideways on a narrow screen, so no column is lost
+    const wrap = document.createElement('div');
+    wrap.className = 'ranking-wrap';
+    const table = document.createElement('table');
+    // (a full house gets tighter rows)
+    table.className = `ranking txt${r.ranking.length > 6 ? ' many' : ''}`;
+    const head = ['', t('rank.player'), t('rank.score'), t('rank.kills'), t('rank.weapon'), t('rank.combo'), t('rank.towers'), t('rank.coins'), t('rank.revives'), t('rank.downs')];
+    // versus has no towers, coins or revives: just who scored, who crashed whom, and who went down
+    const cols = versus ? [0, 1, 2, 3, 9] : head.map((_h, i) => i);
+    // (the place and the names read from the left, numbers line up on the right)
+    const align = (j: number) => (j === 0 ? 'rank' : j === 1 || j === 4 ? 'left' : '');
+    table.innerHTML = `<tr>${cols.map(i => `<th class="${align(i)}">${head[i]}</th>`).join('')}</tr>`;
+    const teams = r.teamScores;
+    const groups: { team?: 0 | 1; rows: RunSummary['ranking'] }[] = teams
+      ? ([0, 1] as const).slice().sort((a, b) => teams[b] - teams[a]).map(team => ({ team, rows: r.ranking.filter(row => row.team === team) }))
+      : [{ rows: r.ranking }];
+    const top = teams ? Math.max(...teams) : r.ranking[0]?.score ?? 0;
+    // (as the match says it: nobody wins with nothing, and two teams level both lose the star)
+    const someone = r.ranking.length > 1 && top > 0 && !(teams && teams[0] === teams[1]);
+    const winner = (row: RunSummary['ranking'][number]) => someone && (teams ? teams[row.team ?? 0] === top : row.score === top);
+    let place = 0;
+    for (const g of groups) {
+      if (g.team !== undefined) {
+        const tr = document.createElement('tr');
+        tr.className = `team team${g.team}`;
+        tr.innerHTML = `<th colspan="${cols.length}">${t(g.team === 0 ? 'board.red' : 'board.blue')} \u00b7 ${teams![g.team]}</th>`;
+        table.append(tr);
+      }
+      for (const row of g.rows) {
+        place++;
+        const first = winner(row);
+        const tr = document.createElement('tr');
+        tr.className = `${first ? 'win' : ''}${row.id === r.me ? ' me' : ''}`;
+        const cells = [first ? '\u2605' : `${place}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
+        cols.forEach(j => {
+          const c = cells[j];
+          const td = document.createElement('td');
+          td.className = align(j);
+          if (j !== 1) {
+            td.textContent = String(c);
+          } else {
+            const dot = document.createElement('i');
+            dot.style.background = hex(row.color);
+            const name = document.createElement('span');
+            name.textContent = String(c) + (row.bot ? ' \u{1F916}' : '');
+            name.style.color = hex(row.color);
+            td.append(dot, name);
+            if (row.id === r.me) {
+              const you = document.createElement('span');
+              you.className = 'you';
+              you.textContent = t('board.you');
+              td.append(you);
+            }
+          }
+          tr.append(td);
+        });
+        table.append(tr);
+      }
+    }
+    wrap.append(table);
+    s.append(wrap);
+    if (!versus) {
+      text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
+      text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
+    }
   }
 
   function button(parent: HTMLElement, label: string, onClick: () => void, alt = false) {
@@ -1172,108 +1295,18 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     },
     result(won, r, again, leave) {
       show('result', s => {
-        // a won Tower Run gets its own headline: the whole tower is done
-        const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && (r.mode === 'bossrush' || r.mode === 'brawl') ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));
-        text(s, 'h2', '', title);
-        if (!won) text(s, 'p', '', t('lost.subtitle'));
-        const m = Math.floor(r.seconds / 60), sec = String(Math.floor(r.seconds % 60)).padStart(2, '0');
-        const versus = r.mode === 'versus';
-        if (r.daily) text(s, 'p', 'daily-best', t('daily.result', { date: r.daily }));
-        if (!versus) text(s, 'p', '', `${t(`difficulty.${r.difficulty}`)} · ${t('result.time', { time: `${m}:${sec}` })}${r.mode === 'run' ? ` · ${t('result.floors', { n: r.floors, total: r.floorsTotal })}` : ''}`);
-        if (versus) text(s, 'p', '', t('result.time', { time: `${m}:${sec}` }));
-        else text(s, 'div', 'bigscore', t('result.score', { score: r.score }));
-        if (r.best[0] === r.score && r.score > 0) text(s, 'p', 'newbest', t('result.newBest'));
-        for (const u of r.unlocked) text(s, 'p', 'newbest', t('result.unlocked', { name: t(`unlock.${u}` as 'unlock.endless') }));
-        if (r.tickets > 0) text(s, 'p', 'newbest', t('result.tickets', { n: r.tickets }));
-
-        // the table: in a team match red and blue apart, the winning team first; the winners' rows in gold with a
-        // star, the player's own row marked. A wrapper scrolls sideways on a narrow screen, so no column is lost
-        const wrap = document.createElement('div');
-        wrap.className = 'ranking-wrap';
-        const table = document.createElement('table');
-        // (a full house gets tighter rows)
-        table.className = `ranking txt${r.ranking.length > 6 ? ' many' : ''}`;
-        const head = ['', t('rank.player'), t('rank.score'), t('rank.kills'), t('rank.weapon'), t('rank.combo'), t('rank.towers'), t('rank.coins'), t('rank.revives'), t('rank.downs')];
-        // versus has no towers, coins or revives: just who scored, who crashed whom, and who went down
-        const cols = versus ? [0, 1, 2, 3, 9] : head.map((_h, i) => i);
-        // (the place and the names read from the left, numbers line up on the right)
-        const align = (j: number) => (j === 0 ? 'rank' : j === 1 || j === 4 ? 'left' : '');
-        table.innerHTML = `<tr>${cols.map(i => `<th class="${align(i)}">${head[i]}</th>`).join('')}</tr>`;
-        const teams = r.teamScores;
-        const groups: { team?: 0 | 1; rows: RunSummary['ranking'] }[] = teams
-          ? ([0, 1] as const).slice().sort((a, b) => teams[b] - teams[a]).map(team => ({ team, rows: r.ranking.filter(row => row.team === team) }))
-          : [{ rows: r.ranking }];
-        const top = teams ? Math.max(...teams) : r.ranking[0]?.score ?? 0;
-        // (as the match says it: nobody wins with nothing, and two teams level both lose the star)
-        const someone = r.ranking.length > 1 && top > 0 && !(teams && teams[0] === teams[1]);
-        const winner = (row: RunSummary['ranking'][number]) => someone && (teams ? teams[row.team ?? 0] === top : row.score === top);
-        let place = 0;
-        for (const g of groups) {
-          if (g.team !== undefined) {
-            const tr = document.createElement('tr');
-            tr.className = `team team${g.team}`;
-            tr.innerHTML = `<th colspan="${cols.length}">${t(g.team === 0 ? 'board.red' : 'board.blue')} \u00b7 ${teams![g.team]}</th>`;
-            table.append(tr);
-          }
-          for (const row of g.rows) {
-            place++;
-            const first = winner(row);
-            const tr = document.createElement('tr');
-            tr.className = `${first ? 'win' : ''}${row.id === r.me ? ' me' : ''}`;
-            const cells = [first ? '\u2605' : `${place}.`, row.name, row.score, row.kills, sourceName(row.bestWeapon), row.bestCombo, row.towers, row.coins, row.revives, row.downs];
-            cols.forEach(j => {
-              const c = cells[j];
-              const td = document.createElement('td');
-              td.className = align(j);
-              if (j !== 1) {
-                td.textContent = String(c);
-              } else {
-                const dot = document.createElement('i');
-                dot.style.background = hex(row.color);
-                const name = document.createElement('span');
-                name.textContent = String(c) + (row.bot ? ' \u{1F916}' : '');
-                name.style.color = hex(row.color);
-                td.append(dot, name);
-                if (row.id === r.me) {
-                  const you = document.createElement('span');
-                  you.className = 'you';
-                  you.textContent = t('board.you');
-                  td.append(you);
-                }
-              }
-              tr.append(td);
-            });
-            table.append(tr);
-          }
-        }
-        wrap.append(table);
-        s.append(wrap);
-        if (!versus) {
-          text(s, 'p', '', t('result.team', { kills: r.kills, combo: r.maxCombo, credits: r.credits }));
-          text(s, 'p', '', `${t('result.best')}: ${r.best.join(' · ')}`);
-        }
+        resultBody(s, won, r);
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);
-        if (again) {
-          const b = button(row, again.label, again.action, true);
-          // online and on the LAN it goes on by itself: the button counts down, then does what it says
-          if (again.auto) {
-            let left = again.auto;
-            b.textContent = `${again.label} (${left})`;
-            const timer = setInterval(() => {
-              if (!b.isConnected) return clearInterval(timer);
-              left--;
-              b.textContent = `${again.label} (${left})`;
-              if (left > 0) return;
-              clearInterval(timer);
-              again.action();
-            }, 1000);
-          }
-        } else button(row, t('menu.playAgain'), actions.play, true);
+        if (again) button(row, again.label, again.action, true);
+        else button(row, t('menu.playAgain'), actions.play, true);
         if (leave) button(row, leave.label, leave.action);
         else button(row, t('menu.mainMenu'), actions.mainMenu);
       });
+    },
+    setLastMatch(m) {
+      lastMatch = m;
     },
     lobby(players, difficulty, isHost, me, lan, vote, server, game) {
       countdown = null;
@@ -1283,6 +1316,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           text(s, 'p', 'lobby-server', server.name);
           gameBadges(s, { ...server, difficulty });
         }
+        lastMatchBox(s);
         const list = document.createElement('div');
         list.className = 'lobby txt';
         for (const p of players) {

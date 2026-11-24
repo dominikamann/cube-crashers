@@ -170,8 +170,8 @@ function startGame() {
   fpsEl.className = 'fps';
   document.body.append(fpsEl);
   let fpsFrames = 0, fpsSince = performance.now();
-  /** online and on the LAN, the results stay up this long before the game goes on by itself */
-  const AUTO_ON_SECONDS = 10;
+  /** on a LAN host's lobby after a versus match, the next one starts by itself after this long */
+  const NEXT_MATCH_SECONDS = 10;
   /** king of the cube: your side's points last frame (-1: not in such a match), for the tick on every new one */
   let kingSeen = -1;
   /** the graphics test while it runs (see graphics-test.ts), its notice on screen, and who waits for it */
@@ -904,13 +904,18 @@ function startGame() {
     setTimeout(() => {
       if (mode !== 'over') return;
       setHudVisible(false);
-      // online and on the LAN the game goes on by itself after a while, for whoever is away from the keys: back to
-      // the lobby, or for a host the next match
-      screens.result(won, result, role === 'solo' ? again : { ...again, auto: AUTO_ON_SECONDS }, wayOut());
+      if (role === 'solo') return screens.result(won, result, again, wayOut());
+      // online and on the LAN a match ends straight in the lobby, which shows how it went; a host's versus goes on
+      // to the next match by itself after a while, so nobody waits for whoever is away from the keys
+      const goesOn = role === 'host' && !!s.versus && (!!gunNext || lanDiscovery);
+      screens.setLastMatch({ won, summary: result, next: goesOn ? { label: again.label, action: again.action, at: Date.now() + NEXT_MATCH_SECONDS * 1000 } : undefined });
+      backToLobby();
     }, 1800);
   }
 
   function enterPlay() {
+    // (the lobby showed the last match until this one began)
+    screens.setLastMatch(null);
     frameEvents = [];
     killcam.clear();
     replay = null;
