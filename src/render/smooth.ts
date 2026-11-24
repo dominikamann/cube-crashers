@@ -2,13 +2,19 @@ import { DT, type SimState, type Vec2 } from '../sim/types';
 
 /** a jump further than this in one tick is a teleport (a respawn, a new floor): it is not smoothed */
 const TELEPORT = 3;
-/** how many of its last positions are kept of each player and vehicle */
-const KEPT = 4;
+/** how many of its last positions are kept of each player and vehicle (enough for the longest wait, see MAX_DELAY) */
+const KEPT = 12;
 /**
  * A LAN client draws this many ticks behind the snapshots as they come in: the time between two of them, and a
  * little more for one that is late.
  */
 const SNAPSHOT_DELAY = 2.5;
+/**
+ * Over a shaky line (a weak Wi-Fi, the internet) snapshots come in bursts after a pause: the client then waits
+ * as long as the newest one it had grew old lately before the next came, up to this many ticks. The wait grows at
+ * once and shrinks slowly (JITTER_FADE per frame: by half in about ten seconds), so it does not see-saw.
+ */
+const MAX_DELAY = 15, JITTER_FADE = 0.999;
 /** a client's clock against the host's ticks: how much of each new measurement is taken, and when it starts over */
 const CLOCK_EASE = 0.1, CLOCK_RESET = 8;
 
@@ -75,6 +81,8 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
   let arrived = false;
   /** a client's own clock in ticks, how far it is ahead of the host's ticks, and the moment it last drew */
   let clock = 0, ahead: number | null = null, drawnAt = -Infinity;
+  /** how old the newest snapshot grew lately before the next one came, in ticks (see MAX_DELAY) */
+  let jitter = 0;
   const known = new Map<string, Sample[]>();
   return (s, alpha, remote) => {
     const things: Thing[] = [...s.players.map(p => ({ key: `p${p.id}`, pos: p.pos, aim: p.aim, aimPoint: p.aimPoint })), ...s.vehicles.map(v => ({ key: `v${v.id}`, pos: v.pos }))];
@@ -111,8 +119,10 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
       arrived = true;
     }
     lastAlpha = alpha;
+    // how far the host's clock is past the newest snapshot by now: what the client has to wait for at the most
+    if (remote && ahead !== null) jitter = Math.max(Math.min(clock - ahead - tick, MAX_DELAY), jitter * JITTER_FADE);
     // the moment to draw, in ticks; a client's never runs backwards, however its snapshots come in
-    const at = remote ? Math.max(drawnAt, clock - (ahead ?? 0) - SNAPSHOT_DELAY) : arrived ? tick : tick - 1 + Math.max(0, Math.min(1, alpha));
+    const at = remote ? Math.max(drawnAt, clock - (ahead ?? 0) - Math.min(MAX_DELAY, Math.max(SNAPSHOT_DELAY, jitter + 0.5))) : arrived ? tick : tick - 1 + Math.max(0, Math.min(1, alpha));
     drawnAt = remote ? Math.min(at, tick) : -Infinity;
     const real = things.map(t => ({ ...t, x: t.pos.x, z: t.pos.z, aimX: t.aim?.x, aimZ: t.aim?.z, pointX: t.aimPoint?.x, pointZ: t.aimPoint?.z }));
     for (const { key, pos, aim, aimPoint } of things) {

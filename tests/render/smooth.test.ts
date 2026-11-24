@@ -156,4 +156,21 @@ describe('smooth positions when frames and ticks do not line up', () => {
       last = x;
     }
   });
+
+  it('over a shaky line waits longer, so a kart keeps moving through the pauses between bursts of snapshots', () => {
+    const s = state();
+    const smooth = createSmoother();
+    const drawn: number[] = [];
+    for (let frame = 0; frame < 600; frame++) {
+      // every half second: snapshots for a third of a second, then nothing, then the missed ones all at once
+      const cycle = frame % 30;
+      if (cycle < 20 && cycle % 2 === 0) drive(s, 2);
+      if (cycle === 29) drive(s, 10);
+      const restore = smooth(s, 0.5, { frameDt: 1 / 60 });
+      drawn.push(s.vehicles[0].pos.x);
+      restore();
+    }
+    // once it has seen how the line goes, the kart never stands still
+    for (let i = 300; i < drawn.length; i++) expect(drawn[i] - drawn[i - 1]).toBeGreaterThan(0.05);
+  });
 });
