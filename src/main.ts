@@ -1547,7 +1547,8 @@ function startGame() {
     // whenever they carry none, to walk it home and look at the capture
     if (import.meta.env.DEV && params.has('capdemo') && solo.versus?.flags) {
       const game = solo;
-      const p0 = game.players[0], home = game.versus!.flags![p0.team ?? 0].base;
+      // (&away=1: next to the enemy base instead, to look at a base whose cube is away)
+      const p0 = game.players[0], home = game.versus!.flags![params.has('away') ? 1 - (p0.team ?? 0) : (p0.team ?? 0)].base;
       p0.pos = nearestFree(game.map, { x: home.x + 4, z: home.z }, PLAYER_RADIUS, BLOCKS_WALKER);
       setInterval(() => {
         const p = game.players[0], flags = game.versus?.flags;

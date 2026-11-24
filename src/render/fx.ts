@@ -57,7 +57,7 @@ interface Beam {
 
 const MAX_PARTICLES = 3000;
 /** a captured cube lies on the scorer's base this long (seconds) before it shatters (see actors.ts) */
-export const CUBE_SHOWN = 0.75;
+export const CUBE_SHOWN = 2;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
 

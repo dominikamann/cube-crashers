@@ -434,16 +434,18 @@ function makeNest(map: FloorMap, pos: { x: number; z: number }) {
 let puffTexture: THREE.Texture | null = null;
 function puff(): THREE.Texture {
   if (puffTexture) return puffTexture;
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d')!;
-  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.45, 'rgba(255,255,255,0.45)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 64, 64);
-  puffTexture = new THREE.CanvasTexture(c);
+  // (worked out pixel by pixel, not drawn on a canvas: it needs no page, the tests run without one)
+  const N = 64, data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const r = Math.min(1, Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2) / (N / 2));
+      const i = (y * N + x) * 4;
+      data[i] = data[i + 1] = data[i + 2] = 255;
+      data[i + 3] = Math.round(255 * (1 - r) ** 1.6);
+    }
+  }
+  puffTexture = new THREE.DataTexture(data, N, N);
+  puffTexture.needsUpdate = true;
   return puffTexture;
 }
 
@@ -561,11 +563,6 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     cube.add(box(S - 0.02, S - 0.02, S - 0.02, panelMat));
     const core = box(0.34, 0.34, 0.34, coreMat);
     cube.add(core);
-    const moons = [0, 1, 2].map(() => {
-      const m = box(0.13, 0.13, 0.13, coreMat);
-      scene.add(m);
-      return m;
-    });
     // the base, flat on the floor: a hexagon of dark metal with a glowing edge, a ring of light segments turning slowly
     // over it, and a soft light in the middle that breathes
     const base = new THREE.Group();
@@ -589,7 +586,13 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     cube.visible = base.visible = mist.group.visible = false;
     scene.add(cube, base, mist.group);
     cube.scale.setScalar(CUBE_SIZE);
-    return { cube, base, core, moons, segments, light: lightMat, mats: [panelMat, coreMat, rimMat, lightMat] as (THREE.MeshStandardMaterial | THREE.MeshBasicMaterial)[], mist };
+    // where the cube belongs while it is away: its outline as a hologram that flickers over the dimmed base
+    const ghostMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, toneMapped: false });
+    const ghost = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(S + T, S + T, S + T)), ghostMat);
+    ghost.scale.setScalar(CUBE_SIZE);
+    ghost.visible = false;
+    scene.add(ghost);
+    return { cube, base, core, ghost, ghostMat, rimMat, segments, light: lightMat, mats: [panelMat, coreMat, rimMat, lightMat, ghostMat] as (THREE.MeshStandardMaterial | THREE.MeshBasicMaterial | THREE.LineBasicMaterial)[], mist };
   });
 
   // elevator: platform, and a light column once it is open
@@ -1022,35 +1025,41 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
           if ('emissive' in mat) (mat as THREE.MeshStandardMaterial).emissive.setHex(tc);
         }
         c.cube.visible = c.base.visible = c.mist.group.visible = !!f;
-        for (const m of c.moons) m.visible = !!f;
+        c.ghost.visible = false;
         if (!f) return;
         const carried = f.carrier !== null;
-        c.cube.position.set(f.pos.x, carried ? 2.2 : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
+        // (a carried cube rides over its carrier's head, up into the air with them when they jump)
+        const bearer = carried ? s.players.find(p => p.id === f.carrier) : undefined;
+        c.cube.position.set(f.pos.x, carried ? 2.2 + (bearer ? jumpLift(s, bearer) : 0) : 0.9 + Math.sin(time * 2 + team) * 0.15, f.pos.z);
         c.cube.rotation.set(time * 0.8, time * 1.3, 0);
         c.cube.scale.setScalar(CUBE_SIZE);
         // just captured: it comes down onto the scorer's own cube at the base and dances on top of it, hopping and
         // spinning faster and faster, before it shatters (fx.ts)
         if (captured?.cube === team) {
-          const k = (time - captured.from) / CUBE_SHOWN;
-          const land = 1 - (1 - Math.min(1, k * 2.5)) ** 2;
-          c.cube.position.set(captured.at.x, 3 - 0.95 * land + 0.25 * Math.abs(Math.sin(k * Math.PI * 4)) * land, captured.at.z);
-          c.cube.rotation.set(time * 4, time * 6, 0);
-          c.cube.scale.setScalar(CUBE_SIZE * (1 + 0.25 * k + 0.08 * Math.sin(k * Math.PI * 6)));
+          const t = time - captured.from, k = t / CUBE_SHOWN;
+          // (it lands in the first third of a second, then hops three times a second until it shatters)
+          const land = 1 - (1 - Math.min(1, t * 3)) ** 2;
+          c.cube.position.set(captured.at.x, 3 - 0.95 * land + 0.25 * Math.abs(Math.sin(t * Math.PI * 3)) * land, captured.at.z);
+          c.cube.rotation.set(time * 0.8 + t * t * 2, time * 1.3 + t * t * 3, 0);
+          c.cube.scale.setScalar(CUBE_SIZE * (1 + 0.25 * k + 0.08 * Math.sin(t * Math.PI * 4)));
         }
-        // the core beats, and three little cubes circle the cube wherever it is
+        // the core beats
         c.core.scale.setScalar(1 + 0.18 * Math.sin(time * 5 + team));
-        c.moons.forEach((m, i) => {
-          const a = time * 2.2 + (i * Math.PI * 2) / 3;
-          m.position.set(c.cube.position.x + Math.cos(a) * 0.7, c.cube.position.y + Math.sin(time * 3 + i) * 0.2, c.cube.position.z + Math.sin(a) * 0.7);
-          m.rotation.set(time * 3, time * 2, 0);
-        });
         c.base.position.set(f.base.x, 0, f.base.z);
-        c.segments.rotation.y = time * 0.5;
-        c.light.opacity = 0.18 + 0.1 * Math.sin(time * 2 + team);
-        // a base whose cube is away blinks: nobody scores there until it is home again
+        // a base whose cube is away goes quiet (nobody scores there until it is home again): its ring slows and
+        // dims, its light and mist thin out, and the outline of the missing cube flickers where it belongs
         const home = cubeHome(f);
-        c.base.visible = home || Math.sin(time * 6) > 0;
-        c.mist.update(f.base, 1.5, tc, home ? 0.24 : 0.1, time);
+        c.segments.rotation.y += (home ? 0.5 : 0.12) * frameDt;
+        c.rimMat.emissiveIntensity = home ? 1.2 : 0.35;
+        c.light.opacity = home ? 0.18 + 0.1 * Math.sin(time * 2 + team) : 0.05;
+        c.mist.update(f.base, 1.5, tc, home ? 0.24 : 0.08, time);
+        c.ghost.visible = !home;
+        if (!home) {
+          c.ghost.position.set(f.base.x, 0.9 + Math.sin(time * 1.5) * 0.08, f.base.z);
+          c.ghost.rotation.set(0, time * 0.6, 0);
+          // (a hologram: a soft shimmer, now and then a quick flicker)
+          c.ghostMat.opacity = 0.35 + 0.15 * Math.sin(time * 3) - (Math.sin(time * 23) > 0.92 ? 0.25 : 0);
+        }
       });
       reticles.forEach((r, i) => {
         const p0 = i < localIds.length ? (s.players.find(p => p.id === localIds[i]) ?? (i === 0 ? s.players[0] : undefined)) : undefined;

@@ -23,6 +23,8 @@ export const VERSUS = {
   respawnTicks: 5 * TICK_RATE,
   /** safe for a moment after (re)spawning */
   spawnInvulnTicks: Math.round(1.5 * TICK_RATE),
+  /** a team base keeps this far from any tower pad and kart spot, where the map allows */
+  baseFromPad: 3,
   /** how far apart the two team bases must be (on a smaller map teams spawn like everyone for themselves) */
   baseApart: 10,
   /** an enemy this close to a team's base: its players come back somewhere safer instead */
@@ -175,7 +177,10 @@ function basePair(s: SimState, apart = VERSUS.baseApart): [Vec2, Vec2] | null {
 }
 
 function findBases(s: SimState, apart: number, zoned: boolean): [Vec2, Vec2] | null {
-  const spots = spawnSpots(s);
+  // (a base right next to a tower pad looks crammed, and one on a kart's spot has a kart parked on it: those spots
+  // only where the map has too few others)
+  const roomy = spawnSpots(s).filter(at => s.map.pads.every(p => dist(p.pos, at) >= VERSUS.baseFromPad) && s.map.vehicleSpots.every(v => dist(v, at) >= VERSUS.baseFromPad));
+  const spots = roomy.length >= 2 ? roomy : spawnSpots(s);
   // where a zone is fought over (king of the cube, zone conquest), the bases must lie about as far from the zones
   // as each other, or one team is always there first: far apart, less what one base is nearer to the zones
   const zones = zoned ? kingSpots(s) : [];
