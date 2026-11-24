@@ -4,7 +4,8 @@ import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 import { openShop } from '../src/sim/systems/shop';
 
-const PAD = floor01.pads.findIndex(p => p.pos.x === 31.5 && p.pos.z === 56.5);
+// (the pad marked at 31.5,56.5: the nearest, as a pad next to a wall moves off it)
+const PAD = floor01.pads.indexOf([...floor01.pads].sort((a, b) => Math.hypot(a.pos.x - 31.5, a.pos.z - 56.5) - Math.hypot(b.pos.x - 31.5, b.pos.z - 56.5))[0]);
 
 /** an Xbox pad in the standard mapping: buttons by index, axes LX LY RX RY */
 function pad(opts: { axes?: number[]; down?: number[]; rt?: number } = {}): PadSnapshot {

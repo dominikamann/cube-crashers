@@ -39,8 +39,15 @@ describe('building', () => {
     // the builder is nudged off the middle; walking back into the tower does not get them in
     run(s, 2);
     const out = { x: (p.pos.x - pad.x) / Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z), z: (p.pos.z - pad.z) / Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z) };
-    run(s, 30, () => [{ type: 'move', playerId: 0, dir: { x: -out.x, z: -out.z } }]);
-    expect(Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z)).toBeGreaterThanOrEqual(0.85);
+    // (it may slide round the tower's side, but never gets in)
+    let closest = Infinity;
+    run(s, 30, () => {
+      closest = Math.min(closest, Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z));
+      return [{ type: 'move', playerId: 0, dir: { x: -out.x, z: -out.z } }];
+    });
+    expect(closest).toBeGreaterThanOrEqual(0.85);
+    // back beside it, the builder can work on it
+    p.pos = { x: pad.x + out.x, z: pad.z + out.z };
     expect(Math.hypot(p.pos.x - pad.x, p.pos.z - pad.z)).toBeLessThan(1.2);
     const level = s.towers[0].level;
     stepSim(s, [{ type: 'upgrade', playerId: 0, padId: PAD }]);

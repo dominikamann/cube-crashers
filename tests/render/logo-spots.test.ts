@@ -59,7 +59,7 @@ describe('AmannLabs logos', () => {
   it('the Rooftop too: on its outer wall, seen across the glitchy edge', () => {
     const wall = logoSpots(FLOORS.rooftop.map).find(s => s.kind === 'wall');
     expect(wall).toBeDefined();
-    // (every other map has a wall with plain floor in front, and keeps the logo it had)
-    expect(logoSpots(FLOORS.floor01.map).find(s => s.kind === 'wall')).toEqual({ kind: 'wall', tx: 28, tz: 58, w: 4, along: 'x', facing: { x: 0, z: 1 } });
+    // (every other map has a wall with plain floor in front; the Arcade Plaza's moved when its pads moved off the walls)
+    expect(logoSpots(FLOORS.floor01.map).find(s => s.kind === 'wall')).toMatchObject({ kind: 'wall', tx: 40, tz: 50 });
   });
 });

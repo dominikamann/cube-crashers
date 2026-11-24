@@ -4,7 +4,8 @@ import { assignKey, DEFAULT_BINDINGS } from '../src/input/bindings';
 import { createSim } from '../src/sim/sim';
 import { floor01 } from '../src/sim/config/floor01';
 
-const PAD = floor01.pads.findIndex(p => p.pos.x === 31.5 && p.pos.z === 56.5);
+// (the pad marked at 31.5,56.5: the nearest, as a pad next to a wall moves off it)
+const PAD = floor01.pads.indexOf([...floor01.pads].sort((a, b) => Math.hypot(a.pos.x - 31.5, a.pos.z - 56.5) - Math.hypot(b.pos.x - 31.5, b.pos.z - 56.5))[0]);
 
 function onPad() {
   const s = createSim(floor01, 1);

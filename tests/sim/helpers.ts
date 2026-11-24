@@ -34,10 +34,12 @@ export function run(s: SimState, ticks: number, commands: () => Command[] = () =
 export const move = (x: number, z: number): Command => ({ type: 'move', playerId: 0, dir: { x, z } });
 export const rel = (p: Vec2, dx: number, dz: number): Vec2 => ({ x: p.x + dx, z: p.z + dz });
 
-/** Id of the pad whose centre is at (x, z). Pad ids follow the map's row order, so tests look them up. */
+/** Id of the pad marked at (x, z) in the map: the nearest one, as a pad next to a wall moves off it by a tile or two.
+ *  Pad ids follow the map's row order, so tests look them up. */
 export function padAtPos(s: SimState, x: number, z: number): number {
-  const pad = s.map.pads.find(p => p.pos.x === x && p.pos.z === z);
-  if (!pad) throw new Error(`no pad at ${x},${z}`);
+  const d = (p: { pos: { x: number; z: number } }) => Math.hypot(p.pos.x - x, p.pos.z - z);
+  const pad = [...s.map.pads].sort((a, b) => d(a) - d(b))[0];
+  if (!pad || d(pad) > 3) throw new Error(`no pad at ${x},${z}`);
   return pad.id;
 }
 

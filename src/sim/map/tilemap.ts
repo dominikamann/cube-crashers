@@ -202,7 +202,31 @@ export function parseMap(id: string, rows: string[]): FloorMap {
   const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
   const nestSpots: NestSpot[] = marks.N.map((pos, i) => ({ id: i, pos, entries: [], padIds: [] }));
   const nearestNest = (p: Vec2) => nestSpots.reduce<NestSpot | null>((best, n) => (!best || d(p, n.pos) < d(p, best.pos) ? n : best), null);
-  const pads = marks.p.map((pos, i) => ({ id: i, pos }));
+  // a pad is wider than its tile: one with a wall or a low wall right next to it would run into it, so it moves to
+  // the nearest floor with room all round (and nothing that does something underfoot), away from the other pads
+  const tile = (x: number, z: number) => tiles[z * w + x];
+  const roomy = (x: number, z: number) => {
+    for (let dz = -1; dz <= 1; dz++)
+      for (let dx = -1; dx <= 1; dx++) if (x + dx < 0 || z + dz < 0 || x + dx >= w || z + dz >= h || tile(x + dx, z + dz) !== Tile.Floor) return false;
+    return true;
+  };
+  const placed: Vec2[] = [];
+  for (const pos of marks.p) {
+    const x = Math.floor(pos.x), z = Math.floor(pos.z);
+    let at = pos;
+    if (!roomy(x, z)) {
+      let best: Vec2 | null = null;
+      for (let dz = -3; dz <= 3; dz++)
+        for (let dx = -3; dx <= 3; dx++) {
+          const c = { x: x + dx + 0.5, z: z + dz + 0.5 };
+          if (!roomy(x + dx, z + dz) || [...placed, ...marks.p.filter(o => o !== pos)].some(o => d(o, c) < 2)) continue;
+          if (!best || d(c, pos) < d(best, pos)) best = c;
+        }
+      if (best) at = best;
+    }
+    placed.push(at);
+  }
+  const pads = placed.map((pos, i) => ({ id: i, pos }));
   for (const pad of pads) {
     const n = nearestNest(pad.pos);
     if (n && d(pad.pos, n.pos) <= PAD_NEST_RANGE) n.padIds.push(pad.id);
