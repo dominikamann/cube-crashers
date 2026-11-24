@@ -355,7 +355,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     if (!lastMatch) return;
     const box = document.createElement('div');
     box.className = 'last-match';
-    text(box, 'p', 'last-match-title', t('lobby.lastMatch'));
+    text(box, 'p', 'lobby-section', t('lobby.lastMatch'));
     resultBody(box, lastMatch.won, lastMatch.summary);
     s.append(box);
     const next = lastMatch.next;
@@ -1316,7 +1316,8 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           text(s, 'p', 'lobby-server', server.name);
           gameBadges(s, { ...server, difficulty });
         }
-        lastMatchBox(s);
+        // what follows is the next match (who is in, what is picked, how it starts) and goes into its own box
+        const head = s.childElementCount;
         const list = document.createElement('div');
         list.className = 'lobby txt';
         for (const p of players) {
@@ -1480,6 +1481,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             else lan.startMode(g);
           }, true);
         }
+        // the next match in a box of its own, the last one below it: what comes stands apart from what was
+        const next = document.createElement('div');
+        next.className = 'lobby-next';
+        text(next, 'p', 'lobby-section', t('lobby.nextMatch'));
+        while (s.children.length > head) next.append(s.children[head]);
+        s.append(next);
+        lastMatchBox(s);
       });
     },
     lobbyCountdown(server) {

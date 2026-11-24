@@ -558,17 +558,25 @@ body.no-map .mapbox { display: none; }
 /* the lobby is small: players in two columns of slim rows, a short hint, the card, then Leave and Start */
 .screen.lobby-screen { gap: 10px; justify-content: safe center; overflow-y: auto; }
 .screen.lobby-screen h2 { font-size: clamp(16px, 2.4vw, 22px); }
-.screen.lobby-screen .lobby { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; font-size: 10px; min-width: 0; width: min(560px, calc(100vw - 32px)); }
+.screen.lobby-screen .lobby { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; font-size: 10px; min-width: 0; width: 100%; }
+@media (max-width: 640px) { .screen.lobby-screen .lobby { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .screen.lobby-screen .lobby-row { padding: 5px 9px; gap: 8px; border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 8px; background: rgba(16, 13, 42, 0.56); }
 .screen.lobby-screen .lobby-row i { width: 11px; height: 11px; border-width: 1px; flex: none; }
 .screen.lobby-screen .lobby-row .chip { padding: 3px 6px; font-size: 8px; margin-left: auto; }
 .screen.lobby-screen .lobby-hint { font-size: 9px; opacity: 0.8; }
-/* the match that just ended, in the lobby until the next one starts: a smaller copy of the results */
-.screen.lobby-screen .last-match { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; width: min(560px, calc(100vw - 32px)); border: 1.5px solid rgba(255, 255, 255, 0.16); border-radius: 8px; background: rgba(16, 13, 42, 0.56); }
-.screen.lobby-screen .last-match .last-match-title { font-size: 9px; opacity: 0.7; text-transform: uppercase; }
-.screen.lobby-screen .last-match h2 { font-size: clamp(13px, 1.8vw, 16px); }
+/* the lobby in two boxes: the next match (bright, on top: who is in and how it starts) and the last one (quieter,
+   below: how it went), both as wide as a full house of ten fits in rows of three */
+.screen.lobby-screen .lobby-next,
+.screen.lobby-screen .last-match { display: flex; flex-direction: column; align-items: center; gap: 8px; box-sizing: border-box; width: min(900px, calc(100vw - 32px)); padding: 10px 14px 14px; border-radius: 10px; }
+.screen.lobby-screen .lobby-next { border: 2px solid var(--cyan, #6ff0ff); background: rgba(16, 13, 42, 0.78); box-shadow: 0 0 18px rgba(111, 240, 255, 0.18); }
+.screen.lobby-screen .last-match { gap: 4px; border: 1.5px dashed rgba(255, 255, 255, 0.22); background: rgba(16, 13, 42, 0.5); opacity: 0.92; }
+.screen.lobby-screen .lobby-section { margin: 0; align-self: flex-start; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.75; }
+.screen.lobby-screen .lobby-next .lobby-section { color: var(--cyan, #6ff0ff); opacity: 1; }
+.screen.lobby-screen .last-match h2 { font-size: clamp(12px, 1.6vw, 15px); margin: 0; }
 .screen.lobby-screen .last-match p { font-size: 9px; margin: 0; }
-.screen.lobby-screen .last-match .ranking-wrap { margin: 4px 0; max-width: 100%; }
+.screen.lobby-screen .last-match .ranking-wrap { margin: 4px 0 0; width: 100%; max-width: 100%; box-shadow: none; border-width: 2px; }
+.screen.lobby-screen .last-match .ranking { width: 100%; font-size: 9px; }
+.screen.lobby-screen .last-match .ranking th, .screen.lobby-screen .last-match .ranking td { padding: 3px 8px; }
 /* wide enough for all six games in one row */
 .screen.lobby-screen .setup-body { width: min(800px, calc(100vw - 32px)); padding: 10px 14px 12px; gap: 7px; }
 .screen.lobby-screen .setup-row { grid-template-columns: max-content minmax(0, 1fr); gap: 12px; }

@@ -92,6 +92,7 @@ export const en = {
   'mode.versusHint': 'Players against players, with bots to fill up. Jetpacks, karts and every weapon from crates.',
   'lobby.versus': 'Change…',
   'lobby.lastMatch': 'Last match',
+  'lobby.nextMatch': 'Next match',
   'lobby.done': 'Done',
   'lobby.hostHint': 'Pick a game. When everyone is in, press Start.',
   'lobby.gameRow': 'Game',

@@ -904,6 +904,11 @@ function startGame() {
     setTimeout(() => {
       if (mode !== 'over') return;
       setHudVisible(false);
+      // dev: ?versus=team&demo=win&lobby=1 shows the lobby with the last match, as online and on the LAN
+      if (import.meta.env.DEV && params.has('lobby') && role === 'solo') {
+        screens.setLastMatch({ won, summary: result });
+        return screens.lobby(s.players.map(p => ({ id: p.id, name: p.name, color: p.color, bot: !!p.bot, team: p.team })), s.difficulty, false, localId(), lanActions, null, null, null);
+      }
       if (role === 'solo') return screens.result(won, result, again, wayOut());
       // online and on the LAN a match ends straight in the lobby, which shows how it went; a host's versus goes on
       // to the next match by itself after a while, so nobody waits for whoever is away from the keys
