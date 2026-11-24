@@ -68,6 +68,8 @@ export const VERSUS = {
   captureMinutes: 8,
   /** a cube lying out in the field this long goes home by itself */
   cubeReturnTicks: 30 * TICK_RATE,
+  /** a captured cube is shown dancing on the scorer's own cube this long (which nobody can take meanwhile) */
+  capturedShowTicks: 2 * TICK_RATE,
   /** carrying a cube slows you down */
   carrySpeed: 0.8,
   touch: 1.1,
@@ -685,7 +687,7 @@ function updateFlags(s: SimState): void {
     // carried cubes move with their carrier
     if (enemy.carrier === p.id) enemy.pos = { ...p.pos };
     // touch the enemy cube: take it (not from a kart)
-    if (enemy.carrier === null && p.vehicleId === null && dist(enemy.pos, p.pos) <= VERSUS.touch) {
+    if (enemy.carrier === null && p.vehicleId === null && s.tick >= (enemy.safeUntil ?? 0) && dist(enemy.pos, p.pos) <= VERSUS.touch) {
       enemy.carrier = p.id;
       delete enemy.downAt;
       s.events.push({ type: 'cubeTaken', team: (1 - p.team) as 0 | 1, playerId: p.id });
@@ -697,12 +699,15 @@ function updateFlags(s: SimState): void {
       s.events.push({ type: 'cubeReturned', team: p.team });
     }
     // home with the enemy cube while the own one is at home: a capture
-    if (enemy.carrier === p.id && dist(p.pos, own.base) <= CAPTURE_RANGE && cubeHome(own)) {
+    // (not while the last capture still dances there: one at a time)
+    if (enemy.carrier === p.id && dist(p.pos, own.base) <= CAPTURE_RANGE && cubeHome(own) && s.tick >= (own.safeUntil ?? 0)) {
       enemy.carrier = null;
       enemy.pos = { ...enemy.base };
       v.teamScores[p.team]++;
       v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
-      // (it is laid down on top of the scorer's own cube at the base, where it dances a moment before it shatters)
+      // (it is laid down on top of the scorer's own cube at the base, where it dances a moment before it shatters;
+      // meanwhile their own cube cannot be taken)
+      own.safeUntil = s.tick + VERSUS.capturedShowTicks;
       s.events.push({ type: 'cubeCaptured', team: p.team, playerId: p.id, pos: { ...own.base } });
     }
   }
@@ -781,6 +786,8 @@ export function updateVersus(s: SimState): void {
   if (v.rule === 'capture') updateFlags(s);
   if (v.rule !== 'rounds') {
     const reached = v.mode === 'team' ? v.teamScores.some(x => x >= v.limit) : Object.values(v.scores).some(x => x >= v.limit);
+    // (the winning capture still dances on its base: the match ends once it has shattered, so nobody misses it)
+    if (reached && v.flags?.some(f => s.tick < (f.safeUntil ?? 0))) return;
     if (reached || s.tick >= v.endsAt) end(s, leaders(s));
     return;
   }

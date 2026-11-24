@@ -434,7 +434,20 @@ function makeNest(map: FloorMap, pos: { x: number; z: number }) {
 let puffTexture: THREE.Texture | null = null;
 function puff(): THREE.Texture {
   if (puffTexture) return puffTexture;
-  // (worked out pixel by pixel, not drawn on a canvas: it needs no page, the tests run without one)
+  // drawn on a canvas in the game; worked out pixel by pixel where there is no page (the tests)
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.45)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    puffTexture = new THREE.CanvasTexture(c);
+    return puffTexture;
+  }
   const N = 64, data = new Uint8Array(N * N * 4);
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
@@ -456,7 +469,14 @@ function puff(): THREE.Texture {
 function createMist(count: number): { group: THREE.Group; update: (at: { x: number; z: number }, radius: number, color: number, opacity: number, time: number) => void } {
   const group = new THREE.Group();
   const puffs = Array.from({ length: count }, (_, i) => {
+    // (it blends its colour in and leaves the picture's own alpha alone: Safari shows soft edges that lower it as
+    // black squares wherever a blurred panel lies over the game, as the results do)
     const mat = new THREE.SpriteMaterial({ map: puff(), transparent: true, depthWrite: false, opacity: 0 });
+    mat.blending = THREE.CustomBlending;
+    mat.blendSrc = THREE.SrcAlphaFactor;
+    mat.blendDst = THREE.OneMinusSrcAlphaFactor;
+    mat.blendSrcAlpha = THREE.ZeroFactor;
+    mat.blendDstAlpha = THREE.OneFactor;
     const sprite = new THREE.Sprite(mat);
     group.add(sprite);
     // where in the spot it drifts (out from the middle, round it), how high, how big, how fast
@@ -915,6 +935,10 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       if (s.tick < lastTick) winners.clear();
       lastTick = s.tick;
       for (const e of events) if (e.type === 'versusEnd') for (const id of e.winners) winners.add(id);
+      // the capture that wins the match: its team dances at once, while the cube still dances on their base
+      for (const e of events) {
+        if (e.type === 'cubeCaptured' && s.versus && s.versus.teamScores[e.team] >= s.versus.limit) for (const p of s.players) if (p.team === e.team) winners.add(p.id);
+      }
       for (const e of events) if (e.type === 'emote' && e.emote === 'dance') dancing.set(e.playerId, time + DANCE_SECONDS);
       danceNow = time;
       // who looks like what: worked out again only when someone joins, leaves or changes
@@ -975,7 +999,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
 
       // versus: the king zone and the two cubes with their bases
       const vs = s.versus;
-      kingRing.visible = kingMist.group.visible = !!vs?.king;
+      // (the mist only while the match is played: behind the results it is not wanted, and Safari draws it as dark
+      // bars under their blurred panel)
+      const misty = s.phase === 'playing';
+      kingRing.visible = !!vs?.king;
+      kingMist.group.visible = !!vs?.king && misty;
       if (vs?.king) {
         kingRing.position.set(vs.king.pos.x, 0.06, vs.king.pos.z);
         kingRing.scale.setScalar(vs.king.radius);
@@ -1024,7 +1052,8 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
           mat.color.setHex(tc);
           if ('emissive' in mat) (mat as THREE.MeshStandardMaterial).emissive.setHex(tc);
         }
-        c.cube.visible = c.base.visible = c.mist.group.visible = !!f;
+        c.cube.visible = c.base.visible = !!f;
+        c.mist.group.visible = !!f && misty;
         c.ghost.visible = false;
         if (!f) return;
         const carried = f.carrier !== null;

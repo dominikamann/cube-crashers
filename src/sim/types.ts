@@ -635,8 +635,9 @@ export interface VersusState {
   conquest?: { holds: Record<number, number>; taken: number } | null;
   /** coin-op chaos: the rule in force and when it changes */
   coinop?: { rule: CoinOpRule; nextAt: number } | null;
-  /** capture the cube: each team's cube, its base, who carries it, and since when it lies out in the field */
-  flags?: { base: Vec2; pos: Vec2; carrier: number | null; downAt?: number }[] | null;
+  /** capture the cube: each team's cube, its base, who carries it, since when it lies out in the field, and until
+   * when nobody can take it (right after its team scored, while the captured cube dances on it) */
+  flags?: { base: Vec2; pos: Vec2; carrier: number | null; downAt?: number; safeUntil?: number }[] | null;
   /** kills in a row without falling, per player; who took whom out last (victim: killer); when each last scored a kill */
   streaks?: Record<number, number>;
   lastKiller?: Record<number, number>;

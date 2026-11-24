@@ -2,6 +2,7 @@ import { DOMINIK, DOMINIK_DEATH, dominikGlow, hammerAlong, HAMMER_FLIGHT, hammer
 import * as THREE from 'three';
 import { TICK_RATE, type BossKind, type PowerupKind, type SimEvent, type SimState, type Vec2 } from '../sim/types';
 import { BOSS, laserReach } from '../sim/systems/boss';
+import { VERSUS } from '../sim/systems/versus';
 import { createDisco } from './disco';
 import { createShots } from './shots';
 import { ENEMY_LOOK } from './entities';
@@ -57,7 +58,7 @@ interface Beam {
 
 const MAX_PARTICLES = 3000;
 /** a captured cube lies on the scorer's base this long (seconds) before it shatters (see actors.ts) */
-export const CUBE_SHOWN = 2;
+export const CUBE_SHOWN = VERSUS.capturedShowTicks / TICK_RATE;
 /** what he is made of, for the chips that fly off him when he is hit: shirt, skin, shorts */
 const DOMINIK_CHIPS = [0x1b1c21, 0x1b1c21, 0xd3936e, 0x20295c];
 

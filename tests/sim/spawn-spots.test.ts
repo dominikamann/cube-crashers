@@ -129,3 +129,43 @@ describe('a captured cube', () => {
     if (e?.type === 'cubeCaptured' && e.pos) expect(d(e.pos, base)).toBeLessThan(0.01);
   });
 });
+
+describe('right after a capture', () => {
+  it('the scorer\'s own cube cannot be taken while the captured one dances on it', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'team', rule: 'capture', teams: { 0: 0, 1: 1 } } });
+    const red = s.players.find(p => p.team === 0)!, blue = s.players.find(p => p.team === 1)!;
+    const flags = s.versus!.flags!;
+    red.pos = { ...flags[0].base };
+    flags[1].carrier = red.id;
+    updateVersus(s);
+    expect(s.versus!.teamScores[0]).toBe(1);
+    // blue walks right onto red's cube at once: nothing
+    blue.pos = { ...flags[0].pos };
+    red.pos = { x: flags[0].base.x + 20, z: flags[0].base.z };
+    s.tick++;
+    updateVersus(s);
+    expect(flags[0].carrier).toBeNull();
+    // and once the dance is over, it can be taken
+    s.tick += VERSUS.capturedShowTicks;
+    updateVersus(s);
+    expect(flags[0].carrier).toBe(blue.id);
+  });
+
+  it('the winning capture ends the match only once its cube has danced and shattered', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'team', rule: 'capture', teams: { 0: 0, 1: 1 } } });
+    const red = s.players.find(p => p.team === 0)!;
+    const flags = s.versus!.flags!;
+    s.versus!.teamScores[0] = s.versus!.limit - 1;
+    red.pos = { ...flags[0].base };
+    flags[1].carrier = red.id;
+    updateVersus(s);
+    expect(s.versus!.teamScores[0]).toBe(s.versus!.limit);
+    expect(s.phase).toBe('playing');
+    red.pos = { x: flags[0].base.x + 20, z: flags[0].base.z };
+    for (let i = 0; i < VERSUS.capturedShowTicks; i++) {
+      s.tick++;
+      updateVersus(s);
+    }
+    expect(s.phase).toBe('won');
+  });
+});

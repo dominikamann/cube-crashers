@@ -133,6 +133,9 @@ describe('capture the cube', () => {
     stepSim(s, []);
     red.pos = { ...f[0].base };
     run(s, 2);
+    // (the match ends once the winning cube has danced on the base)
+    expect(s.phase).toBe('playing');
+    run(s, VERSUS.capturedShowTicks);
     expect(s.phase).toBe('won');
   });
 });

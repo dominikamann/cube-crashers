@@ -1551,10 +1551,15 @@ function startGame() {
       const p0 = game.players[0], home = game.versus!.flags![params.has('away') ? 1 - (p0.team ?? 0) : (p0.team ?? 0)].base;
       // (a free spot a few steps out in plain sight of the base, so it is on the same floor and a walk away)
       p0.pos = nearestFree(game.map, home, PLAYER_RADIUS, BLOCKS_WALKER, 3.5);
+      // (&last=1: one capture short of the win, to look at how a match ends)
+      if (params.has('last')) game.versus!.teamScores[p0.team ?? 0] = game.versus!.limit - 1;
       setInterval(() => {
         const p = game.players[0], flags = game.versus?.flags;
-        if (!flags || p.team === undefined || game.phase !== 'playing' || flags.some(f => f.carrier === p.id)) return;
+        // (not while the last capture still dances on the base)
+        if (!flags || p.team === undefined || game.phase !== 'playing' || flags.some(f => f.carrier === p.id || game.tick < (f.safeUntil ?? 0))) return;
         flags[1 - p.team].carrier = p.id;
+        // (&walk=1: and straight into the own base with it, for recordings without anyone at the keys)
+        if (params.has('walk')) setTimeout(() => (p.pos = { ...flags[p.team!].base, x: flags[p.team!].base.x + 0.6 }), 1000);
       }, 500);
     }
     // dev: &rule=king&tozone=1 puts the player in the zone, to look at it
