@@ -667,7 +667,7 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           lean, tilt, tint, phase: time * 8 + e.id * 1.7, time, still: held || winding,
           attack,
         }, rhinoBoss ? RHINO_PARTS : spiderBoss ? SPIDER_PARTS : seg ? WORM_PARTS[seg[0] === 0 ? 'head' : fromTail === 0 ? 'tail' : 'body'] : undefined);
-        if (e.elite && !dominik && !rhinoBoss && !spiderBoss) {
+        if (e.elite && !boss && !allBosses(s).some(b => b.enemyId === e.id)) {
           const size = Math.max(l.w, l.h, l.d) * scale * pulse, mid = y * pulse;
           eliteGlow.add(e.pos.x, mid, e.pos.z, 0, size * 2.3 * (1 + 0.07 * Math.sin(time * 3 + e.id)), glowAt(0.75 + 0.25 * Math.sin(time * 2.2 + e.id)));
           // (five wisps, each rising from low round the body up past its top over 1.6 s, swelling and fading)
