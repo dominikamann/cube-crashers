@@ -1080,8 +1080,9 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         c.cube.rotation.set(time * 0.8, time * 1.3, 0);
         c.cube.scale.setScalar(CUBE_SIZE);
         // just captured: it comes down onto the scorer's own cube at the base and dances on top of it, hopping and
-        // spinning faster and faster, before it shatters (fx.ts)
-        if (captured?.cube === team) {
+        // spinning faster and faster, before it shatters (fx.ts); a cube already picked up again at its own base
+        // shows with whoever carries it
+        if (captured?.cube === team && !carried) {
           const t = time - captured.from, k = t / CUBE_SHOWN;
           // (it lands in the first third of a second, then hops three times a second until it shatters)
           const land = 1 - (1 - Math.min(1, t * 3)) ** 2;

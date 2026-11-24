@@ -365,11 +365,13 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       next.action();
     };
     // (a deadline that passed while the lobby was not shown, say behind the host's setup page, does not fire on its
-    // own when the lobby comes back: the host is there and picks)
-    if (Date.now() >= next.at) {
+    // own when the lobby comes back: the host is there and picks; one that passed a moment ago, as the lobby was
+    // drawn anew just then, still fires)
+    if (Date.now() >= next.at + 1000) {
       next.done = true;
       return;
     }
+    if (Date.now() >= next.at) return go();
     const b = button(box, next.label, go, true);
     const tick = () => {
       const left = Math.max(0, Math.ceil((next.at - Date.now()) / 1000));
