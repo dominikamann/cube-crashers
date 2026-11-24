@@ -6,6 +6,21 @@ import { FLOORS } from '../../src/sim/config/floors';
 import { witchPounce } from '../../src/sim/systems/witch';
 
 describe('snapshots', () => {
+  it('carry a monster thrown by a vehicle, apart from the enemy rows older games read by their length', () => {
+    const host = createSim(floor01, 3, { players: 1 });
+    stepSim(host, []);
+    const e = host.enemies[0];
+    e.flung = { dir: { x: 0.6, z: -0.8 }, left: 4.5 };
+    const wire = JSON.parse(JSON.stringify(encodeSnapshot(host)));
+    // (the rows keep their length: an older game reads no leap or flight into them)
+    expect(wire.enemies.every((row: number[]) => row.length === 17 || row.length === 18 || row.length === 23)).toBe(true);
+    const view = createSim(floor01, 3, { players: 1 });
+    applySnapshot(view, wire);
+    expect(view.enemies.find(o => o.id === e.id)!.flung).toEqual({ dir: { x: 0.6, z: -0.8 }, left: 4.5 });
+    expect(view.enemies.filter(o => o.flung)).toHaveLength(1);
+    expect('flung' in view).toBe(false);
+  });
+
   it('carry everything the client draws, rounded, through JSON', () => {
     const host = createSim(floor01, 3, { players: 2 });
     for (let i = 0; i < 400; i++) stepSim(host, [{ type: 'move', playerId: 1, dir: { x: 1, z: 0 } }]);

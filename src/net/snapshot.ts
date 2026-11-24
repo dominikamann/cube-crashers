@@ -11,7 +11,14 @@ type PackedEnemy = number[];
 type PackedCoin = [number, number, number, number, number];
 
 /** What a client needs to draw the game, play its sounds and show the HUD. */
-export type SnapState = Omit<SnapFields, 'enemies' | 'coins'> & { enemies: PackedEnemy[]; coins: PackedCoin[]; mapId: string };
+export type SnapState = Omit<SnapFields, 'enemies' | 'coins'> & {
+  enemies: PackedEnemy[];
+  coins: PackedCoin[];
+  mapId: string;
+  /** monsters thrown by a vehicle, as [id, dir x, dir z, tiles left]: apart from the enemy rows, whose length older
+   *  games read (they keep this as a field they never look at) */
+  flung?: [number, number, number, number][];
+};
 
 type SnapFields = Pick<
   SimState,
@@ -101,6 +108,7 @@ export function encodeSnapshot(s: SimState): SnapState {
     tick: s.tick,
     players: s.players,
     enemies: s.enemies.map(packEnemy),
+    ...(s.enemies.some(e => e.flung) ? { flung: s.enemies.filter(e => e.flung).map(e => [e.id, e.flung!.dir.x, e.flung!.dir.z, e.flung!.left] as [number, number, number, number]) } : {}),
     projectiles: s.projectiles.map(p => ({ ...p, hitIds: [] })),
     areas: s.areas,
     mines: s.mines,
@@ -165,9 +173,13 @@ export function serializeSnapshot(s: SimState, events: unknown[]): string {
 /** Puts a snapshot into the client's view of the game. Older snapshots than the one shown are ignored. */
 export function applySnapshot(view: SimState, snap: SnapState): boolean {
   if (snap.tick <= view.tick && view.tick > 0) return false;
-  const { mapId, ...rest } = snap;
+  const { mapId, flung, ...rest } = snap;
   // a new floor: clients know every map by its id
   if (mapId !== view.map.id && typeof mapId === 'string' && Object.hasOwn(FLOORS, mapId)) view.map = FLOORS[mapId].map;
   Object.assign(view, rest, { enemies: snap.enemies.map(unpackEnemy), coins: snap.coins.map(unpackCoin) });
+  for (const [id, x, z, left] of flung ?? []) {
+    const e = view.enemies.find(o => o.id === id);
+    if (e) e.flung = { dir: { x, z }, left };
+  }
   return true;
 }
