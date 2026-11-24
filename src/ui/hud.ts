@@ -620,7 +620,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             break;
           }
           case 'crateCoins':
-            toast(t('toast.crateCoins', { coins: e.coins }), 'good');
+            // (only for whoever got them: a rival's chest is not your money)
+            if (e.playerId === p.id) toast(t('toast.crateCoins', { coins: e.coins }), 'good');
             break;
           case 'cardPicked':
             // (the Lock-On Launcher does not fire without a lock: whoever picks it up is told how)

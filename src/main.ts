@@ -913,7 +913,10 @@ function startGame() {
       // online and on the LAN a match ends straight in the lobby, which shows how it went; a host's versus goes on
       // to the next match by itself after a while, so nobody waits for whoever is away from the keys
       const goesOn = role === 'host' && !!s.versus && (!!gunNext || lanDiscovery);
-      screens.setLastMatch({ won, summary: result, next: goesOn ? { label: again.label, action: again.action, at: Date.now() + NEXT_MATCH_SECONDS * 1000 } : undefined });
+      // (it only goes on as it was meant to: not once the host has picked something else, started a vote or left)
+      const picked = [settings.lanGame, settings.versusDiscovery];
+      const still = () => role === 'host' && !!host && !host.voteInfo() && settings.lanGame === picked[0] && settings.versusDiscovery === picked[1];
+      screens.setLastMatch({ won, summary: result, next: goesOn ? { label: again.label, action: () => still() && again.action(), at: Date.now() + NEXT_MATCH_SECONDS * 1000 } : undefined });
       backToLobby();
     }, 1800);
   }
@@ -1267,6 +1270,8 @@ function startGame() {
   }
 
   function leaveLan(toTitleScreen = true) {
+    // (the last match belongs to that lobby: a new one starts without it, and without its countdown)
+    screens.setLastMatch(null);
     stopDiscovery?.();
     stopDiscovery = null;
     host?.close();

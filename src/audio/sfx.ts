@@ -796,7 +796,8 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: So
     case 'cardPicked':
       return one('cardPicked');
     case 'crateCoins':
-      return one('crateCoins');
+      // (a rival's chest is not your money: heard only by whoever got the coins, or by all on a shared screen)
+      return me === undefined || e.playerId === me ? one('crateCoins') : [];
     case 'powerupSpawned':
       return one('powerupSpawned');
     case 'powerupPicked':

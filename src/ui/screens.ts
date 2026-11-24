@@ -346,7 +346,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     screen.querySelector<HTMLButtonElement>('button')?.focus();
   }
 
-  /** what a match came to: the headline, time, score, what was won, and the ranking (the results, and the lobby's last match) */
   /** the match that just ended, for the lobby (see setLastMatch); its `next` goes once */
   let lastMatch: { won: boolean; summary: RunSummary; next?: { label: string; action: () => void; at: number; done?: boolean } } | null = null;
 
@@ -365,6 +364,12 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       next.done = true;
       next.action();
     };
+    // (a deadline that passed while the lobby was not shown, say behind the host's setup page, does not fire on its
+    // own when the lobby comes back: the host is there and picks)
+    if (Date.now() >= next.at) {
+      next.done = true;
+      return;
+    }
     const b = button(box, next.label, go, true);
     const tick = () => {
       const left = Math.max(0, Math.ceil((next.at - Date.now()) / 1000));
@@ -382,6 +387,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     }, 250);
   }
 
+  /** what a match came to: the headline, time, score, what was won, and the ranking (the results, and the lobby's last match) */
   function resultBody(s: HTMLElement, won: boolean, r: RunSummary): void {
     // a won Tower Run gets its own headline: the whole tower is done
     const title = r.headline ?? (won && r.mode === 'run' ? t('won.run') : won && (r.mode === 'bossrush' || r.mode === 'brawl') ? t('won.bossrush') : t(won ? 'won.title' : 'lost.title'));

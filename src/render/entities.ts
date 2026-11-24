@@ -86,8 +86,6 @@ const SPIDER_SCALE = 1.7;
 /** the Rhino: grey, long and heavy, with small eyes on its head */
 const RHINO_LOOK = { w: 1, h: 0.9, d: 1.6, day: 0x8d9299, night: 0xa7aebb, eyeY: 0.56, eyeX: 0.2, eye: 0.1 };
 
-/** `overlay` is drawn on top of the finished image (no post-processing), for text like damage numbers */
-
 const WOOD = 0x8b5a2b, WOOD_DARK = 0x5e3a1a, LID = 0x744620, GOLD = 0xffc928, GOLD_DARK = 0xc88a10, SHINE = 0xfff3a0;
 const v = (w: number, h: number, d: number, x: number, y: number, z: number, color: number, glow = false): Voxel => ({ size: [w, h, d], at: [x, y, z], color, ...(glow ? { glow } : {}) });
 
@@ -125,6 +123,7 @@ const TREASURE_CHEST: Voxel[] = [
   v(0.1, 0.025, 0.1, 0.02, -0.305, 0.36, GOLD),
 ];
 
+/** `overlay` is drawn on top of the finished image (no post-processing), for text like damage numbers */
 export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entities {
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const bodyMats = new Map<EnemyKind, THREE.MeshLambertMaterial>();
