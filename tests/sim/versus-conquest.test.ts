@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { soundsForEvent } from '../../src/audio/sfx';
+import { FLOORS } from '../../src/sim/config/floors';
 import { floorNeon } from '../../src/sim/config/floor-neon';
 import { createSim } from '../../src/sim/sim';
-import { updateVersus, VERSUS } from '../../src/sim/systems/versus';
+import { conquestHold, updateVersus, VERSUS } from '../../src/sim/systems/versus';
+import type { FloorMap } from '../../src/sim/map/tilemap';
 import type { SimState, Vec2 } from '../../src/sim/types';
 
-function conquest(mode: 'ffa' | 'team' = 'ffa', players = 2): SimState {
-  const s = createSim(floorNeon, 7, { mode: 'versus', players, versus: { mode, rule: 'conquest', teams: mode === 'team' ? { 0: 0, 1: 1 } : undefined } });
+const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
+
+function conquest(mode: 'ffa' | 'team' = 'ffa', players = 2, map: FloorMap = floorNeon, seed = 7): SimState {
+  const s = createSim(map, seed, { mode: 'versus', players, versus: { mode, rule: 'conquest', teams: mode === 'team' ? { 0: 0, 1: 1 } : undefined } });
   for (const p of s.players) p.pos = away(s);
   return s;
 }
@@ -22,18 +27,21 @@ function run(s: SimState, ticks: number): void {
 }
 
 describe('zone conquest', () => {
-  it('holding the zone alone long enough takes it: a point, and the zone goes on to another spot', () => {
+  it('holding the zone alone long enough takes it: a point, and the zone goes on to another spot a good way off', () => {
     const s = conquest();
     const [a] = s.players;
     const first = { ...s.versus!.king!.pos };
     a.pos = inZone(s);
-    run(s, VERSUS.conquestHoldTicks - 1);
+    run(s, conquestHold(s) - 1);
     expect(s.versus!.scores[a.id]).toBe(0);
-    expect(s.versus!.conquest!.side).toBe(a.id);
     run(s, 1);
     expect(s.versus!.scores[a.id]).toBe(1);
-    expect(s.versus!.conquest).toMatchObject({ side: null, progress: 0, taken: 1 });
-    expect(s.versus!.king!.pos).not.toEqual(first);
+    expect(s.versus!.conquest).toEqual({ holds: {}, taken: 1 });
+    expect(d(s.versus!.king!.pos, first)).toBeGreaterThanOrEqual(VERSUS.zoneApart);
+  });
+
+  it('teams take longer than everyone for themselves', () => {
+    expect(conquestHold(conquest('team'))).toBeGreaterThan(conquestHold(conquest('ffa')));
   });
 
   it('does not move by the clock', () => {
@@ -43,29 +51,32 @@ describe('zone conquest', () => {
     expect(s.versus!.king!.pos).toEqual(first);
   });
 
-  it('a rival in the zone stops the hold; a rival alone wears it down before building their own', () => {
+  it('every side keeps its own hold: a rival in the zone stops everything, a rival alone wears yours down while building theirs', () => {
     const s = conquest();
     const [a, b] = s.players;
     a.pos = inZone(s);
     run(s, 100);
     b.pos = inZone(s);
     run(s, 50);
-    expect(s.versus!.conquest).toMatchObject({ side: a.id, progress: 100 });
+    expect(s.versus!.conquest!.holds).toEqual({ [a.id]: 100 });
     a.pos = away(s);
-    run(s, 50);
-    expect(s.versus!.conquest).toMatchObject({ side: b.id, progress: 0 });
+    run(s, 40);
+    expect(s.versus!.conquest!.holds).toEqual({ [a.id]: 60, [b.id]: 40 });
+    // back in alone: a picks up where their hold stood
+    b.pos = away(s);
+    a.pos = inZone(s);
     run(s, 10);
-    expect(s.versus!.conquest).toMatchObject({ side: b.id, progress: 10 });
+    expect(s.versus!.conquest!.holds).toEqual({ [a.id]: 70, [b.id]: 30 });
   });
 
-  it('an empty zone lets a hold sink slowly', () => {
+  it('an empty zone lets every hold sink slowly', () => {
     const s = conquest();
     const [a] = s.players;
     a.pos = inZone(s);
     run(s, 100);
     a.pos = away(s);
     run(s, 100);
-    expect(s.versus!.conquest).toMatchObject({ side: a.id, progress: 50 });
+    expect(s.versus!.conquest!.holds).toEqual({ [a.id]: 50 });
   });
 
   it('teams: the team takes the zone, and three zones win the match', () => {
@@ -73,7 +84,8 @@ describe('zone conquest', () => {
     const red = s.players.find(p => p.team === 0)!;
     for (let zone = 0; zone < VERSUS.conquestWins; zone++) {
       red.pos = inZone(s);
-      run(s, VERSUS.conquestHoldTicks);
+      run(s, conquestHold(s));
+      red.pos = away(s);
     }
     expect(s.versus!.teamScores).toEqual([3, 0]);
     expect(s.phase).toBe('won');
@@ -84,14 +96,31 @@ describe('zone conquest', () => {
     const [a, b, c] = s.players;
     for (const who of [a, b, c, a]) {
       who.pos = inZone(s);
-      run(s, VERSUS.conquestHoldTicks);
+      run(s, conquestHold(s));
       who.pos = away(s);
     }
     expect(s.phase).toBe('playing');
     b.pos = inZone(s);
-    run(s, VERSUS.conquestHoldTicks);
+    run(s, conquestHold(s));
     expect(s.versus!.conquest!.taken).toBe(VERSUS.conquestZones);
     expect(Math.max(...Object.values(s.versus!.scores))).toBe(2);
     expect(s.phase).toBe('won');
+  });
+
+  it('the first zone of a team match lies about as far from either base', () => {
+    for (const map of ['neon', 'highway', 'candy', 'arena']) {
+      const s = createSim(FLOORS[map].map, 3, { mode: 'versus', players: 4, versus: { mode: 'team', rule: 'conquest' } });
+      const zone = s.versus!.king!.pos;
+      const red = s.players.filter(p => p.team === 0), blue = s.players.filter(p => p.team === 1);
+      const mean = (ps: typeof red) => ps.reduce((n, p) => n + d(p.pos, zone), 0) / ps.length;
+      expect(Math.abs(mean(red) - mean(blue))).toBeLessThan(Math.max(mean(red), mean(blue)) * 0.5);
+    }
+  });
+
+  it('a zone taken sounds short: up for your side, down for another, plain on a shared screen', () => {
+    const ids = (team?: 0 | 1, me?: number) => soundsForEvent({ type: 'zoneTaken', side: 0, teams: true, taken: 1 }, team, me).map(x => x.id);
+    expect(ids(0)).toEqual(['announce']);
+    expect(ids(1)).toEqual(['comboLost']);
+    expect(ids()).toEqual(['select']);
   });
 });

@@ -174,7 +174,7 @@ export const HELP = `Cube Crashers dedicated server
                          bossrush: ${RUSH_OWN} (each boss on its own floor), ${MAP_ROTATION} (a random map for each boss),
                                    or one of the brawl maps for all of them (default ${RUSH_OWN})
                        coop and endless bring their own floors; ${TOWN} is the Town
-  --teams              red against blue (score, king, rounds, coinop); capture is always teams
+  --teams              red against blue (score, king, conquest, rounds, coinop); capture is always teams
   --difficulty <level> co-op games and versus bots: ${DIFFICULTIES.join(', ')} (default medium)
   --bots <0-${MAX_PLAYERS}>         versus: bots fill every match up to this many players (default 4)
   --view <view>        both | fp (first person only) | top (from above only) (default both);

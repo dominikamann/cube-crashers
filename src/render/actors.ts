@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HOLD_TICKS } from '../sim/config/balance';
-import { cubeHome, jumpLift, kingZone, VERSUS } from '../sim/systems/versus';
+import { conquestHold, conquestLead, cubeHome, jumpLift, kingZone } from '../sim/systems/versus';
 import { wallTop } from './world';
 import { shooterOf } from './shots';
 import { CLIMB_TICKS } from '../sim/map/ladders';
@@ -886,12 +886,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         // whose it is: who holds it, or in zone conquest whose hold is building up (also while they stepped out);
         // how near: to the win, or to taking the zone
         const cq = vs.conquest;
-        const owner = zone.state === 'contested' ? null : cq ? (cq.progress > 0 ? cq.side : null) : zone.state === 'held' ? zone.side : null;
+        const owner = zone.state === 'contested' ? null : zone.state === 'held' ? zone.side : cq ? (conquestLead(s)?.side ?? null) : null;
         if (owner !== null) {
           const holder = vs.mode === 'team' ? undefined : s.players.find(p => p.id === owner);
           color = holder ? playerColor(holder.color) : palette().teams[owner === 1 ? 1 : 0];
-          const have = vs.mode === 'team' ? vs.teamScores[owner] : (vs.scores[owner] ?? 0);
-          const near = cq ? Math.min(1, cq.progress / VERSUS.conquestHoldTicks) : Math.min(1, have / Math.max(1, vs.limit));
+          const near = cq ? Math.min(1, (cq.holds[owner] ?? 0) / conquestHold(s)) : Math.min(1, (vs.mode === 'team' ? vs.teamScores[owner] : (vs.scores[owner] ?? 0)) / Math.max(1, vs.limit));
           // beats a second: from one every 1.7 s to four a second near the win (the phase runs on at its own
           // rate, so speeding up never makes a wave jump)
           kingPhase += frameDt * (0.6 + 3.4 * near * near);

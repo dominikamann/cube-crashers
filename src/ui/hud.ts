@@ -20,7 +20,7 @@ import { barStart } from './weapon-bar';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
-import { CAPTURE_RANGE, cubeHome, kingZone, side, VERSUS } from '../sim/systems/versus';
+import { CAPTURE_RANGE, conquestHold, conquestLead, cubeHome, kingZone, side, VERSUS } from '../sim/systems/versus';
 import { KART, VEHICLES } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
@@ -94,6 +94,9 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
   let lastTeam = '';
   let teamUntil = 0;
   let lastTime = 0;
+  /** a side's name in a versus match: Red or Blue, or (everyone for themselves) the player's */
+  const sideName = (s: SimState, sd: number) =>
+    s.versus?.mode === 'team' ? t(sd === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === sd)?.name ?? t('versus.someone'));
   /** when the 'your cube is not home' hint last showed (seconds) */
   let cubeHintAt = -Infinity;
   const seenLives = new Map<number, number>();
@@ -554,13 +557,10 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('versus.cubeCaptured', { team: t(e.team === 0 ? 'versus.red' : 'versus.blue') }), 'final');
             break;
           case 'zoneTaken': {
-            const name = e.teams ? t(e.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === e.side)?.name ?? '');
-            toast(t('versus.zoneTaken', { name, n: e.taken, of: VERSUS.conquestZones }), 'final');
+            toast(t('versus.zoneTaken', { name: sideName(s, e.side), n: e.taken, of: VERSUS.conquestZones }), 'final');
             break;
           }
           case 'kingMoved':
-            // (in zone conquest the zone moves on because it was taken: that has its own message)
-            if (s.versus?.conquest) break;
             toast(t('versus.kingMoved'), 'warn');
             break;
           case 'versusEnd': {
@@ -719,23 +719,24 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('versus.cubeNotHome'), 'warn');
           }
         } else if (vs.conquest && vs.king) {
-          // zone conquest: how far whose hold has come, and which zone of the match this is
-          const c = vs.conquest, zone = kingZone(s), mine = side(s, p);
-          const pct = Math.min(99, Math.floor((c.progress / VERSUS.conquestHoldTicks) * 100));
-          const at = { n: Math.min(VERSUS.conquestZones, c.taken + 1), of: VERSUS.conquestZones, p: pct };
-          const holder = c.side === null ? '' : vs.mode === 'team' ? t(c.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === c.side)?.name ?? '');
+          // zone conquest: how far your hold has come (or whose is ahead), and which zone of the match this is
+          const c = vs.conquest, zone = kingZone(s), mine = side(s, p), hold = conquestHold(s);
+          const pct = (sd: number) => Math.min(99, Math.floor(((c.holds[sd] ?? 0) / hold) * 100));
+          const at = { n: Math.min(VERSUS.conquestZones, c.taken + 1), of: VERSUS.conquestZones, p: pct(mine) };
+          const lead = conquestLead(s);
           raceSub.textContent =
             zone.state === 'contested' ? t('versus.conqContested', at)
-            : c.side === null ? t('versus.conqEmpty', at)
-            : c.side !== mine ? t('versus.conqLosing', { ...at, name: holder })
-            : zone.state === 'held' ? t('versus.conqTaking', at)
-            : t('versus.conqSlipping', at);
+            : zone.state === 'held' && zone.side === mine ? t('versus.conqTaking', at)
+            : zone.state === 'held' ? t('versus.conqLosing', { ...at, name: sideName(s, zone.side), p: pct(zone.side) })
+            : (c.holds[mine] ?? 0) > 0 ? t('versus.conqSlipping', at)
+            : lead ? t('versus.conqFading', { ...at, name: sideName(s, lead.side), p: pct(lead.side) })
+            : t('versus.conqEmpty', at);
         } else if (vs.king) {
           // king of the cube: whether you are scoring, someone else is, or it is fought over, and when it moves
           const zone = kingZone(s), mine = side(s, p);
           const moves = Math.max(0, Math.ceil((vs.king.nextMoveAt - s.tick) / TICK_RATE));
           const have = vs.mode === 'team' ? vs.teamScores[p.team ?? 0] : (vs.scores[p.id] ?? 0);
-          const holder = zone.state === 'held' ? (vs.mode === 'team' ? t(zone.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === zone.side)?.name ?? '')) : '';
+          const holder = zone.state === 'held' ? sideName(s, zone.side) : '';
           raceSub.textContent =
             zone.state === 'contested' ? t('versus.kingContested', { s: moves })
             : zone.state === 'empty' ? t('versus.kingEmpty', { s: moves })

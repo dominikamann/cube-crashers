@@ -19,7 +19,7 @@ import { Keyboard } from './input/keyboard';
 import { loadKeyboardLayout } from './input/bindings';
 import { createVersusBot } from './bots/versus';
 import { locked } from './sim/systems/missile';
-import { balanceTeams, discovery, DISCOVERY_MAPS, side as versusSide, VERSUS } from './sim/systems/versus';
+import { balanceTeams, conquestHold, discovery, DISCOVERY_MAPS, side as versusSide } from './sim/systems/versus';
 import { normalizePad, padBoard, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
 import { uiZoom } from './ui/scale';
@@ -728,9 +728,9 @@ function startGame() {
         const mySide = kingMe && kv ? versusSide(s, kingMe) : null;
         const cq = kv?.conquest;
         const kingHave = !kv?.king || !kingMe ? -1
-          : cq ? (cq.side === mySide ? Math.floor(cq.progress / TICK_RATE) : 0)
+          : cq ? Math.floor((cq.holds[mySide ?? -1] ?? 0) / TICK_RATE)
           : kv.mode === 'team' ? kv.teamScores[kingMe.team ?? 0] : (kv.scores[kingMe.id] ?? 0);
-        const kingOf = cq ? VERSUS.conquestHoldTicks / TICK_RATE : (kv?.limit ?? 1);
+        const kingOf = cq ? conquestHold(s) / TICK_RATE : (kv?.limit ?? 1);
         if (kv && kingHave > kingSeen && kingSeen >= 0) audio.mixer.play('coin', 1 + Math.min(1, kingHave / kingOf) * 0.6);
         kingSeen = kingHave;
         for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam, split ? undefined : localId())) audio.mixer.play(snd.id, snd.pitch);

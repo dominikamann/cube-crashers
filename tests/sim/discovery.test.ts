@@ -13,6 +13,13 @@ describe('discovery rotation', () => {
     expect(first.some(o => o.chaos)).toBe(true);
   });
 
+  it('brings every rule in both flavours, teams and free for all, over two laps', () => {
+    const steps = Array.from({ length: 14 }, (_, i) => discovery(i));
+    for (const rule of ['score', 'king', 'rounds', 'coinop', 'conquest'] as const) {
+      expect(new Set(steps.filter(o => o.rule === rule).map(o => o.mode))).toEqual(new Set(['team', 'ffa']));
+    }
+  });
+
   it('is the same for everyone: the same step gives the same match', () => {
     expect(discovery(5)).toEqual(discovery(5));
   });

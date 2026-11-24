@@ -12,7 +12,7 @@ const SNAPSHOT_DELAY = 2.5;
 /**
  * Over a shaky line (a weak Wi-Fi, the internet) snapshots come in bursts after a pause: the client then waits
  * as long as the newest one it had grew old lately before the next came, up to this many ticks. The wait grows at
- * once and shrinks slowly (JITTER_FADE per frame: by half in about ten seconds), so it does not see-saw.
+ * once and shrinks slowly (JITTER_FADE per sixtieth of a second: by half in about ten seconds), so it does not see-saw.
  */
 const MAX_DELAY = 15, JITTER_FADE = 0.999;
 /** a client's clock against the host's ticks: how much of each new measurement is taken, and when it starts over */
@@ -91,6 +91,7 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
       tick = -1;
       ahead = null;
       drawnAt = -Infinity;
+      jitter = 0;
       known.clear();
     }
     if (remote) clock += remote.frameDt / DT;
@@ -112,7 +113,12 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
       }
       if (remote) {
         const now = clock - tick;
-        ahead = ahead === null || Math.abs(now - ahead) > CLOCK_RESET ? now : ahead + (now - ahead) * CLOCK_EASE;
+        // (the host's ticks stood still while the clock ran on: a pause or the countdown, not a shaky line, so the
+        // wait starts over too; after a stall on the line clock and ticks come back in step)
+        if (ahead === null || Math.abs(now - ahead) > CLOCK_RESET) {
+          ahead = now;
+          jitter = 0;
+        } else ahead += (now - ahead) * CLOCK_EASE;
       }
     } else if (alpha < lastAlpha) {
       // no new tick since the last frame's clock ran out (a pause, the countdown): everything has arrived
@@ -120,7 +126,7 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
     }
     lastAlpha = alpha;
     // how far the host's clock is past the newest snapshot by now: what the client has to wait for at the most
-    if (remote && ahead !== null) jitter = Math.max(Math.min(clock - ahead - tick, MAX_DELAY), jitter * JITTER_FADE);
+    if (remote && ahead !== null) jitter = Math.max(Math.min(clock - ahead - tick, MAX_DELAY), jitter * JITTER_FADE ** (remote.frameDt * 60));
     // the moment to draw, in ticks; a client's never runs backwards, however its snapshots come in
     const at = remote ? Math.max(drawnAt, clock - (ahead ?? 0) - Math.min(MAX_DELAY, Math.max(SNAPSHOT_DELAY, jitter + 0.5))) : arrived ? tick : tick - 1 + Math.max(0, Math.min(1, alpha));
     drawnAt = remote ? Math.min(at, tick) : -Infinity;

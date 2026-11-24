@@ -838,8 +838,9 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: So
     case 'kingMoved':
       return one('elevatorOpen');
     case 'zoneTaken': {
+      // a short sting, not the match's jingle: up for your side, down for another's, plain on a shared screen
       const mine = e.teams ? team : me;
-      return mine === undefined || mine === e.side ? one('gameWon') : one('gameLost');
+      return mine === undefined ? one('select') : mine === e.side ? one('announce') : one('comboLost', 0.8);
     }
     case 'emote':
       // a ping chirps higher than a message

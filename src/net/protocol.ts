@@ -30,8 +30,9 @@ export const VIEW_MODES: ViewMode[] = ['both', 'fp', 'top'];
  * 17: the Lock-On Launcher and its missiles, Quad Damage, the crown and runs of kills, the list's badge for a fixed
  *     map, hits that tell where, how hard and by whom (1.5.0).
  * 18: the attack helicopter of the Sky Helipad: a boss that flies, its missiles, its gun and its wash.
+ * 19: Zone Conquest (a new versus rule and its zoneTaken event), the king zone placed fairly and apart (1.6.15).
  */
-export const PROTOCOL_VERSION = 18;
+export const PROTOCOL_VERSION = 19;
 export const MAX_MESSAGE_BYTES = 256 * 1024;
 /** a client never needs to send more than this in one message */
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;

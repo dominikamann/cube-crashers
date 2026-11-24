@@ -113,9 +113,17 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
       return false;
     };
 
+    // at a zone: stay in it and fight from there (walking out to fight gives the zone away)
+    const zone = v.king && d(p.pos, v.king.pos) < v.king.radius + 5 ? v.king : null;
     let move: Vec2;
-    if (objective && (!seen || carrying)) {
+    if (objective && (!seen || carrying || zone)) {
       move = go(s, p.pos, objective);
+      // well inside the zone: sidestep instead of standing still, a harder target
+      if (zone && seen && d(p.pos, zone.pos) < zone.radius * 0.5) {
+        if (tick % 90 === 0) strafe = -strafe;
+        const k = d(seen.pos, p.pos) || 1;
+        move = { x: (-(seen.pos.z - p.pos.z) / k) * strafe * 0.7, z: ((seen.pos.x - p.pos.x) / k) * strafe * 0.7 };
+      }
       if (seen) {
         cmds.push(aim(seen.pos));
         if ((p.weapons[p.selected]?.cooldown ?? 1) === 0 && mayFire()) cmds.push({ type: 'fire', playerId: id });

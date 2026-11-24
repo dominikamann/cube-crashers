@@ -46,13 +46,17 @@ export const VERSUS = {
   kingRadius: 3,
   kingMoveTicks: 45 * TICK_RATE,
   kingLimit: { ffa: 60, team: 100 },
-  /** zone conquest: hold a zone alone this long to take it; this many zones a match, this many win it */
-  conquestHoldTicks: 15 * TICK_RATE,
+  /** a zone that moves on goes at least this far from where it was (where the map allows) */
+  zoneApart: 12,
+  /** in teams, a zone that moves on goes where neither base is much nearer (see lopsided), where the map has such a spot */
+  zoneFair: 0.4,
+  /** zone conquest: hold a zone alone this long to take it (teams, everyone for themselves); this many zones a match, this many win it */
+  conquestHoldTicks: { team: 15 * TICK_RATE, ffa: 10 * TICK_RATE },
   conquestZones: 5,
   conquestWins: 3,
-  /** zone conquest: a rival alone in the zone wears a hold down this much faster than it builds; an empty zone lets it sink this much slower */
-  conquestDrain: 2,
+  /** zone conquest: an empty zone lets every hold sink this much slower than it builds */
   conquestFade: 0.5,
+  conquestMinutes: 9,
   /** capture the cube */
   captureLimit: 3,
   captureMinutes: 8,
@@ -141,10 +145,10 @@ export const DISCOVERY_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', '
  */
 export function discovery(i: number): { mode: VersusMode; rule: VersusRule; map: string; chaos: boolean } {
   const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame', 'coinop', 'conquest'];
-  const rule = rules[i % rules.length];
-  // over the rules' cycle the team mode flips every lap, so every rule comes in both flavours
-  // (capture is always teams, gun game always everyone for themselves)
-  const team = rule === 'capture' || (rule !== 'gungame' && (i + Math.floor(i / rules.length)) % 2 === 1);
+  const r = i % rules.length, rule = rules[r];
+  // within a lap the rules take turns between teams and free for all, and every lap flips it, so every rule comes
+  // in both flavours however many rules there are (capture is always teams, gun game always everyone for themselves)
+  const team = rule === 'capture' || (rule !== 'gungame' && (r + Math.floor(i / rules.length)) % 2 === 1);
   return { mode: team ? 'team' : 'ffa', rule, map: DISCOVERY_MAPS[(i * 5) % DISCOVERY_MAPS.length], chaos: i % 3 === 2 };
 }
 
@@ -156,13 +160,20 @@ function spawnSpots(s: SimState): Vec2[] {
 /** the two places on the map furthest apart: the teams' bases (none on a map too small for two) */
 function basePair(s: SimState, apart = VERSUS.baseApart): [Vec2, Vec2] | null {
   const spots = spawnSpots(s);
-  let a = spots[0], b = spots[0], best = -1;
-  for (const x of spots) for (const y of spots) if (dist(x, y) > best) {
-    best = dist(x, y);
-    a = x;
-    b = y;
+  // where a zone is fought over (king of the cube, zone conquest), the bases must lie about as far from the zones
+  // as each other, or one team is always there first: far apart, less what one base is nearer to the zones
+  const zones = s.versus?.rule === 'king' || s.versus?.rule === 'conquest' ? kingSpots(s) : [];
+  const nearer = (x: Vec2, y: Vec2) => zones.reduce((n, z) => n + Math.abs(dist(x, z) - dist(y, z)), 0) / Math.max(1, zones.length);
+  let pair: [Vec2, Vec2] | null = null, best = -Infinity;
+  for (const x of spots) for (const y of spots) {
+    if (dist(x, y) < apart) continue;
+    const score = dist(x, y) - 2 * nearer(x, y);
+    if (score > best) {
+      best = score;
+      pair = [x, y];
+    }
   }
-  return best >= apart ? [a, b] : null;
+  return pair;
 }
 
 /** players still in the match apart from `p`: everyone who stands, and the fallen waiting to get back up */
@@ -276,13 +287,16 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
   }
   if (rule === 'king') {
     v.limit = VERSUS.kingLimit[mode];
-    v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: 0 };
+    const first = firstZone(s, mode);
+    v.king = { pos: { ...kingSpots(s)[first] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: first };
   }
   if (rule === 'conquest') {
     v.limit = VERSUS.conquestWins;
     // (the zone stays until it is taken)
-    v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: Number.MAX_SAFE_INTEGER, spot: 0 };
-    v.conquest = { side: null, progress: 0, taken: 0 };
+    const first = firstZone(s, mode);
+    v.king = { pos: { ...kingSpots(s)[first] }, radius: VERSUS.kingRadius, nextMoveAt: Number.MAX_SAFE_INTEGER, spot: first };
+    v.conquest = { holds: {}, taken: 0 };
+    v.endsAt = s.tick + VERSUS.conquestMinutes * 60 * TICK_RATE;
   }
   if (rule === 'gungame') v.limit = GUN_LADDER.length;
   if (rule === 'capture') {
@@ -534,51 +548,75 @@ export function kingZone(s: SimState): { state: 'empty' } | { state: 'held'; sid
 }
 
 /** the zone goes on to another spot (and moves again at `nextAt`) */
-function moveZone(s: SimState, nextAt: number): void {
-  const k = s.versus!.king!;
-  const spots = kingSpots(s);
-  k.spot = (k.spot + 1 + Math.floor(s.rng.next() * Math.max(1, spots.length - 1))) % spots.length;
-  k.pos = { ...spots[k.spot] };
-  k.nextMoveAt = nextAt;
-  s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
+/** how much nearer a spot lies to one team's base than to the other's, as a share of the further (0: fair) */
+function lopsided(s: SimState, at: Vec2): number {
+  const bases = s.versus?.mode === 'team' ? basePair(s) : null;
+  if (!bases) return 0;
+  const a = dist(at, bases[0]), b = dist(at, bases[1]);
+  return Math.abs(a - b) / Math.max(a, b, 1);
 }
 
 /**
- * Zone conquest: whoever stands in the zone alone builds up their hold; a rival alone wears it down first (faster),
- * then builds their own; fought over it stands still, empty it sinks slowly. A full hold takes the zone: a point,
- * and the zone goes on to the next spot.
+ * The zone goes on to another spot (and moves again at `nextAt`): a good way off and with nobody in it yet, so
+ * nobody has a head start, and in teams one about as far from both bases where the map has such; on a map too
+ * small for that, the spot furthest away. `quiet`: no 'moved' event (zone conquest announces the take instead).
+ */
+function moveZone(s: SimState, nextAt: number, quiet = false): void {
+  const k = s.versus!.king!;
+  const spots = kingSpots(s);
+  const standing = s.players.filter(p => p.downUntil === null);
+  const fresh = spots.map((_, i) => i).filter(i => i !== k.spot && dist(spots[i], k.pos) >= VERSUS.zoneApart && standing.every(p => dist(p.pos, spots[i]) > k.radius + 1));
+  const fair = fresh.filter(i => lopsided(s, spots[i]) <= VERSUS.zoneFair);
+  const far = spots.map((_, i) => i).filter(i => i !== k.spot).sort((a, b) => dist(spots[b], k.pos) - dist(spots[a], k.pos));
+  k.spot = fair.length > 0 ? s.rng.pick(fair) : fresh.length > 0 ? s.rng.pick(fresh) : (far[0] ?? k.spot);
+  k.pos = { ...spots[k.spot] };
+  k.nextMoveAt = nextAt;
+  if (!quiet) s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
+}
+
+/** the first zone: as far from one team's base as from the other's; everyone for themselves, anywhere */
+function firstZone(s: SimState, mode: VersusMode): number {
+  const spots = kingSpots(s);
+  if (mode !== 'team' || !basePair(s)) return Math.floor(s.rng.next() * spots.length);
+  return spots.map((_, i) => i).sort((a, b) => lopsided(s, spots[a]) - lopsided(s, spots[b]))[0];
+}
+
+/** zone conquest: how long a side has to hold a zone alone to take it */
+export const conquestHold = (s: SimState): number => VERSUS.conquestHoldTicks[s.versus?.mode === 'team' ? 'team' : 'ffa'];
+
+/** zone conquest: the side furthest along in holding the zone, and how far (null: nobody has started) */
+export function conquestLead(s: SimState): { side: number; progress: number } | null {
+  let best: { side: number; progress: number } | null = null;
+  for (const [k, progress] of Object.entries(s.versus?.conquest?.holds ?? {})) if (progress > 0 && (!best || progress > best.progress)) best = { side: Number(k), progress };
+  return best;
+}
+
+/**
+ * Zone conquest: every side keeps its own hold on the zone. Whoever stands in it alone builds theirs while
+ * everyone else's wears down as fast; fought over everything stands still; empty every hold sinks slowly. A full
+ * hold takes the zone: a point, and the zone goes on to another spot.
  */
 function updateConquest(s: SimState): void {
   const v = s.versus!;
   const c = v.conquest!;
   const zone = kingZone(s);
-  if (zone.state === 'held') {
-    if (c.side === null || c.side === zone.side) {
-      c.side = zone.side;
-      c.progress++;
-    } else {
-      c.progress -= VERSUS.conquestDrain;
-      if (c.progress <= 0) {
-        c.side = zone.side;
-        c.progress = 0;
-      }
-    }
-  } else if (zone.state === 'empty' && c.side !== null) {
-    c.progress -= VERSUS.conquestFade;
-    if (c.progress <= 0) {
-      c.side = null;
-      c.progress = 0;
-    }
+  if (zone.state === 'contested') return;
+  for (const k of Object.keys(c.holds)) {
+    const key = Number(k);
+    if (zone.state === 'held' && key === zone.side) continue;
+    c.holds[key] = Math.max(0, c.holds[key] - (zone.state === 'held' ? 1 : VERSUS.conquestFade));
+    if (c.holds[key] === 0) delete c.holds[key];
   }
-  if (c.side === null || c.progress < VERSUS.conquestHoldTicks) return;
-  const taker = c.side;
+  if (zone.state !== 'held') return;
+  const taker = zone.side;
+  c.holds[taker] = (c.holds[taker] ?? 0) + 1;
+  if (c.holds[taker] < conquestHold(s)) return;
   for (const p of inKingZone(s)) v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
   if (v.mode === 'team') v.teamScores[taker === 1 ? 1 : 0]++;
   c.taken++;
-  c.side = null;
-  c.progress = 0;
+  c.holds = {};
   s.events.push({ type: 'zoneTaken', side: taker, teams: v.mode === 'team', taken: c.taken });
-  moveZone(s, Number.MAX_SAFE_INTEGER);
+  moveZone(s, Number.MAX_SAFE_INTEGER, true);
 }
 
 function updateKing(s: SimState): void {
@@ -701,7 +739,7 @@ export function updateVersus(s: SimState): void {
   if (v.rule === 'king') updateKing(s);
   if (v.rule === 'conquest') {
     updateConquest(s);
-    // all the zones of the match taken: whoever took the most wins (a tie is nobody's)
+    // all the zones of the match taken: whoever took the most wins (players level at the top share it; teams level: a draw)
     if (v.conquest!.taken >= VERSUS.conquestZones) {
       end(s, leaders(s));
       return;
