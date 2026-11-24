@@ -471,8 +471,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   const kingRing = new THREE.Group();
   const kingFillMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
   kingRing.add(new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), kingFillMat));
-  kingRing.add(new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), glowMat(0xffcf3a, 2)));
+  const kingEdgeMat = glowMat(0xffcf3a, 2);
+  kingRing.add(new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), kingEdgeMat));
   kingRing.visible = false;
+  /** where the held zone's pulse is in its swing (radians) */
+  let kingPhase = 0;
   scene.add(kingRing);
   const cubes = [0xff5a5f, 0x3d8bfd].map(color => {
     const cube = box(0.8, 0.8, 0.8, glowMat(color, 1.6), 0, 0, 0);
@@ -867,10 +870,25 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         kingRing.position.set(vs.king.pos.x, 0.06, vs.king.pos.z);
         kingRing.scale.setScalar(vs.king.radius);
         kingRing.rotation.y = time * 0.6;
-        // fought over: it flashes red; otherwise it glows gold
-        const contested = kingZone(s).state === 'contested';
-        kingFillMat.color.setHex(contested ? 0xff3b3b : 0xffcf3a);
-        kingFillMat.opacity = contested ? (Math.sin(time * 10) > 0 ? 0.45 : 0.12) : 0.22 + 0.08 * Math.sin(time * 4);
+        // empty it glows gold; held it takes the colour of who holds it (a team, or a player's suit) and pulses,
+        // faster and faster the closer they come to winning; fought over it flashes white, nobody's colour
+        const zone = kingZone(s);
+        let color = 0xffcf3a, opacity = 0.22 + 0.08 * Math.sin(time * 4);
+        if (zone.state === 'contested') {
+          color = 0xffffff;
+          opacity = Math.sin(time * 14) > 0 ? 0.45 : 0.1;
+        } else if (zone.state === 'held') {
+          const holder = vs.mode === 'team' ? undefined : s.players.find(p => p.id === zone.side);
+          color = holder ? playerColor(holder.color) : palette().teams[zone.side === 1 ? 1 : 0];
+          const have = vs.mode === 'team' ? vs.teamScores[zone.side] : (vs.scores[zone.side] ?? 0);
+          const near = Math.min(1, have / Math.max(1, vs.limit));
+          // (the pulse's phase runs on by its own rate, so speeding up never makes it jump)
+          kingPhase += frameDt * (3 + 22 * near * near);
+          opacity = 0.3 + 0.2 * Math.sin(kingPhase);
+        }
+        kingFillMat.color.setHex(color);
+        kingFillMat.opacity = opacity;
+        if (kingEdgeMat.color.getHex() !== color) (kingEdgeMat.color.setHex(color), kingEdgeMat.emissive.setHex(color));
       }
       cubes.forEach((c, team) => {
         const f = vs?.flags?.[team];
