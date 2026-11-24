@@ -84,6 +84,8 @@ export function damagePlayer(s: SimState, p: Player, amount: number, source: Hur
   p.flying = false;
   p.dashTicks = 0;
   p.plantTicks = 0;
+  // (downed mid-throw: the flight ends where they fall, and a revive does not pick it up again)
+  p.flung = undefined;
   s.events.push({ type: 'playerDown', playerId: p.id });
 
   const teammateUp = s.players.some(o => o !== p && o.downUntil === null);
