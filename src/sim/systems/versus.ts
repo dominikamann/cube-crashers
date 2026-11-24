@@ -46,6 +46,13 @@ export const VERSUS = {
   kingRadius: 3,
   kingMoveTicks: 45 * TICK_RATE,
   kingLimit: { ffa: 60, team: 100 },
+  /** zone conquest: hold a zone alone this long to take it; this many zones a match, this many win it */
+  conquestHoldTicks: 15 * TICK_RATE,
+  conquestZones: 5,
+  conquestWins: 3,
+  /** zone conquest: a rival alone in the zone wears a hold down this much faster than it builds; an empty zone lets it sink this much slower */
+  conquestDrain: 2,
+  conquestFade: 0.5,
   /** capture the cube */
   captureLimit: 3,
   captureMinutes: 8,
@@ -133,7 +140,7 @@ export const DISCOVERY_MAPS = ['neon', 'highway', 'floor01', 'candy', 'arena', '
  * throws in monsters now and then.
  */
 export function discovery(i: number): { mode: VersusMode; rule: VersusRule; map: string; chaos: boolean } {
-  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame', 'coinop'];
+  const rules: VersusRule[] = ['score', 'king', 'rounds', 'capture', 'gungame', 'coinop', 'conquest'];
   const rule = rules[i % rules.length];
   // over the rules' cycle the team mode flips every lap, so every rule comes in both flavours
   // (capture is always teams, gun game always everyone for themselves)
@@ -270,6 +277,12 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
   if (rule === 'king') {
     v.limit = VERSUS.kingLimit[mode];
     v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: 0 };
+  }
+  if (rule === 'conquest') {
+    v.limit = VERSUS.conquestWins;
+    // (the zone stays until it is taken)
+    v.king = { pos: { ...kingSpots(s)[0] }, radius: VERSUS.kingRadius, nextMoveAt: Number.MAX_SAFE_INTEGER, spot: 0 };
+    v.conquest = { side: null, progress: 0, taken: 0 };
   }
   if (rule === 'gungame') v.limit = GUN_LADDER.length;
   if (rule === 'capture') {
@@ -520,16 +533,58 @@ export function kingZone(s: SimState): { state: 'empty' } | { state: 'held'; sid
   return sides.size === 1 ? { state: 'held', side: [...sides][0] } : { state: 'contested' };
 }
 
+/** the zone goes on to another spot (and moves again at `nextAt`) */
+function moveZone(s: SimState, nextAt: number): void {
+  const k = s.versus!.king!;
+  const spots = kingSpots(s);
+  k.spot = (k.spot + 1 + Math.floor(s.rng.next() * Math.max(1, spots.length - 1))) % spots.length;
+  k.pos = { ...spots[k.spot] };
+  k.nextMoveAt = nextAt;
+  s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
+}
+
+/**
+ * Zone conquest: whoever stands in the zone alone builds up their hold; a rival alone wears it down first (faster),
+ * then builds their own; fought over it stands still, empty it sinks slowly. A full hold takes the zone: a point,
+ * and the zone goes on to the next spot.
+ */
+function updateConquest(s: SimState): void {
+  const v = s.versus!;
+  const c = v.conquest!;
+  const zone = kingZone(s);
+  if (zone.state === 'held') {
+    if (c.side === null || c.side === zone.side) {
+      c.side = zone.side;
+      c.progress++;
+    } else {
+      c.progress -= VERSUS.conquestDrain;
+      if (c.progress <= 0) {
+        c.side = zone.side;
+        c.progress = 0;
+      }
+    }
+  } else if (zone.state === 'empty' && c.side !== null) {
+    c.progress -= VERSUS.conquestFade;
+    if (c.progress <= 0) {
+      c.side = null;
+      c.progress = 0;
+    }
+  }
+  if (c.side === null || c.progress < VERSUS.conquestHoldTicks) return;
+  const taker = c.side;
+  for (const p of inKingZone(s)) v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
+  if (v.mode === 'team') v.teamScores[taker === 1 ? 1 : 0]++;
+  c.taken++;
+  c.side = null;
+  c.progress = 0;
+  s.events.push({ type: 'zoneTaken', side: taker, teams: v.mode === 'team', taken: c.taken });
+  moveZone(s, Number.MAX_SAFE_INTEGER);
+}
+
 function updateKing(s: SimState): void {
   const v = s.versus!;
   const k = v.king!;
-  if (s.tick >= k.nextMoveAt) {
-    const spots = kingSpots(s);
-    k.spot = (k.spot + 1 + Math.floor(s.rng.next() * Math.max(1, spots.length - 1))) % spots.length;
-    k.pos = { ...spots[k.spot] };
-    k.nextMoveAt = s.tick + VERSUS.kingMoveTicks;
-    s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
-  }
+  if (s.tick >= k.nextMoveAt) moveZone(s, s.tick + VERSUS.kingMoveTicks);
   // one point per full second in the zone
   if ((s.tick + 1) % TICK_RATE !== 0) return;
   if (kingZone(s).state !== 'held') return;
@@ -644,6 +699,14 @@ export function updateVersus(s: SimState): void {
     s.events.push({ type: 'coinOpRule', rule: v.coinop.rule });
   }
   if (v.rule === 'king') updateKing(s);
+  if (v.rule === 'conquest') {
+    updateConquest(s);
+    // all the zones of the match taken: whoever took the most wins (a tie is nobody's)
+    if (v.conquest!.taken >= VERSUS.conquestZones) {
+      end(s, leaders(s));
+      return;
+    }
+  }
   if (v.rule === 'capture') updateFlags(s);
   if (v.rule !== 'rounds') {
     const reached = v.mode === 'team' ? v.teamScores.some(x => x >= v.limit) : Object.values(v.scores).some(x => x >= v.limit);

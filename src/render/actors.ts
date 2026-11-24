@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HOLD_TICKS } from '../sim/config/balance';
-import { cubeHome, jumpLift, kingZone } from '../sim/systems/versus';
+import { cubeHome, jumpLift, kingZone, VERSUS } from '../sim/systems/versus';
 import { wallTop } from './world';
 import { shooterOf } from './shots';
 import { CLIMB_TICKS } from '../sim/map/ladders';
@@ -882,18 +882,23 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         if (zone.state === 'contested') {
           color = 0xffffff;
           opacity = Math.sin(time * 14) > 0 ? 0.45 : 0.1;
-        } else if (zone.state === 'held') {
-          const holder = vs.mode === 'team' ? undefined : s.players.find(p => p.id === zone.side);
-          color = holder ? playerColor(holder.color) : palette().teams[zone.side === 1 ? 1 : 0];
-          const have = vs.mode === 'team' ? vs.teamScores[zone.side] : (vs.scores[zone.side] ?? 0);
-          const near = Math.min(1, have / Math.max(1, vs.limit));
+        }
+        // whose it is: who holds it, or in zone conquest whose hold is building up (also while they stepped out);
+        // how near: to the win, or to taking the zone
+        const cq = vs.conquest;
+        const owner = zone.state === 'contested' ? null : cq ? (cq.progress > 0 ? cq.side : null) : zone.state === 'held' ? zone.side : null;
+        if (owner !== null) {
+          const holder = vs.mode === 'team' ? undefined : s.players.find(p => p.id === owner);
+          color = holder ? playerColor(holder.color) : palette().teams[owner === 1 ? 1 : 0];
+          const have = vs.mode === 'team' ? vs.teamScores[owner] : (vs.scores[owner] ?? 0);
+          const near = cq ? Math.min(1, cq.progress / VERSUS.conquestHoldTicks) : Math.min(1, have / Math.max(1, vs.limit));
           // beats a second: from one every 1.7 s to four a second near the win (the phase runs on at its own
           // rate, so speeding up never makes a wave jump)
           kingPhase += frameDt * (0.6 + 3.4 * near * near);
           opacity = 0.3 + 0.06 * Math.cos(kingPhase * Math.PI * 2);
         }
         const beat = kingPhase % 1;
-        kingWave.visible = zone.state === 'held';
+        kingWave.visible = owner !== null;
         kingWave.scale.setScalar(0.1 + 0.9 * beat);
         kingWaveMat.color.setHex(color);
         kingWaveMat.opacity = 0.75 * (1 - beat);

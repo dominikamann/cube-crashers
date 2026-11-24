@@ -693,9 +693,10 @@ export function swordClashes(events: readonly SimEvent[]): { id: SoundId; pitch:
 
 /**
  * The sounds for one event. `team`: the team of the player on this screen, so capture the cube sounds from their
- * side (their cube taken is an alarm, the enemy's a win); without one, every cube event sounds neutral.
+ * side (their cube taken is an alarm, the enemy's a win); without one, every cube event sounds neutral. `me`: the
+ * player on this screen, for a zone taken in a game everyone plays for themselves.
  */
-export function soundsForEvent(e: SimEvent, team?: 0 | 1): { id: SoundId; pitch: number }[] {
+export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: SoundId; pitch: number }[] {
   const one = (id: SoundId, pitch = 1) => [{ id, pitch }];
   switch (e.type) {
     case 'shot':
@@ -836,6 +837,10 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1): { id: SoundId; pitch:
     case 'versusRound':
     case 'kingMoved':
       return one('elevatorOpen');
+    case 'zoneTaken': {
+      const mine = e.teams ? team : me;
+      return mine === undefined || mine === e.side ? one('gameWon') : one('gameLost');
+    }
     case 'emote':
       // a ping chirps higher than a message
       return one('select', e.pos ? 1.6 : 1.3);

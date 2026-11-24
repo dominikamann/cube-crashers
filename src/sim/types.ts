@@ -52,7 +52,7 @@ export type VehicleKind = 'kart' | 'roller' | 'hoverboard' | 'unicorn' | 'police
 export type RunMode = 'run' | 'quick' | 'endless' | 'versus' | 'bossrush' | 'brawl';
 export type BossKind = 'megaBlock' | 'worm' | 'rex' | 'kraken' | 'rhino' | 'dominik' | 'spider' | 'witch' | 'heli';
 export type VersusMode = 'ffa' | 'team';
-export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
+export type VersusRule = 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop' | 'conquest';
 /** Coin-Op Chaos: the rule in force for the next 30 seconds */
 export type CoinOpRule = 'turbo' | 'moon' | 'rapid' | 'swords' | 'boom' | 'double';
 export type Difficulty = 'ultraLow' | 'low' | 'medium' | 'high' | 'ultraHigh';
@@ -624,6 +624,11 @@ export interface VersusState {
   nextBossAt?: number;
   /** king of the cube: the zone, its radius and when it moves on */
   king?: { pos: Vec2; radius: number; nextMoveAt: number; spot: number } | null;
+  /**
+   * zone conquest (it uses `king` for its zone, which never moves by the clock): the side whose hold is building up
+   * (a team, or a player), how far in ticks, and how many zones have been taken so far
+   */
+  conquest?: { side: number | null; progress: number; taken: number } | null;
   /** coin-op chaos: the rule in force and when it changes */
   coinop?: { rule: CoinOpRule; nextAt: number } | null;
   /** capture the cube: each team's cube, its base, who carries it, and since when it lies out in the field */
@@ -715,6 +720,8 @@ export type SimEvent =
   | { type: 'cubeReturned'; team: 0 | 1 }
   | { type: 'cubeCaptured'; team: 0 | 1; playerId: number }
   | { type: 'kingMoved'; pos: Vec2 }
+  /** zone conquest: `side` (a team when `teams`, else a player) took the zone; `taken` zones have gone so far */
+  | { type: 'zoneTaken'; side: number; teams: boolean; taken: number }
   | { type: 'coinOpRule'; rule: CoinOpRule }
   | { type: 'emote'; playerId: number; emote: EmoteId; pos?: Vec2 }
   | { type: 'laneLeak'; pos: Vec2; coreHp: number }

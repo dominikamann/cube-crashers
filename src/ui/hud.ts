@@ -553,7 +553,14 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
           case 'cubeCaptured':
             toast(t('versus.cubeCaptured', { team: t(e.team === 0 ? 'versus.red' : 'versus.blue') }), 'final');
             break;
+          case 'zoneTaken': {
+            const name = e.teams ? t(e.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === e.side)?.name ?? '');
+            toast(t('versus.zoneTaken', { name, n: e.taken, of: VERSUS.conquestZones }), 'final');
+            break;
+          }
           case 'kingMoved':
+            // (in zone conquest the zone moves on because it was taken: that has its own message)
+            if (s.versus?.conquest) break;
             toast(t('versus.kingMoved'), 'warn');
             break;
           case 'versusEnd': {
@@ -711,6 +718,18 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             cubeHintAt = lastTime;
             toast(t('versus.cubeNotHome'), 'warn');
           }
+        } else if (vs.conquest && vs.king) {
+          // zone conquest: how far whose hold has come, and which zone of the match this is
+          const c = vs.conquest, zone = kingZone(s), mine = side(s, p);
+          const pct = Math.min(99, Math.floor((c.progress / VERSUS.conquestHoldTicks) * 100));
+          const at = { n: Math.min(VERSUS.conquestZones, c.taken + 1), of: VERSUS.conquestZones, p: pct };
+          const holder = c.side === null ? '' : vs.mode === 'team' ? t(c.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === c.side)?.name ?? '');
+          raceSub.textContent =
+            zone.state === 'contested' ? t('versus.conqContested', at)
+            : c.side === null ? t('versus.conqEmpty', at)
+            : c.side !== mine ? t('versus.conqLosing', { ...at, name: holder })
+            : zone.state === 'held' ? t('versus.conqTaking', at)
+            : t('versus.conqSlipping', at);
         } else if (vs.king) {
           // king of the cube: whether you are scoring, someone else is, or it is fought over, and when it moves
           const zone = kingZone(s), mine = side(s, p);

@@ -19,7 +19,7 @@ import { Keyboard } from './input/keyboard';
 import { loadKeyboardLayout } from './input/bindings';
 import { createVersusBot } from './bots/versus';
 import { locked } from './sim/systems/missile';
-import { balanceTeams, discovery, DISCOVERY_MAPS } from './sim/systems/versus';
+import { balanceTeams, discovery, DISCOVERY_MAPS, side as versusSide, VERSUS } from './sim/systems/versus';
 import { normalizePad, padBoard, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
 import { uiZoom } from './ui/scale';
@@ -344,7 +344,7 @@ function startGame() {
     const maps = ['neon', 'highway', 'floor01', 'candy', 'arena', 'rooftop'];
     const pick = (): VersusOption => ({
       mode: Math.random() < 0.5 ? 'ffa' : 'team',
-      rule: (['score', 'score', 'rounds', 'king', 'capture', 'gungame', 'coinop'] as const)[Math.floor(Math.random() * 7)],
+      rule: (['score', 'score', 'rounds', 'king', 'conquest', 'capture', 'gungame', 'coinop'] as const)[Math.floor(Math.random() * 8)],
       map: maps[Math.floor(Math.random() * maps.length)],
     });
     const fix = (o: VersusOption): VersusOption => (o.rule === 'capture' ? { ...o, mode: 'team' } : o.rule === 'gungame' ? { ...o, mode: 'ffa' } : o);
@@ -721,13 +721,19 @@ function startGame() {
         // (two players on one screen in different teams: cube events sound neutral, nobody hears the other's side)
         const screenTeams = new Set((split ? [localId(), 1] : [localId()]).map(id => s.players.find(p => p.id === id)?.team));
         const myTeam = screenTeams.size === 1 ? [...screenTeams][0] : undefined;
-        // king of the cube: a tick for every point your side scores in the zone, higher the closer the win
+        // king of the cube: a tick for every point your side scores in the zone, higher the closer the win;
+        // zone conquest: a tick for every second your side's hold builds up, higher the closer the zone is taken
         const kv = s.versus;
         const kingMe = s.players.find(p => p.id === localId());
-        const kingHave = kv?.king && kingMe ? (kv.mode === 'team' ? kv.teamScores[kingMe.team ?? 0] : (kv.scores[kingMe.id] ?? 0)) : -1;
-        if (kv && kingHave > kingSeen && kingSeen >= 0) audio.mixer.play('coin', 1 + Math.min(1, kingHave / kv.limit) * 0.6);
+        const mySide = kingMe && kv ? versusSide(s, kingMe) : null;
+        const cq = kv?.conquest;
+        const kingHave = !kv?.king || !kingMe ? -1
+          : cq ? (cq.side === mySide ? Math.floor(cq.progress / TICK_RATE) : 0)
+          : kv.mode === 'team' ? kv.teamScores[kingMe.team ?? 0] : (kv.scores[kingMe.id] ?? 0);
+        const kingOf = cq ? VERSUS.conquestHoldTicks / TICK_RATE : (kv?.limit ?? 1);
+        if (kv && kingHave > kingSeen && kingSeen >= 0) audio.mixer.play('coin', 1 + Math.min(1, kingHave / kingOf) * 0.6);
         kingSeen = kingHave;
-        for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam)) audio.mixer.play(snd.id, snd.pitch);
+        for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam, split ? undefined : localId())) audio.mixer.play(snd.id, snd.pitch);
         for (const snd of swordClashes(frameEvents)) audio.mixer.play(snd.id, snd.pitch);
         // the Laser Sword in a hand on this screen: it lights and goes out, and hums while it is drawn; only while a
         // match is played and shown (not paused, not in a menu, not over, not in the kill cam)

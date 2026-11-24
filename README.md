@@ -18,7 +18,7 @@ down. Blow up their glitch nests, hold the zone while the horde storms in, build
 stomp, dash, fly a jetpack over the walls, ride a Crash Kart or a lucky unicorn. Every run picks its worlds,
 from the Arcade Plaza to the Pixel Jungle, the Server Farm, the Sunken Arcade with the Kraken and the Sky Helipad. Play alone,
 with up to nine friends on your LAN or online, together against the monsters or against each other in
-**Versus**: score races, King of the Cube, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
+**Versus**: score races, King of the Cube, Zone Conquest, Capture the Cube, Gun Game, Coin-Op Chaos, from above or in
 **first person** like a classic shooter. Plus a **Boss Rush** and a **Daily Run**.
 
 **[⬇️ Download the installer: always the latest release](https://github.com/dominikamann/cube-crashers/releases/latest)**
@@ -536,9 +536,9 @@ docker run -d -p 47800:47800 ghcr.io/dominikamann/cube-crashers-server --mode ca
 |---|---|---|
 | `--name <text>` | Name in the server list | Cube Crashers Server |
 | `--port <number>` | Port the server listens on | 47800 |
-| `--mode <mode>` | Versus: `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`. Co-op: `coop` (the Tower Run), `quick` (a Single floor), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
+| `--mode <mode>` | Versus: `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `conquest`, `rounds`, `capture`. Co-op: `coop` (the Tower Run), `quick` (a Single floor), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
 | `--map <map>` | The map; which ones fit depends on the mode, see [below](#maps) | see below |
-| `--teams` | Red against Blue for `score`, `king`, `rounds`, `coinop` (`capture` is always teams) | off |
+| `--teams` | Red against Blue for `score`, `king`, `conquest`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |
 | `--difficulty <level>` | Co-op games, and how well the versus bots play: `ultraLow`, `low`, `medium`, `high`, `ultraHigh` | medium |
 | `--view <view>` | `both`, `fp` (first person only) or `top` (from above only; then without the Town) | both |
@@ -562,7 +562,7 @@ the ones that do.
 
 | Mode | `--map` | Default |
 |---|---|---|
-| versus (`discovery`, `gungame`, `coinop`, `score`, `king`, `rounds`, `capture`) | `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` | `random`: a new arena each match, never the same twice in a row |
+| versus (`discovery`, `gungame`, `coinop`, `score`, `king`, `conquest`, `rounds`, `capture`) | `neon`, `highway`, `floor01`, `candy`, `arena`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` | `random`: a new arena each match, never the same twice in a row |
 | `quick` (Single floor) | `floor01`, `candy`, `arena`, `neon`, `highway`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, `race` (Kart Rally), `lane` (Lane Defense), `maze` (Glitch Maze), or `random` | `random`: a new floor each match |
 | `brawl` (Boss Brawl) | `arena`, `floor01`, `candy`, `neon`, `highway`, `rooftop`, `helipad`, `uplink`, `jungle`, `servers`, `underwater`, `waldsee`, or `random` (another one each match) | `arena` |
 | `bossrush` | `own` (each boss on its own floor), `random` (a random map for each boss), or one of the Boss Brawl's maps for all of them | `own` |
@@ -632,6 +632,7 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
 | **Score Race** | Respawn after 5 seconds. First to 15 kills (teams: 30) wins, or the most after 5 minutes. |
 | **Last Cube Standing** | No respawn within a round; the last one (or team) standing wins it. 4 rounds win the match. |
 | **King of the Cube** | A glowing zone moves around the map. A point per second while you hold it alone. |
+| **Zone Conquest** | Hold the glowing zone alone for 15 seconds to take it; then the next one shows up elsewhere. A rival in the zone stops you, one alone wears your hold down. 5 zones a match, 3 win. |
 | **Capture the Cube** | Red vs Blue. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. |
 | **Gun Game** | One weapon at a time: every kill moves you up the ladder (Blaster → Candy Cannon → Hotdog → Boomerang → Pixel Rail → Bomb → Disco Ball → Laser Sword → **Fly Swatter**). A kill with the swatter wins, then the next match moves to a new map. Getting swatted costs you a step. |
 | **Coin-Op Chaos** | A score race where a random rule changes every 30 seconds: *turbo* (everyone runs faster), *moon* (long floaty jumps), *rapid fire*, *swords only*, *boom* (whoever goes down explodes) or *double damage*. |
@@ -1010,7 +1011,7 @@ docs/         gameplay GIF and screenshots
 - [x] Controller support and local split screen
 - [x] A different minigame between the floors: Kart Rally, Lane Defense, Glitch Maze
 - [x] Neon Highway
-- [x] Versus for up to 10 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Capture the Cube, Gun Game, Discovery, monsters on demand
+- [x] Versus for up to 10 (alone with bots or on the LAN): Score Race, Last Cube Standing, King of the Cube, Zone Conquest, Capture the Cube, Gun Game, Discovery, monsters on demand
 - [x] First-person view as a switch (and the default for versus)
 - [x] Dedicated server (Docker or Node) and Online Multiplayer with a shared server list
 - [x] Emotes and pings, for online play

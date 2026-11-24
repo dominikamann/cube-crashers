@@ -36,7 +36,7 @@ export interface ServerConfig {
 
 /** how the lobby introduces the server; teams = red against blue can happen, so team wishes matter */
 export function serverIdentity(c: ServerConfig): { name: string; mode: ServerMode; teams: boolean } {
-  const teams = c.mode === 'capture' || c.mode === 'discovery' || ((c.mode === 'score' || c.mode === 'king' || c.mode === 'rounds' || c.mode === 'coinop') && c.teams);
+  const teams = c.mode === 'capture' || c.mode === 'discovery' || ((c.mode === 'score' || c.mode === 'king' || c.mode === 'conquest' || c.mode === 'rounds' || c.mode === 'coinop') && c.teams);
   return { name: c.name, mode: c.mode, teams };
 }
 

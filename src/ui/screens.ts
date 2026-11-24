@@ -57,7 +57,7 @@ export interface Settings {
   quickMap: string;
   /** versus: free for all or teams, score race or last cube standing, the map and how many bots */
   versusMode: 'ffa' | 'team';
-  versusRule: 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop';
+  versusRule: 'score' | 'rounds' | 'king' | 'capture' | 'gungame' | 'coinop' | 'conquest';
   /** versus: monster hordes join in */
   /** monsters in a versus match: none, hordes, or hordes and now and then a boss */
   versusChaos: boolean | 'boss';
@@ -1012,7 +1012,7 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
       if (mode === 'versus' && !settings.versusDiscovery) {
         choose(
           t('setup.rule'),
-          (['score', 'rounds', 'king', 'capture', 'gungame', 'coinop'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
+          (['score', 'rounds', 'king', 'conquest', 'capture', 'gungame', 'coinop'] as const).map(r => ({ label: t(`versus.${r}` as 'versus.score'), value: r })),
           settings.versusRule,
           v => {
             settings.versusRule = v;
