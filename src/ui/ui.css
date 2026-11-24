@@ -514,6 +514,8 @@ body.no-map .mapbox { display: none; }
 .score .coins { align-items: center; line-height: 1; height: 18px; }
 .score .coins span { position: relative; top: 1px; }
 .boss { top: 10px; line-height: 1; }
+/* in versus the score sits at the top in the middle: a boss that breaks in shows its bar under it */
+body.versus .boss { top: 82px; }
 .boss .bar { margin-top: 5px; }
 /* the run box: hearts, one line for nests and floor, and the alarm with its pips on one line */
 .hud-box .sub { text-shadow: 1px 1px 0 rgba(10, 8, 30, 0.7); margin-top: 7px; }
