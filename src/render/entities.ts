@@ -884,11 +884,12 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           crates.add(c.pos.x, 0.5 + Math.sin(time * 3 + c.id) * 0.1, c.pos.z, time * 1.2);
           continue;
         }
-        // (a chest stands on the floor and turns slowly, so its lock and its gold catch the eye; the more it holds,
-        // the bigger it is)
+        // (a chest floats a little over the floor, bobbing, and turns slowly, so its lock and its gold catch the
+        // eye; the more it holds, the bigger it is)
         const size = 0.75 + c.coins / 100;
-        chests.add(c.pos.x, 0.36 * size, c.pos.z, time * 0.8 + c.id, size);
-        chestShine.add(c.pos.x, 0.36 * size, c.pos.z, time * 0.8 + c.id, size);
+        const y = 0.36 * size + 0.25 + Math.sin(time * 2.5 + c.id) * 0.06;
+        chests.add(c.pos.x, y, c.pos.z, time * 0.8 + c.id, size);
+        chestShine.add(c.pos.x, y, c.pos.z, time * 0.8 + c.id, size);
       }
       crates.end();
       chests.end();

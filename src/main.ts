@@ -1538,10 +1538,14 @@ function startGame() {
       solo.versus.scores[solo.players[0].id] = 5;
       solo.players[0].quadUntil = Number.MAX_SAFE_INTEGER;
     }
-    // dev: &chest=1 sets a treasure chest of coins right in front of the player, to look at it
+    // dev: &chest=1 sets three treasure chests (10, 30 and 50 coins) in front of the player, to compare them
     if (import.meta.env.DEV && params.has('chest') && solo.versus) {
-      const p0 = solo.players[0];
-      solo.crates.push({ id: solo.nextId++, pos: { x: p0.pos.x + p0.facing.x * 2.2, z: p0.pos.z + p0.facing.z * 2.2 }, coins: 25 });
+      const p0 = solo.players[0], side = { x: -p0.facing.z, z: p0.facing.x };
+      [10, 30, 50].forEach((coins, i) => {
+        const at = { x: p0.pos.x + p0.facing.x * 3 + side.x * (i - 1) * 1.6, z: p0.pos.z + p0.facing.z * 3 + side.z * (i - 1) * 1.6 };
+        solo!.crates.push({ id: solo!.nextId++, pos: at, coins });
+      });
+      solo.versus.nextBagAt = solo.tick + 3 * 60;
     }
     // dev: &rule=capture&capdemo=1 starts the player a few steps from their base and hands them the enemy cube
     // whenever they carry none, to walk it home and look at the capture
