@@ -473,8 +473,13 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
   kingRing.add(new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), kingFillMat));
   const kingEdgeMat = glowMat(0xffcf3a, 2);
   kingRing.add(new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 40).rotateX(-Math.PI / 2), kingEdgeMat));
+  // a held zone beats: with every beat a wave runs out from the middle to the edge and fades
+  const kingWaveMat = new THREE.MeshBasicMaterial({ color: 0xffcf3a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
+  const kingWave = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2), kingWaveMat);
+  kingWave.position.y = 0.01;
+  kingRing.add(kingWave);
   kingRing.visible = false;
-  /** where the held zone's pulse is in its swing (radians) */
+  /** how far the held zone's beat has come (whole beats, the fraction is the running wave) */
   let kingPhase = 0;
   scene.add(kingRing);
   const cubes = [0xff5a5f, 0x3d8bfd].map(color => {
@@ -882,10 +887,16 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
           color = holder ? playerColor(holder.color) : palette().teams[zone.side === 1 ? 1 : 0];
           const have = vs.mode === 'team' ? vs.teamScores[zone.side] : (vs.scores[zone.side] ?? 0);
           const near = Math.min(1, have / Math.max(1, vs.limit));
-          // (the pulse's phase runs on by its own rate, so speeding up never makes it jump)
-          kingPhase += frameDt * (3 + 22 * near * near);
-          opacity = 0.3 + 0.2 * Math.sin(kingPhase);
+          // beats a second: from one every 1.7 s to four a second near the win (the phase runs on at its own
+          // rate, so speeding up never makes a wave jump)
+          kingPhase += frameDt * (0.6 + 3.4 * near * near);
+          opacity = 0.3 + 0.06 * Math.cos(kingPhase * Math.PI * 2);
         }
+        const beat = kingPhase % 1;
+        kingWave.visible = zone.state === 'held';
+        kingWave.scale.setScalar(0.1 + 0.9 * beat);
+        kingWaveMat.color.setHex(color);
+        kingWaveMat.opacity = 0.75 * (1 - beat);
         kingFillMat.color.setHex(color);
         kingFillMat.opacity = opacity;
         if (kingEdgeMat.color.getHex() !== color) (kingEdgeMat.color.setHex(color), kingEdgeMat.emissive.setHex(color));
