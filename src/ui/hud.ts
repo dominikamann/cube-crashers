@@ -557,7 +557,8 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             toast(t('versus.cubeCaptured', { team: t(e.team === 0 ? 'versus.red' : 'versus.blue') }), 'final');
             break;
           case 'zoneTaken': {
-            toast(t('versus.zoneTaken', { name: sideName(s, e.side), n: e.taken, of: VERSUS.conquestZones }), 'final');
+            // (one zone of several: a plain message, good or bad for you, not the big one that ends a match)
+            toast(t('versus.zoneTaken', { name: sideName(s, e.side), n: e.taken, of: VERSUS.conquestZones }), e.side === side(s, p) ? 'good' : 'warn');
             break;
           }
           case 'kingMoved':

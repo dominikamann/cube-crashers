@@ -632,7 +632,7 @@ bots play, from **Ultra Low** (they aim wide and shoot late) to **Ultra High** (
 | **Score Race** | Respawn after 5 seconds. First to 15 kills (teams: 30) wins, or the most after 5 minutes. |
 | **Last Cube Standing** | No respawn within a round; the last one (or team) standing wins it. 4 rounds win the match. |
 | **King of the Cube** | A glowing zone moves around the map. A point per second while you hold it alone. |
-| **Zone Conquest** | Hold the glowing zone alone for 15 seconds to take it; then the next one shows up elsewhere. A rival in the zone stops you, one alone wears your hold down. 5 zones a match, 3 win. |
+| **Zone Conquest** | Hold the glowing zone alone to take it (15 seconds for a team, 10 on your own); then the next one shows up elsewhere. Every side keeps its own hold: a rival in the zone stops everyone, a rival alone in it drains yours, an empty zone lets every hold sink slowly. 5 zones and 9 minutes a match: 3 zones win, otherwise the most. |
 | **Capture the Cube** | Red vs Blue. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. |
 | **Gun Game** | One weapon at a time: every kill moves you up the ladder (Blaster → Candy Cannon → Hotdog → Boomerang → Pixel Rail → Bomb → Disco Ball → Laser Sword → **Fly Swatter**). A kill with the swatter wins, then the next match moves to a new map. Getting swatted costs you a step. |
 | **Coin-Op Chaos** | A score race where a random rule changes every 30 seconds: *turbo* (everyone runs faster), *moon* (long floaty jumps), *rapid fire*, *swords only*, *boom* (whoever goes down explodes) or *double damage*. |

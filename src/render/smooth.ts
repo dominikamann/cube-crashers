@@ -15,8 +15,11 @@ const SNAPSHOT_DELAY = 2.5;
  * once and shrinks slowly (JITTER_FADE per sixtieth of a second: by half in about ten seconds), so it does not see-saw.
  */
 const MAX_DELAY = 15, JITTER_FADE = 0.999;
-/** a client's clock against the host's ticks: how much of each new measurement is taken, and when it starts over */
-const CLOCK_EASE = 0.1, CLOCK_RESET = 8;
+/**
+ * a client's clock against the host's ticks: how much of each new measurement is taken (of an earlier one, of a
+ * later one), and when it starts over
+ */
+const CLOCK_EASE = 0.1, CLOCK_DRIFT = 0.005, CLOCK_RESET = 8;
 
 interface Sample extends Vec2 {
   tick: number;
@@ -113,12 +116,12 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
       }
       if (remote) {
         const now = clock - tick;
-        // (the host's ticks stood still while the clock ran on: a pause or the countdown, not a shaky line, so the
-        // wait starts over too; after a stall on the line clock and ticks come back in step)
-        if (ahead === null || Math.abs(now - ahead) > CLOCK_RESET) {
-          ahead = now;
-          jitter = 0;
-        } else ahead += (now - ahead) * CLOCK_EASE;
+        // the clock goes by the snapshots that came soonest: an earlier one is taken quickly, a later one only a
+        // little (the two clocks drift apart slowly), so late ones after a stall do not push the clock back and eat
+        // the wait (a line known to be shaky may be that much later before the clock starts over: a stall is not a
+        // pause)
+        if (ahead === null || Math.abs(now - ahead) > CLOCK_RESET + jitter) ahead = now;
+        else ahead = now < ahead ? ahead + (now - ahead) * CLOCK_EASE : ahead + (now - ahead) * CLOCK_DRIFT;
       }
     } else if (alpha < lastAlpha) {
       // no new tick since the last frame's clock ran out (a pause, the countdown): everything has arrived
@@ -126,7 +129,10 @@ export function createSmoother(): (s: SimState, alpha: number, remote?: { frameD
     }
     lastAlpha = alpha;
     // how far the host's clock is past the newest snapshot by now: what the client has to wait for at the most
-    if (remote && ahead !== null) jitter = Math.max(Math.min(clock - ahead - tick, MAX_DELAY), jitter * JITTER_FADE ** (remote.frameDt * 60));
+    // (only while the host's clock runs: in the countdown or once the game is over its ticks stand still on
+    // purpose, which says nothing about the line)
+    const running = !s.countdown && (s.phase === undefined || s.phase === 'playing');
+    if (remote && ahead !== null && running) jitter = Math.max(Math.min(clock - ahead - tick, MAX_DELAY), jitter * JITTER_FADE ** (remote.frameDt * 60));
     // the moment to draw, in ticks; a client's never runs backwards, however its snapshots come in
     const at = remote ? Math.max(drawnAt, clock - (ahead ?? 0) - Math.min(MAX_DELAY, Math.max(SNAPSHOT_DELAY, jitter + 0.5))) : arrived ? tick : tick - 1 + Math.max(0, Math.min(1, alpha));
     drawnAt = remote ? Math.min(at, tick) : -Infinity;

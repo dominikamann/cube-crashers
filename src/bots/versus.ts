@@ -113,6 +113,23 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
       return false;
     };
 
+    /** fires the best loaded weapon that reaches `dist` (switching to it first), if the moment is right */
+    const fireBest = (dist: number) => {
+      let best = -1, bestDmg = 0;
+      p.weapons.forEach((wp, i) => {
+        if (wp.cooldown > 0 || dist > (REACH[wp.kind] ?? 6)) return;
+        const dmg = WEAPONS[wp.kind].damage * wp.level;
+        if (dmg > bestDmg) {
+          bestDmg = dmg;
+          best = i;
+        }
+      });
+      if (best >= 0 && mayFire()) {
+        if (best !== p.selected) cmds.push({ type: 'select', playerId: id, slot: best });
+        cmds.push({ type: 'fire', playerId: id });
+      }
+    };
+
     // at a zone: stay in it and fight from there (walking out to fight gives the zone away)
     const zone = v.king && d(p.pos, v.king.pos) < v.king.radius + 5 ? v.king : null;
     let move: Vec2;
@@ -122,11 +139,16 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
       if (zone && seen && d(p.pos, zone.pos) < zone.radius * 0.5) {
         if (tick % 90 === 0) strafe = -strafe;
         const k = d(seen.pos, p.pos) || 1;
-        move = { x: (-(seen.pos.z - p.pos.z) / k) * strafe * 0.7, z: ((seen.pos.x - p.pos.x) / k) * strafe * 0.7 };
+        const tx = (seen.pos.x - p.pos.x) / k, tz = (seen.pos.z - p.pos.z) / k;
+        // (a wall in the way: the other way round)
+        if (!hasLos(s.map, p.pos, { x: p.pos.x - tz * strafe * 1.2, z: p.pos.z + tx * strafe * 1.2 })) strafe = -strafe;
+        move = { x: -tz * strafe * 0.7, z: tx * strafe * 0.7 };
       }
       if (seen) {
         cmds.push(aim(seen.pos));
-        if ((p.weapons[p.selected]?.cooldown ?? 1) === 0 && mayFire()) cmds.push({ type: 'fire', playerId: id });
+        // a carrier only shoots what it holds; a zone holder picks what reaches
+        if (zone && !carrying) fireBest(d(seen.pos, p.pos));
+        else if ((p.weapons[p.selected]?.cooldown ?? 1) === 0 && mayFire()) cmds.push({ type: 'fire', playerId: id });
       }
     } else if (seen) {
       // fight: hold a distance that suits the weapon, circle a little
@@ -146,19 +168,7 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
       const side = { x: p.pos.x - tz * strafe * 1.2, z: p.pos.z + tx * strafe * 1.2 };
       if (!hasLos(s.map, p.pos, side)) strafe = -strafe;
       // the best loaded weapon in reach
-      let best = -1, bestDmg = 0;
-      p.weapons.forEach((wp, i) => {
-        if (wp.cooldown > 0 || dist > (REACH[wp.kind] ?? 6)) return;
-        const dmg = WEAPONS[wp.kind].damage * wp.level;
-        if (dmg > bestDmg) {
-          bestDmg = dmg;
-          best = i;
-        }
-      });
-      if (best >= 0 && mayFire()) {
-        if (best !== p.selected) cmds.push({ type: 'select', playerId: id, slot: best });
-        cmds.push({ type: 'fire', playerId: id });
-      }
+      fireBest(dist);
       // hop now and then: harder to hit, and a stomp when close
       if (dist < 1.6 || tick % 150 === 0) cmds.push({ type: 'jump', playerId: id });
     } else {

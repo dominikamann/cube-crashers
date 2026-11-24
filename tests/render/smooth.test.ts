@@ -173,4 +173,38 @@ describe('smooth positions when frames and ticks do not line up', () => {
     // once it has seen how the line goes, the kart never stands still
     for (let i = 300; i < drawn.length; i++) expect(drawn[i] - drawn[i - 1]).toBeGreaterThan(0.05);
   });
+
+  it('does not take the opening countdown for a shaky line: afterwards it draws as close behind as ever', () => {
+    const s = state();
+    const smooth = createSmoother();
+    const lag: number[] = [];
+    for (let frame = 0; frame < 400; frame++) {
+      // five seconds of countdown with the host's ticks standing still, then snapshots every other tick
+      s.countdown = frame < 300 ? 300 - frame : 0;
+      if (frame >= 300 && frame % 2 === 0) drive(s, 2);
+      const restore = smooth(s, 0.5, { frameDt: 1 / 60 });
+      const drawn = s.vehicles[0].pos.x;
+      restore();
+      lag.push(s.vehicles[0].pos.x - drawn);
+    }
+    // the newest snapshot is never more than a few ticks ahead of what is drawn
+    for (let i = 340; i < lag.length; i++) expect(lag[i]).toBeLessThan(0.2 * 4);
+  });
+
+  it('keeps the longer wait it learned when late snapshots trickle in one by one after a stall', () => {
+    const s = state();
+    const smooth = createSmoother();
+    const drawn: number[] = [];
+    for (let frame = 0; frame < 900; frame++) {
+      // every second: snapshots for two thirds of it, then a fifth of a second of nothing, then the late ones one
+      // per frame until it has caught up
+      const cycle = frame % 60;
+      if (cycle < 40 && cycle % 2 === 0) drive(s, 2);
+      if (cycle >= 52) drive(s, cycle === 59 ? 6 : 2);
+      const restore = smooth(s, 0.5, { frameDt: 1 / 60 });
+      drawn.push(s.vehicles[0].pos.x);
+      restore();
+    }
+    for (let i = 600; i < drawn.length; i++) expect(drawn[i] - drawn[i - 1]).toBeGreaterThan(0.05);
+  });
 });

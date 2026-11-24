@@ -158,11 +158,23 @@ function spawnSpots(s: SimState): Vec2[] {
 }
 
 /** the two places on the map furthest apart: the teams' bases (none on a map too small for two) */
+/** the bases worked out for a map (they never change while it is played): per map, by how far apart and whether zones count */
+const basesOf = new WeakMap<object, Map<string, [Vec2, Vec2] | null>>();
+
 function basePair(s: SimState, apart = VERSUS.baseApart): [Vec2, Vec2] | null {
+  const zoned = s.versus?.rule === 'king' || s.versus?.rule === 'conquest';
+  const known = basesOf.get(s.map) ?? new Map<string, [Vec2, Vec2] | null>();
+  basesOf.set(s.map, known);
+  const key = `${apart}:${zoned}`;
+  if (!known.has(key)) known.set(key, findBases(s, apart, zoned));
+  return known.get(key)!;
+}
+
+function findBases(s: SimState, apart: number, zoned: boolean): [Vec2, Vec2] | null {
   const spots = spawnSpots(s);
   // where a zone is fought over (king of the cube, zone conquest), the bases must lie about as far from the zones
   // as each other, or one team is always there first: far apart, less what one base is nearer to the zones
-  const zones = s.versus?.rule === 'king' || s.versus?.rule === 'conquest' ? kingSpots(s) : [];
+  const zones = zoned ? kingSpots(s) : [];
   const nearer = (x: Vec2, y: Vec2) => zones.reduce((n, z) => n + Math.abs(dist(x, z) - dist(y, z)), 0) / Math.max(1, zones.length);
   let pair: [Vec2, Vec2] | null = null, best = -Infinity;
   for (const x of spots) for (const y of spots) {
@@ -567,8 +579,10 @@ function moveZone(s: SimState, nextAt: number, quiet = false): void {
   const standing = s.players.filter(p => p.downUntil === null);
   const fresh = spots.map((_, i) => i).filter(i => i !== k.spot && dist(spots[i], k.pos) >= VERSUS.zoneApart && standing.every(p => dist(p.pos, spots[i]) > k.radius + 1));
   const fair = fresh.filter(i => lopsided(s, spots[i]) <= VERSUS.zoneFair);
+  // (on a map too small for a fresh spot: the furthest one with nobody in it, or failing that the furthest)
   const far = spots.map((_, i) => i).filter(i => i !== k.spot).sort((a, b) => dist(spots[b], k.pos) - dist(spots[a], k.pos));
-  k.spot = fair.length > 0 ? s.rng.pick(fair) : fresh.length > 0 ? s.rng.pick(fresh) : (far[0] ?? k.spot);
+  const empty = far.filter(i => standing.every(p => dist(p.pos, spots[i]) > k.radius + 1));
+  k.spot = fair.length > 0 ? s.rng.pick(fair) : fresh.length > 0 ? s.rng.pick(fresh) : (empty[0] ?? far[0] ?? k.spot);
   k.pos = { ...spots[k.spot] };
   k.nextMoveAt = nextAt;
   if (!quiet) s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
@@ -578,7 +592,8 @@ function moveZone(s: SimState, nextAt: number, quiet = false): void {
 function firstZone(s: SimState, mode: VersusMode): number {
   const spots = kingSpots(s);
   if (mode !== 'team' || !basePair(s)) return Math.floor(s.rng.next() * spots.length);
-  return spots.map((_, i) => i).sort((a, b) => lopsided(s, spots[a]) - lopsided(s, spots[b]))[0];
+  const off = spots.map(at => lopsided(s, at));
+  return off.indexOf(Math.min(...off));
 }
 
 /** zone conquest: how long a side has to hold a zone alone to take it */

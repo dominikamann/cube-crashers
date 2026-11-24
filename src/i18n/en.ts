@@ -139,7 +139,7 @@ export const en = {
   'coinop.boom': 'BOOM: whoever goes down explodes',
   'coinop.double': 'DOUBLE DAMAGE',
   'versus.hudCoinOp': 'Now: {rule}',
-  'versus.conquestHint': 'Hold the glowing zone alone to take it (15 seconds for a team, 10 alone), then the next one shows up somewhere else. A rival in the zone stops everyone; a rival alone in it drains your hold, and an empty zone lets it sink slowly. 5 zones a match: 3 win, or after 5 the most.',
+  'versus.conquestHint': 'Hold the glowing zone alone to take it (15 seconds for a team, 10 alone), then the next one shows up somewhere else. A rival in the zone stops everyone; a rival alone in it drains your hold, and an empty zone lets it sink slowly. 5 zones and 9 minutes a match: 3 zones win, otherwise whoever has the most.',
   'versus.kingHint': 'Stand in the glowing zone without a rival: a point a second. It moves every 45 seconds. 60 points (teams: 100) win.',
   'versus.captureHint': '{team.red} vs {team.blue}. Steal the other cube and carry it home while yours is at home. Carriers are slow and cannot fly. 3 captures win.',
   'versus.chaosOn': 'Monsters roam too',
