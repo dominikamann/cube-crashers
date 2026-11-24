@@ -366,6 +366,8 @@ export interface Crate {
   pos: Vec2;
   /** a rare weapon that is the first card when it opens (Angry Dominik's hammer) */
   prize?: RareKind;
+  /** a money bag, not a crate: whoever walks over it gets these coins, no cards */
+  coins?: number;
 }
 
 export type Card = { type: 'weapon'; weapon: WeaponKind } | { type: 'perk'; perk: PerkKind } | { type: 'rare'; rare: RareKind };
@@ -616,6 +618,8 @@ export interface VersusState {
   roundBreakUntil: number;
   round: number;
   nextCrateAt: number;
+  /** when the next money bag shows up (left out by a host from before the bags: then right away) */
+  nextBagAt?: number;
   /** monster hordes roam the arena too */
   chaos?: boolean;
   nextHordeAt?: number;

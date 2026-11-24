@@ -68,6 +68,12 @@ export function cardPositions(s: SimState, pos: Vec2, n: number): Vec2[] {
 }
 
 function openCrate(s: SimState, crate: Crate, p: Player): void {
+  // a money bag: just the coins
+  if (crate.coins) {
+    p.coins += crate.coins;
+    s.events.push({ type: 'crateCoins', playerId: p.id, coins: crate.coins });
+    return;
+  }
   const pool = options(s, p);
   if (pool.length === 0 && !crate.prize) {
     p.coins += EMPTY_CRATE_COINS;

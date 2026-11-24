@@ -1454,7 +1454,10 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           for (const v of ['both', 'fp', 'top'] as const) chip(viewRow, t(`lobby.view.${v}` as 'lobby.view.both'), lan.viewMode() === v, () => lan.setViewMode(v));
         } else if (server) {
           // a dedicated server starts by itself: the countdown, and a button to say you are ready
-          countdown = text(s, 'p', 'lobby-countdown', countdownText(server));
+          const bar = document.createElement('div');
+          bar.className = 'lobby-status';
+          s.append(bar);
+          countdown = text(bar, 'span', 'lobby-countdown lobby-wait', countdownText(server));
           // ready only counts between matches
           if (!server.running) {
             const ready = !!players.find(p => p.id === me)?.ready;
@@ -1463,10 +1466,14 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
             text(s, 'p', 'credits-small', t('lobby.readyHint'));
           }
         } else {
-          // what the host has picked (an older host does not say: then just how hard it is)
-          if (game) gameBadges(s, { ...game, difficulty });
-          else text(s, 'p', '', diffLabel(difficulty));
-          text(s, 'p', 'blinking', t(game?.running ? 'lobby.runningLan' : game ? 'lobby.waitingStart' : 'lobby.waiting'));
+          // what the host has picked (an older host does not say: then just how hard it is) and what happens now,
+          // together in one bar
+          const bar = document.createElement('div');
+          bar.className = 'lobby-status';
+          s.append(bar);
+          if (game) gameBadges(bar, { ...game, difficulty });
+          else text(bar, 'span', 'badge', diffLabel(difficulty));
+          text(bar, 'span', 'lobby-wait', t(game?.running ? 'lobby.runningLan' : game ? 'lobby.waitingStart' : 'lobby.waiting'));
         }
         // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
         const foot = document.createElement('div');

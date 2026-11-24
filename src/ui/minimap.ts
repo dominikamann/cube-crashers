@@ -65,7 +65,7 @@ export function createMinimap(parent: HTMLElement): Minimap {
         ctx.fillRect(x * SCALE - size / 2, z * SCALE - size / 2, size, size);
       };
       for (const e of s.enemies) dot(e.pos.x, e.pos.z, e.elite ? 4 : 2, e.elite ? '#ff2bd6' : '#e02040');
-      for (const c of s.crates) dot(c.pos.x, c.pos.z, 5, '#b07cff');
+      for (const c of s.crates) dot(c.pos.x, c.pos.z, 5, c.coins ? '#ffc928' : '#b07cff');
       for (const o of s.offers) dot(o.pos.x, o.pos.z, 6, '#b07cff');
       for (const v of s.vehicles) dot(v.pos.x, v.pos.z, 6, '#ffe14a');
       for (const pu of s.powerups) if (blink) dot(pu.pos.x, pu.pos.z, 6, '#ffffff');

@@ -6,6 +6,7 @@ import type { Theme } from './theme';
 import { createDominikLimbs, DOMINIK, DOMINIK_DEATH, HAMMER_FLIGHT, KNEEL } from './dominik-limbs';
 import { addMonsterParts, MONSTER_LIFT, RHINO_LIFT, RHINO_PARTS, WORM_PARTS, SPIDER_LIFT, SPIDER_PARTS } from './monster-parts';
 import { voxelBody } from './voxel-body';
+import { voxelGeometry, type Voxel } from './shots';
 import { BOSS } from '../sim/systems/boss';
 import { TREX } from '../sim/config/balance';
 import { TICK_RATE } from '../sim/types';
@@ -86,6 +87,44 @@ const SPIDER_SCALE = 1.7;
 const RHINO_LOOK = { w: 1, h: 0.9, d: 1.6, day: 0x8d9299, night: 0xa7aebb, eyeY: 0.56, eyeX: 0.2, eye: 0.1 };
 
 /** `overlay` is drawn on top of the finished image (no post-processing), for text like damage numbers */
+
+const WOOD = 0x8b5a2b, WOOD_DARK = 0x5e3a1a, LID = 0x744620, GOLD = 0xffc928, GOLD_DARK = 0xc88a10, SHINE = 0xfff3a0;
+const v = (w: number, h: number, d: number, x: number, y: number, z: number, color: number, glow = false): Voxel => ({ size: [w, h, d], at: [x, y, z], color, ...(glow ? { glow } : {}) });
+
+/**
+ * A treasure chest (a money bag of coins, see Crate.coins), its middle at the origin, the lock facing +z: planks of
+ * wood with dark seams, a stepped round lid, gold bands over both, a gold lock, the treasure shining through the
+ * crack under the lid, and a few coins spilled in front.
+ */
+const TREASURE_CHEST: Voxel[] = [
+  // the box: planks and their seams
+  v(0.86, 0.4, 0.56, 0, -0.12, 0, WOOD),
+  v(0.87, 0.025, 0.57, 0, -0.2, 0, WOOD_DARK),
+  v(0.87, 0.025, 0.57, 0, -0.06, 0, WOOD_DARK),
+  v(0.88, 0.045, 0.58, 0, -0.31, 0, GOLD_DARK),
+  // the lid: three steps make it round
+  v(0.88, 0.12, 0.58, 0, 0.15, 0, LID),
+  v(0.88, 0.1, 0.46, 0, 0.26, 0, LID),
+  v(0.88, 0.06, 0.3, 0, 0.33, 0, LID),
+  // gold bands over box and lid, and gold corners
+  ...[-0.3, 0.3].flatMap(x => [
+    v(0.08, 0.42, 0.585, x, -0.12, 0, GOLD),
+    v(0.085, 0.125, 0.59, x, 0.15, 0, GOLD),
+    v(0.085, 0.105, 0.47, x, 0.26, 0, GOLD),
+    v(0.085, 0.065, 0.31, x, 0.33, 0, GOLD),
+  ]),
+  ...[-0.42, 0.42].map(x => v(0.05, 0.42, 0.59, x, -0.12, 0, GOLD_DARK)),
+  // the lock and its keyhole
+  v(0.16, 0.18, 0.04, 0, 0.07, 0.3, GOLD),
+  v(0.035, 0.07, 0.02, 0, 0.05, 0.325, WOOD_DARK),
+  // the treasure shining through the crack under the lid
+  v(0.8, 0.035, 0.52, 0, 0.085, 0, SHINE, true),
+  // coins spilled in front
+  v(0.1, 0.025, 0.1, -0.18, -0.33, 0.38, GOLD),
+  v(0.1, 0.025, 0.1, 0.12, -0.33, 0.42, GOLD),
+  v(0.1, 0.025, 0.1, 0.02, -0.305, 0.36, GOLD),
+];
+
 export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entities {
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const bodyMats = new Map<EnemyKind, THREE.MeshLambertMaterial>();
@@ -230,6 +269,11 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const crateTex = makeCrateTexture();
   const crateMat = new THREE.MeshStandardMaterial({ map: crateTex, emissive: 0xffffff, emissiveMap: crateTex, emissiveIntensity: 0.35 });
   const crates = new InstancedPool(scene, new THREE.BoxGeometry(0.85, 0.85, 0.85), crateMat, 32);
+  // a treasure chest of coins: wood and gold, and the treasure shining through the crack under the lid
+  const chestMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.15, emissive: 0x2a1806, emissiveIntensity: 0.5 });
+  chestMat.userData.baseGlow = 0.5;
+  const chests = new InstancedPool(scene, voxelGeometry(TREASURE_CHEST.filter(v => !v.glow)), chestMat, 16);
+  const chestShine = new InstancedPool(scene, voxelGeometry(TREASURE_CHEST.filter(v => v.glow)), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), 16, false);
 
   /** when each monster was first drawn, for its pop-in */
   const bornAt = new Map<number, number>();
@@ -833,8 +877,21 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
 
       crates.begin();
       crateMat.emissiveIntensity = 0.35 * theme.glow;
-      for (const c of s.crates) crates.add(c.pos.x, 0.5 + Math.sin(time * 3 + c.id) * 0.1, c.pos.z, time * 1.2);
+      chests.begin();
+      chestShine.begin();
+      chestMat.emissiveIntensity = 0.5 * theme.glow;
+      for (const c of s.crates) {
+        if (!c.coins) {
+          crates.add(c.pos.x, 0.5 + Math.sin(time * 3 + c.id) * 0.1, c.pos.z, time * 1.2);
+          continue;
+        }
+        // (a chest stands on the floor and turns slowly, so its lock and its gold catch the eye)
+        chests.add(c.pos.x, 0.36, c.pos.z, time * 0.8 + c.id);
+        chestShine.add(c.pos.x, 0.36, c.pos.z, time * 0.8 + c.id);
+      }
       crates.end();
+      chests.end();
+      chestShine.end();
     },
   };
 }

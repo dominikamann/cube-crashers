@@ -4,6 +4,7 @@ import { FLOORS } from '../../src/sim/config/floors';
 import { floorNeon } from '../../src/sim/config/floor-neon';
 import { createSim } from '../../src/sim/sim';
 import { conquestHold, updateVersus, VERSUS } from '../../src/sim/systems/versus';
+import { updateOffers } from '../../src/sim/systems/offers';
 import type { FloorMap } from '../../src/sim/map/tilemap';
 import type { SimState, Vec2 } from '../../src/sim/types';
 
@@ -122,5 +123,22 @@ describe('zone conquest', () => {
     expect(ids(0)).toEqual(['announce']);
     expect(ids(1)).toEqual(['comboLost']);
     expect(ids()).toEqual(['select']);
+  });
+});
+
+describe('treasure chests', () => {
+  it('a chest of coins shows up now and then in versus, and walking over it gives the coins', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'score' } });
+    s.crates = [];
+    run(s, VERSUS.bagEveryTicks);
+    const chest = s.crates.find(c => c.coins);
+    expect(chest?.coins).toBe(VERSUS.bagCoins);
+    const p = s.players[0];
+    const before = p.coins;
+    p.pos = { ...chest!.pos };
+    updateOffers(s);
+    expect(p.coins).toBe(before + VERSUS.bagCoins);
+    expect(s.crates.some(c => c.id === chest!.id)).toBe(false);
+    expect(s.offers).toHaveLength(0);
   });
 });

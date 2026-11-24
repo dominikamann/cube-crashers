@@ -42,6 +42,10 @@ export const VERSUS = {
   /** a new crate shows up this often while there are fewer than `maxCrates` */
   crateEveryTicks: 12 * TICK_RATE,
   maxCrates: 4,
+  /** a money bag shows up this often while there are fewer than `maxBags`, with this many coins (for towers and the like) */
+  bagEveryTicks: 20 * TICK_RATE,
+  maxBags: 2,
+  bagCoins: 25,
   /** king of the cube */
   kingRadius: 3,
   kingMoveTicks: 45 * TICK_RATE,
@@ -284,6 +288,7 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
     roundBreakUntil: 0,
     round: 1,
     nextCrateAt: s.tick + VERSUS.crateEveryTicks,
+    nextBagAt: s.tick + VERSUS.bagEveryTicks,
     chaos,
     nextHordeAt: s.tick + VERSUS.chaosEveryTicks,
     boss: chaos && boss,
@@ -726,7 +731,14 @@ export function updateVersus(s: SimState): void {
   if (s.tick >= v.nextCrateAt && v.rule !== 'gungame') {
     v.nextCrateAt = s.tick + VERSUS.crateEveryTicks;
     const free = s.map.crateSpots.filter(c => spotClear(s, c));
-    if (s.crates.length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) }, ...hiddenPrize(s, RARE.missileCrate.versus) });
+    if (s.crates.filter(c => !c.coins).length < VERSUS.maxCrates && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) }, ...hiddenPrize(s, RARE.missileCrate.versus) });
+  }
+  // now and then a treasure chest of coins: for towers and the like, where no monsters drop any (not in gun game,
+  // which hands out the weapons itself and has no crates)
+  if (s.tick >= (v.nextBagAt ?? 0) && v.rule !== 'gungame') {
+    v.nextBagAt = s.tick + VERSUS.bagEveryTicks;
+    const free = s.map.crateSpots.filter(c => spotClear(s, c));
+    if (s.crates.filter(c => c.coins).length < VERSUS.maxBags && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) }, coins: VERSUS.bagCoins });
   }
 
   // chaos: monster hordes join the fight
