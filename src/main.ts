@@ -170,6 +170,8 @@ function startGame() {
   fpsEl.className = 'fps';
   document.body.append(fpsEl);
   let fpsFrames = 0, fpsSince = performance.now();
+  /** king of the cube: your side's points last frame (-1: not in such a match), for the tick on every new one */
+  let kingSeen = -1;
   /** the graphics test while it runs (see graphics-test.ts), its notice on screen, and who waits for it */
   let gfxTest: GraphicsTest | null = null;
   let gfxDone: (() => void) | null = null;
@@ -719,6 +721,12 @@ function startGame() {
         // (two players on one screen in different teams: cube events sound neutral, nobody hears the other's side)
         const screenTeams = new Set((split ? [localId(), 1] : [localId()]).map(id => s.players.find(p => p.id === id)?.team));
         const myTeam = screenTeams.size === 1 ? [...screenTeams][0] : undefined;
+        // king of the cube: a tick for every point your side scores in the zone, higher the closer the win
+        const kv = s.versus;
+        const kingMe = s.players.find(p => p.id === localId());
+        const kingHave = kv?.king && kingMe ? (kv.mode === 'team' ? kv.teamScores[kingMe.team ?? 0] : (kv.scores[kingMe.id] ?? 0)) : -1;
+        if (kv && kingHave > kingSeen && kingSeen >= 0) audio.mixer.play('coin', 1 + Math.min(1, kingHave / kv.limit) * 0.6);
+        kingSeen = kingHave;
         for (const e of frameEvents) for (const snd of soundsForEvent(e, myTeam)) audio.mixer.play(snd.id, snd.pitch);
         for (const snd of swordClashes(frameEvents)) audio.mixer.play(snd.id, snd.pitch);
         // the Laser Sword in a hand on this screen: it lights and goes out, and hums while it is drawn; only while a

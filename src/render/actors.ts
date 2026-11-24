@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HOLD_TICKS } from '../sim/config/balance';
-import { cubeHome, jumpLift } from '../sim/systems/versus';
+import { cubeHome, jumpLift, kingZone } from '../sim/systems/versus';
 import { wallTop } from './world';
 import { shooterOf } from './shots';
 import { CLIMB_TICKS } from '../sim/map/ladders';
@@ -867,7 +867,10 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
         kingRing.position.set(vs.king.pos.x, 0.06, vs.king.pos.z);
         kingRing.scale.setScalar(vs.king.radius);
         kingRing.rotation.y = time * 0.6;
-        kingFillMat.opacity = 0.22 + 0.08 * Math.sin(time * 4);
+        // fought over: it flashes red; otherwise it glows gold
+        const contested = kingZone(s).state === 'contested';
+        kingFillMat.color.setHex(contested ? 0xff3b3b : 0xffcf3a);
+        kingFillMat.opacity = contested ? (Math.sin(time * 10) > 0 ? 0.45 : 0.12) : 0.22 + 0.08 * Math.sin(time * 4);
       }
       cubes.forEach((c, team) => {
         const f = vs?.flags?.[team];

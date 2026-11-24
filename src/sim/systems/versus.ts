@@ -507,6 +507,19 @@ export function carryingCube(s: SimState, p: Player): boolean {
   return !!s.versus?.flags?.some(f => f.carrier === p.id);
 }
 
+/** king of the cube: who stands in the zone (on their feet) */
+export function inKingZone(s: SimState): Player[] {
+  const k = s.versus?.king;
+  return k ? s.players.filter(p => p.downUntil === null && dist(p.pos, k.pos) <= k.radius) : [];
+}
+
+/** king of the cube: whether the zone is empty, held by one side (a player, or a team), or fought over */
+export function kingZone(s: SimState): { state: 'empty' } | { state: 'held'; side: number } | { state: 'contested' } {
+  const sides = new Set(inKingZone(s).map(p => side(s, p)));
+  if (sides.size === 0) return { state: 'empty' };
+  return sides.size === 1 ? { state: 'held', side: [...sides][0] } : { state: 'contested' };
+}
+
 function updateKing(s: SimState): void {
   const v = s.versus!;
   const k = v.king!;
@@ -519,9 +532,8 @@ function updateKing(s: SimState): void {
   }
   // one point per full second in the zone
   if ((s.tick + 1) % TICK_RATE !== 0) return;
-  const inside = s.players.filter(p => p.downUntil === null && dist(p.pos, k.pos) <= k.radius);
-  const sides = new Set(inside.map(p => side(s, p)));
-  if (sides.size !== 1) return;
+  if (kingZone(s).state !== 'held') return;
+  const inside = inKingZone(s);
   for (const p of inside) v.scores[p.id] = (v.scores[p.id] ?? 0) + 1;
   if (v.mode === 'team') v.teamScores[inside[0].team ?? 0]++;
 }
@@ -595,7 +607,8 @@ function end(s: SimState, winners: number[]): void {
 }
 
 /** a side still in the round: a player id (free for all) or a team */
-const side = (s: SimState, p: Player) => (s.versus!.mode === 'team' ? (p.team ?? 0) : p.id);
+/** the side `p` plays for: their team, or (everyone for themselves) just them */
+export const side = (s: SimState, p: Player) => (s.versus!.mode === 'team' ? (p.team ?? 0) : p.id);
 
 export function updateVersus(s: SimState): void {
   const v = s.versus;

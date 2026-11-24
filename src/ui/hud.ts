@@ -20,7 +20,7 @@ import { barStart } from './weapon-bar';
 import { comboMult } from '../sim/systems/combat';
 import { maxDashCharges } from '../sim/systems/player';
 import { padAt } from '../sim/systems/towers';
-import { CAPTURE_RANGE, cubeHome, VERSUS } from '../sim/systems/versus';
+import { CAPTURE_RANGE, cubeHome, kingZone, side, VERSUS } from '../sim/systems/versus';
 import { KART, VEHICLES } from '../sim/systems/vehicles';
 import { TICK_RATE, type SimEvent, type SimState } from '../sim/types';
 import { createMinimap } from './minimap';
@@ -711,6 +711,17 @@ export function createHud(root: HTMLElement, onShop: ShopActions): Hud {
             cubeHintAt = lastTime;
             toast(t('versus.cubeNotHome'), 'warn');
           }
+        } else if (vs.king) {
+          // king of the cube: whether you are scoring, someone else is, or it is fought over, and when it moves
+          const zone = kingZone(s), mine = side(s, p);
+          const moves = Math.max(0, Math.ceil((vs.king.nextMoveAt - s.tick) / TICK_RATE));
+          const have = vs.mode === 'team' ? vs.teamScores[p.team ?? 0] : (vs.scores[p.id] ?? 0);
+          const holder = zone.state === 'held' ? (vs.mode === 'team' ? t(zone.side === 0 ? 'versus.red' : 'versus.blue') : (s.players.find(x => x.id === zone.side)?.name ?? '')) : '';
+          raceSub.textContent =
+            zone.state === 'contested' ? t('versus.kingContested', { s: moves })
+            : zone.state === 'empty' ? t('versus.kingEmpty', { s: moves })
+            : zone.side === mine ? t('versus.kingHolding', { left: Math.max(0, vs.limit - have), s: moves })
+            : t('versus.kingEnemy', { name: holder, s: moves });
         } else raceSub.textContent = vs.coinop ? t('versus.hudCoinOp', { rule: t(`coinop.${vs.coinop.rule}` as 'coinop.turbo') }) : vs.rule === 'score' ? t('versus.limit', { n: vs.limit }) : '';
       }
       const race = s.run.stage === 'race' ? s.run.race : null;

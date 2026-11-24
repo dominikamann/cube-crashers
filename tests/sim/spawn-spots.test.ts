@@ -3,7 +3,7 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { floorNeon } from '../../src/sim/config/floor-neon';
 import { createSim } from '../../src/sim/sim';
 import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
-import { joinRunning, updateVersus, VERSUS, versusDeath } from '../../src/sim/systems/versus';
+import { joinRunning, kingZone, updateVersus, VERSUS, versusDeath } from '../../src/sim/systems/versus';
 import type { SimState, Vec2 } from '../../src/sim/types';
 
 const d = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -80,5 +80,20 @@ describe('capture the cube', () => {
     updateVersus(s);
     expect(d(f.pos, f.base)).toBeLessThan(0.01);
     expect(f.downAt).toBeUndefined();
+  });
+});
+
+describe('king of the cube', () => {
+  it('tells an empty zone, one held by a side, and one fought over apart', () => {
+    const s = createSim(floorNeon, 7, { mode: 'versus', players: 2, versus: { mode: 'ffa', rule: 'king' } });
+    const k = s.versus!.king!;
+    const [a, b] = s.players;
+    a.pos = { x: k.pos.x + 20, z: k.pos.z };
+    b.pos = { x: k.pos.x - 20, z: k.pos.z };
+    expect(kingZone(s)).toEqual({ state: 'empty' });
+    a.pos = { ...k.pos };
+    expect(kingZone(s)).toEqual({ state: 'held', side: a.id });
+    b.pos = { x: k.pos.x + 1, z: k.pos.z };
+    expect(kingZone(s)).toEqual({ state: 'contested' });
   });
 });
