@@ -137,7 +137,8 @@ export function damageEnemy(s: SimState, e: Enemy, amount: number, source: Damag
 
   // a lost run is over: the last explosions of the tick no longer count
   if (s.phase !== 'playing') return;
-  s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos }, elite: e.elite });
+  // (run down by a vehicle: what is left of it flies on the way it was thrown)
+  s.events.push({ type: 'enemyKilled', kind: e.kind, pos: { ...e.pos }, elite: e.elite, ...(e.flung ? { thrown: { x: e.flung.dir.x * e.flung.left * 1.6, z: e.flung.dir.z * e.flung.left * 1.6 } } : {}) });
   s.stats.kills[killCategory(source)]++;
   const def = ENEMIES[e.kind];
   const p = byPlayerId !== undefined ? s.players.find(x => x.id === byPlayerId) : undefined;
