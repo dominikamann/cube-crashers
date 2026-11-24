@@ -170,6 +170,8 @@ function startGame() {
   fpsEl.className = 'fps';
   document.body.append(fpsEl);
   let fpsFrames = 0, fpsSince = performance.now();
+  /** online and on the LAN, the results stay up this long before the game goes on by itself */
+  const AUTO_ON_SECONDS = 10;
   /** king of the cube: your side's points last frame (-1: not in such a match), for the tick on every new one */
   let kingSeen = -1;
   /** the graphics test while it runs (see graphics-test.ts), its notice on screen, and who waits for it */
@@ -902,7 +904,9 @@ function startGame() {
     setTimeout(() => {
       if (mode !== 'over') return;
       setHudVisible(false);
-      screens.result(won, result, again, wayOut());
+      // online and on the LAN the game goes on by itself after a while, for whoever is away from the keys: back to
+      // the lobby, or for a host the next match
+      screens.result(won, result, role === 'solo' ? again : { ...again, auto: AUTO_ON_SECONDS }, wayOut());
     }, 1800);
   }
 

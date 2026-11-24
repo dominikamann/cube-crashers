@@ -305,7 +305,8 @@ export interface Screens {
   /** `live`: a game with others that goes on while this menu is open */
   pause(live?: boolean, leave?: { label: string; action: () => void }): void;
   /** `leave`: in a game with others, the way out of it (back to the list one came from) instead of "Main menu" */
-  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void }, leave?: { label: string; action: () => void }): void;
+  /** `again.auto`: seconds until it goes on by itself (online and on the LAN: the game goes on for whoever is away) */
+  result(won: boolean, summary: RunSummary, again?: { label: string; action: () => void; auto?: number }, leave?: { label: string; action: () => void }): void;
   /** the lobby; `isHost` shows Start and the difficulty switch */
   lobby(players: LobbyPlayer[], difficulty: Difficulty, isHost: boolean, me: number, lan: LanActions, vote?: LobbyVote | null, server?: ServerStatus | null, game?: GameInfo | null): void;
   /** the online server list; update() fills it in as servers answer */
@@ -1254,8 +1255,22 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const row = document.createElement('div');
         row.className = 'row2';
         s.append(row);
-        if (again) button(row, again.label, again.action, true);
-        else button(row, t('menu.playAgain'), actions.play, true);
+        if (again) {
+          const b = button(row, again.label, again.action, true);
+          // online and on the LAN it goes on by itself: the button counts down, then does what it says
+          if (again.auto) {
+            let left = again.auto;
+            b.textContent = `${again.label} (${left})`;
+            const timer = setInterval(() => {
+              if (!b.isConnected) return clearInterval(timer);
+              left--;
+              b.textContent = `${again.label} (${left})`;
+              if (left > 0) return;
+              clearInterval(timer);
+              again.action();
+            }, 1000);
+          }
+        } else button(row, t('menu.playAgain'), actions.play, true);
         if (leave) button(row, leave.label, leave.action);
         else button(row, t('menu.mainMenu'), actions.mainMenu);
       });
