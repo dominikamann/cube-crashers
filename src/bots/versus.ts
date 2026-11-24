@@ -1,6 +1,7 @@
 import { BLASTER, WEAPONS } from '../sim/config/weapons';
 import { buildFlowField, towerTiles, flowDir } from '../sim/map/flowfield';
-import { BLOCKS_WALKER, hasLos } from '../sim/map/tilemap';
+import { BLOCKS_WALKER, hasLos, isFree } from '../sim/map/tilemap';
+import { PLAYER_RADIUS } from '../sim/config/balance';
 import { cubeHome, rivals } from '../sim/systems/versus';
 import type { Command, Difficulty, SimState, Vec2 } from '../sim/types';
 
@@ -90,7 +91,12 @@ export function createVersusBot(id: number, level: Difficulty = 'ultraHigh'): (s
     // the objective of the mode, if it has one: the king zone, or the cubes
     const v = s.versus;
     let objective: Vec2 | null = null;
-    if (v.king) objective = v.king.pos;
+    // a zone: each bot its own spot in it, a little out from the middle, so they do not all stand in one another
+    if (v.king) {
+      const a = id * 2.399, k = v.king;
+      const spot = { x: k.pos.x + Math.cos(a) * k.radius * 0.55, z: k.pos.z + Math.sin(a) * k.radius * 0.55 };
+      objective = isFree(s.map, spot, PLAYER_RADIUS, BLOCKS_WALKER) && hasLos(s.map, k.pos, spot) ? spot : k.pos;
+    }
     if (v.flags && p.team !== undefined) {
       const own = v.flags[p.team], enemy = v.flags[1 - p.team];
       if (enemy.carrier === p.id) objective = own.base;

@@ -3,6 +3,9 @@ import { floor01 } from '../../src/sim/config/floor01';
 import { floorNeon } from '../../src/sim/config/floor-neon';
 import { createSim } from '../../src/sim/sim';
 import { addPlayer, removePlayer } from '../../src/sim/systems/coop';
+import { updatePlayers } from '../../src/sim/systems/player';
+import { BLOCKS_WALKER, isFree } from '../../src/sim/map/tilemap';
+import { PLAYER_RADIUS } from '../../src/sim/config/balance';
 import { joinRunning, kingZone, updateVersus, VERSUS, versusDeath } from '../../src/sim/systems/versus';
 import type { SimState, Vec2 } from '../../src/sim/types';
 
@@ -95,5 +98,16 @@ describe('king of the cube', () => {
     expect(kingZone(s)).toEqual({ state: 'held', side: a.id });
     b.pos = { x: k.pos.x + 1, z: k.pos.z };
     expect(kingZone(s)).toEqual({ state: 'contested' });
+  });
+});
+
+describe('players do not stand in one another', () => {
+  it('two players on the same spot are pushed apart over a few ticks, and stay out of walls', () => {
+    const s = versus(2, 'ffa');
+    const [a, b] = s.players;
+    b.pos = { ...a.pos };
+    for (let i = 0; i < 30; i++) updatePlayers(s, new Map());
+    expect(d(a.pos, b.pos)).toBeGreaterThan(0.7);
+    for (const p of [a, b]) expect(isFree(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER)).toBe(true);
   });
 });

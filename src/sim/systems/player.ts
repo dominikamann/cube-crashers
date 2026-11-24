@@ -383,5 +383,38 @@ export function updatePlayers(s: SimState, intents: Map<number, Intent>): void {
     const it = intents.get(p.id);
     if (it) updateOne(s, p, it);
   }
+  separatePlayers(s);
+}
+
+/** how much of their overlap two players standing in one another give way each tick (each of them half) */
+const GIVE_WAY = 0.35;
+
+/**
+ * Players do not stand in one another: two that overlap are pushed apart a little each tick, never into a wall
+ * (seen in first person, someone standing inside you looks broken; in a zone everyone heads for the same spot).
+ */
+function separatePlayers(s: SimState): void {
+  const standing = s.players.filter(p => p.downUntil === null && p.vehicleId === null && !p.out);
+  const apart = PLAYER_RADIUS * 2;
+  for (let i = 0; i < standing.length; i++) {
+    for (let j = i + 1; j < standing.length; j++) {
+      const a = standing[i], b = standing[j];
+      let dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d >= apart) continue;
+      // (right on top of each other: apart in a direction their ids pick, the same on every machine)
+      if (d < 1e-4) {
+        const angle = (a.id * 2.399 + b.id * 1.618) % (Math.PI * 2);
+        dx = Math.cos(angle);
+        dz = Math.sin(angle);
+      } else {
+        dx /= d;
+        dz /= d;
+      }
+      const push = ((apart - d) * GIVE_WAY) / 2;
+      moveCircle(s.map, a.pos, -dx * push, -dz * push, PLAYER_RADIUS, BLOCKS_WALKER);
+      moveCircle(s.map, b.pos, dx * push, dz * push, PLAYER_RADIUS, BLOCKS_WALKER);
+    }
+  }
 }
 

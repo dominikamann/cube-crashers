@@ -630,13 +630,13 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'cubeCaptured': {
             // the cube lies on the scorer's base for a moment (see actors.ts), then shatters: a flash, a shockwave in
             // the scorer's colour, and pieces of the cube flying off
-            const base = s.versus?.flags?.[e.team]?.base;
+            const base = e.pos ?? s.versus?.flags?.[e.team]?.base;
             if (!base) break;
             const at = { ...base }, mine = palette().teams[e.team], theirs = palette().teams[1 - e.team];
             later.push({
               at: time + CUBE_SHOWN,
               run: () => {
-                pops.push({ x: at.x, y: 1, z: at.z, age: 0, life: 0.25, size: 3, color: 0xffffff, ring: false });
+                pops.push({ x: at.x, y: e.pos ? 0.9 : 1.7, z: at.z, age: 0, life: 0.25, size: 3, color: 0xffffff, ring: false });
                 pops.push({ x: at.x, y: 0.06, z: at.z, age: 0, life: 0.5, size: 5, color: mine, ring: true });
                 chunks(at, 1, 26, [theirs, theirs, 0xffffff], 7, 0.12, 0.3);
                 burst(at, 1, 40, [mine, 0xfff3a0, 0xffffff], 6, 0.1);

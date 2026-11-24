@@ -1542,6 +1542,16 @@ function startGame() {
       const p0 = solo.players[0];
       solo.crates.push({ id: solo.nextId++, pos: { x: p0.pos.x + p0.facing.x * 2.2, z: p0.pos.z + p0.facing.z * 2.2 }, coins: 25 });
     }
+    // dev: &rule=capture&capdemo=1 makes the player capture the enemy cube every four seconds, to look at it
+    if (import.meta.env.DEV && params.has('capdemo') && solo.versus?.flags) {
+      const game = solo;
+      setInterval(() => {
+        const p = game.players[0], flags = game.versus?.flags;
+        if (!flags || p.team === undefined || game.phase !== 'playing') return;
+        flags[1 - p.team].carrier = p.id;
+        p.pos = { ...flags[p.team].base, x: flags[p.team].base.x + 0.5 };
+      }, 4000);
+    }
     // dev: &all=1 hands the player every weapon of the game, at level 3
     if (import.meta.env.DEV && params.has('all')) solo.players[0].weapons = ALL_WEAPONS.map(kind => ({ kind, level: 3, cooldown: 0 }));
     // dev: &view=top keeps the camera above the arena (for recordings)
