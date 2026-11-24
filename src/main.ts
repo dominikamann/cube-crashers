@@ -1549,7 +1549,8 @@ function startGame() {
       const game = solo;
       // (&away=1: next to the enemy base instead, to look at a base whose cube is away)
       const p0 = game.players[0], home = game.versus!.flags![params.has('away') ? 1 - (p0.team ?? 0) : (p0.team ?? 0)].base;
-      p0.pos = nearestFree(game.map, { x: home.x + 4, z: home.z }, PLAYER_RADIUS, BLOCKS_WALKER);
+      // (a free spot a few steps out in plain sight of the base, so it is on the same floor and a walk away)
+      p0.pos = nearestFree(game.map, home, PLAYER_RADIUS, BLOCKS_WALKER, 3.5);
       setInterval(() => {
         const p = game.players[0], flags = game.versus?.flags;
         if (!flags || p.team === undefined || game.phase !== 'playing' || flags.some(f => f.carrier === p.id)) return;
