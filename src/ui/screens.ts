@@ -540,7 +540,6 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
     return row;
   };
   const modeName = (m: ServerMode | 'lan') => (m === 'lan' || isCoop(m) ? t(`server.mode.${m}` as 'server.mode.coop') : t(`versus.${m}` as 'versus.score'));
-  const diffLabel = (d: Difficulty) => `${t('settings.difficulty')}: ${t(`difficulty.${d}`)}`;
   /** a kill source as players know it: weapon, rare weapon, tower or move */
   const sourceName = (k: string | null) => {
     if (!k) return '–';
@@ -1477,8 +1476,11 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
           const bar = document.createElement('div');
           bar.className = 'lobby-status';
           s.append(bar);
-          if (game) gameBadges(bar, { ...game, difficulty });
-          else text(bar, 'span', 'badge', diffLabel(difficulty));
+          // (how hard only once there is a game it is for: before the host has picked one it would say nothing)
+          if (game) {
+            gameBadges(bar, { ...game, difficulty });
+            text(bar, 'span', 'lobby-sep', '');
+          }
           text(bar, 'span', 'lobby-wait', t(game?.running ? 'lobby.runningLan' : game ? 'lobby.waitingStart' : 'lobby.waiting'));
         }
         // Leave on the left; for the host, Start on the right: now it begins, with the game picked above
