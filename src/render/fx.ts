@@ -646,6 +646,12 @@ export function createFx(scene: THREE.Scene): Fx {
             });
             break;
           }
+          case 'chestAppeared':
+            // a chest turns up: a flash of gold and a shower of sparks, so it is seen across the map
+            pops.push({ x: e.pos.x, y: 0.5, z: e.pos.z, age: 0, life: 0.4, size: 2.2, color: 0xffd23d, ring: false });
+            pops.push({ x: e.pos.x, y: 0.05, z: e.pos.z, age: 0, life: 0.5, size: 2.6, color: 0xffc928, ring: true });
+            burst(e.pos, 0.6, 30, [0xffc928, 0xfff3a0, 0xffffff], 4, 0.1);
+            break;
           case 'cubeDropped':
             // the cube thuds onto the floor
             ring(e.pos, 1.4, [palette().teams[e.team], 0xffffff]);

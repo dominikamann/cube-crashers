@@ -132,12 +132,12 @@ describe('treasure chests', () => {
     s.crates = [];
     run(s, VERSUS.bagEveryTicks);
     const chest = s.crates.find(c => c.coins);
-    expect(chest?.coins).toBe(VERSUS.bagCoins);
+    expect(VERSUS.chestCoins.map(c => c.coins)).toContain(chest?.coins);
     const p = s.players[0];
     const before = p.coins;
     p.pos = { ...chest!.pos };
     updateOffers(s);
-    expect(p.coins).toBe(before + VERSUS.bagCoins);
+    expect(p.coins).toBe(before + chest!.coins!);
     expect(s.crates.some(c => c.id === chest!.id)).toBe(false);
     expect(s.offers).toHaveLength(0);
   });

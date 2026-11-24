@@ -800,6 +800,9 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: So
       return me === undefined || e.playerId === me ? one('crateCoins') : [];
     case 'powerupSpawned':
       return one('powerupSpawned');
+    case 'chestAppeared':
+      // (a bigger chest rings a little lower)
+      return one('powerupSpawned', e.coins >= 50 ? 0.8 : e.coins >= 30 ? 0.9 : 1);
     case 'powerupPicked':
       return one('powerupPicked');
     case 'kartEnter':

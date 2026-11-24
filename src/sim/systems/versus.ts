@@ -47,9 +47,19 @@ export const VERSUS = {
   /** a money bag shows up this often while there are fewer than `maxBags`, with this many coins (for towers and the like) */
   bagEveryTicks: 20 * TICK_RATE,
   maxBags: 2,
-  bagCoins: 25,
+  /** a chest turns up at least this far from every player */
+  chestFromPlayers: 4,
+  /** what a chest holds, and how likely each is (they add up to 1) */
+  chestCoins: [
+    { coins: 10, chance: 0.4 },
+    { coins: 20, chance: 0.3 },
+    { coins: 30, chance: 0.2 },
+    { coins: 50, chance: 0.1 },
+  ],
   /** king of the cube */
   kingRadius: 3,
+  /** a zone where walls or special floor come close is smaller, but never less than this */
+  kingMinRadius: 2,
   kingMoveTicks: 45 * TICK_RATE,
   kingLimit: { ffa: 60, team: 100 },
   /** a zone that moves on goes at least this far from where it was (where the map allows) */
@@ -227,19 +237,29 @@ function spawnFor(s: SimState, p: Player, others: Vec2[], enemies: Vec2[]): Vec2
 /** where the king zone can be: nest spots, plazas and power spots of the map */
 function kingSpots(s: SimState): Vec2[] {
   const list = [...s.map.nestSpots.map(n => n.pos), ...s.map.powerSpots];
-  // (a zone over a conveyor, a boost pad, glitch floor, a ramp or a tower pad mixes up two things on the floor: those
-  // spots only where the map has none clear of them)
-  const plain = list.filter(at => plainFloor(s, at, VERSUS.kingRadius) && s.map.pads.every(p => dist(p.pos, at) > VERSUS.kingRadius + 0.5));
-  return plain.length > 0 ? plain : list.length > 0 ? list : [s.map.spawn];
+  // (a zone lies on plain open floor only: not over a wall, a ledge, a conveyor, a boost pad, glitch floor, a ramp or
+  // a tower pad; those spots only where the map has none that fits)
+  const fit = list.filter(at => zoneRadius(s, at) > 0);
+  return fit.length > 0 ? fit : list.length > 0 ? list : [s.map.spawn];
 }
 
-/** nothing but plain floor (and walls) within `radius` of a spot: no conveyor, boost pad, glitch floor or ramp */
+/**
+ * How wide a zone at `at` can be: the full radius where it fits, smaller where walls or special floor come close,
+ * down to VERSUS.kingMinRadius; 0 where not even that fits.
+ */
+export function zoneRadius(s: SimState, at: Vec2): number {
+  for (let r = VERSUS.kingRadius; r >= VERSUS.kingMinRadius - 1e-6; r -= 0.25) {
+    if (plainFloor(s, at, r) && s.map.pads.every(p => dist(p.pos, at) > r + 0.5)) return r;
+  }
+  return 0;
+}
+
+/** nothing but plain open floor within `radius` of a spot */
 function plainFloor(s: SimState, at: Vec2, radius: number): boolean {
-  for (let dz = -radius; dz <= radius; dz += 0.5) {
-    for (let dx = -radius; dx <= radius; dx += 0.5) {
+  for (let dz = -radius; dz <= radius; dz += 0.25) {
+    for (let dx = -radius; dx <= radius; dx += 0.25) {
       if (dx * dx + dz * dz > radius * radius) continue;
-      const tile = tileAt(s.map, at.x + dx, at.z + dz);
-      if (tile !== Tile.Floor && tile !== Tile.Wall && tile !== Tile.LowWall) return false;
+      if (tileAt(s.map, at.x + dx, at.z + dz) !== Tile.Floor) return false;
     }
   }
   return true;
@@ -327,13 +347,13 @@ export function setupVersus(s: SimState, mode: VersusMode, rule: VersusRule, cha
   if (rule === 'king') {
     v.limit = VERSUS.kingLimit[mode];
     const first = firstZone(s, mode);
-    v.king = { pos: { ...kingSpots(s)[first] }, radius: VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: first };
+    v.king = { pos: { ...kingSpots(s)[first] }, radius: zoneRadius(s, kingSpots(s)[first]) || VERSUS.kingRadius, nextMoveAt: s.tick + VERSUS.kingMoveTicks, spot: first };
   }
   if (rule === 'conquest') {
     v.limit = VERSUS.conquestWins;
     // (the zone stays until it is taken)
     const first = firstZone(s, mode);
-    v.king = { pos: { ...kingSpots(s)[first] }, radius: VERSUS.kingRadius, nextMoveAt: Number.MAX_SAFE_INTEGER, spot: first };
+    v.king = { pos: { ...kingSpots(s)[first] }, radius: zoneRadius(s, kingSpots(s)[first]) || VERSUS.kingRadius, nextMoveAt: Number.MAX_SAFE_INTEGER, spot: first };
     v.conquest = { holds: {}, taken: 0 };
     v.endsAt = s.tick + VERSUS.conquestMinutes * 60 * TICK_RATE;
   }
@@ -547,6 +567,21 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
   if (v.coinop?.rule === 'boom') explode(s, { ...p.pos }, VERSUS.boomRadius, { player: VERSUS.boomDamage }, 'explosion');
 }
 
+/**
+ * Somewhere a treasure chest can show up: any open plain floor (no special floor under it, no wall at hand), a few
+ * steps from everyone, so it turns up anywhere on the map rather than at the crates' spots. Null if none was found.
+ */
+function chestSpot(s: SimState): Vec2 | null {
+  for (let tries = 0; tries < 40; tries++) {
+    const at = { x: Math.floor(s.rng.next() * s.map.w) + 0.5, z: Math.floor(s.rng.next() * s.map.h) + 0.5 };
+    if (tileAt(s.map, at.x, at.z) !== Tile.Floor || !isFree(s.map, at, 0.9, BLOCKS_WALKER)) continue;
+    if (s.players.some(p => dist(p.pos, at) < VERSUS.chestFromPlayers) || s.crates.some(c => dist(c.pos, at) < 3)) continue;
+    if (!spotClear(s, at)) continue;
+    return at;
+  }
+  return null;
+}
+
 /** whether a capture-the-cube cube lies at its base (nobody carries it, it is not out in the field) */
 export function cubeHome(f: { base: Vec2; pos: Vec2; carrier: number | null }): boolean {
   return f.carrier === null && dist(f.pos, f.base) < 0.01;
@@ -611,6 +646,7 @@ function moveZone(s: SimState, nextAt: number, quiet = false): void {
   const empty = far.filter(i => standing.every(p => dist(p.pos, spots[i]) > k.radius + 1));
   k.spot = fair.length > 0 ? s.rng.pick(fair) : fresh.length > 0 ? s.rng.pick(fresh) : (empty[0] ?? far[0] ?? k.spot);
   k.pos = { ...spots[k.spot] };
+  k.radius = zoneRadius(s, k.pos) || VERSUS.kingRadius;
   k.nextMoveAt = nextAt;
   if (!quiet) s.events.push({ type: 'kingMoved', pos: { ...k.pos } });
 }
@@ -763,8 +799,14 @@ export function updateVersus(s: SimState): void {
   // which hands out the weapons itself and has no crates)
   if (s.tick >= (v.nextBagAt ?? 0) && v.rule !== 'gungame') {
     v.nextBagAt = s.tick + VERSUS.bagEveryTicks;
-    const free = s.map.crateSpots.filter(c => spotClear(s, c));
-    if (s.crates.filter(c => c.coins).length < VERSUS.maxBags && free.length > 0) s.crates.push({ id: s.nextId++, pos: { ...s.rng.pick(free) }, coins: VERSUS.bagCoins });
+    const at = s.crates.filter(c => c.coins).length < VERSUS.maxBags ? chestSpot(s) : null;
+    if (at) {
+      // (how much is in it: mostly a little, now and then a lot)
+      let roll = s.rng.next();
+      const coins = VERSUS.chestCoins.find(c => (roll -= c.chance) < 0)?.coins ?? VERSUS.chestCoins[0].coins;
+      s.crates.push({ id: s.nextId++, pos: at, coins });
+      s.events.push({ type: 'chestAppeared', pos: { ...at }, coins });
+    }
   }
 
   // chaos: monster hordes join the fight

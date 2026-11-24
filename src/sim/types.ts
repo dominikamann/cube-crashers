@@ -788,6 +788,8 @@ export type SimEvent =
   | { type: 'cardPicked'; playerId: number; card: Card; level: number }
   | { type: 'crateCoins'; playerId: number; coins: number }
   | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
+  /** versus: a treasure chest of `coins` turned up */
+  | { type: 'chestAppeared'; pos: Vec2; coins: number }
   | { type: 'powerupPicked'; kind: PowerupKind; playerId: number }
   | { type: 'kartEnter'; playerId: number }
   /** a little witch near a player cackles, or shrieks as she sees someone and comes for them; `boss`: the witch

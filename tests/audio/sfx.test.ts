@@ -37,6 +37,7 @@ const EXAMPLES: { [K in SimEvent['type']]: Extract<SimEvent, { type: K }> } = {
   cubeCaptured: { type: 'cubeCaptured', team: 0, playerId: 0 },
   kingMoved: { type: 'kingMoved', pos: { x: 0, z: 0 } },
   zoneTaken: { type: 'zoneTaken', side: 0, teams: true, taken: 1 },
+  chestAppeared: { type: 'chestAppeared', pos: { x: 0, z: 0 }, coins: 20 },
   coinOpRule: { type: 'coinOpRule', rule: 'turbo' },
   unicornAppeared: { type: 'unicornAppeared', pos: { x: 0, z: 0 } },
   sharkLeap: { type: 'sharkLeap', pos: { x: 0, z: 0 }, playerId: 0 },
