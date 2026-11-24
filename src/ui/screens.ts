@@ -1325,12 +1325,20 @@ export function createScreens(root: HTMLElement, actions: ScreenActions, setting
         const head = s.childElementCount;
         const list = document.createElement('div');
         list.className = 'lobby txt';
+        // rows as even as they come: 4 as 2 + 2, 5 as 3 + 2, 7 as 4 + 3, 10 as 5 + 5, never one left alone
+        const cols = [1, 1, 2, 3, 2, 3, 3, 4, 4, 3, 5][players.length] ?? 5;
+        list.style.setProperty('--cols', String(cols));
         for (const p of players) {
           const row = document.createElement('div');
           row.className = 'lobby-row';
           const swatch = document.createElement('i');
           swatch.style.background = hex(p.color);
-          row.append(swatch, document.createTextNode(`${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}${p.ready ? ' \u2713' : ''}`));
+          // (a name stays on one line: a long one ends in an ellipsis rather than breaking the row in two)
+          const name = document.createElement('span');
+          name.className = 'lobby-name';
+          name.textContent = `${p.name}${p.id === 0 ? ' ★' : ''}${p.bot ? ' 🤖' : ''}${p.id === me ? ` (${t('lobby.you')})` : ''}${p.ready ? ' \u2713' : ''}`;
+          name.title = p.name;
+          row.append(swatch, name);
           // team wish: everyone sets their own, the others see it (not on a server that never plays teams)
           const teams = !server || server.teams;
           if (!p.bot && teams) {
