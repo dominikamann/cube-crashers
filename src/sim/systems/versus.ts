@@ -179,7 +179,7 @@ function findBases(s: SimState, apart: number, zoned: boolean): [Vec2, Vec2] | n
   let pair: [Vec2, Vec2] | null = null, best = -Infinity;
   for (const x of spots) for (const y of spots) {
     if (dist(x, y) < apart) continue;
-    const score = dist(x, y) - 2 * nearer(x, y);
+    const score = dist(x, y) - 4 * nearer(x, y);
     if (score > best) {
       best = score;
       pair = [x, y];
