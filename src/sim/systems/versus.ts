@@ -47,6 +47,8 @@ export const VERSUS = {
   /** a money bag shows up this often while there are fewer than `maxBags`, with this many coins (for towers and the like) */
   bagEveryTicks: 20 * TICK_RATE,
   maxBags: 2,
+  /** a chest turns up only where there is nothing but open floor this far round it */
+  chestClear: 1.5,
   /** a chest turns up at least this far from every player */
   chestFromPlayers: 4,
   /** what a chest holds, and how likely each is (they add up to 1) */
@@ -255,7 +257,7 @@ export function zoneRadius(s: SimState, at: Vec2): number {
 }
 
 /** nothing but plain open floor within `radius` of a spot */
-function plainFloor(s: SimState, at: Vec2, radius: number): boolean {
+export function plainFloor(s: SimState, at: Vec2, radius: number): boolean {
   for (let dz = -radius; dz <= radius; dz += 0.25) {
     for (let dx = -radius; dx <= radius; dx += 0.25) {
       if (dx * dx + dz * dz > radius * radius) continue;
@@ -568,13 +570,14 @@ export function versusDeath(s: SimState, p: Player, attackerId: number | undefin
 }
 
 /**
- * Somewhere a treasure chest can show up: any open plain floor (no special floor under it, no wall at hand), a few
+ * Somewhere a treasure chest can show up: any open plain floor (no special floor, wall or building near it), a few
  * steps from everyone, so it turns up anywhere on the map rather than at the crates' spots. Null if none was found.
  */
 function chestSpot(s: SimState): Vec2 | null {
   for (let tries = 0; tries < 40; tries++) {
     const at = { x: Math.floor(s.rng.next() * s.map.w) + 0.5, z: Math.floor(s.rng.next() * s.map.h) + 0.5 };
-    if (tileAt(s.map, at.x, at.z) !== Tile.Floor || !isFree(s.map, at, 0.9, BLOCKS_WALKER)) continue;
+    // (open floor all round, clear of walls and the buildings and signs along them)
+    if (!plainFloor(s, at, VERSUS.chestClear)) continue;
     if (s.players.some(p => dist(p.pos, at) < VERSUS.chestFromPlayers) || s.crates.some(c => dist(c.pos, at) < 3)) continue;
     if (!spotClear(s, at)) continue;
     return at;

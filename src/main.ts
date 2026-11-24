@@ -20,7 +20,7 @@ import { Keyboard } from './input/keyboard';
 import { loadKeyboardLayout } from './input/bindings';
 import { createVersusBot } from './bots/versus';
 import { locked } from './sim/systems/missile';
-import { balanceTeams, conquestHold, discovery, DISCOVERY_MAPS, side as versusSide } from './sim/systems/versus';
+import { balanceTeams, conquestHold, discovery, DISCOVERY_MAPS, plainFloor, side as versusSide } from './sim/systems/versus';
 import { normalizePad, padBoard, PadControls, PadMenu, padFamily, type PadSnapshot } from './input/gamepad';
 import { nextInDirection } from './input/pad-nav';
 import { uiZoom } from './ui/scale';
@@ -1542,7 +1542,9 @@ function startGame() {
     if (import.meta.env.DEV && params.has('chest') && solo.versus) {
       const p0 = solo.players[0], side = { x: -p0.facing.z, z: p0.facing.x };
       [10, 30, 50].forEach((coins, i) => {
-        const at = { x: p0.pos.x + p0.facing.x * 3 + side.x * (i - 1) * 1.6, z: p0.pos.z + p0.facing.z * 3 + side.z * (i - 1) * 1.6 };
+        const want = { x: p0.pos.x + p0.facing.x * 3 + side.x * (i - 1) * 1.6, z: p0.pos.z + p0.facing.z * 3 + side.z * (i - 1) * 1.6 };
+        // (on open floor, never in a wall)
+        const at = plainFloor(solo!, want, 1) ? want : nearestFree(solo!.map, want, 1, BLOCKS_WALKER);
         solo!.crates.push({ id: solo!.nextId++, pos: at, coins });
       });
       solo.versus.nextBagAt = solo.tick + 3 * 60;
