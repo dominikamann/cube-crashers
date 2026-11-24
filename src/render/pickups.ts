@@ -150,8 +150,13 @@ export function createPickups(scene: THREE.Scene): Pickups {
             const tex = texFor(cardKey(card), () => cardTexture(card));
             const glowColor = card.type === 'weapon' ? 0xb07cff : card.type === 'perk' ? 0x3bffb0 : 0xffc928;
             const mesh = new THREE.Mesh(cardGeo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
-            // (it always turns to whoever looks at it: upright in first person, readable from above)
-            mesh.onBeforeRender = (_r, _s, camera) => mesh.quaternion.copy(camera.quaternion);
+            // (it always turns to whoever looks at it: upright in first person, readable from above; set on the matrix
+            // the camera draws it with, so each view of a split screen gets its own)
+            mesh.onBeforeRender = (_r, _s, camera) => {
+              mesh.matrixWorld.compose(mesh.position, camera.quaternion, mesh.scale);
+              mesh.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, mesh.matrixWorld);
+              mesh.normalMatrix.getNormalMatrix(mesh.modelViewMatrix);
+            };
             mesh.position.set(o.cardPos[i].x, 1.1, o.cardPos[i].z);
             mesh.userData.phase = i;
             const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.35, depthWrite: false }));
