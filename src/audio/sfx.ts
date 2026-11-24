@@ -59,6 +59,7 @@ export type SoundId =
   | 'offerOpened'
   | 'cardPicked'
   | 'crateCoins'
+  | 'kaching'
   | 'powerupSpawned'
   | 'powerupPicked'
   | 'kartEnter'
@@ -333,6 +334,24 @@ export const SOUNDS: Record<SoundId, SynthParams[]> = {
     { wave: 'triangle', freq: 131, attack: 0.005, sustain: 0.25, decay: 0.2, volume: 0.25 },
   ],
   crateCoins: notes('square', [988, 1319, 1568, 1976], 0.05, 0.09, 0.1, 0.03),
+  // an old cash register: the keys rattle down (three quick clicks) and the drawer springs open with a thud
+  // ("ka"), then its bell is struck: loud, bright and metallic, ringing out long with a shimmer ("ching"), and a
+  // few coins jingle in the drawer
+  kaching: [
+    // "ka": the keys rattle down hard and the drawer slams open
+    ...[0, 0.03, 0.06].map((at): SynthParams => ({ wave: 'noise', freq: 1, attack: 0.001, sustain: 0.006, decay: 0.03, volume: 0.26, lowpass: 4200, at })),
+    ...[0, 0.03, 0.06].map((at): SynthParams => ({ wave: 'square', freq: 900, attack: 0.001, sustain: 0.004, decay: 0.025, volume: 0.07, lowpass: 4000, at })),
+    { wave: 'square', freq: 320, freqEnd: 200, attack: 0.001, sustain: 0.025, decay: 0.11, volume: 0.15, lowpass: 2200, at: 0.1 },
+    { wave: 'noise', freq: 1, attack: 0.001, sustain: 0.025, decay: 0.09, volume: 0.16, lowpass: 3000, at: 0.1 },
+    // a breath, then "ching": the bell struck, two tones a hair apart for the shimmer and the clangy partials above
+    { wave: 'noise', freq: 1, attack: 0.001, sustain: 0.002, decay: 0.03, volume: 0.12, lowpass: 9000, at: 0.34 },
+    { wave: 'sine', freq: 1760, attack: 0.002, sustain: 0.06, decay: 1.4, volume: 0.2, at: 0.34 },
+    { wave: 'sine', freq: 1768, attack: 0.002, sustain: 0.06, decay: 1.2, volume: 0.12, at: 0.34 },
+    { wave: 'sine', freq: 3520, attack: 0.002, sustain: 0.04, decay: 0.8, volume: 0.07, at: 0.34 },
+    { wave: 'sine', freq: 4858, attack: 0.002, sustain: 0.03, decay: 0.5, volume: 0.06, at: 0.34 },
+    { wave: 'sine', freq: 9504, attack: 0.001, sustain: 0.02, decay: 0.25, volume: 0.03, at: 0.34 },
+    ...[3136, 3520, 2960].map((freq, i): SynthParams => ({ wave: 'triangle', freq, attack: 0.001, sustain: 0.015, decay: 0.05, volume: 0.02, at: 0.52 + i * 0.07 })),
+  ],
   powerupSpawned: notes('triangle', [1319, 1568], 0.1, 0.1, 0.2, 0.05),
   powerupPicked: [{ wave: 'square', freq: 440, freqEnd: 1760, attack: 0.005, sustain: 0.12, decay: 0.2, volume: 0.12 }],
   kartEnter: [
@@ -796,8 +815,9 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: So
     case 'cardPicked':
       return one('cardPicked');
     case 'crateCoins':
-      // (a rival's chest is not your money: heard only by whoever got the coins, or by all on a shared screen)
-      return me === undefined || e.playerId === me ? one('crateCoins') : [];
+      // (a rival's chest is not your money: heard only by whoever got the coins, or by all on a shared screen; a
+      // treasure chest rings the till, a crate with nothing left to give just chimes)
+      return me === undefined || e.playerId === me ? one(e.chest ? 'kaching' : 'crateCoins') : [];
     case 'powerupSpawned':
       return one('powerupSpawned');
     case 'chestAppeared':

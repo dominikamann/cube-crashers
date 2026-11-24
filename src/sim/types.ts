@@ -786,7 +786,8 @@ export type SimEvent =
   | { type: 'elevatorOpen' }
   | { type: 'offerOpened'; pos: Vec2 }
   | { type: 'cardPicked'; playerId: number; card: Card; level: number }
-  | { type: 'crateCoins'; playerId: number; coins: number }
+  /** `chest`: from a treasure chest, not an empty crate */
+  | { type: 'crateCoins'; playerId: number; coins: number; chest?: boolean }
   | { type: 'powerupSpawned'; kind: PowerupKind; pos: Vec2 }
   /** versus: a treasure chest of `coins` turned up */
   | { type: 'chestAppeared'; pos: Vec2; coins: number }

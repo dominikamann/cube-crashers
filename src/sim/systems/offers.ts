@@ -71,7 +71,7 @@ function openCrate(s: SimState, crate: Crate, p: Player): void {
   // a money bag: just the coins
   if (crate.coins) {
     p.coins += crate.coins;
-    s.events.push({ type: 'crateCoins', playerId: p.id, coins: crate.coins });
+    s.events.push({ type: 'crateCoins', playerId: p.id, coins: crate.coins, chest: true });
     return;
   }
   const pool = options(s, p);
