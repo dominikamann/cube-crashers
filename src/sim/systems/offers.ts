@@ -11,6 +11,8 @@ export const CRATE_PICKUP_RADIUS = 0.8;
 export const CARD_PICKUP_RADIUS = 0.7;
 export const CARD_DISTANCE = 1.8;
 export const MIN_CARD_GAP = 1.6;
+/** how far a card keeps from a parked vehicle's middle */
+const PARKED_CLEAR = 1.6;
 export const CARD_ARM_TICKS = 30;
 export const OFFER_TICKS = 900;
 export const EMPTY_CRATE_COINS = 25;
@@ -54,7 +56,9 @@ function options(s: SimState, p: Player): Card[] {
  *  they show without turning round, and walking straight on does not take one by mistake. */
 export function cardPositions(s: SimState, pos: Vec2, n: number, ahead?: Vec2): Vec2[] {
   const out: Vec2[] = [];
-  const fits = (c: Vec2) => isFree(s.map, c, PLAYER_RADIUS, BLOCKS_WALKER) && !out.some(o => dist(o, c) < MIN_CARD_GAP);
+  // (nor on a parked vehicle, which nobody can walk into: kept clear by the widest one's reach and a player's)
+  const parked = s.vehicles.filter(v => v.driverId === null && v.air === 0);
+  const fits = (c: Vec2) => isFree(s.map, c, PLAYER_RADIUS, BLOCKS_WALKER) && !out.some(o => dist(o, c) < MIN_CARD_GAP) && !parked.some(v => dist(v.pos, c) < PARKED_CLEAR);
   if (ahead) {
     // a row across the way on, a few steps ahead: one each side of the way, then further out; straight ahead last
     const len = Math.hypot(ahead.x, ahead.z) || 1, fx = ahead.x / len, fz = ahead.z / len;

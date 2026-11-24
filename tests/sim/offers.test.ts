@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { floor01 } from '../../src/sim/config/floor01';
 import { ALL_WEAPONS } from '../../src/sim/config/weapons';
 import { createSim, stepSim } from '../../src/sim/sim';
-import { START_CRATES, grantWeapon } from '../../src/sim/systems/offers';
+import { START_CRATES, cardPositions, grantWeapon } from '../../src/sim/systems/offers';
 import { DIFFICULTIES, DIFFICULTY } from '../../src/sim/config/difficulty';
 import { HOLD_TICKS } from '../../src/sim/config/balance';
 import { damageEnemy } from '../../src/sim/systems/combat';
@@ -39,6 +39,19 @@ describe('crates', () => {
     expect(new Set(offer.cards.map(cardKey)).size).toBe(3);
     expect(s.events.some(e => e.type === 'offerOpened')).toBe(true);
     for (const c of offer.cardPos) expect(Math.hypot(c.x - offer.pos.x, c.z - offer.pos.z)).toBeGreaterThan(1.2);
+  });
+
+  it('stand in a row ahead of whoever opened the crate, the way straight on kept clear, and never on a parked vehicle', () => {
+    const s = quietSim();
+    const at = s.players[0].pos, ahead = { x: 0, z: -1 };
+    const row = cardPositions(s, at, 3, ahead);
+    for (const c of row) {
+      expect(c.z - at.z).toBeLessThan(-1.5);
+      expect(Math.abs(c.x - at.x)).toBeGreaterThan(0.9);
+    }
+    // a kart parked where the first card would go: the cards keep clear of it
+    s.vehicles.push({ id: s.nextId++, kind: 'kart', pos: { ...row[0] }, vel: { x: 0, z: 0 }, hp: 100, fuel: 100, driverId: null, air: 0, spot: 0 });
+    for (const c of cardPositions(s, at, 3, ahead)) expect(Math.hypot(c.x - row[0].x, c.z - row[0].z)).toBeGreaterThanOrEqual(1.6);
   });
 
   it('spread the cards apart even in a corner', () => {
