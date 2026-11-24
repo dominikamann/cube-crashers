@@ -110,6 +110,21 @@ describe('the dedicated server', () => {
     }
   });
 
+  it('a list of rules takes turns in its order, as teams with --teams, without monsters unless set', () => {
+    const { host, cs, run } = setup({ mode: 'discovery', rules: ['capture', 'conquest', 'king'], teams: true });
+    const seen: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      cs[0].setReady(true);
+      run(1);
+      seen.push(host.sim!.versus!.rule);
+      expect(host.sim!.versus!.mode).toBe('team');
+      expect(host.sim!.versus!.chaos).toBe(false);
+      host.sim!.phase = 'won';
+      run(RESULT_SECONDS + 1);
+    }
+    expect(seen).toEqual(['capture', 'conquest', 'king', 'capture', 'conquest', 'king']);
+  });
+
   it('gun game takes monster hordes when they are set, as it does in the game', () => {
     const { host, cs, run } = setup({ mode: 'gungame', monsters: true });
     cs[0].setReady(true);

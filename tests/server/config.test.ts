@@ -28,6 +28,13 @@ describe('dedicated server settings', () => {
     expect(parseConfig([], {}, { web: true }).web).toBe(true);
   });
 
+  it('takes a list of versus rules to play in turn, and says when one is not a versus rule', () => {
+    expect(parseConfig(['--mode', 'capture,conquest,king', '--teams'], {}, null)).toMatchObject({ mode: 'discovery', rules: ['capture', 'conquest', 'king'], teams: true });
+    expect(parseConfig(['--mode', 'king'], {}, null)).toMatchObject({ mode: 'king', rules: null });
+    expect(() => parseConfig(['--mode', 'capture,coop'], {}, null)).toThrow(/mode in a list/);
+    expect(() => parseConfig(['--mode', 'king,king'], {}, null)).toThrow(/each rule once/);
+  });
+
   it('says clearly what is wrong', () => {
     expect(() => parseConfig(['--mode', 'deathmatch'], {}, null)).toThrow(/mode.*coop, quick, brawl, bossrush, endless, discovery, gungame/);
     expect(() => parseConfig(['--map', 'mars'], {}, null)).toThrow(/map.*neon/);

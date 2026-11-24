@@ -1,7 +1,7 @@
 import { MAX_PLAYERS } from '../sim/config/balance';
 import { BRAWL_MAPS, MAP_ROTATION, QUICK_MAPS, RUSH_OWN, VERSUS_MAPS, withoutTown } from '../maps';
-import { KEEP_WEAPONS, type Difficulty, type KeepWeapons } from '../sim/types';
-import { isCoop, SERVER_MODES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
+import { KEEP_WEAPONS, type Difficulty, type KeepWeapons, type VersusRule } from '../sim/types';
+import { isCoop, SERVER_MODES, VERSUS_RULES, VIEW_MODES, type ServerMode, type ViewMode } from '../net/protocol';
 
 /** everything a server owner can set, by command line flag, environment variable or server.json */
 export interface ServerConfig {
@@ -9,6 +9,11 @@ export interface ServerConfig {
   name: string;
   port: number;
   mode: ServerMode;
+  /**
+   * versus rules taken in turn, in this order (--mode capture,conquest,king): the server is then listed as
+   * discovery (a rule each match), with --teams red against blue throughout. null = mode as it is
+   */
+  rules: VersusRule[] | null;
   /**
    * the map, one of mapChoices(mode): always this arena (versus), this floor (quick), this map for the Boss Brawl
    * or for every boss of the Boss Rush; "random" = a random one each time; bossrush also "own" (each boss on its
@@ -67,7 +72,7 @@ export function mapChoices(mode: ServerMode, view: ViewMode = 'both'): string[] 
 const DIFFICULTIES: Difficulty[] = ['ultraLow', 'low', 'medium', 'high', 'ultraHigh'];
 
 export function defaultConfig(): ServerConfig {
-  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, keep: 'none', web: false, compress: false };
+  return { name: 'Cube Crashers Server', port: 47800, mode: 'discovery', rules: null, map: null, teams: false, difficulty: 'medium', bots: 4, view: 'both', countdown: 30, monsters: false, keep: 'none', web: false, compress: false };
 }
 
 /** name of the setting, its flag and environment variable, and how to read it */
@@ -126,7 +131,14 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
   const c = defaultConfig();
   if (raw.name !== undefined) c.name = String(raw.name).trim().slice(0, 40) || c.name;
   if (raw.port !== undefined) c.port = int('port', raw.port, 1, 65535);
-  if (raw.mode !== undefined) c.mode = oneOf('mode', raw.mode, SERVER_MODES);
+  if (raw.mode !== undefined && String(raw.mode).includes(',')) {
+    // a list of versus rules, taken in turn
+    const rules = String(raw.mode).split(',').map(r => r.trim());
+    if (new Set(rules).size < rules.length) throw new Error(`mode: each rule once in a list (got "${raw.mode}")`);
+    for (const r of rules) oneOf('mode in a list', r, VERSUS_RULES);
+    c.mode = 'discovery';
+    c.rules = rules as VersusRule[];
+  } else if (raw.mode !== undefined) c.mode = oneOf('mode', raw.mode, SERVER_MODES);
   if (raw.teams !== undefined) c.teams = bool(raw.teams);
   if (raw.difficulty !== undefined) c.difficulty = oneOf('difficulty', raw.difficulty, DIFFICULTIES);
   if (raw.bots !== undefined) c.bots = int('bots', raw.bots, 0, MAX_PLAYERS);
@@ -162,7 +174,8 @@ export const HELP = `Cube Crashers dedicated server
   --port <number>      port to listen on (default 47800); open it in your router
   --mode <mode>        ${SERVER_MODES.join(' | ')} (default discovery)
                        co-op: coop (the Tower Run), quick (a Single floor), brawl (Boss Brawl), bossrush, endless;
-                       versus: discovery (every rule in turn) or one rule
+                       versus: discovery (every rule in turn), one rule, or a list of rules, comma apart, played
+                       in turn: capture,conquest,king (${VERSUS_RULES.join(', ')})
   --map <map>          the map, by mode (${MAP_ROTATION} = a random one each time; for quick and versus also a list,
                        comma apart, played in turn: waldsee,jungle):
                          versus:   ${VERSUS_MAPS.join(', ')}
@@ -174,7 +187,8 @@ export const HELP = `Cube Crashers dedicated server
                          bossrush: ${RUSH_OWN} (each boss on its own floor), ${MAP_ROTATION} (a random map for each boss),
                                    or one of the brawl maps for all of them (default ${RUSH_OWN})
                        coop and endless bring their own floors; ${TOWN} is the Town
-  --teams              red against blue (score, king, conquest, rounds, coinop); capture is always teams
+  --teams              red against blue (score, king, conquest, rounds, coinop, or a list of rules); capture is
+                       always teams, gungame never
   --difficulty <level> co-op games and versus bots: ${DIFFICULTIES.join(', ')} (default medium)
   --bots <0-${MAX_PLAYERS}>         versus: bots fill every match up to this many players (default 4)
   --view <view>        both | fp (first person only) | top (from above only) (default both);

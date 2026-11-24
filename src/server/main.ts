@@ -69,7 +69,7 @@ async function main() {
 
   // (a map only where the mode takes one)
   const map = mapChoices(cfg.mode) && cfg.map ? ` on ${cfg.map}` : '';
-  log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.mode}${map}, port ${net.port}`);
+  log(`Cube Crashers server ${APP_VERSION}: "${cfg.name}", ${cfg.rules ? `${cfg.rules.join(', ')} in turn${cfg.teams ? ', teams' : ''}` : cfg.mode}${map}, port ${net.port}`);
   log(`players join with this computer's address and port ${net.port} (open it in your router to play over the internet)`);
   if (cfg.compress) log('what the server sends is squeezed (--compress): less upload, more work for the processor');
   if (cfg.web) log('players in the browser are welcome too: they need wss://, so put a TLS proxy in front (see the README)');

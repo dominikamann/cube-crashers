@@ -536,7 +536,7 @@ docker run -d -p 47800:47800 ghcr.io/dominikamann/cube-crashers-server --mode ca
 |---|---|---|
 | `--name <text>` | Name in the server list | Cube Crashers Server |
 | `--port <number>` | Port the server listens on | 47800 |
-| `--mode <mode>` | Versus: `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `conquest`, `rounds`, `capture`. Co-op: `coop` (the Tower Run), `quick` (a Single floor), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
+| `--mode <mode>` | Versus: `discovery` (all rules in turn), `gungame`, `coinop`, `score`, `king`, `conquest`, `rounds`, `capture`, or your own list of rules, comma apart, played in turn (`capture,conquest,king`; with `--teams` all as red against blue, monsters only with `--monsters`). Co-op: `coop` (the Tower Run), `quick` (a Single floor), `brawl` (Boss Brawl), `bossrush` or `endless` | discovery |
 | `--map <map>` | The map; which ones fit depends on the mode, see [below](#maps) | see below |
 | `--teams` | Red against Blue for `score`, `king`, `conquest`, `rounds`, `coinop` (`capture` is always teams) | off |
 | `--bots <0-10>` | Bots fill every versus match up to this many players | 4 |

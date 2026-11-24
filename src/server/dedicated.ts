@@ -42,7 +42,7 @@ export class DedicatedServer {
     host.difficulty = cfg.difficulty;
     host.keepWeapons = cfg.keep;
     host.setAutoFill(isCoop(cfg.mode) ? 0 : cfg.bots);
-    if (cfg.mode === 'discovery' && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
+    if (cfg.mode === 'discovery' && !cfg.rules && cfg.teams) this.log('note: --teams does nothing in discovery, which takes turns between teams and free for all');
     if (isCoop(cfg.mode) && (cfg.monsters || cfg.teams)) this.log('note: --monsters and --teams are for versus');
     if ((isCoop(cfg.mode) || cfg.mode === 'gungame') && cfg.keep !== 'none') this.log(`note: --keep does nothing in ${cfg.mode}${cfg.mode === 'gungame' ? ', whose ladder decides the weapon after a fall' : ', it is for versus'}`);
     if ((cfg.mode === 'coop' || cfg.mode === 'endless') && cfg.map) this.log(`note: --map does nothing in ${cfg.mode}, which brings its own floors`);
@@ -87,6 +87,13 @@ export class DedicatedServer {
     this.lastMap = map;
     switch (this.cfg.mode) {
       case 'discovery': {
+        // the server's own list of rules in turn: teams throughout with --teams (capture always, gun game never),
+        // monsters only with --monsters
+        if (this.cfg.rules) {
+          const rule = this.cfg.rules[i % this.cfg.rules.length];
+          const team = rule === 'capture' || (rule !== 'gungame' && this.cfg.teams);
+          return { mode: team ? 'team' : 'ffa', rule, map, chaos: this.cfg.monsters };
+        }
         // every rule in turn; a fixed arena and monster hordes still hold
         const d = discovery(i);
         return { ...d, map, chaos: d.chaos || this.cfg.monsters };
