@@ -42,6 +42,8 @@ import { totalKills } from './sim/systems/stats';
 import { browserStore, loadProfile, ownedCharacter, recordBossBeaten, rewardForRun, saveProfile, ticketsForRun } from './profile';
 import { bestWeapon } from './sim/systems/stats';
 import { damageEnemy } from './sim/systems/combat';
+import { addVehicle, KART } from './sim/systems/vehicles';
+import { knockDown } from './sim/systems/player';
 import { spawnEnemy } from './sim/systems/enemies';
 import { ENEMIES } from './sim/config/enemies';
 import { TICK_RATE, type EnemyKind, type RunMode, type Command, type KeepWeapons, type RareKind, type SimEvent, type SimState, type VehicleKind, type WeaponKind } from './sim/types';
@@ -555,6 +557,52 @@ function startGame() {
         }
       }
       if (role === 'solo') {
+        // dev (?rammed=seconds[,dx,dz], versus with a bot): then the bot comes at the first player in a kart at full
+        // speed from the side (dx, dz) and runs them down, to look at the fall; ?knock=seconds[,dx,dz]: the first
+        // player is just knocked over then, thrown toward (dx, dz), as a vehicle would
+        if (import.meta.env.DEV && (params.has('rammed') || params.has('knock')) && s.phase === 'playing') {
+          const [after, dx, dz] = (params.get('rammed') ?? params.get('knock'))!.split(',').map(Number);
+          const me = s.players[0], bot = s.players[1];
+          const from = { x: dx || 0, z: dz === undefined || Number.isNaN(dz) ? -1 : dz };
+          if (s.tick >= Math.round((after || 1.5) * TICK_RATE) && devRamAt === -1) {
+            devRamAt = s.tick;
+            if (params.has('knock')) knockDown(s, me, { x: -from.x, z: -from.z }, 7);
+            else if (bot && bot.vehicleId === null) {
+              const kart = addVehicle(s, 'kart', { x: me.pos.x + from.x * 8, z: me.pos.z + from.z * 8 }, 0);
+              kart.driverId = bot.id;
+              bot.vehicleId = kart.id;
+              bot.pos = { ...kart.pos };
+              kart.vel = { x: -from.x * KART.speed, z: -from.z * KART.speed };
+            }
+          }
+          // (the bot keeps its foot down toward the player for the next moments)
+          if (params.has('rammed') && bot && devRamAt >= 0 && s.tick < devRamAt + 90) cmds = [...cmds.filter(c => c.playerId !== bot.id), { type: 'move', playerId: bot.id, dir: { x: -from.x, z: -from.z } }];
+        }
+        // dev (?plough=seconds[,dx,dz]): then a crowd of monsters stands in the way (still, so their looks are ready
+        // for the pictures), and a second and a half later the first player ploughs through them in a kart at full
+        // speed, to look at how they are thrown
+        if (import.meta.env.DEV && params.has('plough') && s.phase === 'playing') {
+          const [after, dx, dz, n] = params.get('plough')!.split(',').map(Number);
+          const me = s.players[0], dir = { x: dx || 0, z: dz === undefined || Number.isNaN(dz) ? -1 : dz };
+          const at = Math.round((after || 1.5) * TICK_RATE), go = at + Math.round(1.5 * TICK_RATE);
+          if (s.tick >= at && devRamAt === -1) {
+            devRamAt = s.tick;
+            // (the fourth number: how many of them, ten by default)
+            const kinds: EnemyKind[] = ['blob', 'hunter', 'spiderling', 'tank', 'splitter', 'shooter', 'rammer', 'blob', 'bomber', 'shielder'];
+            kinds.slice(0, n || 10).forEach((kind, i) => {
+              const e = spawnEnemy(s, kind, { x: me.pos.x + dir.x * (4 + i * 0.9) - dir.z * ((i % 3) - 1) * 0.9, z: me.pos.z + dir.z * (4 + i * 0.9) + dir.x * ((i % 3) - 1) * 0.9 });
+              e.state = 'stunned';
+              e.stateUntil = go;
+            });
+          }
+          if (s.tick === go) {
+            const kart = addVehicle(s, 'kart', { ...me.pos }, 0);
+            kart.driverId = me.id;
+            me.vehicleId = kart.id;
+            kart.vel = { x: dir.x * KART.speed, z: dir.z * KART.speed };
+          }
+          if (s.tick >= go && s.tick < go + 120) cmds = [...cmds.filter(c => c.playerId !== me.id), { type: 'move', playerId: me.id, dir }];
+        }
         stepSim(s, cmds);
         // dev (?die=n[,seconds[,pad|wall]], for screenshots): after so many seconds, n monsters fall in a ring round
         // the first player (or along the edge of the nearest tower pad, or along the nearest wall), to look at what
@@ -992,6 +1040,7 @@ function startGame() {
   /** dev: player 1 played by a bot (?bot=1 in versus) */
   let selfBot: ((s: SimState) => Command[]) | null = null;
   let devDied = false;
+  let devRamAt = -1;
   /** bots of a LAN versus match (they run on the host) */
   let lanBots: ((s: SimState) => Command[])[] = [];
   /** fill LAN versus matches up with bots to this many players */
@@ -1565,13 +1614,17 @@ function startGame() {
   // dev: ?versus=team|ffa starts a versus match with bots right away
   if (params.has('versus')) {
     settings.versusMode = params.get('versus') === 'team' ? 'team' : 'ffa';
-    // dev: &size=10 fills the match up with bots; &rule=score|rounds|… picks the rule
-    if (import.meta.env.DEV && Number(params.get('size')) > 1) settings.versusSize = Number(params.get('size'));
+    // dev: &size=10 fills the match up with bots (&size=1: alone, to look round); &rule=score|rounds|… picks the rule
+    if (import.meta.env.DEV && Number(params.get('size')) >= 1) settings.versusSize = Number(params.get('size'));
     if (import.meta.env.DEV && params.get('rule')) settings.versusRule = params.get('rule') as typeof settings.versusRule;
     // dev: &map=helipad plays the match on that arena
     if (import.meta.env.DEV && params.get('map')) settings.versusMap = params.get('map')!;
     if (import.meta.env.DEV && params.has('demo')) settings.versusDiscovery = false;
+    // dev: &chaos=1 lets monster hordes join in, &chaos=boss a boss now and then too, &chaos=0 none
+    if (import.meta.env.DEV && params.has('chaos')) settings.versusChaos = params.get('chaos') === 'boss' ? 'boss' : params.get('chaos') !== '0';
     newVersusGame();
+    // (&chaos=boss: the first boss breaks in after two seconds)
+    if (import.meta.env.DEV && params.get('chaos') === 'boss' && solo.versus) solo.versus.nextBossAt = solo.tick + 2 * TICK_RATE;
     // dev: &crown=1 gives the player the lead and Quad Damage, to look at the crown and the glow
     if (import.meta.env.DEV && params.has('crown') && solo.versus) {
       solo.versus.scores[solo.players[0].id] = 5;
@@ -1607,6 +1660,8 @@ function startGame() {
         if (params.has('walk')) setTimeout(() => (p.pos = { ...flags[p.team!].base, x: flags[p.team!].base.x + 0.6 }), 1000);
       }, 500);
     }
+    // dev: &cards=1 sets a crate under the player: it opens at once and its cards show as they do in play
+    if (import.meta.env.DEV && params.has('cards')) solo.crates.push({ id: solo.nextId++, pos: { ...solo.players[0].pos } });
     // dev: &elites=3 sets that many elite monsters (rammers, blobs, tanks) in a row in front of the player, to look at them
     if (import.meta.env.DEV && params.has('elites')) {
       const p0 = solo.players[0], n = Number(params.get('elites')) || 3;

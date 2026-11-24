@@ -208,6 +208,8 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
   const domKneel = new Map<number, number>();
   /** how high the Tarantula Queen has climbed (she stands on the walls she crosses) */
   const climbOf = new Map<number, number>();
+  /** a monster run down by a vehicle: how far it has rolled over (radians) and which way it flies */
+  const tumbleOf = new Map<number, { a: number; yaw: number }>();
   /** his steps follow the ground he covers, so his feet do not slide: where he was, and how far into his stride */
   const domWalk = new Map<number, { x: number; z: number; phase: number; moving: number }>();
   // where each Angry Dominik (the boss) stood last, and the ones that have fallen: they stand in the lightning
@@ -621,15 +623,35 @@ export function createEntities(scene: THREE.Scene, overlay: THREE.Scene): Entiti
           kneel += ((slam ? 1 : 0) - kneel) * (1 - Math.exp(-frameDt * (slam ? 26 : 5)));
           domKneel.set(e.id, kneel);
         }
-        const yaw = Math.atan2(e.dir.x, e.dir.z);
+        let yaw = Math.atan2(e.dir.x, e.dir.z);
+        // run down by a vehicle: it somersaults the way it flies, and finishes its turn as it comes down
+        let tumble = tumbleOf.get(e.id);
+        if (e.flung) {
+          tumble ??= { a: 0, yaw: 0 };
+          tumble.a += frameDt * 11;
+          tumble.yaw = Math.atan2(e.flung.dir.x, e.flung.dir.z);
+          tumbleOf.set(e.id, tumble);
+        } else if (tumble) {
+          const whole = Math.ceil(tumble.a / (Math.PI * 2) - 0.001) * Math.PI * 2;
+          tumble.a = Math.min(whole, tumble.a + frameDt * 11);
+          if (tumble.a >= whole) {
+            tumbleOf.delete(e.id);
+            tumble = undefined;
+          }
+        }
+        if (tumble) yaw = tumble.yaw;
         const winding = e.state === 'windup' || e.state === 'fuse';
         // (Angry Dominik does not light up and does not wobble when he is hit: he stands firm)
         const flashing = !dominik && (flashUntil.get(e.id) ?? 0) > time;
         // lean into a run or a charge, rear back before one (the Rhino lowers its head and points its horn ahead); a hit makes it wobble; a tank sways under its weight
         // a T-Rex throws its head back for the roar
-        const lean = kneel > 0.001 ? kneel * KNEEL.lean : held ? 0 : rhinoBoss && (e.state === 'charge' || winding) ? (winding ? 0.16 : 0.26) : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
+        let lean = kneel > 0.001 ? kneel * KNEEL.lean : held ? 0 : rhinoBoss && (e.state === 'charge' || winding) ? (winding ? 0.16 : 0.26) : e.state === 'charge' ? 0.4 : e.kind === 'rammer' && winding ? -0.18 : e.kind === 'hunter' ? 0.22 : e.kind === 'trex' && attack === 1 ? (boss ? -0.08 * roarEase : -0.22) : e.kind === 'trex' && attack === 2 ? (boss ? 0.06 : 0.15) : 0;
         const tilt = (flashing ? Math.sin(time * 45) * 0.2 : 0) + ((e.kind === 'tank' || e.kind === 'trex') && !held ? Math.sin(time * 3 + e.id) * (boss ? 0.02 : 0.05) : 0);
         y -= kneel * KNEEL.drop * scale;
+        if (tumble) {
+          lean += tumble.a;
+          y += 0.35 * scale * Math.abs(Math.sin(tumble.a));
+        }
         // maze ghosts turn blue (and blink as the power runs out) while they can be crashed
         const maze = s.run.maze;
         const scared = e.kind === 'ghost' && maze && s.tick < maze.powerUntil;

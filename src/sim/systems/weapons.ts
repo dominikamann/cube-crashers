@@ -235,7 +235,7 @@ export function updateWeapons(s: SimState, intents: Map<number, Intent>): void {
       if (w.cooldown < 1e-9) w.cooldown = 0;
     }
     discoPulse(s, p);
-    if (p.downUntil !== null || !intents.get(p.id)?.fire) continue;
+    if (p.downUntil !== null || p.flung || !intents.get(p.id)?.fire) continue;
     if (p.rareSelected && p.rare) {
       const kind = p.rare.kind;
       // (every shot says so, the Slush Machine's every sixth tick too, whenever the trigger was pulled; only the Leaf

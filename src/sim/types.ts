@@ -153,8 +153,9 @@ export interface Player {
   lastCoinTick: number;
   /** ticks left in the air (0 = on the ground) */
   air: number;
-  /** thrown by a charge: which way, and how far it still flies (tiles); it slows as it goes */
-  flung?: { dir: Vec2; left: number };
+  /** knocked over by a charge or a vehicle: which way it is thrown, how far it still flies (tiles, it slows as it
+   *  goes), and how many ticks it lies on the floor after that before it is up again (see knockDown in player.ts) */
+  flung?: { dir: Vec2; left: number; lie: number };
   dashTicks: number;
   dashDir: Vec2;
   dashCharges: number;
@@ -236,6 +237,8 @@ export interface Enemy {
   dir: Vec2;
   /** knockback velocity, decays every tick */
   knock: Vec2;
+  /** run down by a vehicle: thrown this way, so far still to fly (tiles; it slows as it goes, a wall ends it) */
+  flung?: { dir: Vec2; left: number };
   cooldownUntil: number;
   /** a kart cannot ram this enemy again before this tick */
   ramHitUntil: number;
@@ -703,7 +706,8 @@ export type SimEvent =
   | { type: 'weaponSelected'; playerId: number; slot: number }
   /** `by`: the player whose hit it was (none for towers and the like) */
   | { type: 'enemyHit'; id: number; pos: Vec2; amount: number; by?: number }
-  | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean }
+  /** `thrown`: it was run down by a vehicle as it died: the speed (tiles a second) its pieces fly on with */
+  | { type: 'enemyKilled'; kind: EnemyKind; pos: Vec2; elite: boolean; thrown?: Vec2 }
   | { type: 'coinPicked'; playerId: number; streak: number }
   | { type: 'towerBuilt'; kind: TowerKind; padId: number; playerId: number }
   | { type: 'buildDenied'; padId: number; reason: 'coins' | 'occupied' | 'notOnPad'; playerId: number }
@@ -756,6 +760,8 @@ export type SimEvent =
   | { type: 'playerHit'; playerId: number; hp: number; pos: Vec2; amount: number; by?: number }
   /** a hit on a vehicle someone is in: the vehicle takes it, not the driver */
   | { type: 'vehicleHit'; vehicleId: number; pos: Vec2; amount: number; by?: number }
+  /** a player was knocked over and thrown `dist` tiles along `dir` (by the Rhino, a rammer, a vehicle) */
+  | { type: 'playerFlung'; playerId: number; dir: Vec2; dist: number; by?: number }
   | { type: 'playerDown'; playerId: number }
   | { type: 'playerDowned'; playerId: number }
   | { type: 'playerRevived'; playerId: number; by: number }

@@ -152,6 +152,10 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     mouseLook: { x: number; y: number } | null;
     /** first person: where the eyes look, or null for the view from above */
     fp: { yaw: number; pitch: number } | null;
+    /** first person, knocked over: how far the view has rolled over (radians), tipped up, and dropped to the floor (0..1) */
+    roll: number;
+    kick: number;
+    low: number;
     /** first person in a vehicle: the one whose cockpit is drawn round this view, or null */
     riding: number | null;
   }
@@ -169,6 +173,9 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
     mouseLook: null,
     fp: null,
     riding: null,
+    roll: 0,
+    kick: 0,
+    low: 0,
   });
   let views: View[] = [makeView(0, map.spawn)];
 
@@ -408,15 +415,29 @@ export function createRenderer(canvas: HTMLCanvasElement, map: FloorMap): GameRe
           // first person: the eyes sit in the head, looking along the view, no lag
           const model = actors.playerModel(v.id);
           // (a vehicle that flies off a ramp takes the eyes up with it)
-          const eyeY = (model?.position.y ?? 0) + EYE_HEIGHT + ride.lift;
+          let eyeY = (model?.position.y ?? 0) + EYE_HEIGHT + ride.lift;
           const c = Math.cos(v.fp.pitch);
           const fx = -Math.sin(v.fp.yaw) * c, fz = -Math.cos(v.fp.yaw) * c;
+          // knocked over (the Rhino, a vehicle): the view rolls over and tips up as the body is thrown, lies on its
+          // side on the floor while they are down there, and comes up again as they get up
+          const f = me?.flung;
+          const thrown = !!f && f.left > 0, lying = !!f && !thrown && f.lie > 0;
+          const side = f ? Math.sign(f.dir.x * fz - f.dir.z * fx) || 1 : 1;
+          const ease = 1 - Math.exp(-frameDt * (f ? 9 : 5));
+          v.roll += ((thrown ? 0.7 : lying ? 1.1 : 0) * side - v.roll) * ease;
+          v.kick += ((thrown ? 0.45 : lying ? 0.15 : 0) - v.kick) * ease;
+          v.low += ((thrown ? 0.3 : lying ? 1 : 0) - v.low) * ease;
+          eyeY -= (EYE_HEIGHT - 0.35) * v.low;
           v.camPos.set(p.x, eyeY, p.z);
           v.camLook.set(p.x + fx * 10, eyeY + Math.sin(v.fp.pitch) * 10, p.z + fz * 10);
           // (a shake moves the eyes a little, up and down and sideways, but does not swing the view: what they
           // look at moves with them)
           v.camera.position.copy(v.camPos).addScaledVector(shake, 0.2);
           v.camera.lookAt(wantLook.copy(v.camLook).addScaledVector(shake, 0.2));
+          if (v.roll !== 0 || v.kick !== 0) {
+            v.camera.rotateZ(v.roll);
+            v.camera.rotateX(v.kick);
+          }
           return;
         }
         wantPos.set(p.x + ox, 15 * v.zoom, p.z + oz + 11 * v.zoom);

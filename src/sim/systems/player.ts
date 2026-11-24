@@ -19,7 +19,7 @@ import {
   REGEN_DELAY_TICKS,
 } from '../config/balance';
 import { JETPACK } from '../config/rare';
-import { BLOCKS_AIR, BLOCKS_WALKER, hasLos, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
+import { BLOCKS_AIR, BLOCKS_WALKER, type Blocks, type FloorMap, hasLos, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
 import { DT, type HurtSource, type Intent, type Player, type SimState, type Vec2 } from '../types';
 
 export const HIT_EVENT_TICKS = 15;
@@ -34,7 +34,7 @@ import { countHit } from './stats';
 import { CLIMB_TICKS, ladderAt } from '../map/ladders';
 import { perchable } from '../map/perch';
 import { carryingCube, coinOpRule, jumpTicks, pvpDamage, rivals, VERSUS, versusDeath } from './versus';
-import { damageVehicle } from './vehicles';
+import { damageVehicle, parkedVehicles, VEHICLES } from './vehicles';
 import { clampAimPitch } from './shot-height';
 
 export function damagePlayer(s: SimState, p: Player, amount: number, source: HurtSource = 'other', attackerId?: number): void {
@@ -167,30 +167,49 @@ function pushOutOfBosses(s: SimState, p: Player): void {
 /** towers are solid: walking players are kept at arm's length (close enough to build, repair and upgrade) */
 function pushOutOfTowers(s: SimState, p: Player, move: Vec2 | null): void {
   if (p.flying) return;
-  for (const t of s.towers) {
-    const dx = p.pos.x - t.pos.x, dz = p.pos.z - t.pos.z;
-    const d = Math.hypot(dx, dz);
-    const edge = TOWER_SOLID_RADIUS + PLAYER_RADIUS;
-    if (d >= edge) continue;
-    const nx = d > 0.01 ? dx / d : -p.facing.x, nz = d > 0.01 ? dz / d : -p.facing.z;
-    // slide round it instead of stopping dead: the part of the step that went in turns into a step along its
-    // side, the way the player was heading; straight at it, the side that is open (a wall may be on the other)
-    const tx = -nz, tz = nx;
-    const along = move ? move.x * tx + move.z * tz : 0;
-    const slide = Math.min(edge - d, 0.15);
-    // always back on the edge: close enough to build, repair and upgrade from there
-    const at = (side: number, step: number) => {
-      const ox = nx * edge + tx * side * step, oz = nz * edge + tz * side * step;
-      const ol = Math.hypot(ox, oz);
-      return { x: t.pos.x + (ox / ol) * edge, z: t.pos.z + (oz / ol) * edge };
-    };
-    // look a good way round before choosing: a side that is open for a step but walled in after does not count
-    const open = (side: number) => isFree(s.map, at(side, 0.6), PLAYER_RADIUS, BLOCKS_WALKER);
-    const want = Math.abs(along) > 0.05 ? Math.sign(along) : 1;
-    const side = open(want) || !open(-want) ? want : -want;
-    const out = at(side, slide);
-    p.pos = isFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER) ? out : nearestFree(s.map, out, PLAYER_RADIUS, BLOCKS_WALKER);
-  }
+  for (const t of s.towers) keepOut(s, p, t.pos, TOWER_SOLID_RADIUS + PLAYER_RADIUS, move);
+}
+
+/** a vehicle nobody sits in is solid too: nobody walks through a parked kart (one in the air, off a ramp, is over
+ *  everyone's head; a driven one is the driver's business, see the ramming in vehicles.ts) */
+function pushOutOfVehicles(s: SimState, p: Player, move: Vec2 | null): void {
+  if (p.flying || p.vehicleId !== null) return;
+  for (const v of parkedVehicles(s)) keepOut(s, p, v.pos, VEHICLES[v.kind].radius + PLAYER_RADIUS, move);
+}
+
+/** keeps a walking player outside the circle of `edge` round `centre`, sliding round it the way they were heading */
+function keepOut(s: SimState, p: Player, centre: Vec2, edge: number, move: Vec2 | null): void {
+  p.pos = keptOut(s.map, p.pos, PLAYER_RADIUS, BLOCKS_WALKER, centre, edge, move, p.facing);
+}
+
+/**
+ * Where something of `radius` walking at `pos` ends up kept outside the circle of `edge` round `centre` (a tower, a
+ * parked vehicle): where it is, outside; else back on the edge, slid round it the way it was heading (`move`), or
+ * to the side that is open (a wall may be on the other); straight at it with no heading, away from `facing`.
+ * Used for players and monsters alike.
+ */
+export function keptOut(map: FloorMap, pos: Vec2, radius: number, blocks: Blocks, centre: Vec2, edge: number, move: Vec2 | null, facing: Vec2): Vec2 {
+  const dx = pos.x - centre.x, dz = pos.z - centre.z;
+  const d = Math.hypot(dx, dz);
+  if (d >= edge) return pos;
+  const nx = d > 0.01 ? dx / d : -facing.x, nz = d > 0.01 ? dz / d : -facing.z;
+  // slide round it instead of stopping dead: the part of the step that went in turns into a step along its
+  // side, the way the walker was heading; straight at it, the side that is open (a wall may be on the other)
+  const tx = -nz, tz = nx;
+  const along = move ? move.x * tx + move.z * tz : 0;
+  const slide = Math.min(edge - d, 0.15);
+  // always back on the edge: close enough to build, repair and upgrade a tower from there
+  const at = (side: number, step: number) => {
+    const ox = nx * edge + tx * side * step, oz = nz * edge + tz * side * step;
+    const ol = Math.hypot(ox, oz);
+    return { x: centre.x + (ox / ol) * edge, z: centre.z + (oz / ol) * edge };
+  };
+  // look a good way round before choosing: a side that is open for a step but walled in after does not count
+  const open = (side: number) => isFree(map, at(side, 0.6), radius, blocks);
+  const want = Math.abs(along) > 0.05 ? Math.sign(along) : 1;
+  const side = open(want) || !open(-want) ? want : -want;
+  const out = at(side, slide);
+  return isFree(map, out, radius, blocks) ? out : nearestFree(map, out, radius, blocks);
 }
 
 /** Walking into the wall at a ladder starts the climb up it. */
@@ -207,8 +226,20 @@ function startClimb(s: SimState, p: Player, dir: Vec2): boolean {
 }
 
 /** a throw (see Player.flung): each tick it covers `ease` of what is left, but at least `min` tiles a second; the
- *  Rhino's nine tiles take a little over half a second */
-export const FLING = { ease: 0.1, min: 3.5 };
+ *  Rhino's nine tiles take a little over half a second. Then the player lies on the floor `lieTicks` (not for a
+ *  short shove: a small rammer's) before they are up again */
+export const FLING = { ease: 0.1, min: 3.5, lieTicks: 45, lieFrom: 3 };
+
+/** knocks a player over: thrown `dist` tiles along `dir`, then flat on the floor a moment (a Rhino's charge, a
+ *  vehicle that runs them down). Not one in a vehicle (the vehicle takes the hit), up on a wall, or already down. */
+export function knockDown(s: SimState, p: Player, dir: Vec2, dist: number, by?: number): void {
+  if (p.vehicleId !== null || p.perched || p.climb || p.downUntil !== null) return;
+  const d = Math.hypot(dir.x, dir.z) || 1;
+  p.flung = { dir: { x: dir.x / d, z: dir.z / d }, left: dist, lie: dist >= FLING.lieFrom ? FLING.lieTicks : 0 };
+  p.dashTicks = 0;
+  p.plantTicks = 0;
+  s.events.push({ type: 'playerFlung', playerId: p.id, dir: { ...p.flung.dir }, dist, ...(by !== undefined ? { by } : {}) });
+}
 
 function updateOne(s: SimState, p: Player, it: Intent): void {
   if (p.downUntil !== null) {
@@ -312,12 +343,15 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
     }
 
     if (p.flung) {
-      // thrown: fast at first, slowing as it goes (a share of what is left each tick, never too slow); a wall ends it
+      // thrown: fast at first, slowing as it goes (a share of what is left each tick, never too slow); a wall ends
+      // the flight; then they lie there a moment before they are up again
       const f = p.flung;
-      const step = Math.min(f.left, Math.max(FLING.min * DT, f.left * FLING.ease));
-      const hit = moveCircle(s.map, p.pos, f.dir.x * step, f.dir.z * step, PLAYER_RADIUS, BLOCKS_WALKER);
-      f.left -= step;
-      if (hit.hitX || hit.hitZ || f.left <= 0.01) p.flung = undefined;
+      if (f.left > 0) {
+        const step = Math.min(f.left, Math.max(FLING.min * DT, f.left * FLING.ease));
+        const hit = moveCircle(s.map, p.pos, f.dir.x * step, f.dir.z * step, PLAYER_RADIUS, BLOCKS_WALKER);
+        f.left -= step;
+        if (hit.hitX || hit.hitZ || f.left <= 0.01) f.left = 0;
+      } else if (--f.lie <= 0) p.flung = undefined;
     } else if (p.dashTicks > 0) {
       p.dashTicks--;
       moveCircle(s.map, p.pos, p.dashDir.x * DASH_SPEED * DT, p.dashDir.z * DASH_SPEED * DT, PLAYER_RADIUS, BLOCKS_WALKER);
@@ -337,6 +371,7 @@ function updateOne(s: SimState, p: Player, it: Intent): void {
 
     pushOutOfBosses(s, p);
     pushOutOfTowers(s, p, p.dashTicks > 0 ? p.dashDir : moveDir ?? null);
+    pushOutOfVehicles(s, p, p.dashTicks > 0 ? p.dashDir : moveDir ?? null);
 
     // running up a ramp at a barrier: a hop over it of itself, as a kart takes it (only running: walking slowly the
     // hop would not carry over it, and the player would land on it and be put back, again and again)

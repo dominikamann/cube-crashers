@@ -1,10 +1,10 @@
 import { carryingCube, pvpDamage, rivals } from './versus';
 import { overhead } from './witch';
-import { damagePlayer } from './player';
+import { damagePlayer, knockDown } from './player';
 import { airborne } from './rare';
 import { BOOST_FACTOR, BOOST_TICKS, PLAYER_RADIUS } from '../config/balance';
 import { BLOCKS_AIR, BLOCKS_KART, BLOCKS_WALKER, isFree, moveCircle, nearestFree, Tile, tileAt } from '../map/tilemap';
-import { DT, TICK_RATE, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
+import { DT, TICK_RATE, type Enemy, type Intent, type Player, type SimState, type Vec2, type Vehicle, type VehicleKind } from '../types';
 import { allBosses, dist } from '../util';
 import { damageEnemy, damageInRadius, isBossBody, solidEdge } from './combat';
 
@@ -30,6 +30,24 @@ export const KART = {
   startKarts: 2,
   ejectInvulnTicks: 60,
 };
+
+/** how far a vehicle throws a player it runs down: `min` tiles at ramming speed, `max` at a kart's top speed and beyond */
+export const RAM_FLING = { min: 3, max: 8 };
+export function ramFling(speed: number): number {
+  const k = Math.min(1, Math.max(0, (speed - KART.ramSpeed) / (KART.speed - KART.ramSpeed)));
+  return RAM_FLING.min + (RAM_FLING.max - RAM_FLING.min) * k;
+}
+
+/** how far a ram throws a monster: like a player; a heavy one (as wide as a tank or a rammer) only gets a short shove; a boss none */
+export const MONSTER_FLING = { heavy: 1.5, heavyRadius: 0.5 };
+export function monsterFling(e: Enemy, speed: number): number {
+  return e.radius >= MONSTER_FLING.heavyRadius ? MONSTER_FLING.heavy : ramFling(speed);
+}
+
+/** the vehicles nobody sits in and that stand on the floor: solid for everyone who walks (see keptOut in player.ts) */
+export function parkedVehicles(s: SimState): Vehicle[] {
+  return s.vehicles.filter(v => v.driverId === null && v.air === 0);
+}
 
 /** What each vehicle can do. The kart is the all-rounder. */
 export const VEHICLES: Record<VehicleKind, { speed: number; accel: number; hp: number; ramDamage: number; radius: number; jumps: boolean; hovers: boolean }> = {
@@ -189,23 +207,29 @@ function drive(s: SimState, v: Vehicle, driver: Player | undefined, it: Intent |
   for (const e of s.enemies) {
     // a solid boss is rammed at its edge (nothing drives into it)
     const reach = isBossBody(s, e) ? Math.max(stats.radius + e.radius, solidEdge(s, e) + 0.3) : stats.radius + e.radius;
-    if (e.hp <= 0 || overhead(s, e) || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > reach) continue;
+    if (e.hp <= 0 || overhead(s, e) || e.flung || s.tick < e.ramHitUntil || dist(e.pos, v.pos) > reach) continue;
     e.ramHitUntil = s.tick + KART.ramCooldownTicks;
-    e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
-    e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
+    // a boss is only pushed; a monster is thrown back the way the vehicle goes, the faster the further (see
+    // updateEnemies), a heavy one just shoved
+    if (isBossBody(s, e)) {
+      e.knock.x += (v.vel.x / speed) * KART.ramKnockback;
+      e.knock.z += (v.vel.z / speed) * KART.ramKnockback;
+    } else e.flung = { dir: { x: v.vel.x / speed, z: v.vel.z / speed }, left: monsterFling(e, speed) };
     if ((v.kind === 'kart' || v.kind === 'police') && s.run.stage !== 'race') v.hp -= e.kind === 'tank' || e.elite ? KART.ramCostBig : KART.ramCostSmall;
     if (v.kind === 'unicorn') v.hp -= KART.ramCostSmall;
     damageEnemy(s, e, stats.ramDamage, 'kart', driver.id);
     s.events.push({ type: 'kartRam', pos: { ...e.pos } });
   }
-  // versus: a kart or unicorn at speed runs rivals over too (not those flying or up on a wall)
+  // versus: a kart or unicorn at speed runs rivals over too (not those flying or up on a wall): they are knocked
+  // over and thrown the way it drives, the faster the further, like the Rhino's charge throws them (see knockDown;
+  // not again while they fly or lie there: the kart drives on past them)
   for (const r of rivals(s, driver.id)) {
-    if (r.vehicleId !== null || airborne(r) || r.perched || dist(r.pos, v.pos) > stats.radius + PLAYER_RADIUS) continue;
+    if (r.vehicleId !== null || airborne(r) || r.perched || r.flung || s.tick < r.invulnUntil || dist(r.pos, v.pos) > stats.radius + PLAYER_RADIUS) continue;
     v.rammedUntil ??= {};
     if (s.tick < (v.rammedUntil[r.id] ?? 0)) continue;
     v.rammedUntil[r.id] = s.tick + KART.ramCooldownTicks;
-    moveCircle(s.map, r.pos, (v.vel.x / speed) * 1.2, (v.vel.z / speed) * 1.2, PLAYER_RADIUS, BLOCKS_WALKER);
     damagePlayer(s, r, pvpDamage(stats.ramDamage), 'other', driver.id);
+    knockDown(s, r, { x: v.vel.x / speed, z: v.vel.z / speed }, ramFling(speed), driver.id);
     s.events.push({ type: 'kartRam', pos: { ...r.pos } });
   }
 }

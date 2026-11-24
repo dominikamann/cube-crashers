@@ -114,6 +114,8 @@ function makePlayer(color: number, look: Look) {
     blade: 0, bladeObj: null as THREE.Object3D | null,
     // what the animation remembers from frame to frame
     step: 0, pace: 0, ahead: 0, aside: 0, idle: 0, land: 0, dash: 0, kick: 0, wasAir: false, lastCooldown: 0,
+    // knocked over: how far it has rolled over (radians, round the axis across its flight), and how flat it lies
+    tumble: 0, tumbleAxis: new THREE.Vector3(0, 0, 1), lying: 0,
   };
 }
 
@@ -651,6 +653,20 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     }
     const driving = p.vehicleId !== null;
     const down = p.downUntil !== null;
+    // knocked over (by the Rhino, a vehicle): it rolls over and over while it flies, lies flat where it comes down
+    // and gets up again; the rolling finishes its turn once the flight is over
+    const f = p.flung;
+    if (f && f.left > 0) {
+      v.tumble += frameDt * 11;
+      v.tumbleAxis.set(f.dir.z, 0, -f.dir.x);
+    } else if (v.tumble > 0) {
+      const whole = Math.ceil(v.tumble / (Math.PI * 2) - 0.001) * Math.PI * 2;
+      v.tumble = Math.min(whole, v.tumble + frameDt * 11);
+      if (v.tumble >= whole) v.tumble = 0;
+    }
+    const lying = !!f && f.left <= 0 && f.lie > 0;
+    v.lying += ((lying ? 1 : 0) - v.lying) * Math.min(1, frameDt * 12);
+    const flat = down || v.lying > 0.5;
     // on the moon (coin-op chaos) a jump lasts longer and goes higher
     const jump = jumpLift(s, p);
     // after a flight: sinking gently onto the floor, or onto the block below (eased, slow at the bottom)
@@ -685,6 +701,11 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
       v.perch = Math.max(perch, v.perch - v.drop * frameDt);
     }
     v.root.position.set(x, v.perch + v.lift + (driving ? mount : 0), z);
+    // (rolling over: turned round the axis across its flight, and held up so the head does not go through the floor)
+    if (v.tumble > 0) {
+      v.root.quaternion.setFromAxisAngle(v.tumbleAxis, v.tumble);
+      v.root.position.y += v.figure.model.height * 0.9 * Math.max(0, -Math.cos(v.tumble));
+    } else v.root.quaternion.identity();
     v.pack.visible = p.jetpack || p.flying;
     v.flame.visible = p.flying || sinking;
     // a short braking flame on the way down
@@ -747,12 +768,12 @@ export function createActors(scene: THREE.Scene, map: FloorMap): Actors {
     if (moved || air || driving) dancing.delete(p.id);
     const won = !down && (s.phase === 'won' || winners.has(p.id) || (dancing.get(p.id) ?? 0) > danceNow);
     v.idle = moved || air || down || driving || v.kick > 0 || won ? 0 : v.idle + frameDt;
-    animate(v.figure, { t: time + p.id * 1.7, step: v.step, pace: v.pace, ahead: v.ahead, aside: v.aside, idle: v.idle, air, land: v.land, dash: v.dash, down, driving, climbing: !!p.climb, win: won, kick: v.kick });
+    animate(v.figure, { t: time + p.id * 1.7, step: v.step, pace: v.pace, ahead: v.ahead, aside: v.aside, idle: v.idle, air, land: v.land, dash: v.dash, down: flat, driving, climbing: !!p.climb, win: won, kick: v.kick });
     // a winner turns on the spot, a dancer too; a figure with a dance of its own does that instead
     const until = dancing.get(p.id) ?? 0;
     const k = until > danceNow ? 1 - (until - danceNow) / DANCE_SECONDS : ((time + p.id * 1.7) % DANCE_SECONDS) / DANCE_SECONDS;
     v.body.rotation.y = v.yaw + (won ? (v.figure.model.dance ? v.figure.model.dance(v.figure.parts, k, time) : time * 5) : 0);
-    v.held.visible = !down && !won;
+    v.held.visible = !flat && !won;
     v.held.position.z = v.figure.model.hand[2] + v.kick * 0.1;
     v.held.rotation.x = v.kick * 0.3;
     v.dizzy.visible = down;

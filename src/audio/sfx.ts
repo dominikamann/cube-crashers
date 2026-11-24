@@ -759,6 +759,9 @@ export function soundsForEvent(e: SimEvent, team?: 0 | 1, me?: number): { id: So
       return one('playerHit');
     case 'vehicleHit':
       return one('vehicleHit');
+    // (knocked over: the ram that did it sounds of itself; this is the body coming down, a low thud)
+    case 'playerFlung':
+      return one('kartLand', 0.75);
     case 'playerDown':
       return one('playerDown');
     case 'playerRespawn':

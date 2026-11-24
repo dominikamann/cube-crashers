@@ -142,9 +142,11 @@ export function createFx(scene: THREE.Scene): Fx {
       varying vec4 vSplat;
       varying vec2 vLocal;
       varying float vWidth;
+      varying vec2 vQuad;
       void main() {
         vUv = uv;
         vWidth = aFrame.z;
+        vQuad = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
         vColor = vec3(1.0);
         #ifdef USE_INSTANCING_COLOR
           vColor = instanceColor;
@@ -163,6 +165,7 @@ export function createFx(scene: THREE.Scene): Fx {
       varying vec4 vSplat;
       varying vec2 vLocal;
       varying float vWidth;
+      varying vec2 vQuad;
       float hash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
       // the soft union of two distances: where a droplet nears the pool, the liquid bridges over
       float smin(float a, float b, float k) {
@@ -207,7 +210,9 @@ export function createFx(scene: THREE.Scene): Fx {
           glossK = wet;
         } else {
           // a splash up a wall: a blob at the foot, a few streaks that shot up it, and drips that run back down
-          p = vUv * 2.0 - 1.0;
+          // (snapped to the same 5 cm texels as the puddle on the floor, over the width and height of this square)
+          vec2 cell = 0.1 / max(vQuad, vec2(0.01));
+          p = (floor((vUv * 2.0 - 1.0) / cell) + 0.5) * cell;
           float ang = atan(p.y + 0.55, p.x);
           float wob = 1.0 + 0.1 * sin(3.0 * ang + seed * 9.0) + 0.06 * sin(5.0 * ang + seed * 23.0);
           vec2 q = (p - vec2(0.0, -0.55)) * vec2(1.0, 1.35);
@@ -231,8 +236,8 @@ export function createFx(scene: THREE.Scene): Fx {
             }
           }
         }
-        // (a texel of the floor puddle is wholly in or out: hard edges, no blur between them; the wall splash is smooth)
-        float aa = wall < 0.5 ? 0.001 : max(fwidth(d), 0.004);
+        // (a texel is wholly in or out: hard edges, no blur between them)
+        float aa = 0.001;
         float fill = smoothstep(aa, -aa, d);
         if (fill <= 0.002) discard;
         // the colour: a thick darker rim, the body a little deeper (darker) toward its middle, and on the wet pool a
@@ -366,8 +371,9 @@ export function createFx(scene: THREE.Scene): Fx {
     pops.push({ x: pos.x, y: 0.08, z: pos.z, age: 0, life: 0.5, size: 1.6 + power * 1.5, color: floorDust[0], ring: true });
   }
 
-  function burstMonster(pos: Vec2, color: number, size: number, height: number, elite: boolean) {
+  function burstMonster(pos: Vec2, color: number, size: number, height: number, elite: boolean, thrown?: Vec2) {
     const dark = tone(color, 0.55), bright = tone(color, 1.5), glow = tone(color, 1.75);
+    const first = particles.length;
     const amount = (elite ? 2.2 : 1) * Math.max(0.6, size);
     pops.push({ x: pos.x, y: height * 0.55, z: pos.z, age: 0, life: 0.18, size: (1.5 + size * 1.6) * (elite ? 1.5 : 1), color: glow, ring: false });
     pops.push({ x: pos.x, y: 0.06, z: pos.z, age: 0, life: 0.36, size: (2.4 + size * 2.4) * (elite ? 1.5 : 1), color: bright, ring: true });
@@ -383,6 +389,12 @@ export function createFx(scene: THREE.Scene): Fx {
     }
     addSplat(pos.x, pos.z, (0.9 + size * 1.1) * (elite ? 1.4 : 1), tone(color, 0.78), 5 + rand() * 2, true);
     if (elite) addShake(0.22);
+    // (run down by a vehicle: every piece of it flies on the way it was thrown)
+    if (thrown)
+      for (let i = first; i < particles.length; i++) {
+        particles[i].vx += thrown.x;
+        particles[i].vz += thrown.z;
+      }
   }
 
   const beams: Beam[] = [];
@@ -604,7 +616,7 @@ export function createFx(scene: THREE.Scene): Fx {
           case 'enemyKilled': {
             // it bursts: pieces of itself, a flash, a shockwave, sparks, and a stain on the floor
             const l = ENEMY_LOOK[e.kind];
-            burstMonster(e.pos, theme.pointLights > 0.5 ? l.night : l.day, Math.max(l.w, l.d), l.h, e.elite);
+            burstMonster(e.pos, theme.pointLights > 0.5 ? l.night : l.day, Math.max(l.w, l.d), l.h, e.elite, e.thrown);
             break;
           }
           case 'enemyHit': {
@@ -649,6 +661,10 @@ export function createFx(scene: THREE.Scene): Fx {
             burst(e.pos, 0.6, Math.round(7 + hard * 10), v?.kind === 'unicorn' ? RAINBOW : [0xffffff, 0xffe14a, 0xff8c42], 4.5 + hard * 2, 0.06, 1.3);
             break;
           }
+          case 'playerFlung':
+            // knocked over: a jolt as hard as the throw is far
+            addShake(Math.min(0.4, 0.1 + 0.03 * e.dist));
+            break;
           case 'playerDown': {
             addShake(0.3);
             // a fallen player leaves a puddle in the colour of their suit

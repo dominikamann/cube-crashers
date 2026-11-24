@@ -1,3 +1,4 @@
+import { knockDown } from './player';
 import { clearSpot } from './ground';
 import { WALDSEE_FIRE } from '../config/floor-waldsee';
 import {
@@ -363,7 +364,7 @@ export function updateBlasts(s: SimState): void {
         if (before[i] < 0 || (p.hp >= before[i] && p.downUntil === null)) return;
         const dx = p.pos.x - b.fling!.from.x, dz = p.pos.z - b.fling!.from.z, d = Math.hypot(dx, dz);
         const dir = d > 1e-6 ? { x: dx / d, z: dz / d } : { x: 0, z: 1 };
-        if (p.vehicleId === null) p.flung = { dir, left: b.fling!.dist };
+        knockDown(s, p, dir, b.fling!.dist);
         s.events.push({ type: 'kartRam', pos: { ...p.pos } });
       });
     return false;

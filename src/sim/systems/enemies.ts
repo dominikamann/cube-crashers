@@ -10,7 +10,8 @@ import { dist, allBosses } from '../util';
 import { damageEnemy, explode, isBossBody, solidEdge } from './combat';
 import { aloft, held } from './rare';
 import { hpScale } from './coop';
-import { damagePlayer } from './player';
+import { damagePlayer, FLING, keptOut, knockDown } from './player';
+import { parkedVehicles, VEHICLES } from './vehicles';
 import { witchAloft } from './witch';
 
 export function spawnEnemy(s: SimState, kind: EnemyKind, pos: Vec2, opts: { hordeId?: number; elite?: boolean } = {}): Enemy {
@@ -192,6 +193,15 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     e.pos.z = fromZ;
     hit = moveCircle(s.map, e.pos, e.dir.x * step, e.dir.z * step, SQUEEZE_RADIUS, BLOCKS_ENEMY);
   }
+  // (a charge into a parked vehicle ends at its side, like one into a wall)
+  if (!isBossBody(s, e))
+    for (const v of parkedVehicles(s)) {
+      const out = keptOut(s.map, e.pos, e.radius, BLOCKS_ENEMY, v.pos, VEHICLES[v.kind].radius + e.radius, null, e.dir);
+      if (out !== e.pos) {
+        e.pos = out;
+        hit = { hitX: true, hitZ: true };
+      }
+    }
   e.chargeLeft -= step;
   // (a small spider that has pounced sometimes leaves a small web where it lands)
   const landed = () => {
@@ -209,7 +219,7 @@ function charge(s: SimState, e: Enemy, players: Player[]): void {
     damagePlayer(s, p, RAMMER.damage, 'rammer');
     // it throws whoever it hits, the Rhino (a rammer grown to boss size) right across the arena: they fly off over
     // the next moments, see player.ts (in a vehicle, the vehicle takes the hit where it is)
-    if (p.vehicleId === null) p.flung = { dir: { ...e.dir }, left: rhino ? RHINO_FLING : RAMMER_FLING };
+    knockDown(s, p, e.dir, rhino ? RHINO_FLING : RAMMER_FLING);
     if (rhino) s.events.push({ type: 'kartRam', pos: { ...p.pos } });
     stun(RAMMER.hitStunTicks);
     return;
@@ -364,6 +374,7 @@ export function updateEnemies(s: SimState): void {
   const climbers = new Map<number, number>();
   for (const b of allBosses(s)) if (b.enemyId !== null && (b.kind === 'spider' || b.kind === 'kraken')) climbers.set(b.enemyId, b.kind === 'spider' ? QUEEN_REACH : KRAKEN_REACH);
 
+  const parked = parkedVehicles(s);
   const grid = new Map<number, Enemy[]>();
   for (const e of s.enemies) {
     // (what flies is in nobody's way: the monsters walk under the helicopter)
@@ -442,6 +453,16 @@ export function updateEnemies(s: SimState): void {
     e.knock.x *= 0.85;
     e.knock.z *= 0.85;
     if (Math.abs(e.knock.x) + Math.abs(e.knock.z) < 0.05) e.knock = { x: 0, z: 0 };
+    // run down by a vehicle: it flies the way it was hit, fast at first and slowing (as a thrown player does, see
+    // FLING), nothing else moves it meanwhile
+    const f = e.flung;
+    if (f) {
+      const step = Math.min(f.left, Math.max(FLING.min * DT, f.left * FLING.ease));
+      vx = (f.dir.x * step) / DT;
+      vz = (f.dir.z * step) / DT;
+      f.left -= step;
+      if (f.left <= 0.01) e.flung = undefined;
+    }
 
     // keep a little distance from the neighbours so a horde does not collapse into one point
     const cx = Math.floor(e.pos.x), cz = Math.floor(e.pos.z);
@@ -479,6 +500,8 @@ export function updateEnemies(s: SimState): void {
         continue;
       }
       const hit = moveCircle(s.map, e.pos, vx * DT, vz * DT, e.radius, BLOCKS_ENEMY);
+      // (a wall ends a flight)
+      if (e.flung && (hit.hitX || hit.hitZ)) e.flung = undefined;
       // a boss too wide for the way ahead squeezes through instead of standing still: the maps are built for
       // small monsters, and the path it follows may lead through a gap narrower than its body
       if ((hit.hitX || hit.hitZ) && e.radius > SQUEEZE_RADIUS && isBossBody(s, e) && Math.hypot(e.pos.x - fromX, e.pos.z - fromZ) < Math.hypot(vx, vz) * DT * 0.5) {
@@ -486,6 +509,9 @@ export function updateEnemies(s: SimState): void {
         e.pos.z = fromZ;
         moveCircle(s.map, e.pos, vx * DT, vz * DT, SQUEEZE_RADIUS, BLOCKS_ENEMY);
       }
+      // a parked vehicle is solid for a walking monster as for a player: it slides round it (a boss shoves through,
+      // the vehicle is pushed out of it, see keepOutOfBosses)
+      if (!isBossBody(s, e)) for (const v of parked) e.pos = keptOut(s.map, e.pos, e.radius, BLOCKS_ENEMY, v.pos, VEHICLES[v.kind].radius + e.radius, { x: vx, z: vz }, e.dir);
       const knock = Math.hypot(e.knock.x, e.knock.z);
       if ((hit.hitX || hit.hitZ) && knock >= RARE.blower.slamSpeed && s.tick >= e.slamUntil) {
         e.slamUntil = s.tick + RARE.blower.slamCooldownTicks;
