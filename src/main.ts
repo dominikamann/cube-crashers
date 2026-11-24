@@ -1555,6 +1555,8 @@ function startGame() {
         flags[1 - p.team].carrier = p.id;
       }, 500);
     }
+    // dev: &rule=king&tozone=1 puts the player in the zone, to look at it
+    if (import.meta.env.DEV && params.has('tozone') && solo.versus?.king) solo.players[0].pos = { x: solo.versus.king.pos.x + 1, z: solo.versus.king.pos.z };
     // dev: &all=1 hands the player every weapon of the game, at level 3
     if (import.meta.env.DEV && params.has('all')) solo.players[0].weapons = ALL_WEAPONS.map(kind => ({ kind, level: 3, cooldown: 0 }));
     // dev: &view=top keeps the camera above the arena (for recordings)
