@@ -1,4 +1,4 @@
-import { BLOCKS_WALKER, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, nearestFree } from '../map/tilemap';
 import { TICK_RATE } from '../types';
 import type { SimState, Vec2 } from '../types';
 import { spawnEnemy } from './enemies';
@@ -22,7 +22,7 @@ export const MINI = {
 
 export function releaseMiniDominik(s: SimState, at: Vec2): void {
   if (s.mini) return;
-  const pos = nearestFree(s.map, at, MINI.radius, BLOCKS_WALKER);
+  const pos = nearestFree(s.map, at, MINI.radius, BLOCKS_ENEMY);
   // (a tank in the rules, like the big one)
   const e = spawnEnemy(s, 'tank', pos);
   e.hp = e.maxHp = MINI.hp;

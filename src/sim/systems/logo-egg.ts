@@ -1,6 +1,6 @@
 import { clearSpot } from './ground';
 import { logoSpots } from '../map/logo-spots';
-import { BLOCKS_WALKER, nearestFree } from '../map/tilemap';
+import { BLOCKS_ENEMY, nearestFree } from '../map/tilemap';
 import { TICK_RATE } from '../types';
 import type { SimState, Vec2 } from '../types';
 import { dropCoins } from './combat';
@@ -33,9 +33,10 @@ export function shotAtWall(s: SimState, pos: Vec2): void {
   egg.hits = 0;
   egg.given++;
   egg.restUntil = s.tick + LOGO_EGG.restSeconds * TICK_RATE;
-  // the prize lands on the floor in front of the logo
+  // the prize lands on the floor in front of the logo (off any glitch there: a small Dominik could not walk out
+  // of it, the Rooftop's logo looks out across a strip of it)
   const mid = (spot.w - 1) / 2;
-  const front = nearestFree(s.map, { x: spot.tx + 0.5 + (spot.along === 'x' ? mid : 0) + spot.facing.x * 1.5, z: spot.tz + 0.5 + (spot.along === 'z' ? mid : 0) + spot.facing.z * 1.5 }, 0.4, BLOCKS_WALKER);
+  const front = nearestFree(s.map, { x: spot.tx + 0.5 + (spot.along === 'x' ? mid : 0) + spot.facing.x * 1.5, z: spot.tz + 0.5 + (spot.along === 'z' ? mid : 0) + spot.facing.z * 1.5 }, 0.4, BLOCKS_ENEMY);
   const roll = s.rng.next();
   // (rarest of all: instead of nothing, a small Angry Dominik steps out of the wall)
   if (roll >= 1 - LOGO_EGG.dominikChance && !s.mini && !s.versus) {
